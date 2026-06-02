@@ -1,341 +1,116 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { CAUSAS_SEED } from '../lib/seedData'
-const estadoConfig = {
-  vencido:{label:'VENCIDO',color:'#ef4444',bg:'#fef2f2'},
-  proximo:{label:'POR VENCER',color:'#f59e0b',bg:'#fffbeb'},
-  apjo:{label:'APJO',color:'#8b5cf6',bg:'#f5f3ff'},
-  suspendida:{label:'SUSPENDIDA',color:'#6b7280',bg:'#f9fafb'},
-  vigente:{label:'VIGENTE',color:'#10b981',bg:'#f0fdf4'},
-}
+const estadoConfig={vencido:{label:'VENCIDO',color:'#dc2626',bg:'#fef2f2',dot:'#dc2626'},proximo:{label:'POR VENCER',color:'#d97706',bg:'#fffbeb',dot:'#f59e0b'},apjo:{label:'APJO',color:'#7c3aed',bg:'#f5f3ff',dot:'#8b5cf6'},suspendida:{label:'SUSPENDIDA',color:'#6b7280',bg:'#f9fafb',dot:'#9ca3af'},vigente:{label:'VIGENTE',color:'#059669',bg:'#ecfdf5',dot:'#10b981'}}
+const css=`@import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap');*{box-sizing:border-box;margin:0;padding:0}body{font-family:'DM Sans',sans-serif;background:#f0f4f8}.modal-overlay{animation:fadeIn 0.2s ease}.modal-card{animation:slideUp 0.25s cubic-bezier(0.16,1,0.3,1)}.causa-row{transition:background 0.15s}.causa-row:hover{background:#e8f0fe!important}.stat-card{transition:transform 0.15s,box-shadow 0.15s;cursor:pointer}.stat-card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.12)}.btn-primary{transition:all 0.15s}.btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(30,58,138,0.3)}.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:0.3px}.field-val{transition:background 0.15s}.field-val:hover{background:#e8f0fe!important}@keyframes fadeIn{from{opacity:0}to{opacity:1}}@keyframes slideUp{from{opacity:0;transform:translateY(24px) scale(0.98)}to{opacity:1;transform:translateY(0) scale(1)}}`
 export default function Dashboard({session}){
-  const [causas,setCausas]=useState([])
-  const [loading,setLoading]=useState(true)
-  const [seeding,setSeeding]=useState(false)
-  const [search,setSearch]=useState('')
-  const [filterTribunal,setFilterTribunal]=useState('')
-  const [filterEstado,setFilterEstado]=useState('')
-  const [view,setView]=useState('list')
-  const [selectedCausa,setSelectedCausa]=useState(null)
-  const [activeTab,setActiveTab]=useState('datos')
-  const [editField,setEditField]=useState(null)
-  const [editValue,setEditValue]=useState('')
-  const [nuevaNota,setNuevaNota]=useState('')
-  const [notas,setNotas]=useState([])
-  const [audiencias,setAudiencias]=useState([])
-  const [showAudForm,setShowAudForm]=useState(false)
-  const [nuevaAud,setNuevaAud]=useState({fecha:'',tipo:'',resultado:'',notas:''})
-  const [saving,setSaving]=useState(false)
-  const [showNuevaCausa,setShowNuevaCausa]=useState(false)
-  const [nuevaCausa,setNuevaCausa]=useState({ruc:'',rit:'',tribunal:'',delito:'',imputado:'',fiscal:'',cautelar:'',centro_penal:'',plazo:'',estado:'vigente'})
-  useEffect(()=>{loadCausas()},[])
-  const loadCausas=async()=>{
-    setLoading(true)
-    const{data,error}=await supabase.from('causas').select('*').order('created_at',{ascending:false})
-    if(!error)setCausas(data||[])
-    setLoading(false)
-  }
-  const seedDatabase=async()=>{
-    setSeeding(true)
-    const chunks=[]
-    for(let i=0;i<CAUSAS_SEED.length;i+=50)chunks.push(CAUSAS_SEED.slice(i,i+50))
-    for(const chunk of chunks){
-      await supabase.from('causas').insert(chunk.map(c=>({ruc:c.ruc,rit:c.rit,tribunal:c.tribunal,delito:c.delito,imputado:c.imputado,fiscal:'',cautelar:'',centro_penal:'',plazo:c.plazo,estado:c.estado,carpeta_ref:''})))
-    }
-    await loadCausas()
-    setSeeding(false)
-  }
-  const openCausa=async(c)=>{
-    setSelectedCausa(c);setView('detail');setActiveTab('datos')
-    const[{data:n},{data:a}]=await Promise.all([
-      supabase.from('notas').select('*').eq('causa_id',c.id).order('created_at',{ascending:false}),
-      supabase.from('audiencias').select('*').eq('causa_id',c.id).order('fecha',{ascending:false})
-    ])
-    setNotas(n||[]);setAudiencias(a||[])
-  }
-  const updateField=async(field,value)=>{
-    setSaving(true)
-    const{error}=await supabase.from('causas').update({[field]:value,updated_at:new Date()}).eq('id',selectedCausa.id)
-    if(!error){const updated={...selectedCausa,[field]:value};setSelectedCausa(updated);setCausas(prev=>prev.map(c=>c.id===updated.id?updated:c))}
-    setEditField(null);setSaving(false)
-  }
-  const saveNota=async()=>{
-    if(!nuevaNota.trim())return;setSaving(true)
-    const{data,error}=await supabase.from('notas').insert({causa_id:selectedCausa.id,contenido:nuevaNota}).select().single()
-    if(!error)setNotas(prev=>[data,...prev])
-    setNuevaNota('');setSaving(false)
-  }
-  const saveAudiencia=async()=>{
-    if(!nuevaAud.fecha)return;setSaving(true)
-    const{data,error}=await supabase.from('audiencias').insert({causa_id:selectedCausa.id,...nuevaAud}).select().single()
-    if(!error)setAudiencias(prev=>[data,...prev])
-    setNuevaAud({fecha:'',tipo:'',resultado:'',notas:''});setShowAudForm(false);setSaving(false)
-  }
-  const saveCausa=async()=>{
-    if(!nuevaCausa.ruc)return;setSaving(true)
-    const{data,error}=await supabase.from('causas').insert(nuevaCausa).select().single()
-    if(!error){setCausas(prev=>[data,...prev]);setShowNuevaCausa(false);setNuevaCausa({ruc:'',rit:'',tribunal:'',delito:'',imputado:'',fiscal:'',cautelar:'',centro_penal:'',plazo:'',estado:'vigente'})}
-    setSaving(false)
-  }
-  const signOut=()=>supabase.auth.signOut()
-  const tribunales=useMemo(()=>[...new Set(causas.map(c=>c.tribunal).filter(Boolean))].sort(),[causas])
-  const filtered=useMemo(()=>causas.filter(c=>{
-    const s=search.toLowerCase()
-    const match=!s||[c.ruc,c.rit,c.imputado,c.delito,c.tribunal,c.fiscal].some(v=>v?.toLowerCase().includes(s))
-    return match&&(!filterTribunal||c.tribunal===filterTribunal)&&(!filterEstado||c.estado===filterEstado)
-  }),[causas,search,filterTribunal,filterEstado])
-  const stats=useMemo(()=>({
-    total:causas.length,
-    vencido:causas.filter(c=>c.estado==='vencido').length,
-    proximo:causas.filter(c=>c.estado==='proximo').length,
-    apjo:causas.filter(c=>c.estado==='apjo').length,
-    vigente:causas.filter(c=>c.estado==='vigente').length,
-  }),[causas])
-  const f={fontFamily:'Georgia,serif'}
-  const badge=(estado)=>({display:'inline-block',padding:'3px 9px',borderRadius:20,fontSize:11,fontWeight:'bold',color:estadoConfig[estado]?.color||'#666',background:estadoConfig[estado]?.bg||'#f9fafb',border:`1px solid ${estadoConfig[estado]?.color||'#ccc'}`})
-  const btnP={background:'#1a1a2e',color:'#d4af37',border:'none',borderRadius:8,padding:'9px 18px',fontSize:13,cursor:'pointer',fontWeight:'bold',...f}
-  const btnS={background:'#fff',color:'#1a1a2e',border:'1.5px solid #1a1a2e',borderRadius:8,padding:'8px 16px',fontSize:13,cursor:'pointer',...f}
-  const fLabel={fontSize:11,color:'#6b7280',textTransform:'uppercase',letterSpacing:0.5,marginBottom:4,display:'block'}
-  const fValue={fontSize:14,color:'#1a1a2e',padding:'8px 12px',background:'#f8f7f4',borderRadius:8,border:'1px solid #e2e8f0',minHeight:36,display:'flex',alignItems:'center'}
-  const fInput={fontSize:14,padding:'8px 12px',background:'#fff',borderRadius:8,border:'1.5px solid #d4af37',width:'100%',...f,outline:'none',boxSizing:'border-box'}
-  const iSmall={padding:'7px 10px',border:'1px solid #d1d5db',borderRadius:6,fontSize:13,...f,width:'100%',boxSizing:'border-box'}
-  if(view==='detail'&&selectedCausa){
-    const c=causas.find(x=>x.id===selectedCausa.id)||selectedCausa
-    return(
-      <div style={{...f,background:'#f8f7f4',minHeight:'100vh'}}>
-        <div style={{background:'#1a1a2e',color:'#fff',padding:'0 24px',height:56,display:'flex',alignItems:'center',justifyContent:'space-between',position:'sticky',top:0,zIndex:100}}>
-          <span style={{fontSize:17,fontWeight:'bold',color:'#d4af37'}}>⚖ GESTOR DE CAUSAS PENALES</span>
-          <div style={{display:'flex',gap:12,alignItems:'center'}}>
-            {saving&&<span style={{color:'#d4af37',fontSize:12}}>Guardando...</span>}
-            <button style={{...btnS,color:'#d4af37',borderColor:'#d4af37',fontSize:12}} onClick={signOut}>Salir</button>
-          </div>
-        </div>
-        <div style={{padding:'20px 24px',maxWidth:1100,margin:'0 auto'}}>
-          <div style={{cursor:'pointer',marginBottom:16,fontSize:14}} onClick={()=>setView('list')}>← Volver al listado</div>
-          <div style={{background:'#fff',borderRadius:14,boxShadow:'0 2px 12px rgba(0,0,0,0.08)',overflow:'hidden'}}>
-            <div style={{background:'#1a1a2e',padding:'20px 24px'}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
-                <div>
-                  <div style={{fontSize:20,fontWeight:'bold',color:'#d4af37',marginBottom:4}}>RUC: {c.ruc}</div>
-                  <div style={{fontSize:13,color:'#a0aec0'}}>RIT: {c.rit||'—'} | {c.tribunal}</div>
-                </div>
-                <span style={badge(c.estado)}>{estadoConfig[c.estado]?.label}</span>
-              </div>
-            </div>
-            <div style={{display:'flex',borderBottom:'2px solid #f1f5f9',padding:'0 24px',background:'#fafafa'}}>
-              {[['datos','📋 Datos'],['notas','📝 Notas'],['audiencias','📅 Audiencias'],['carpeta','📁 Carpeta']].map(([k,l])=>(
-                <button key={k} onClick={()=>setActiveTab(k)} style={{padding:'12px 18px',cursor:'pointer',fontSize:13,fontWeight:activeTab===k?'bold':'normal',color:activeTab===k?'#1a1a2e':'#6b7280',borderBottom:`2px solid ${activeTab===k?'#d4af37':'transparent'}`,marginBottom:-2,background:'none',border:'none',borderBottomWidth:2,borderBottomStyle:'solid',borderBottomColor:activeTab===k?'#d4af37':'transparent',...f}}>{l}</button>
-              ))}
-            </div>
-            <div style={{padding:24}}>
-              {activeTab==='datos'&&(
-                <div>
-                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
-                    {[{key:'imputado',label:'Imputado(s)',full:true},{key:'delito',label:'Delito',full:true},{key:'tribunal',label:'Tribunal'},{key:'rit',label:'RIT'},{key:'fiscal',label:'Fiscal',editable:true},{key:'cautelar',label:'Cautelar Procesal',editable:true},{key:'centro_penal',label:'Centro Penal',editable:true},{key:'plazo',label:'Plazo',editable:true,full:true}].map(field=>(
-                      <div key={field.key} style={{marginBottom:4,gridColumn:field.full?'1 / -1':'auto'}}>
-                        <span style={fLabel}>{field.label}</span>
-                        {editField===field.key?(
-                          <div style={{display:'flex',gap:8}}>
-                            <input style={fInput} value={editValue} onChange={e=>setEditValue(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')updateField(field.key,editValue);if(e.key==='Escape')setEditField(null)}} autoFocus/>
-                            <button style={btnP} onClick={()=>updateField(field.key,editValue)}>✓</button>
-                            <button style={btnS} onClick={()=>setEditField(null)}>✗</button>
-                          </div>
-                        ):(
-                          <div style={{...fValue,cursor:field.editable?'pointer':'default'}} onClick={()=>{if(field.editable){setEditField(field.key);setEditValue(c[field.key]||'')}}}>
-                            {c[field.key]||(field.editable?<span style={{color:'#aaa',fontStyle:'italic'}}>Clic para agregar...</span>:'—')}
-                            {field.editable&&<span style={{marginLeft:'auto',fontSize:11,color:'#aaa',paddingLeft:8}}>✏️</span>}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  <div style={{marginTop:20}}>
-                    <span style={fLabel}>Estado Procesal</span>
-                    <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:6}}>
-                      {Object.entries(estadoConfig).map(([k,v])=>(
-                        <button key={k} onClick={()=>updateField('estado',k)} style={{padding:'6px 14px',borderRadius:20,fontSize:12,cursor:'pointer',fontWeight:'bold',border:`2px solid ${v.color}`,background:c.estado===k?v.color:'#fff',color:c.estado===k?'#fff':v.color,...f}}>{v.label}</button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-              {activeTab==='notas'&&(
-                <div>
-                  <p style={{fontSize:13,color:'#6b7280',marginBottom:14}}>Block de notas de la causa.</p>
-                  {notas.map(n=>(
-                    <div key={n.id} style={{background:'#f8f7f4',borderRadius:8,padding:'12px 16px',marginBottom:10,border:'1px solid #e2e8f0'}}>
-                      <div style={{fontSize:11,color:'#9ca3af',marginBottom:6}}>{new Date(n.created_at).toLocaleString('es-CL')}</div>
-                      <div style={{fontSize:14,whiteSpace:'pre-wrap',lineHeight:1.6}}>{n.contenido}</div>
-                    </div>
-                  ))}
-                  {notas.length===0&&<p style={{color:'#9ca3af',fontSize:13,marginBottom:14}}>Sin notas aún.</p>}
-                  <textarea style={{width:'100%',padding:12,fontSize:14,border:'1.5px solid #e2e8f0',borderRadius:8,...f,minHeight:100,resize:'vertical',background:'#fff',boxSizing:'border-box'}} placeholder="Escribir nueva nota..." value={nuevaNota} onChange={e=>setNuevaNota(e.target.value)}/>
-                  <button style={{...btnP,marginTop:8}} onClick={saveNota} disabled={saving}>{saving?'Guardando...':'+ Agregar nota'}</button>
-                </div>
-              )}
-              {activeTab==='audiencias'&&(
-                <div>
-                  {audiencias.map(a=>(
-                    <div key={a.id} style={{background:'#f8f7f4',borderRadius:8,padding:'12px 16px',marginBottom:10,border:'1px solid #e2e8f0'}}>
-                      <div style={{display:'flex',justifyContent:'space-between'}}>
-                        <strong style={{fontSize:14}}>{a.tipo||'Audiencia'}</strong>
-                        <span style={{fontSize:13,color:'#6b7280'}}>{a.fecha}</span>
-                      </div>
-                      {a.resultado&&<div style={{fontSize:13,marginTop:4}}>Resultado: {a.resultado}</div>}
-                      {a.notas&&<div style={{fontSize:12,marginTop:4,color:'#6b7280'}}>{a.notas}</div>}
-                    </div>
-                  ))}
-                  {audiencias.length===0&&!showAudForm&&<p style={{color:'#9ca3af',fontSize:13,marginBottom:14}}>Sin audiencias registradas.</p>}
-                  {showAudForm&&(
-                    <div style={{background:'#f8f7f4',padding:16,borderRadius:10,border:'1px solid #e2e8f0',marginBottom:14}}>
-                      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
-                        <div><span style={fLabel}>Fecha</span><input type="date" style={iSmall} value={nuevaAud.fecha} onChange={e=>setNuevaAud(p=>({...p,fecha:e.target.value}))}/></div>
-                        <div><span style={fLabel}>Tipo</span><input style={iSmall} placeholder="Formalización, APJO, JO..." value={nuevaAud.tipo} onChange={e=>setNuevaAud(p=>({...p,tipo:e.target.value}))}/></div>
-                        <div><span style={fLabel}>Resultado</span><input style={iSmall} value={nuevaAud.resultado} onChange={e=>setNuevaAud(p=>({...p,resultado:e.target.value}))}/></div>
-                        <div><span style={fLabel}>Observaciones</span><input style={iSmall} value={nuevaAud.notas} onChange={e=>setNuevaAud(p=>({...p,notas:e.target.value}))}/></div>
-                      </div>
-                      <div style={{display:'flex',gap:8}}>
-                        <button style={btnP} onClick={saveAudiencia} disabled={saving}>{saving?'Guardando...':'Guardar'}</button>
-                        <button style={btnS} onClick={()=>setShowAudForm(false)}>Cancelar</button>
-                      </div>
-                    </div>
-                  )}
-                  <button style={btnP} onClick={()=>setShowAudForm(true)}>+ Nueva audiencia</button>
-                </div>
-              )}
-              {activeTab==='carpeta'&&(
-                <div>
-                  <p style={{fontSize:13,color:'#6b7280',marginBottom:16}}>Carpeta física digitalizada — RUC {c.ruc}</p>
-                  <div style={{marginBottom:20}}>
-                    <span style={fLabel}>Referencia carpeta física</span>
-                    {editField==='carpeta_ref'?(
-                      <div style={{display:'flex',gap:8}}>
-                        <input style={fInput} value={editValue} onChange={e=>setEditValue(e.target.value)} placeholder="Ej: Caja 3, Carpeta 12" autoFocus/>
-                        <button style={btnP} onClick={()=>updateField('carpeta_ref',editValue)}>✓</button>
-                        <button style={btnS} onClick={()=>setEditField(null)}>✗</button>
-                      </div>
-                    ):(
-                      <div style={{...fValue,cursor:'pointer'}} onClick={()=>{setEditField('carpeta_ref');setEditValue(c.carpeta_ref||'')}}>
-                        {c.carpeta_ref||<span style={{color:'#aaa',fontStyle:'italic'}}>Clic para ingresar ubicación...</span>}
-                        <span style={{marginLeft:'auto',fontSize:11,color:'#aaa',paddingLeft:8}}>✏️</span>
-                      </div>
-                    )}
-                  </div>
-                  <div style={{background:'#f8f7f4',borderRadius:10,border:'2px dashed #d1d5db',padding:32,textAlign:'center',color:'#9ca3af'}}>
-                    <div style={{fontSize:40,marginBottom:8}}>📁</div>
-                    <div style={{fontSize:14,marginBottom:16}}>Subida de documentos — Próximamente</div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-  return(
-    <div style={{...f,background:'#f8f7f4',minHeight:'100vh'}}>
-      <div style={{background:'#1a1a2e',color:'#fff',padding:'0 24px',height:56,display:'flex',alignItems:'center',justifyContent:'space-between',position:'sticky',top:0,zIndex:100}}>
-        <span style={{fontSize:17,fontWeight:'bold',color:'#d4af37'}}>⚖ GESTOR DE CAUSAS PENALES</span>
-        <div style={{display:'flex',gap:12,alignItems:'center'}}>
-          <span style={{fontSize:12,color:'#a0aec0'}}>{session.user.email}</span>
-          <button style={{...btnS,color:'#d4af37',borderColor:'#d4af37',fontSize:12}} onClick={signOut}>Salir</button>
-        </div>
-      </div>
-      <div style={{padding:'20px 24px',maxWidth:1350,margin:'0 auto'}}>
-        {stats.vencido>0&&(
-          <div style={{background:'#fef2f2',border:'1.5px solid #ef4444',borderRadius:10,padding:'12px 18px',marginBottom:16,display:'flex',alignItems:'center',gap:10}}>
-            <span style={{fontSize:20}}>🚨</span>
-            <span style={{fontSize:14,color:'#991b1b',fontWeight:'bold'}}>{stats.vencido} causa{stats.vencido>1?'s':''} con plazo VENCIDO — Revisión urgente requerida</span>
-          </div>
-        )}
-        {causas.length===0&&!loading&&(
-          <div style={{background:'#fffbeb',border:'1.5px solid #f59e0b',borderRadius:10,padding:'20px 24px',marginBottom:20,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-            <div>
-              <div style={{fontWeight:'bold',color:'#92400e',marginBottom:4}}>Base de datos vacía</div>
-              <div style={{fontSize:13,color:'#b45309'}}>Carga tus {CAUSAS_SEED.length} causas del Excel con un clic.</div>
-            </div>
-            <button style={btnP} onClick={seedDatabase} disabled={seeding}>{seeding?'Cargando causas...':'📥 Importar mis causas'}</button>
-          </div>
-        )}
-        <div style={{display:'flex',gap:12,marginBottom:20,flexWrap:'wrap'}}>
-          {[{key:'',label:'Total',num:stats.total,color:'#1a1a2e',bg:'#eef2ff'},{key:'vigente',label:'Vigentes',num:stats.vigente,color:'#10b981',bg:'#f0fdf4'},{key:'vencido',label:'Vencidos',num:stats.vencido,color:'#ef4444',bg:'#fef2f2'},{key:'proximo',label:'Por vencer',num:stats.proximo,color:'#f59e0b',bg:'#fffbeb'},{key:'apjo',label:'APJO',num:stats.apjo,color:'#8b5cf6',bg:'#f5f3ff'}].map(st=>{
-            const active=filterEstado===st.key&&st.key!==''
-            return(
-              <div key={st.key} style={{background:active?st.color:st.bg,border:`2px solid ${st.color}`,borderRadius:10,padding:'12px 20px',minWidth:110,textAlign:'center',cursor:'pointer'}} onClick={()=>setFilterEstado(filterEstado===st.key?'':st.key)}>
-                <div style={{fontSize:28,fontWeight:'bold',color:active?'#fff':st.color,lineHeight:1}}>{st.num}</div>
-                <div style={{fontSize:11,color:active?'rgba(255,255,255,0.8)':'#6b7280',marginTop:2,textTransform:'uppercase',letterSpacing:0.5}}>{st.label}</div>
-              </div>
-            )
-          })}
-        </div>
-        <div style={{display:'flex',gap:10,marginBottom:16,flexWrap:'wrap',alignItems:'center'}}>
-          <input style={{flex:1,minWidth:240,padding:'9px 14px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:14,background:'#fff',...f}} placeholder="🔍 Buscar por RUC, RIT, imputado, delito, tribunal, fiscal..." value={search} onChange={e=>setSearch(e.target.value)}/>
-          <select style={{padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,background:'#fff',cursor:'pointer',...f}} value={filterTribunal} onChange={e=>setFilterTribunal(e.target.value)}>
-            <option value="">Todos los tribunales</option>
-            {tribunales.map(t=><option key={t} value={t}>{t}</option>)}
-          </select>
-          <select style={{padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,background:'#fff',cursor:'pointer',...f}} value={filterEstado} onChange={e=>setFilterEstado(e.target.value)}>
-            <option value="">Todos los estados</option>
-            {Object.entries(estadoConfig).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}
-          </select>
-          <span style={{fontSize:13,color:'#6b7280'}}>{filtered.length} resultado{filtered.length!==1?'s':''}</span>
-          <button style={btnP} onClick={()=>setShowNuevaCausa(true)}>+ Nueva causa</button>
-        </div>
-        {loading?(
-          <div style={{textAlign:'center',padding:60,color:'#9ca3af',fontSize:15}}>Cargando causas...</div>
-        ):(
-          <div style={{overflowX:'auto'}}>
-            <table style={{width:'100%',borderCollapse:'collapse',background:'#fff',borderRadius:12,overflow:'hidden',boxShadow:'0 1px 6px rgba(0,0,0,0.07)'}}>
-              <thead>
-                <tr>{['RUC','RIT','Tribunal','Imputado','Delito','Fiscal','Plazo','Estado'].map(h=>(
-                  <th key={h} style={{background:'#1a1a2e',color:'#d4af37',padding:'11px 14px',textAlign:'left',fontSize:12,fontWeight:'bold',letterSpacing:0.5,textTransform:'uppercase'}}>{h}</th>
-                ))}</tr>
-              </thead>
-              <tbody>
-                {filtered.map((c,idx)=>(
-                  <tr key={c.id} style={{cursor:'pointer',background:idx%2===0?'#fff':'#fafafa'}} onClick={()=>openCausa(c)} onMouseEnter={e=>e.currentTarget.style.background='#f0f4ff'} onMouseLeave={e=>e.currentTarget.style.background=idx%2===0?'#fff':'#fafafa'}>
-                    <td style={{padding:'10px 14px',fontSize:12,borderBottom:'1px solid #f1f5f9',fontFamily:'monospace',fontWeight:'bold'}}>{c.ruc}</td>
-                    <td style={{padding:'10px 14px',fontSize:12,borderBottom:'1px solid #f1f5f9',color:'#4b5563'}}>{c.rit||'—'}</td>
-                    <td style={{padding:'10px 14px',fontSize:12,borderBottom:'1px solid #f1f5f9'}}>{c.tribunal}</td>
-                    <td style={{padding:'10px 14px',fontSize:13,borderBottom:'1px solid #f1f5f9'}}><div style={{maxWidth:200,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={c.imputado}>{c.imputado}</div></td>
-                    <td style={{padding:'10px 14px',fontSize:13,borderBottom:'1px solid #f1f5f9'}}><div style={{maxWidth:180,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={c.delito}>{c.delito||'—'}</div></td>
-                    <td style={{padding:'10px 14px',fontSize:12,borderBottom:'1px solid #f1f5f9',color:c.fiscal?'#1a1a2e':'#d1d5db',fontStyle:c.fiscal?'normal':'italic'}}>{c.fiscal||'Sin asignar'}</td>
-                    <td style={{padding:'10px 14px',fontSize:12,borderBottom:'1px solid #f1f5f9'}}><div style={{maxWidth:140,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{c.plazo||'—'}</div></td>
-                    <td style={{padding:'10px 14px',borderBottom:'1px solid #f1f5f9'}}><span style={badge(c.estado)}>{estadoConfig[c.estado]?.label||c.estado}</span></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {filtered.length===0&&<div style={{textAlign:'center',padding:40,color:'#9ca3af',fontSize:15}}>Sin resultados.</div>}
-          </div>
-        )}
-      </div>
-      {showNuevaCausa&&(
-        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:200}} onClick={e=>e.target===e.currentTarget&&setShowNuevaCausa(false)}>
-          <div style={{background:'#fff',borderRadius:14,padding:32,width:480,maxWidth:'90vw',boxShadow:'0 20px 60px rgba(0,0,0,0.3)',maxHeight:'90vh',overflowY:'auto'}}>
-            <h2 style={{marginTop:0,marginBottom:20,fontSize:18,color:'#1a1a2e'}}>➕ Nueva Causa</h2>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-              {[{key:'ruc',label:'RUC *',placeholder:'Ej: 2600123456-7',full:true},{key:'rit',label:'RIT',placeholder:'Ej: 1234-2026'},{key:'tribunal',label:'Tribunal',placeholder:'Ej: 7 JG STGO'},{key:'imputado',label:'Imputado',placeholder:'Nombre completo',full:true},{key:'delito',label:'Delito',placeholder:'Tipo de delito',full:true},{key:'fiscal',label:'Fiscal',placeholder:'Nombre del fiscal'},{key:'cautelar',label:'Cautelar',placeholder:'Prisión preventiva...'},{key:'plazo',label:'Plazo',placeholder:'VENCE DD-MM-YYYY',full:true}].map(field=>(
-                <div key={field.key} style={{gridColumn:field.full?'1 / -1':'auto'}}>
-                  <span style={fLabel}>{field.label}</span>
-                  <input style={iSmall} placeholder={field.placeholder} value={nuevaCausa[field.key]} onChange={e=>setNuevaCausa(p=>({...p,[field.key]:e.target.value}))}/>
-                </div>
-              ))}
-              <div style={{gridColumn:'1 / -1'}}>
-                <span style={fLabel}>Estado</span>
-                <select style={{...iSmall}} value={nuevaCausa.estado} onChange={e=>setNuevaCausa(p=>({...p,estado:e.target.value}))}>
-                  {Object.entries(estadoConfig).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}
-                </select>
-              </div>
-            </div>
-            <div style={{display:'flex',gap:10,marginTop:20}}>
-              <button style={btnP} onClick={saveCausa} disabled={saving||!nuevaCausa.ruc}>{saving?'Guardando...':'Guardar causa'}</button>
-              <button style={btnS} onClick={()=>setShowNuevaCausa(false)}>Cancelar</button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  )
+const [causas,setCausas]=useState([])
+const [loading,setLoading]=useState(true)
+const [seeding,setSeeding]=useState(false)
+const [search,setSearch]=useState('')
+const [filterTribunal,setFilterTribunal]=useState('')
+const [filterEstado,setFilterEstado]=useState('')
+const [modal,setModal]=useState(null)
+const [activeTab,setActiveTab]=useState('datos')
+const [editField,setEditField]=useState(null)
+const [editValue,setEditValue]=useState('')
+const [nuevaNota,setNuevaNota]=useState('')
+const [notas,setNotas]=useState([])
+const [audiencias,setAudiencias]=useState([])
+const [showAudForm,setShowAudForm]=useState(false)
+const [nuevaAud,setNuevaAud]=useState({fecha:'',tipo:'',resultado:'',notas:''})
+const [saving,setSaving]=useState(false)
+const [showNueva,setShowNueva]=useState(false)
+const [nueva,setNueva]=useState({ruc:'',rit:'',tribunal:'',delito:'',imputado:'',fiscal:'',cautelar:'',centro_penal:'',plazo:'',estado:'vigente'})
+useEffect(()=>{loadCausas()},[])
+const loadCausas=async()=>{setLoading(true);const{data,error}=await supabase.from('causas').select('*').order('created_at',{ascending:false});if(!error)setCausas(data||[]);setLoading(false)}
+const seedDatabase=async()=>{setSeeding(true);const chunks=[];for(let i=0;i<CAUSAS_SEED.length;i+=50)chunks.push(CAUSAS_SEED.slice(i,i+50));for(const chunk of chunks){await supabase.from('causas').insert(chunk.map(c=>({ruc:c.ruc,rit:c.rit,tribunal:c.tribunal,delito:c.delito,imputado:c.imputado,fiscal:'',cautelar:'',centro_penal:'',plazo:c.plazo,estado:c.estado,carpeta_ref:''})))}await loadCausas();setSeeding(false)}
+const openModal=async(c)=>{setModal(c);setActiveTab('datos');const[{data:n},{data:a}]=await Promise.all([supabase.from('notas').select('*').eq('causa_id',c.id).order('created_at',{ascending:false}),supabase.from('audiencias').select('*').eq('causa_id',c.id).order('fecha',{ascending:false})]);setNotas(n||[]);setAudiencias(a||[])}
+const closeModal=()=>{setModal(null);setEditField(null)}
+const updateField=async(field,value)=>{setSaving(true);await supabase.from('causas').update({[field]:value,updated_at:new Date()}).eq('id',modal.id);const updated={...modal,[field]:value};setModal(updated);setCausas(prev=>prev.map(c=>c.id===updated.id?updated:c));setEditField(null);setSaving(false)}
+const saveNota=async()=>{if(!nuevaNota.trim())return;setSaving(true);const{data}=await supabase.from('notas').insert({causa_id:modal.id,contenido:nuevaNota}).select().single();if(data)setNotas(prev=>[data,...prev]);setNuevaNota('');setSaving(false)}
+const saveAudiencia=async()=>{if(!nuevaAud.fecha)return;setSaving(true);const{data}=await supabase.from('audiencias').insert({causa_id:modal.id,...nuevaAud}).select().single();if(data)setAudiencias(prev=>[data,...prev]);setNuevaAud({fecha:'',tipo:'',resultado:'',notas:''});setShowAudForm(false);setSaving(false)}
+const saveCausa=async()=>{if(!nueva.ruc)return;setSaving(true);const{data}=await supabase.from('causas').insert(nueva).select().single();if(data){setCausas(prev=>[data,...prev]);setShowNueva(false);setNueva({ruc:'',rit:'',tribunal:'',delito:'',imputado:'',fiscal:'',cautelar:'',centro_penal:'',plazo:'',estado:'vigente'})};setSaving(false)}
+const signOut=()=>supabase.auth.signOut()
+const tribunales=useMemo(()=>[...new Set(causas.map(c=>c.tribunal).filter(Boolean))].sort(),[causas])
+const filtered=useMemo(()=>causas.filter(c=>{const s=search.toLowerCase();const match=!s||[c.ruc,c.rit,c.imputado,c.delito,c.tribunal,c.fiscal].some(v=>v?.toLowerCase().includes(s));return match&&(!filterTribunal||c.tribunal===filterTribunal)&&(!filterEstado||c.estado===filterEstado)}),[causas,search,filterTribunal,filterEstado])
+const stats=useMemo(()=>({total:causas.length,vencido:causas.filter(c=>c.estado==='vencido').length,proximo:causas.filter(c=>c.estado==='proximo').length,apjo:causas.filter(c=>c.estado==='apjo').length,vigente:causas.filter(c=>c.estado==='vigente').length}),[causas])
+const C=modal?causas.find(x=>x.id===modal.id)||modal:null
+const Badge=({estado})=>{const cfg=estadoConfig[estado]||estadoConfig.vigente;return(<span className="badge" style={{background:cfg.bg,color:cfg.color}}><span style={{width:7,height:7,borderRadius:'50%',background:cfg.dot,display:'inline-block'}}/>{cfg.label}</span>)}
+const FL=({label,fieldKey,editable,full})=>(<div style={{gridColumn:full?'1 / -1':'auto'}}><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1,marginBottom:4,fontWeight:600}}>{label}</div>{editField===fieldKey?(<div style={{display:'flex',gap:8}}><input style={{flex:1,padding:'8px 12px',border:'2px solid #1e3a8a',borderRadius:8,fontSize:14,fontFamily:'DM Sans',outline:'none'}} value={editValue} onChange={e=>setEditValue(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')updateField(fieldKey,editValue);if(e.key==='Escape')setEditField(null)}} autoFocus/><button onClick={()=>updateField(fieldKey,editValue)} style={{background:'#1e3a8a',color:'#fff',border:'none',borderRadius:8,padding:'0 14px',cursor:'pointer'}}>✓</button><button onClick={()=>setEditField(null)} style={{background:'#f1f5f9',color:'#64748b',border:'none',borderRadius:8,padding:'0 12px',cursor:'pointer'}}>✗</button></div>):(<div className={editable?'field-val':''} onClick={()=>{if(editable){setEditField(fieldKey);setEditValue(C[fieldKey]||'')}}} style={{fontSize:14,color:'#1e293b',padding:'9px 12px',background:'#f8fafc',borderRadius:8,border:'1px solid #e2e8f0',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:editable?'pointer':'default'}}><span style={{color:C[fieldKey]?'#1e293b':'#cbd5e1',fontStyle:C[fieldKey]?'normal':'italic'}}>{C[fieldKey]||(editable?'Clic para agregar...':'—')}</span>{editable&&<span style={{fontSize:12,color:'#94a3b8'}}>✏</span>}</div>)}</div>)
+return(
+<div style={{fontFamily:'DM Sans,sans-serif',background:'#f0f4f8',minHeight:'100vh'}}>
+<style>{css}</style>
+<div style={{background:'#0f172a',padding:'0 32px',height:60,display:'flex',alignItems:'center',justifyContent:'space-between',position:'sticky',top:0,zIndex:50,boxShadow:'0 1px 0 rgba(255,255,255,0.06)'}}>
+  <div style={{display:'flex',alignItems:'center',gap:12}}>
+    <div style={{width:32,height:32,background:'linear-gradient(135deg,#1e3a8a,#3b82f6)',borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16}}>⚖</div>
+    <div><div style={{fontFamily:'Libre Baskerville,serif',color:'#fff',fontSize:15,fontWeight:700}}>Gestor de Causas Penales</div><div style={{color:'#475569',fontSize:11,letterSpacing:0.5}}>SISTEMA DE GESTIÓN LEGAL</div></div>
+  </div>
+  <div style={{display:'flex',alignItems:'center',gap:16}}>
+    {saving&&<span style={{color:'#60a5fa',fontSize:12}}>● Guardando...</span>}
+    <span style={{color:'#475569',fontSize:12}}>{session.user.email}</span>
+    <button onClick={signOut} style={{background:'transparent',border:'1px solid #334155',color:'#94a3b8',borderRadius:6,padding:'5px 14px',fontSize:12,cursor:'pointer',fontFamily:'DM Sans'}}>Salir</button>
+  </div>
+</div>
+<div style={{padding:'28px 32px',maxWidth:1400,margin:'0 auto'}}>
+{stats.vencido>0&&(<div style={{background:'#fff',border:'1px solid #fca5a5',borderLeft:'4px solid #dc2626',borderRadius:10,padding:'14px 20px',marginBottom:24,display:'flex',alignItems:'center',gap:12,boxShadow:'0 1px 4px rgba(220,38,38,0.08)'}}><span style={{fontSize:22}}>🚨</span><div><div style={{fontWeight:600,color:'#dc2626',fontSize:14}}>{stats.vencido} causa{stats.vencido>1?'s':''} con plazo VENCIDO</div><div style={{color:'#9ca3af',fontSize:12,marginTop:2}}>Requieren revisión urgente</div></div></div>)}
+{causas.length===0&&!loading&&(<div style={{background:'linear-gradient(135deg,#1e3a8a,#2563eb)',borderRadius:14,padding:'24px 28px',marginBottom:24,display:'flex',alignItems:'center',justifyContent:'space-between',boxShadow:'0 4px 20px rgba(30,58,138,0.25)'}}><div><div style={{fontFamily:'Libre Baskerville,serif',color:'#fff',fontSize:18,marginBottom:4}}>Base de datos vacía</div><div style={{color:'#93c5fd',fontSize:13}}>Importa tus {CAUSAS_SEED.length} causas del Excel con un clic</div></div><button className="btn-primary" onClick={seedDatabase} disabled={seeding} style={{background:'#fff',color:'#1e3a8a',border:'none',borderRadius:10,padding:'12px 24px',fontSize:14,cursor:'pointer',fontWeight:700,fontFamily:'DM Sans'}}>{seeding?'⏳ Importando...':'📥 Importar causas'}</button></div>)}
+<div style={{display:'flex',gap:14,marginBottom:24,flexWrap:'wrap'}}>
+{[{key:'',label:'Total causas',num:stats.total,color:'#1e3a8a',accent:'#3b82f6'},{key:'vigente',label:'Vigentes',num:stats.vigente,color:'#059669',accent:'#10b981'},{key:'vencido',label:'Vencidos',num:stats.vencido,color:'#dc2626',accent:'#ef4444'},{key:'proximo',label:'Por vencer',num:stats.proximo,color:'#d97706',accent:'#f59e0b'},{key:'apjo',label:'APJO',num:stats.apjo,color:'#7c3aed',accent:'#8b5cf6'}].map(st=>{const active=filterEstado===st.key&&st.key!=='';return(<div key={st.key} className="stat-card" onClick={()=>setFilterEstado(filterEstado===st.key?'':st.key)} style={{background:active?st.color:'#fff',borderRadius:12,padding:'16px 22px',minWidth:120,border:`1px solid ${active?st.color:'#e2e8f0'}`,boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}><div style={{fontSize:30,fontWeight:700,color:active?'#fff':st.color,lineHeight:1,fontFamily:'Libre Baskerville,serif'}}>{st.num}</div><div style={{fontSize:11,color:active?'rgba(255,255,255,0.75)':'#94a3b8',marginTop:4,textTransform:'uppercase',letterSpacing:0.8,fontWeight:600}}>{st.label}</div>{!active&&<div style={{height:2,background:st.accent,borderRadius:2,marginTop:10,width:28}}/>}</div>)})}
+</div>
+<div style={{display:'flex',gap:10,marginBottom:16,flexWrap:'wrap',alignItems:'center'}}>
+<div style={{flex:1,minWidth:260,position:'relative'}}><span style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',color:'#94a3b8',fontSize:15}}>🔍</span><input style={{width:'100%',padding:'10px 14px 10px 36px',border:'1px solid #e2e8f0',borderRadius:10,fontSize:14,background:'#fff',fontFamily:'DM Sans',outline:'none',boxShadow:'0 1px 3px rgba(0,0,0,0.04)'}} placeholder="Buscar por RUC, RIT, imputado, delito, tribunal..." value={search} onChange={e=>setSearch(e.target.value)}/></div>
+<select style={{padding:'10px 14px',border:'1px solid #e2e8f0',borderRadius:10,fontSize:13,background:'#fff',cursor:'pointer',fontFamily:'DM Sans',color:'#475569'}} value={filterTribunal} onChange={e=>setFilterTribunal(e.target.value)}><option value="">Todos los tribunales</option>{tribunales.map(t=><option key={t} value={t}>{t}</option>)}</select>
+<select style={{padding:'10px 14px',border:'1px solid #e2e8f0',borderRadius:10,fontSize:13,background:'#fff',cursor:'pointer',fontFamily:'DM Sans',color:'#475569'}} value={filterEstado} onChange={e=>setFilterEstado(e.target.value)}><option value="">Todos los estados</option>{Object.entries(estadoConfig).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}</select>
+<span style={{fontSize:13,color:'#94a3b8'}}>{filtered.length} resultado{filtered.length!==1?'s':''}</span>
+<button className="btn-primary" onClick={()=>setShowNueva(true)} style={{background:'#1e3a8a',color:'#fff',border:'none',borderRadius:10,padding:'10px 20px',fontSize:13,cursor:'pointer',fontWeight:600,fontFamily:'DM Sans',whiteSpace:'nowrap'}}>+ Nueva causa</button>
+</div>
+{loading?(<div style={{textAlign:'center',padding:80,color:'#94a3b8',fontSize:15}}>Cargando causas...</div>):(
+<div style={{background:'#fff',borderRadius:14,boxShadow:'0 1px 6px rgba(0,0,0,0.06)',overflow:'hidden',border:'1px solid #e2e8f0'}}>
+<table style={{width:'100%',borderCollapse:'collapse'}}>
+<thead><tr>{['RUC','RIT','Tribunal','Imputado','Delito','Fiscal','Plazo','Estado',''].map(h=>(<th key={h} style={{padding:'13px 16px',textAlign:'left',fontSize:11,fontWeight:600,color:'#64748b',letterSpacing:0.8,textTransform:'uppercase',fontFamily:'DM Sans',background:'#f8fafc',borderBottom:'2px solid #e2e8f0'}}>{h}</th>))}</tr></thead>
+<tbody>{filtered.map((c,idx)=>(<tr key={c.id} className="causa-row" style={{background:idx%2===0?'#fff':'#fafbfc',borderBottom:'1px solid #f1f5f9'}}>
+<td style={{padding:'12px 16px',fontSize:12,fontFamily:'monospace',fontWeight:700,color:'#1e3a8a'}}>{c.ruc}</td>
+<td style={{padding:'12px 16px',fontSize:12,color:'#64748b'}}>{c.rit||'—'}</td>
+<td style={{padding:'12px 16px',fontSize:12,color:'#475569'}}>{c.tribunal}</td>
+<td style={{padding:'12px 16px',fontSize:13}}><div style={{maxWidth:200,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',color:'#1e293b'}} title={c.imputado}>{c.imputado}</div></td>
+<td style={{padding:'12px 16px',fontSize:12}}><div style={{maxWidth:180,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',color:'#475569'}} title={c.delito}>{c.delito||'—'}</div></td>
+<td style={{padding:'12px 16px',fontSize:12,color:c.fiscal?'#1e293b':'#cbd5e1',fontStyle:c.fiscal?'normal':'italic'}}>{c.fiscal||'Sin asignar'}</td>
+<td style={{padding:'12px 16px',fontSize:11}}><div style={{maxWidth:130,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',color:'#64748b'}}>{c.plazo||'—'}</div></td>
+<td style={{padding:'12px 16px'}}><Badge estado={c.estado}/></td>
+<td style={{padding:'12px 16px'}}><button onClick={()=>openModal(c)} style={{background:'#eff6ff',color:'#1e3a8a',border:'1px solid #bfdbfe',borderRadius:7,padding:'5px 14px',fontSize:12,cursor:'pointer',fontFamily:'DM Sans',fontWeight:600,whiteSpace:'nowrap'}} onMouseEnter={e=>{e.target.style.background='#1e3a8a';e.target.style.color='#fff'}} onMouseLeave={e=>{e.target.style.background='#eff6ff';e.target.style.color='#1e3a8a'}}>Ver detalle →</button></td>
+</tr>))}</tbody>
+</table>
+{filtered.length===0&&<div style={{textAlign:'center',padding:60,color:'#94a3b8',fontSize:15}}>Sin resultados.</div>}
+</div>)}
+</div>
+{modal&&C&&(
+<div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&closeModal()} style={{position:'fixed',inset:0,background:'rgba(15,23,42,0.6)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:200,padding:24,backdropFilter:'blur(4px)'}}>
+<div className="modal-card" style={{background:'#fff',borderRadius:16,width:'100%',maxWidth:780,maxHeight:'90vh',overflow:'hidden',boxShadow:'0 24px 80px rgba(0,0,0,0.3)',display:'flex',flexDirection:'column'}}>
+<div style={{background:'linear-gradient(135deg,#0f172a,#1e3a8a)',padding:'20px 28px',display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+<div><div style={{fontFamily:'Libre Baskerville,serif',color:'#fff',fontSize:18,marginBottom:4}}>RUC: {C.ruc}</div><div style={{color:'#93c5fd',fontSize:13}}>RIT: {C.rit||'—'} · {C.tribunal}</div></div>
+<div style={{display:'flex',alignItems:'center',gap:12}}><Badge estado={C.estado}/><button onClick={closeModal} style={{background:'rgba(255,255,255,0.1)',border:'none',color:'#fff',borderRadius:8,width:32,height:32,cursor:'pointer',fontSize:18,display:'flex',alignItems:'center',justifyContent:'center'}}>×</button></div>
+</div>
+<div style={{display:'flex',borderBottom:'1px solid #f1f5f9',background:'#fafafa',padding:'0 28px'}}>
+{[['datos','📋 Datos'],['notas','📝 Notas'],['audiencias','📅 Audiencias'],['carpeta','📁 Carpeta']].map(([k,l])=>(<button key={k} onClick={()=>setActiveTab(k)} style={{padding:'13px 18px',fontSize:13,fontWeight:activeTab===k?600:400,color:activeTab===k?'#1e3a8a':'#94a3b8',borderBottom:`2px solid ${activeTab===k?'#1e3a8a':'transparent'}`,marginBottom:-1,background:'none',border:'none',borderBottomWidth:2,borderBottomStyle:'solid',borderBottomColor:activeTab===k?'#1e3a8a':'transparent',fontFamily:'DM Sans',cursor:'pointer'}}>{l}</button>))}
+</div>
+<div style={{padding:'24px 28px',overflowY:'auto',flex:1}}>
+{activeTab==='datos'&&(<div><div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}><FL label="Imputado(s)" fieldKey="imputado" full/><FL label="Delito" fieldKey="delito" full/><FL label="Tribunal" fieldKey="tribunal"/><FL label="RIT" fieldKey="rit"/><FL label="Fiscal" fieldKey="fiscal" editable/><FL label="Cautelar Procesal" fieldKey="cautelar" editable/><FL label="Centro Penal" fieldKey="centro_penal" editable/><FL label="Plazo" fieldKey="plazo" editable full/></div><div style={{marginTop:20}}><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1,marginBottom:8,fontWeight:600}}>Estado Procesal</div><div style={{display:'flex',gap:8,flexWrap:'wrap'}}>{Object.entries(estadoConfig).map(([k,v])=>(<button key={k} onClick={()=>updateField('estado',k)} style={{padding:'7px 16px',borderRadius:20,fontSize:12,cursor:'pointer',fontWeight:600,border:`1.5px solid ${v.color}`,background:C.estado===k?v.color:'#fff',color:C.estado===k?'#fff':v.color,fontFamily:'DM Sans',transition:'all 0.15s'}}>{v.label}</button>))}</div></div></div>)}
+{activeTab==='notas'&&(<div>{notas.length===0&&<p style={{color:'#94a3b8',fontSize:13,marginBottom:16}}>Sin notas aún.</p>}{notas.map(n=>(<div key={n.id} style={{background:'#f8fafc',borderRadius:10,padding:'12px 16px',marginBottom:10,border:'1px solid #e2e8f0'}}><div style={{fontSize:11,color:'#94a3b8',marginBottom:6,fontWeight:600}}>{new Date(n.created_at).toLocaleString('es-CL')}</div><div style={{fontSize:14,color:'#1e293b',whiteSpace:'pre-wrap',lineHeight:1.6}}>{n.contenido}</div></div>))}<div style={{marginTop:16}}><textarea style={{width:'100%',padding:12,fontSize:14,border:'1px solid #e2e8f0',borderRadius:10,fontFamily:'DM Sans',minHeight:100,resize:'vertical',background:'#fff',outline:'none'}} placeholder="Escribir nueva nota..." value={nuevaNota} onChange={e=>setNuevaNota(e.target.value)}/><button onClick={saveNota} disabled={saving} style={{marginTop:8,background:'#1e3a8a',color:'#fff',border:'none',borderRadius:8,padding:'9px 18px',fontSize:13,cursor:'pointer',fontWeight:600,fontFamily:'DM Sans'}}>{saving?'Guardando...':'+ Agregar nota'}</button></div></div>)}
+{activeTab==='audiencias'&&(<div>{audiencias.length===0&&!showAudForm&&<p style={{color:'#94a3b8',fontSize:13,marginBottom:16}}>Sin audiencias registradas.</p>}{audiencias.map(a=>(<div key={a.id} style={{background:'#f8fafc',borderRadius:10,padding:'12px 16px',marginBottom:10,border:'1px solid #e2e8f0'}}><div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}><strong style={{fontSize:14,color:'#1e293b'}}>{a.tipo||'Audiencia'}</strong><span style={{fontSize:12,color:'#94a3b8',background:'#f1f5f9',padding:'2px 10px',borderRadius:20}}>{a.fecha}</span></div>{a.resultado&&<div style={{fontSize:13,color:'#475569',marginTop:4}}>Resultado: {a.resultado}</div>}{a.notas&&<div style={{fontSize:12,color:'#94a3b8',marginTop:4}}>{a.notas}</div>}</div>))}{showAudForm&&(<div style={{background:'#f8fafc',padding:16,borderRadius:10,border:'1px solid #e2e8f0',marginBottom:14}}><div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:12}}>{[['fecha','Fecha','date'],['tipo','Tipo','text'],['resultado','Resultado','text'],['notas','Observaciones','text']].map(([k,l,t])=>(<div key={k}><div style={{fontSize:11,color:'#94a3b8',textTransform:'uppercase',letterSpacing:0.8,marginBottom:4,fontWeight:600}}>{l}</div><input type={t} style={{width:'100%',padding:'8px 12px',border:'1px solid #e2e8f0',borderRadius:8,fontSize:13,fontFamily:'DM Sans',outline:'none',boxSizing:'border-box'}} value={nuevaAud[k]} onChange={e=>setNuevaAud(p=>({...p,[k]:e.target.value}))}/></div>))}</div><div style={{display:'flex',gap:8}}><button onClick={saveAudiencia} disabled={saving} style={{background:'#1e3a8a',color:'#fff',border:'none',borderRadius:8,padding:'8px 18px',fontSize:13,cursor:'pointer',fontWeight:600,fontFamily:'DM Sans'}}>{saving?'Guardando...':'Guardar'}</button><button onClick={()=>setShowAudForm(false)} style={{background:'#f1f5f9',color:'#64748b',border:'none',borderRadius:8,padding:'8px 16px',fontSize:13,cursor:'pointer',fontFamily:'DM Sans'}}>Cancelar</button></div></div>)}{!showAudForm&&<button onClick={()=>setShowAudForm(true)} style={{background:'#1e3a8a',color:'#fff',border:'none',borderRadius:8,padding:'9px 18px',fontSize:13,cursor:'pointer',fontWeight:600,fontFamily:'DM Sans'}}>+ Nueva audiencia</button>}</div>)}
+{activeTab==='carpeta'&&(<div><div style={{marginBottom:20}}><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1,marginBottom:4,fontWeight:600}}>Referencia Carpeta Física</div>{editField==='carpeta_ref'?(<div style={{display:'flex',gap:8}}><input style={{flex:1,padding:'8px 12px',border:'2px solid #1e3a8a',borderRadius:8,fontSize:14,fontFamily:'DM Sans',outline:'none'}} value={editValue} onChange={e=>setEditValue(e.target.value)} placeholder="Ej: Caja 3, Carpeta 12" autoFocus/><button onClick={()=>updateField('carpeta_ref',editValue)} style={{background:'#1e3a8a',color:'#fff',border:'none',borderRadius:8,padding:'0 14px',cursor:'pointer'}}>✓</button><button onClick={()=>setEditField(null)} style={{background:'#f1f5f9',color:'#64748b',border:'none',borderRadius:8,padding:'0 12px',cursor:'pointer'}}>✗</button></div>):(<div className="field-val" onClick={()=>{setEditField('carpeta_ref');setEditValue(C.carpeta_ref||'')}} style={{fontSize:14,color:'#1e293b',padding:'9px 12px',background:'#f8fafc',borderRadius:8,border:'1px solid #e2e8f0',display:'flex',justifyContent:'space-between',cursor:'pointer'}}><span style={{color:C.carpeta_ref?'#1e293b':'#cbd5e1',fontStyle:C.carpeta_ref?'normal':'italic'}}>{C.carpeta_ref||'Clic para ingresar ubicación...'}</span><span style={{fontSize:12,color:'#94a3b8'}}>✏</span></div>)}</div><div style={{background:'#f8fafc',borderRadius:12,border:'2px dashed #cbd5e1',padding:40,textAlign:'center'}}><div style={{fontSize:48,marginBottom:12}}>📁</div><div style={{fontSize:14,color:'#475569',marginBottom:6,fontWeight:500}}>Documentos digitalizados</div><div style={{fontSize:12,color:'#94a3b8'}}>Próximamente — subida de PDFs e imágenes</div></div></div>)}
+</div>
+</div>
+</div>
+)}
+{showNueva&&(
+<div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setShowNueva(false)} style={{position:'fixed',inset:0,background:'rgba(15,23,42,0.6)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:200,padding:24,backdropFilter:'blur(4px)'}}>
+<div className="modal-card" style={{background:'#fff',borderRadius:16,width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto',boxShadow:'0 24px 80px rgba(0,0,0,0.3)'}}>
+<div style={{background:'linear-gradient(135deg,#0f172a,#1e3a8a)',padding:'20px 28px',display:'flex',justifyContent:'space-between',alignItems:'center',borderRadius:'16px 16px 0 0'}}><div style={{fontFamily:'Libre Baskerville,serif',color:'#fff',fontSize:18}}>Nueva Causa</div><button onClick={()=>setShowNueva(false)} style={{background:'rgba(255,255,255,0.1)',border:'none',color:'#fff',borderRadius:8,width:32,height:32,cursor:'pointer',fontSize:18}}>×</button></div>
+<div style={{padding:'24px 28px'}}><div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>{[{key:'ruc',label:'RUC *',placeholder:'Ej: 2600123456-7',full:true},{key:'rit',label:'RIT',placeholder:'Ej: 1234-2026'},{key:'tribunal',label:'Tribunal',placeholder:'Ej: 7 JG STGO'},{key:'imputado',label:'Imputado',placeholder:'Nombre completo',full:true},{key:'delito',label:'Delito',placeholder:'Tipo de delito',full:true},{key:'fiscal',label:'Fiscal',placeholder:'Nombre del fiscal'},{key:'cautelar',label:'Cautelar',placeholder:'Prisión preventiva...'},{key:'plazo',label:'Plazo',placeholder:'VENCE DD-MM-YYYY',full:true}].map(f=>(<div key={f.key} style={{gridColumn:f.full?'1 / -1':'auto'}}><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1,marginBottom:4,fontWeight:600}}>{f.label}</div><input style={{width:'100%',padding:'9px 12px',border:'1px solid #e2e8f0',borderRadius:8,fontSize:13,fontFamily:'DM Sans',outline:'none',boxSizing:'border-box'}} placeholder={f.placeholder} value={nueva[f.key]} onChange={e=>setNueva(p=>({...p,[f.key]:e.target.value}))}/></div>))}<div style={{gridColumn:'1 / -1'}}><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1,marginBottom:4,fontWeight:600}}>Estado</div><select style={{width:'100%',padding:'9px 12px',border:'1px solid #e2e8f0',borderRadius:8,fontSize:13,fontFamily:'DM Sans',background:'#fff',outline:'none'}} value={nueva.estado} onChange={e=>setNueva(p=>({...p,estado:e.target.value}))}>{Object.entries(estadoConfig).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}</select></div></div><div style={{display:'flex',gap:10,marginTop:20}}><button onClick={saveCausa} disabled={saving||!nueva.ruc} style={{background:'#1e3a8a',color:'#fff',border:'none',borderRadius:8,padding:'10px 20px',fontSize:14,cursor:'pointer',fontWeight:600,fontFamily:'DM Sans'}}>{saving?'Guardando...':'Guardar causa'}</button><button onClick={()=>setShowNueva(false)} style={{background:'#f1f5f9',color:'#64748b',border:'none',borderRadius:8,padding:'10px 18px',fontSize:14,cursor:'pointer',fontFamily:'DM Sans'}}>Cancelar</button></div></div>
+</div>
+</div>
+)}
+</div>
+)
 }
