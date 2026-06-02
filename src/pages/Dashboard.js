@@ -114,3 +114,4 @@ return(
 </div>
 )
 }
+cat ~/gestor-causas/src/pages/Dashboard.js | pbcopy && echo "Copiado ✅"
