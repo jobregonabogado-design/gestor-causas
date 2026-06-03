@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { supabase } from '../lib/supabase'
 import { CAUSAS_SEED } from '../lib/seedData'
 
@@ -29,6 +30,7 @@ export default function Dashboard({ session }) {
   const [nuevaAud, setNuevaAud] = useState({ fecha: '', tipo: '', resultado: '', notas: '' })
   const [saving, setSaving] = useState(false)
   const [showNuevaCausa, setShowNuevaCausa] = useState(false)
+  const [showStats, setShowStats] = useState(false)
   const [nuevaCausa, setNuevaCausa] = useState({ ruc: '', rit: '', tribunal: '', delito: '', imputado: '', fiscal: '', cautelar: '', centro_penal: '', plazo: '', estado: 'vigente' })
 
   useEffect(() => { loadCausas() }, [])
@@ -124,6 +126,21 @@ export default function Dashboard({ session }) {
     vigente: causas.filter(c => c.estado === 'vigente').length,
   }), [causas])
 
+
+  const chartDelitos = useMemo(() => {
+    const map = {}
+    causas.forEach(c => { if (c.delito) { const k = c.delito.substring(0,30); map[k] = (map[k]||0)+1 } })
+    return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([name,value])=>({name,value}))
+  }, [causas])
+
+  const chartTribunales = useMemo(() => {
+    const map = {}
+    causas.forEach(c => { if (c.tribunal) { map[c.tribunal] = (map[c.tribunal]||0)+1 } })
+    return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([name,value])=>({name,value}))
+  }, [causas])
+
+  const COLORS = ['#6366f1','#10b981','#f59e0b','#ef4444','#0ea5e9','#8b5cf6','#ec4899','#14b8a6']
+
   const f = { fontFamily: 'Inter, system-ui, sans-serif' }
 
   const s = {
@@ -190,7 +207,7 @@ export default function Dashboard({ session }) {
               </div>
             </div>
             <div style={s.tabs}>
-              {[['datos','📋 Datos'],['notas','📝 Notas'],['audiencias','📅 Audiencias'],['carpeta','📁 Carpeta']].map(([k,l]) => (
+              {[['datos','📋 Datos'],['notas','📝 Notas'],['audiencias','📅 Audiencias'],['carpeta','📁 Carpeta'],['stats','📊 Estadísticas']].map(([k,l]) => (
                 <button key={k} style={s.tab(activeTab === k)} onClick={() => setActiveTab(k)}>{l}</button>
               ))}
             </div>
@@ -317,6 +334,13 @@ export default function Dashboard({ session }) {
                   </div>
                 </div>
               )}
+
+              {activeTab === 'stats' && (
+                <div style={{ textAlign: 'center', padding: 20, color: '#9ca3af', fontSize: 13 }}>
+                  Las estadísticas globales están disponibles en la vista de lista → botón 📊
+                </div>
+              )}
+
             </div>
           </div>
         </div>
@@ -364,6 +388,7 @@ export default function Dashboard({ session }) {
             { key: 'vencido', label: 'Vencidos', num: stats.vencido, color: '#ef4444', bg: '#fef2f2' },
             { key: 'proximo', label: 'Por vencer', num: stats.proximo, color: '#f59e0b', bg: '#fffbeb' },
             { key: 'apjo', label: 'APJO', num: stats.apjo, color: '#8b5cf6', bg: '#f5f3ff' },
+    suspendida: causas.filter(c => c.estado === 'suspendida').length,
           ].map(st => {
             const active = filterEstado === st.key && st.key !== ''
             return (
@@ -374,6 +399,40 @@ export default function Dashboard({ session }) {
             )
           })}
         </div>
+
+
+        {showStats && (
+          <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e5e7eb', padding: 24, marginBottom: 20, boxShadow: '0 1px 6px rgba(0,0,0,0.06)' }}>
+            <h3 style={{ margin: '0 0 20px', fontSize: 16, fontWeight: 700, color: '#111' }}>📊 Estadísticas del Portfolio</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
+              <div>
+                <h4 style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 600, color: '#374151', textTransform: 'uppercase', letterSpacing: 0.5 }}>Top Delitos</h4>
+                <ResponsiveContainer width="100%" height={260}>
+                  <PieChart>
+                    <Pie data={chartDelitos} cx="50%" cy="50%" outerRadius={90} dataKey="value" label={({name,percent})=>`${(percent*100).toFixed(0)}%`} labelLine={false} fontSize={10}>
+                      {chartDelitos.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                    </Pie>
+                    <Tooltip formatter={(v, n) => [v + ' causas', n]} />
+                    <Legend iconType="circle" iconSize={8} formatter={(v) => v.substring(0,20)} wrapperStyle={{ fontSize: 11 }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div>
+                <h4 style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 600, color: '#374151', textTransform: 'uppercase', letterSpacing: 0.5 }}>Causas por Tribunal</h4>
+                <ResponsiveContainer width="100%" height={260}>
+                  <BarChart data={chartTribunales} layout="vertical" margin={{ left: 8, right: 20 }}>
+                    <XAxis type="number" tick={{ fontSize: 10 }} />
+                    <YAxis type="category" dataKey="name" tick={{ fontSize: 9 }} width={90} />
+                    <Tooltip />
+                    <Bar dataKey="value" radius={[0,4,4,0]}>
+                      {chartTribunales.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div style={s.toolbar}>
           <input style={s.searchBox} placeholder="🔍 Buscar por RUC, RIT, imputado, delito, tribunal, fiscal..." value={search} onChange={e => setSearch(e.target.value)} />
@@ -387,6 +446,7 @@ export default function Dashboard({ session }) {
           </select>
           <span style={{ fontSize: 13, color: '#6b7280' }}>{filtered.length} resultado{filtered.length !== 1 ? 's' : ''}</span>
           <button style={s.btnPrimary} onClick={() => setShowNuevaCausa(true)}>+ Nueva causa</button>
+            <button style={{ ...s.btnSecondary, borderColor: '#6366f1', color: '#6366f1' }} onClick={() => setShowStats(!showStats)}>📊 Estadísticas</button>
         </div>
 
         {loading ? (
