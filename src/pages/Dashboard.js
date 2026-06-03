@@ -388,7 +388,6 @@ export default function Dashboard({ session }) {
             { key: 'vencido', label: 'Vencidos', num: stats.vencido, color: '#ef4444', bg: '#fef2f2' },
             { key: 'proximo', label: 'Por vencer', num: stats.proximo, color: '#f59e0b', bg: '#fffbeb' },
             { key: 'apjo', label: 'APJO', num: stats.apjo, color: '#8b5cf6', bg: '#f5f3ff' },
-    suspendida: causas.filter(c => c.estado === 'suspendida').length,
           ].map(st => {
             const active = filterEstado === st.key && st.key !== ''
             return (
