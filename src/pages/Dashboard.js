@@ -82,7 +82,7 @@ return(
 <ResponsiveContainer width="100%" height={260}>
 <BarChart data={tribunalData} layout="vertical" margin={{left:0,right:16}}>
 <XAxis type="number" tick={{fill:"#6b7280",fontSize:10}} axisLine={false} tickLine={false}/>
-<YAxis type="category" dataKey="name" tick={{fill:"#9ca3af",fontSize:9}} width:65 axisLine={false} tickLine={false}/>
+<YAxis type="category" dataKey="name" tick={{fill:"#9ca3af",fontSize:9}} width={65} axisLine={false} tickLine={false}/>
 <Tooltip contentStyle={{background:"#1f2937",border:"1px solid #374151",borderRadius:8,color:"#f1f5f9",fontSize:12}}/>
 <Bar dataKey="value" fill="#0ea5e9" radius={[0,4,4,0]} maxBarSize={16}/>
 </BarChart>
