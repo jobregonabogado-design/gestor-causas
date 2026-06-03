@@ -1,138 +1,467 @@
-import { useState, useEffect, useMemo } from "react"
-import { supabase } from "../lib/supabase"
-import { CAUSAS_SEED } from "../lib/seedData"
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts"
+import { useState, useEffect, useMemo } from 'react'
+import { supabase } from '../lib/supabase'
+import { CAUSAS_SEED } from '../lib/seedData'
 
-const E={vencido:{l:"VENCIDO",c:"#ef4444",bg:"rgba(239,68,68,0.12)"},proximo:{l:"POR VENCER",c:"#f59e0b",bg:"rgba(245,158,11,0.12)"},apjo:{l:"APJO",c:"#a78bfa",bg:"rgba(167,139,250,0.12)"},suspendida:{l:"SUSPENDIDA",c:"#6b7280",bg:"rgba(107,114,128,0.12)"},vigente:{l:"VIGENTE",c:"#38bdf8",bg:"rgba(56,189,248,0.12)"}}
-const css=`@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap");*{box-sizing:border-box;margin:0;padding:0}body{font-family:"Inter",sans-serif;background:#111827;color:#f1f5f9;-webkit-font-smoothing:antialiased}input,select,textarea,button{font-family:"Inter",sans-serif}.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:6px;font-size:10px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase}.row{transition:background 0.12s;cursor:pointer}.row:hover{background:rgba(14,165,233,0.06)!important}.btn{transition:all 0.12s;cursor:pointer}.btn:hover{opacity:0.88;transform:translateY(-1px)}.btn:active{transform:scale(0.97)}.modal-bg{animation:fi 0.18s ease}.modal-box{animation:su 0.22s cubic-bezier(0.16,1,0.3,1)}.fade{animation:fi 0.2s ease}.kpi{transition:all 0.15s;cursor:pointer}.kpi:hover{transform:translateY(-2px)}@keyframes fi{from{opacity:0}to{opacity:1}}@keyframes su{from{opacity:0;transform:translateY(14px) scale(0.97)}to{opacity:1;transform:translateY(0) scale(1)}}::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:#1f2937;border-radius:4px}input:focus,select:focus,textarea:focus{border-color:#0ea5e9!important;outline:none}`
+const estadoConfig = {
+  vencido:   { label: 'VENCIDO',    color: '#ef4444', bg: '#fef2f2' },
+  proximo:   { label: 'POR VENCER', color: '#f59e0b', bg: '#fffbeb' },
+  apjo:      { label: 'APJO',       color: '#8b5cf6', bg: '#f5f3ff' },
+  suspendida:{ label: 'SUSPENDIDA', color: '#6b7280', bg: '#f9fafb' },
+  vigente:   { label: 'VIGENTE',    color: '#10b981', bg: '#f0fdf4' },
+}
 
-export default function Dashboard({session}){
-const [causas,setCausas]=useState([])
-const [loading,setLoading]=useState(true)
-const [seeding,setSeeding]=useState(false)
-const [search,setSearch]=useState("")
-const [ft,setFt]=useState("")
-const [fe,setFe]=useState("")
-const [modal,setModal]=useState(null)
-const [tab,setTab]=useState("datos")
-const [ef,setEf]=useState(null)
-const [ev,setEv]=useState("")
-const [nota,setNota]=useState("")
-const [notas,setNotas]=useState([])
-const [auds,setAuds]=useState([])
-const [showAF,setShowAF]=useState(false)
-const [newAud,setNewAud]=useState({fecha:"",tipo:"",resultado:"",notas:""})
-const [saving,setSaving]=useState(false)
-const [showN,setShowN]=useState(false)
-const [nC,setNC]=useState({ruc:"",rit:"",tribunal:"",delito:"",imputado:"",fiscal:"",cautelar:"",centro_penal:"",plazo:"",estado:"vigente"})
-const [vista,setVista]=useState("tabla")
-useEffect(()=>{load()},[])
-const load=async()=>{setLoading(true);const{data}=await supabase.from("causas").select("*").order("created_at",{ascending:false});setCausas(data||[]);setLoading(false)}
-const seed=async()=>{setSeeding(true);const ch=[];for(let i=0;i<CAUSAS_SEED.length;i+=50)ch.push(CAUSAS_SEED.slice(i,i+50));for(const c of ch)await supabase.from("causas").insert(c.map(x=>({ruc:x.ruc,rit:x.rit,tribunal:x.tribunal,delito:x.delito,imputado:x.imputado,fiscal:"",cautelar:"",centro_penal:"",plazo:x.plazo,estado:x.estado,carpeta_ref:""})));await load();setSeeding(false)}
-const open=async(c)=>{setModal(c);setTab("datos");const[{data:n},{data:a}]=await Promise.all([supabase.from("notas").select("*").eq("causa_id",c.id).order("created_at",{ascending:false}),supabase.from("audiencias").select("*").eq("causa_id",c.id).order("fecha",{ascending:false})]);setNotas(n||[]);setAuds(a||[])}
-const close=()=>{setModal(null);setEf(null)}
-const upd=async(f,v)=>{setSaving(true);await supabase.from("causas").update({[f]:v,updated_at:new Date()}).eq("id",modal.id);const u={...modal,[f]:v};setModal(u);setCausas(p=>p.map(c=>c.id===u.id?u:c));setEf(null);setSaving(false)}
-const addNota=async()=>{if(!nota.trim())return;setSaving(true);const{data}=await supabase.from("notas").insert({causa_id:modal.id,contenido:nota}).select().single();if(data)setNotas(p=>[data,...p]);setNota("");setSaving(false)}
-const addAud=async()=>{if(!newAud.fecha)return;setSaving(true);const{data}=await supabase.from("audiencias").insert({causa_id:modal.id,...newAud}).select().single();if(data)setAuds(p=>[data,...p]);setNewAud({fecha:"",tipo:"",resultado:"",notas:""});setShowAF(false);setSaving(false)}
-const addCausa=async()=>{if(!nC.ruc)return;setSaving(true);const{data}=await supabase.from("causas").insert(nC).select().single();if(data){setCausas(p=>[data,...p]);setShowN(false);setNC({ruc:"",rit:"",tribunal:"",delito:"",imputado:"",fiscal:"",cautelar:"",centro_penal:"",plazo:"",estado:"vigente"})};setSaving(false)}
-const out=()=>supabase.auth.signOut()
-const tribs=useMemo(()=>[...new Set(causas.map(c=>c.tribunal).filter(Boolean))].sort(),[causas])
-const filt=useMemo(()=>causas.filter(c=>{const s=search.toLowerCase();const m=!s||[c.ruc,c.rit,c.imputado,c.delito,c.tribunal,c.fiscal].some(v=>v?.toLowerCase().includes(s));return m&&(!ft||c.tribunal===ft)&&(!fe||c.estado===fe)}),[causas,search,ft,fe])
-const st=useMemo(()=>({tot:causas.length,vig:causas.filter(c=>c.estado==="vigente").length,ven:causas.filter(c=>c.estado==="vencido").length,prx:causas.filter(c=>c.estado==="proximo").length,apj:causas.filter(c=>c.estado==="apjo").length}),[causas])
-const delitosData=useMemo(()=>{const m={};causas.forEach(c=>{if(!c.delito)return;const d=c.delito.split(" ").slice(0,3).join(" ");m[d]=(m[d]||0)+1});return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([name,value])=>({name,value}))},[causas])
-const tribunalData=useMemo(()=>{const m={};causas.forEach(c=>{if(c.tribunal)m[c.tribunal]=(m[c.tribunal]||0)+1});return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([name,value])=>({name:name.replace("JG STGO","JG"),value}))},[causas])
-const COLORS=["#0ea5e9","#38bdf8","#7dd3fc","#bae6fd","#0284c7","#0369a1","#93c5fd","#60a5fa"]
-const C=modal?causas.find(x=>x.id===modal.id)||modal:null
-const Bdg=({e})=>{const cfg=E[e]||E.vigente;return(<span className="badge" style={{background:cfg.bg,color:cfg.c,border:"1px solid "+cfg.c+"40"}}><span style={{width:5,height:5,borderRadius:"50%",background:cfg.c,display:"inline-block"}}/>{cfg.l}</span>)}
-const Inp=({label,fk,ed,full})=>{const val=C?C[fk]:null;return(<div style={{gridColumn:full?"1/-1":"auto"}}><div style={{fontSize:10,color:"#6b7280",textTransform:"uppercase",letterSpacing:1,marginBottom:5,fontWeight:600}}>{label}</div>{ef===fk?(<div style={{display:"flex",gap:6}}><input style={{flex:1,padding:"8px 12px",background:"#1f2937",border:"1px solid #0ea5e9",borderRadius:8,fontSize:13,color:"#f1f5f9",outline:"none"}} value={ev} onChange={e=>setEv(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")upd(fk,ev);if(e.key==="Escape")setEf(null)}} autoFocus/><button className="btn" onClick={()=>upd(fk,ev)} style={{background:"#0ea5e9",color:"#fff",border:"none",borderRadius:8,padding:"0 14px",fontWeight:700}}>ok</button><button className="btn" onClick={()=>setEf(null)} style={{background:"#1f2937",color:"#6b7280",border:"1px solid #374151",borderRadius:8,padding:"0 12px"}}>x</button></div>):(<div onClick={()=>{if(ed){setEf(fk);setEv(val||"")}}} style={{padding:"9px 12px",background:"#111827",borderRadius:8,border:"1px solid #1f2937",fontSize:13,color:val?"#f1f5f9":"#374151",fontStyle:val?"normal":"italic",cursor:ed?"pointer":"default",display:"flex",justifyContent:"space-between",alignItems:"center"}} onMouseEnter={e=>{if(ed)e.currentTarget.style.borderColor="#374151"}} onMouseLeave={e=>{if(ed)e.currentTarget.style.borderColor="#1f2937"}}><span>{val||(ed?"Agregar...":"sin datos")}</span>{ed&&<span style={{color:"#374151",fontSize:11}}>e</span>}</div>)}</div>)}
-const inp={padding:"9px 12px",background:"#111827",border:"1px solid #1f2937",borderRadius:9,fontSize:13,color:"#f1f5f9",outline:"none",width:"100%",transition:"border-color 0.15s",boxSizing:"border-box"}
-return(
-<div style={{fontFamily:"Inter,sans-serif",background:"#111827",minHeight:"100vh",color:"#f1f5f9"}}>
-<style>{css}</style>
-<div style={{padding:"24px 28px",maxWidth:1440,margin:"0 auto"}}>
-{st.ven>0&&<div className="fade" style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.2)",borderLeft:"3px solid #ef4444",borderRadius:10,padding:"12px 18px",marginBottom:20,display:"flex",alignItems:"center",gap:10}}><span style={{color:"#ef4444",fontSize:18}}>!</span><div><div style={{fontWeight:700,color:"#ef4444",fontSize:13}}>{st.ven} causa{st.ven>1?"s":""} con plazo VENCIDO</div><div style={{color:"#6b7280",fontSize:11,marginTop:1}}>Requieren atencion inmediata</div></div></div>}
-{causas.length===0&&!loading&&<div className="fade" style={{background:"linear-gradient(135deg,rgba(14,165,233,0.1),rgba(56,189,248,0.06))",border:"1px solid rgba(14,165,233,0.2)",borderRadius:14,padding:"22px 24px",marginBottom:20,display:"flex",alignItems:"center",justifyContent:"space-between"}}><div><div style={{fontSize:16,fontWeight:700,color:"#f1f5f9",marginBottom:4}}>Base de datos vacia</div><div style={{fontSize:13,color:"#6b7280"}}>Importa tus {CAUSAS_SEED.length} causas con un clic</div></div><button className="btn" onClick={seed} disabled={seeding} style={{background:"linear-gradient(135deg,#0ea5e9,#38bdf8)",color:"#fff",border:"none",borderRadius:10,padding:"10px 22px",fontSize:13,fontWeight:700}}>{seeding?"Importando...":"Importar causas"}</button></div>}
-<div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:12,marginBottom:20}}>
-{[{k:"",l:"Total",n:st.tot,c:"#0ea5e9",ic:"+"},{k:"vigente",l:"Vigentes",n:st.vig,c:"#38bdf8",ic:"v"},{k:"vencido",l:"Vencidos",n:st.ven,c:"#ef4444",ic:"!"},{k:"proximo",l:"Por vencer",n:st.prx,c:"#f59e0b",ic:"o"},{k:"apjo",l:"APJO",n:st.apj,c:"#a78bfa",ic:"*"}].map(s=>{const act=fe===s.k&&s.k!=="";return(<div key={s.k} className="kpi" onClick={()=>setFe(fe===s.k?"":s.k)} style={{background:act?"linear-gradient(135deg,"+s.c+"20,"+s.c+"08)":"#1a2332",border:"1px solid "+(act?s.c+"50":"#1f2937"),borderRadius:12,padding:"16px 18px"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}><div style={{fontSize:28,fontWeight:800,color:s.c,fontFamily:"JetBrains Mono,monospace",lineHeight:1}}>{s.n}</div></div><div style={{fontSize:10,color:"#6b7280",textTransform:"uppercase",letterSpacing:0.8,fontWeight:600}}>{s.l}</div>{act&&<div style={{height:2,background:s.c,borderRadius:2,marginTop:8}}/>}</div>)})}
-</div>
-<div style={{display:"flex",gap:6,marginBottom:16,alignItems:"center",justifyContent:"space-between",flexWrap:"wrap"}}>
-<div style={{display:"flex",gap:6}}>
-{[["tabla","Lista"],["graficos","Graficos"]].map(([v,l])=><button key={v} className="btn" onClick={()=>setVista(v)} style={{background:vista===v?"rgba(14,165,233,0.12)":"transparent",color:vista===v?"#38bdf8":"#6b7280",border:"1px solid "+(vista===v?"rgba(14,165,233,0.25)":"transparent"),borderRadius:8,padding:"7px 16px",fontSize:13,fontWeight:vista===v?700:400}}>{l}</button>)}
-</div>
-<div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
-<div style={{position:"relative"}}><span style={{position:"absolute",left:11,top:"50%",transform:"translateY(-50%)",color:"#374151",fontSize:13,pointerEvents:"none"}}>S</span><input style={{...inp,paddingLeft:28,width:260,borderRadius:9}} placeholder="Buscar RUC, RIT, imputado..." value={search} onChange={e=>setSearch(e.target.value)}/></div>
-<select style={{...inp,width:"auto",cursor:"pointer"}} value={ft} onChange={e=>setFt(e.target.value)}><option value="">Todos los tribunales</option>{tribs.map(t=><option key={t} value={t}>{t}</option>)}</select>
-<select style={{...inp,width:"auto",cursor:"pointer"}} value={fe} onChange={e=>setFe(e.target.value)}><option value="">Todos los estados</option>{Object.entries(E).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}</select>
-<span style={{fontSize:11,color:"#6b7280"}}>{filt.length} resultados</span>
-<button className="btn" onClick={()=>setShowN(true)} style={{background:"linear-gradient(135deg,#0ea5e9,#38bdf8)",color:"#fff",border:"none",borderRadius:9,padding:"9px 18px",fontSize:12,fontWeight:700,whiteSpace:"nowrap"}}>+ Nueva</button>
-</div>
-</div>
-{vista==="graficos"&&(
-<div className="fade" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:20}}>
-<div style={{background:"#1a2332",borderRadius:14,border:"1px solid #1f2937",padding:"20px"}}>
-<div style={{fontWeight:700,color:"#f1f5f9",fontSize:14,marginBottom:16}}>Distribucion por Delito</div>
-<ResponsiveContainer width="100%" height={260}>
-<PieChart><Pie data={delitosData} cx="50%" cy="50%" innerRadius={55} outerRadius={95} paddingAngle={3} dataKey="value">
-{delitosData.map((_,i)=><Cell key={i} fill={COLORS[i%COLORS.length]}/>)}
-</Pie><Tooltip contentStyle={{background:"#1f2937",border:"1px solid #374151",borderRadius:8,color:"#f1f5f9",fontSize:12}}/><Legend formatter={v=>v.slice(0,18)} wrapperStyle={{fontSize:10,color:"#6b7280"}}/></PieChart>
-</ResponsiveContainer>
-</div>
-<div style={{background:"#1a2332",borderRadius:14,border:"1px solid #1f2937",padding:"20px"}}>
-<div style={{fontWeight:700,color:"#f1f5f9",fontSize:14,marginBottom:16}}>Causas por Tribunal</div>
-<ResponsiveContainer width="100%" height={260}>
-<BarChart data={tribunalData} layout="vertical" margin={{left:0,right:16}}>
-<XAxis type="number" tick={{fill:"#6b7280",fontSize:10}} axisLine={false} tickLine={false}/>
-<YAxis type="category" dataKey="name" tick={{fill:"#9ca3af",fontSize:9}} width={65} axisLine={false} tickLine={false}/>
-<Tooltip contentStyle={{background:"#1f2937",border:"1px solid #374151",borderRadius:8,color:"#f1f5f9",fontSize:12}}/>
-<Bar dataKey="value" fill="#0ea5e9" radius={[0,4,4,0]} maxBarSize={16}/>
-</BarChart>
-</ResponsiveContainer>
-</div>
-</div>
-)}
-{vista==="tabla"&&(
-loading?<div className="fade" style={{textAlign:"center",padding:80,color:"#374151"}}>Cargando...</div>:(
-<div className="fade" style={{background:"#1a2332",borderRadius:14,border:"1px solid #1f2937",overflow:"hidden"}}>
-<table style={{width:"100%",borderCollapse:"collapse"}}>
-<thead><tr style={{borderBottom:"1px solid #1f2937"}}>{["RUC","RIT","Tribunal","Imputado","Delito","Fiscal","Plazo","Estado",""].map(h=><th key={h} style={{padding:"11px 14px",textAlign:"left",fontSize:10,fontWeight:700,color:"#6b7280",letterSpacing:1,textTransform:"uppercase"}}>{h}</th>)}</tr></thead>
-<tbody>{filt.map((c,i)=><tr key={c.id} className="row" onClick={()=>open(c)} style={{background:i%2===0?"#1a2332":"#161f2e",borderBottom:"1px solid #1a2332"}}>
-<td style={{padding:"11px 14px",fontFamily:"JetBrains Mono,monospace",fontSize:11,fontWeight:600,color:"#38bdf8"}}>{c.ruc}</td>
-<td style={{padding:"11px 14px",fontSize:11,color:"#6b7280"}}>{c.rit||"nd"}</td>
-<td style={{padding:"11px 14px",fontSize:11,color:"#9ca3af"}}>{c.tribunal}</td>
-<td style={{padding:"11px 14px",fontSize:12}}><div style={{maxWidth:190,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:"#e2e8f0"}}>{c.imputado}</div></td>
-<td style={{padding:"11px 14px",fontSize:11}}><div style={{maxWidth:160,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:"#9ca3af"}}>{c.delito||"nd"}</div></td>
-<td style={{padding:"11px 14px",fontSize:11,color:c.fiscal?"#9ca3af":"#374151",fontStyle:c.fiscal?"normal":"italic"}}>{c.fiscal||"nd"}</td>
-<td style={{padding:"11px 14px",fontSize:10}}><div style={{maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:"#6b7280"}}>{c.plazo||"nd"}</div></td>
-<td style={{padding:"11px 14px"}}><Bdg e={c.estado}/></td>
-<td style={{padding:"11px 14px"}}><button className="btn" onClick={e=>{e.stopPropagation();open(c)}} style={{background:"rgba(14,165,233,0.1)",color:"#0ea5e9",border:"1px solid rgba(14,165,233,0.2)",borderRadius:7,padding:"4px 12px",fontSize:11,fontWeight:600}}>Ver</button></td>
-</tr>)}</tbody>
-</table>
-{filt.length===0&&<div style={{textAlign:"center",padding:48,color:"#374151",fontSize:13}}>Sin resultados</div>}
-</div>))}
-</div>
-{modal&&C&&<div className="modal-bg" onClick={e=>e.target===e.currentTarget&&close()} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:200,padding:20,backdropFilter:"blur(12px)"}}>
-<div className="modal-box" style={{background:"#1a2332",borderRadius:18,width:"100%",maxWidth:820,maxHeight:"92vh",overflow:"hidden",border:"1px solid #1f2937",boxShadow:"0 32px 80px rgba(0,0,0,0.8)",display:"flex",flexDirection:"column"}}>
-<div style={{background:"linear-gradient(135deg,#0f172a,#1a2332)",padding:"20px 26px",borderBottom:"1px solid #1f2937",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-<div><div style={{fontFamily:"JetBrains Mono,monospace",color:"#38bdf8",fontSize:18,fontWeight:700,marginBottom:4}}>RUC: {C.ruc}</div><div style={{fontSize:12,color:"#6b7280"}}>RIT: {C.rit||"nd"} · {C.tribunal}</div></div>
-<div style={{display:"flex",alignItems:"center",gap:10}}><Bdg e={C.estado}/><button className="btn" onClick={close} style={{background:"#1f2937",border:"1px solid #374151",color:"#6b7280",borderRadius:8,width:32,height:32,fontSize:18,display:"flex",alignItems:"center",justifyContent:"center"}}>x</button></div>
-</div>
-<div style={{display:"flex",borderBottom:"1px solid #1f2937",background:"#111827",padding:"0 26px"}}>
-{[["datos","Datos"],["notas","Notas"],["audiencias","Audiencias"],["carpeta","Carpeta"]].map(([k,l])=><button key={k} onClick={()=>setTab(k)} className="btn" style={{padding:"12px 16px",fontSize:12,fontWeight:tab===k?700:400,color:tab===k?"#38bdf8":"#6b7280",borderBottom:"2px solid "+(tab===k?"#0ea5e9":"transparent"),marginBottom:-1,background:"none",border:"none",borderBottomWidth:2,borderBottomStyle:"solid",borderBottomColor:tab===k?"#0ea5e9":"transparent"}}>{l}</button>)}
-</div>
-<div style={{padding:"22px 26px",overflowY:"auto",flex:1}}>
-{tab==="datos"&&<div className="fade"><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}><Inp label="Imputado" fk="imputado" full/><Inp label="Delito" fk="delito" full/><Inp label="Tribunal" fk="tribunal"/><Inp label="RIT" fk="rit"/><Inp label="Fiscal" fk="fiscal" ed/><Inp label="Cautelar" fk="cautelar" ed/><Inp label="Centro Penal" fk="centro_penal" ed/><Inp label="Plazo" fk="plazo" ed full/></div><div style={{marginTop:16}}><div style={{fontSize:10,color:"#6b7280",textTransform:"uppercase",letterSpacing:1,marginBottom:8,fontWeight:600}}>Estado Procesal</div><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{Object.entries(E).map(([k,v])=><button key={k} className="btn" onClick={()=>upd("estado",k)} style={{padding:"6px 14px",borderRadius:20,fontSize:11,fontWeight:700,border:"1px solid "+(C.estado===k?v.c:v.c+"40"),background:C.estado===k?v.c+"20":"transparent",color:v.c}}>{v.l}</button>)}</div></div></div>}
-{tab==="notas"&&<div className="fade">{notas.length===0&&<p style={{color:"#374151",fontSize:13,marginBottom:12}}>Sin notas.</p>}{notas.map(n=><div key={n.id} style={{background:"#111827",borderRadius:10,padding:"12px 14px",marginBottom:8,border:"1px solid #1f2937"}}><div style={{fontSize:10,color:"#6b7280",marginBottom:4,fontFamily:"JetBrains Mono"}}>{new Date(n.created_at).toLocaleString("es-CL")}</div><div style={{fontSize:13,color:"#d1d5db",lineHeight:1.6,whiteSpace:"pre-wrap"}}>{n.contenido}</div></div>)}<div style={{marginTop:12}}><textarea style={{...inp,background:"#111827",minHeight:90,resize:"vertical"}} placeholder="Nueva nota..." value={nota} onChange={e=>setNota(e.target.value)}/><button className="btn" onClick={addNota} disabled={saving} style={{marginTop:8,background:"linear-gradient(135deg,#0ea5e9,#38bdf8)",color:"#fff",border:"none",borderRadius:8,padding:"8px 18px",fontSize:12,fontWeight:700}}>{saving?"Guardando...":"+ Nota"}</button></div></div>}
-{tab==="audiencias"&&<div className="fade">{auds.length===0&&!showAF&&<p style={{color:"#374151",fontSize:13,marginBottom:12}}>Sin audiencias.</p>}{auds.map(a=><div key={a.id} style={{background:"#111827",borderRadius:10,padding:"12px 14px",marginBottom:8,border:"1px solid #1f2937"}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><strong style={{fontSize:13,color:"#e2e8f0"}}>{a.tipo||"Audiencia"}</strong><span style={{fontSize:10,color:"#6b7280",fontFamily:"JetBrains Mono"}}>{a.fecha}</span></div>{a.resultado&&<div style={{fontSize:12,color:"#9ca3af",marginTop:3}}>{a.resultado}</div>}</div>)}{showAF&&<div style={{background:"#111827",padding:14,borderRadius:10,border:"1px solid #1f2937",marginBottom:10}}><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>{[["fecha","Fecha","date"],["tipo","Tipo","text"],["resultado","Resultado","text"],["notas","Notas","text"]].map(([k,l,t])=><div key={k}><div style={{fontSize:10,color:"#6b7280",textTransform:"uppercase",letterSpacing:0.8,marginBottom:4,fontWeight:600}}>{l}</div><input type={t} style={{...inp,background:"#0f172a"}} value={newAud[k]} onChange={e=>setNewAud(p=>({...p,[k]:e.target.value}))}/></div>)}</div><div style={{display:"flex",gap:6}}><button className="btn" onClick={addAud} disabled={saving} style={{background:"linear-gradient(135deg,#0ea5e9,#38bdf8)",color:"#fff",border:"none",borderRadius:7,padding:"7px 16px",fontSize:12,fontWeight:700}}>{saving?"Guardando...":"Guardar"}</button><button className="btn" onClick={()=>setShowAF(false)} style={{background:"#1f2937",color:"#6b7280",border:"none",borderRadius:7,padding:"7px 14px",fontSize:12}}>Cancelar</button></div></div>}{!showAF&&<button className="btn" onClick={()=>setShowAF(true)} style={{background:"linear-gradient(135deg,#0ea5e9,#38bdf8)",color:"#fff",border:"none",borderRadius:8,padding:"9px 18px",fontSize:12,fontWeight:700}}>+ Audiencia</button>}</div>}
-{tab==="carpeta"&&<div className="fade"><div style={{marginBottom:14}}><div style={{fontSize:10,color:"#6b7280",textTransform:"uppercase",letterSpacing:1,marginBottom:5,fontWeight:600}}>Referencia Fisica</div>{ef==="carpeta_ref"?<div style={{display:"flex",gap:6}}><input style={{...inp,flex:1,border:"1px solid #0ea5e9"}} value={ev} onChange={e=>setEv(e.target.value)} placeholder="Ej: Caja 3, Carpeta 12" autoFocus/><button className="btn" onClick={()=>upd("carpeta_ref",ev)} style={{background:"#0ea5e9",color:"#fff",border:"none",borderRadius:8,padding:"0 14px",fontWeight:700}}>ok</button><button className="btn" onClick={()=>setEf(null)} style={{background:"#1f2937",color:"#6b7280",border:"none",borderRadius:8,padding:"0 12px"}}>x</button></div>:<div onClick={()=>{setEf("carpeta_ref");setEv(C.carpeta_ref||"")}} style={{...inp,cursor:"pointer",display:"flex",justifyContent:"space-between",color:C.carpeta_ref?"#f1f5f9":"#374151",fontStyle:C.carpeta_ref?"normal":"italic"}}><span>{C.carpeta_ref||"Agregar..."}</span><span style={{color:"#374151"}}>e</span></div>}</div><div style={{background:"#111827",borderRadius:12,border:"1px dashed #1f2937",padding:36,textAlign:"center"}} onMouseEnter={e=>e.currentTarget.style.borderColor="#0ea5e9"} onMouseLeave={e=>e.currentTarget.style.borderColor="#1f2937"}><div style={{fontSize:36,marginBottom:10}}>F</div><div style={{fontSize:14,color:"#6b7280",marginBottom:4,fontWeight:600}}>Documentos digitalizados</div><div style={{fontSize:11,color:"#374151",marginBottom:14}}>Subida proxima</div><button className="btn" style={{background:"rgba(14,165,233,0.1)",color:"#0ea5e9",border:"1px solid rgba(14,165,233,0.2)",borderRadius:8,padding:"8px 18px",fontSize:12}}>Subir</button></div></div>}
-</div>
-</div>
-</div>}
-{showN&&<div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setShowN(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:200,padding:20,backdropFilter:"blur(12px)"}}>
-<div className="modal-box" style={{background:"#1a2332",borderRadius:18,width:"100%",maxWidth:500,maxHeight:"90vh",overflowY:"auto",border:"1px solid #1f2937",boxShadow:"0 32px 80px rgba(0,0,0,0.8)"}}>
-<div style={{padding:"18px 22px",borderBottom:"1px solid #1f2937",display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{fontSize:15,fontWeight:700,color:"#f1f5f9"}}>Nueva Causa</div><button className="btn" onClick={()=>setShowN(false)} style={{background:"#1f2937",border:"none",color:"#6b7280",borderRadius:8,width:30,height:30,fontSize:17,display:"flex",alignItems:"center",justifyContent:"center"}}>x</button></div>
-<div style={{padding:"18px 22px"}}><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>{[{k:"ruc",l:"RUC",p:"2600123456-7",full:true},{k:"rit",l:"RIT",p:"1234-2026"},{k:"tribunal",l:"Tribunal",p:"7 JG STGO"},{k:"imputado",l:"Imputado",p:"Nombre",full:true},{k:"delito",l:"Delito",p:"Tipo",full:true},{k:"fiscal",l:"Fiscal",p:"Nombre fiscal"},{k:"cautelar",l:"Cautelar",p:"Prision..."},{k:"plazo",l:"Plazo",p:"VENCE DD-MM",full:true}].map(f=><div key={f.k} style={{gridColumn:f.full?"1/-1":"auto"}}><div style={{fontSize:10,color:"#6b7280",textTransform:"uppercase",letterSpacing:1,marginBottom:4,fontWeight:600}}>{f.l}</div><input style={inp} placeholder={f.p} value={nC[f.k]} onChange={e=>setNC(p=>({...p,[f.k]:e.target.value}))}/></div>)}<div style={{gridColumn:"1/-1"}}><div style={{fontSize:10,color:"#6b7280",textTransform:"uppercase",letterSpacing:1,marginBottom:4,fontWeight:600}}>Estado</div><select style={{...inp,cursor:"pointer"}} value={nC.estado} onChange={e=>setNC(p=>({...p,estado:e.target.value}))}>{Object.entries(E).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}</select></div></div><div style={{display:"flex",gap:8,marginTop:16}}><button className="btn" onClick={addCausa} disabled={saving||!nC.ruc} style={{background:"linear-gradient(135deg,#0ea5e9,#38bdf8)",color:"#fff",border:"none",borderRadius:9,padding:"10px 20px",fontSize:13,fontWeight:700}}>{saving?"Guardando...":"Guardar"}</button><button className="btn" onClick={()=>setShowN(false)} style={{background:"#1f2937",color:"#6b7280",border:"none",borderRadius:9,padding:"10px 16px",fontSize:13}}>Cancelar</button></div></div>
-</div>
-</div>}
-</div>
-)
+export default function Dashboard({ session }) {
+  const [causas, setCausas] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [seeding, setSeeding] = useState(false)
+  const [search, setSearch] = useState('')
+  const [filterTribunal, setFilterTribunal] = useState('')
+  const [filterEstado, setFilterEstado] = useState('')
+  const [view, setView] = useState('list')
+  const [selectedCausa, setSelectedCausa] = useState(null)
+  const [activeTab, setActiveTab] = useState('datos')
+  const [editField, setEditField] = useState(null)
+  const [editValue, setEditValue] = useState('')
+  const [nuevaNota, setNuevaNota] = useState('')
+  const [notas, setNotas] = useState([])
+  const [audiencias, setAudiencias] = useState([])
+  const [showAudForm, setShowAudForm] = useState(false)
+  const [nuevaAud, setNuevaAud] = useState({ fecha: '', tipo: '', resultado: '', notas: '' })
+  const [saving, setSaving] = useState(false)
+  const [showNuevaCausa, setShowNuevaCausa] = useState(false)
+  const [nuevaCausa, setNuevaCausa] = useState({ ruc: '', rit: '', tribunal: '', delito: '', imputado: '', fiscal: '', cautelar: '', centro_penal: '', plazo: '', estado: 'vigente' })
+
+  useEffect(() => { loadCausas() }, [])
+
+  const loadCausas = async () => {
+    setLoading(true)
+    const { data, error } = await supabase.from('causas').select('*').order('created_at', { ascending: false })
+    if (!error) setCausas(data || [])
+    setLoading(false)
+  }
+
+  const seedDatabase = async () => {
+    setSeeding(true)
+    const chunks = []
+    for (let i = 0; i < CAUSAS_SEED.length; i += 50) chunks.push(CAUSAS_SEED.slice(i, i + 50))
+    for (const chunk of chunks) {
+      await supabase.from('causas').insert(chunk.map(c => ({
+        ruc: c.ruc, rit: c.rit, tribunal: c.tribunal, delito: c.delito,
+        imputado: c.imputado, fiscal: '', cautelar: '', centro_penal: '',
+        plazo: c.plazo, estado: c.estado, carpeta_ref: ''
+      })))
+    }
+    await loadCausas()
+    setSeeding(false)
+  }
+
+  const openCausa = async (c) => {
+    setSelectedCausa(c)
+    setView('detail')
+    setActiveTab('datos')
+    const [{ data: n }, { data: a }] = await Promise.all([
+      supabase.from('notas').select('*').eq('causa_id', c.id).order('created_at', { ascending: false }),
+      supabase.from('audiencias').select('*').eq('causa_id', c.id).order('fecha', { ascending: false })
+    ])
+    setNotas(n || [])
+    setAudiencias(a || [])
+  }
+
+  const updateField = async (field, value) => {
+    setSaving(true)
+    const { error } = await supabase.from('causas').update({ [field]: value, updated_at: new Date() }).eq('id', selectedCausa.id)
+    if (!error) {
+      const updated = { ...selectedCausa, [field]: value }
+      setSelectedCausa(updated)
+      setCausas(prev => prev.map(c => c.id === updated.id ? updated : c))
+    }
+    setEditField(null)
+    setSaving(false)
+  }
+
+  const saveNota = async () => {
+    if (!nuevaNota.trim()) return
+    setSaving(true)
+    const { data, error } = await supabase.from('notas').insert({ causa_id: selectedCausa.id, contenido: nuevaNota }).select().single()
+    if (!error) setNotas(prev => [data, ...prev])
+    setNuevaNota('')
+    setSaving(false)
+  }
+
+  const saveAudiencia = async () => {
+    if (!nuevaAud.fecha) return
+    setSaving(true)
+    const { data, error } = await supabase.from('audiencias').insert({ causa_id: selectedCausa.id, ...nuevaAud }).select().single()
+    if (!error) setAudiencias(prev => [data, ...prev])
+    setNuevaAud({ fecha: '', tipo: '', resultado: '', notas: '' })
+    setShowAudForm(false)
+    setSaving(false)
+  }
+
+  const saveCausa = async () => {
+    if (!nuevaCausa.ruc) return
+    setSaving(true)
+    const { data, error } = await supabase.from('causas').insert(nuevaCausa).select().single()
+    if (!error) { setCausas(prev => [data, ...prev]); setShowNuevaCausa(false); setNuevaCausa({ ruc: '', rit: '', tribunal: '', delito: '', imputado: '', fiscal: '', cautelar: '', centro_penal: '', plazo: '', estado: 'vigente' }) }
+    setSaving(false)
+  }
+
+  const signOut = () => supabase.auth.signOut()
+
+  const tribunales = useMemo(() => [...new Set(causas.map(c => c.tribunal).filter(Boolean))].sort(), [causas])
+
+  const filtered = useMemo(() => causas.filter(c => {
+    const s = search.toLowerCase()
+    const match = !s || [c.ruc, c.rit, c.imputado, c.delito, c.tribunal, c.fiscal].some(v => v?.toLowerCase().includes(s))
+    return match && (!filterTribunal || c.tribunal === filterTribunal) && (!filterEstado || c.estado === filterEstado)
+  }), [causas, search, filterTribunal, filterEstado])
+
+  const stats = useMemo(() => ({
+    total: causas.length,
+    vencido: causas.filter(c => c.estado === 'vencido').length,
+    proximo: causas.filter(c => c.estado === 'proximo').length,
+    apjo: causas.filter(c => c.estado === 'apjo').length,
+    vigente: causas.filter(c => c.estado === 'vigente').length,
+  }), [causas])
+
+  const f = { fontFamily: 'Georgia, serif' }
+
+  const s = {
+    app: { ...f, background: '#ffffff', minHeight: '100vh', color: '#1a1a2e' },
+    header: { background: '#111111', color: '#fff', padding: '0 24px', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 2px 8px rgba(0,0,0,0.3)', position: 'sticky', top: 0, zIndex: 100 },
+    logo: { fontSize: 17, fontWeight: 'bold', letterSpacing: 1, color: '#ffffff' },
+    main: { padding: '20px 24px', maxWidth: 1350, margin: '0 auto' },
+    statsRow: { display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' },
+    statCard: (color, bg, active) => ({ background: active ? color : bg, border: `2px solid ${color}`, borderRadius: 10, padding: '12px 20px', minWidth: 110, textAlign: 'center', cursor: 'pointer', transition: 'all 0.15s' }),
+    statNum: (color, active) => ({ fontSize: 28, fontWeight: 'bold', color: active ? '#fff' : color, lineHeight: 1 }),
+    statLabel: (active) => ({ fontSize: 11, color: active ? 'rgba(255,255,255,0.8)' : '#6b7280', marginTop: 2, textTransform: 'uppercase', letterSpacing: 0.5 }),
+    toolbar: { display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' },
+    searchBox: { flex: 1, minWidth: 240, padding: '9px 14px', border: '1.5px solid #e2e8f0', borderRadius: 8, fontSize: 14, background: '#fff', ...f },
+    select: { padding: '9px 12px', border: '1.5px solid #e2e8f0', borderRadius: 8, fontSize: 13, background: '#fff', cursor: 'pointer', ...f },
+    btnPrimary: { background: '#111111', color: '#ffffff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 13, cursor: 'pointer', fontWeight: 'bold', ...f },
+    btnSecondary: { background: '#fff', color: '#111111', border: '1.5px solid #111111', borderRadius: 8, padding: '8px 16px', fontSize: 13, cursor: 'pointer', ...f },
+    btnDanger: { background: '#fff', color: '#ef4444', border: '1.5px solid #ef4444', borderRadius: 8, padding: '8px 14px', fontSize: 12, cursor: 'pointer', ...f },
+    table: { width: '100%', borderCollapse: 'collapse', background: '#fff', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 6px rgba(0,0,0,0.07)' },
+    th: { background: '#111111', color: '#ffffff', padding: '11px 14px', textAlign: 'left', fontSize: 12, fontWeight: 'bold', letterSpacing: 0.5, textTransform: 'uppercase' },
+    td: { padding: '10px 14px', fontSize: 13, borderBottom: '1px solid #f1f5f9', verticalAlign: 'middle' },
+    badge: (estado) => ({ display: 'inline-block', padding: '3px 9px', borderRadius: 20, fontSize: 11, fontWeight: 'bold', color: estadoConfig[estado]?.color || '#666', background: estadoConfig[estado]?.bg || '#f9fafb', border: `1px solid ${estadoConfig[estado]?.color || '#ccc'}` }),
+    detailCard: { background: '#fff', borderRadius: 14, boxShadow: '0 2px 12px rgba(0,0,0,0.08)', overflow: 'hidden' },
+    detailHeader: { background: '#111111', color: '#fff', padding: '20px 24px' },
+    tabs: { display: 'flex', borderBottom: '2px solid #f1f5f9', padding: '0 24px', background: '#fafafa' },
+    tab: (active) => ({ padding: '12px 18px', cursor: 'pointer', fontSize: 13, fontWeight: active ? 'bold' : 'normal', color: active ? '#111111' : '#6b7280', borderBottom: `2px solid ${active ? '#d4af37' : 'transparent'}`, marginBottom: -2, background: 'none', border: 'none', borderBottomWidth: 2, borderBottomStyle: 'solid', borderBottomColor: active ? '#111111' : 'transparent', ...f }),
+    tabContent: { padding: 24 },
+    fieldGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 },
+    fieldLabel: { fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4, display: 'block' },
+    fieldValue: { fontSize: 14, color: '#1a1a2e', padding: '8px 12px', background: '#ffffff', borderRadius: 8, border: '1px solid #e2e8f0', minHeight: 36, display: 'flex', alignItems: 'center' },
+    fieldInput: { fontSize: 14, color: '#1a1a2e', padding: '8px 12px', background: '#fff', borderRadius: 8, border: '1.5px solid #111111', width: '100%', ...f, outline: 'none', boxSizing: 'border-box' },
+    inputSmall: { padding: '7px 10px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 13, ...f, width: '100%', boxSizing: 'border-box' },
+    notasArea: { width: '100%', padding: 12, fontSize: 14, border: '1.5px solid #e2e8f0', borderRadius: 8, ...f, minHeight: 100, resize: 'vertical', background: '#fff', boxSizing: 'border-box' },
+    notaCard: { background: '#ffffff', borderRadius: 8, padding: '12px 16px', marginBottom: 10, border: '1px solid #e2e8f0' },
+    audCard: { background: '#ffffff', borderRadius: 8, padding: '12px 16px', marginBottom: 10, border: '1px solid #e2e8f0' },
+    modal: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 },
+    modalCard: { background: '#fff', borderRadius: 14, padding: 32, width: 480, maxWidth: '90vw', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', maxHeight: '90vh', overflowY: 'auto' },
+    alertBanner: { background: '#fef2f2', border: '1.5px solid #ef4444', borderRadius: 10, padding: '12px 18px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 },
+  }
+
+  // DETAIL VIEW
+  if (view === 'detail' && selectedCausa) {
+    const c = causas.find(x => x.id === selectedCausa.id) || selectedCausa
+    return (
+      <div style={s.app}>
+        <div style={s.header}>
+          <span style={s.logo}>⚖ GESTOR DE CAUSAS PENALES</span>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            {saving && <span style={{ color: '#9ca3af', fontSize: 12 }}>Guardando...</span>}
+            <button style={{ ...s.btnSecondary, color: '#ffffff', borderColor: '#ffffff', fontSize: 12 }} onClick={signOut}>Salir</button>
+          </div>
+        </div>
+        <div style={s.main}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', color: '#111111', marginBottom: 16, fontSize: 14 }} onClick={() => setView('list')}>
+            ← Volver al listado
+          </div>
+          <div style={s.detailCard}>
+            <div style={s.detailHeader}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <div style={{ fontSize: 20, fontWeight: 'bold', color: '#ffffff', marginBottom: 4 }}>RUC: {c.ruc}</div>
+                  <div style={{ fontSize: 13, color: '#a0aec0' }}>RIT: {c.rit || '—'} &nbsp;|&nbsp; {c.tribunal}</div>
+                </div>
+                <span style={s.badge(c.estado)}>{estadoConfig[c.estado]?.label}</span>
+              </div>
+            </div>
+            <div style={s.tabs}>
+              {[['datos','📋 Datos'],['notas','📝 Notas'],['audiencias','📅 Audiencias'],['carpeta','📁 Carpeta']].map(([k,l]) => (
+                <button key={k} style={s.tab(activeTab === k)} onClick={() => setActiveTab(k)}>{l}</button>
+              ))}
+            </div>
+            <div style={s.tabContent}>
+
+              {activeTab === 'datos' && (
+                <div>
+                  <div style={s.fieldGrid}>
+                    {[
+                      { key: 'imputado', label: 'Imputado(s)', full: true },
+                      { key: 'delito', label: 'Delito', full: true },
+                      { key: 'tribunal', label: 'Tribunal' },
+                      { key: 'rit', label: 'RIT' },
+                      { key: 'fiscal', label: 'Fiscal', editable: true },
+                      { key: 'cautelar', label: 'Cautelar Procesal', editable: true },
+                      { key: 'centro_penal', label: 'Centro Penal', editable: true },
+                      { key: 'plazo', label: 'Plazo / Estado Plazo', editable: true, full: true },
+                    ].map(field => (
+                      <div key={field.key} style={{ marginBottom: 4, gridColumn: field.full ? '1 / -1' : 'auto' }}>
+                        <span style={s.fieldLabel}>{field.label}</span>
+                        {editField === field.key ? (
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <input style={s.fieldInput} value={editValue} onChange={e => setEditValue(e.target.value)}
+                              onKeyDown={e => { if (e.key === 'Enter') updateField(field.key, editValue); if (e.key === 'Escape') setEditField(null) }} autoFocus />
+                            <button style={s.btnPrimary} onClick={() => updateField(field.key, editValue)}>✓</button>
+                            <button style={s.btnSecondary} onClick={() => setEditField(null)}>✗</button>
+                          </div>
+                        ) : (
+                          <div style={{ ...s.fieldValue, cursor: field.editable ? 'pointer' : 'default' }}
+                            onClick={() => { if (field.editable) { setEditField(field.key); setEditValue(c[field.key] || '') } }}
+                            title={field.editable ? 'Clic para editar' : ''}>
+                            {c[field.key] || (field.editable ? <span style={{ color: '#aaa', fontStyle: 'italic' }}>Clic para agregar...</span> : '—')}
+                            {field.editable && <span style={{ marginLeft: 'auto', fontSize: 11, color: '#aaa', paddingLeft: 8 }}>✏️</span>}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ marginTop: 20 }}>
+                    <span style={s.fieldLabel}>Estado Procesal</span>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
+                      {Object.entries(estadoConfig).map(([k, v]) => (
+                        <button key={k} onClick={() => updateField('estado', k)}
+                          style={{ padding: '6px 14px', borderRadius: 20, fontSize: 12, cursor: 'pointer', fontWeight: 'bold', border: `2px solid ${v.color}`, background: c.estado === k ? v.color : '#fff', color: c.estado === k ? '#fff' : v.color, ...f }}>
+                          {v.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'notas' && (
+                <div>
+                  <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 14 }}>Block de notas de la causa. Cada entrada queda registrada con fecha.</p>
+                  {notas.map(n => (
+                    <div key={n.id} style={s.notaCard}>
+                      <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 6 }}>{new Date(n.created_at).toLocaleString('es-CL')}</div>
+                      <div style={{ fontSize: 14, color: '#111111', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{n.contenido}</div>
+                    </div>
+                  ))}
+                  {notas.length === 0 && <p style={{ color: '#9ca3af', fontSize: 13, marginBottom: 14 }}>Sin notas aún.</p>}
+                  <textarea style={s.notasArea} placeholder="Escribir nueva nota..." value={nuevaNota} onChange={e => setNuevaNota(e.target.value)} />
+                  <button style={{ ...s.btnPrimary, marginTop: 8 }} onClick={saveNota} disabled={saving}>
+                    {saving ? 'Guardando...' : '+ Agregar nota'}
+                  </button>
+                </div>
+              )}
+
+              {activeTab === 'audiencias' && (
+                <div>
+                  {audiencias.map(a => (
+                    <div key={a.id} style={s.audCard}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <strong style={{ fontSize: 14 }}>{a.tipo || 'Audiencia'}</strong>
+                        <span style={{ fontSize: 13, color: '#6b7280' }}>{a.fecha}</span>
+                      </div>
+                      {a.resultado && <div style={{ fontSize: 13, marginTop: 4 }}>Resultado: {a.resultado}</div>}
+                      {a.notas && <div style={{ fontSize: 12, marginTop: 4, color: '#6b7280' }}>{a.notas}</div>}
+                    </div>
+                  ))}
+                  {audiencias.length === 0 && !showAudForm && <p style={{ color: '#9ca3af', fontSize: 13, marginBottom: 14 }}>Sin audiencias registradas.</p>}
+                  {showAudForm && (
+                    <div style={{ background: '#ffffff', padding: 16, borderRadius: 10, border: '1px solid #e2e8f0', marginBottom: 14 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+                        <div><span style={s.fieldLabel}>Fecha</span><input type="date" style={s.inputSmall} value={nuevaAud.fecha} onChange={e => setNuevaAud(p => ({ ...p, fecha: e.target.value }))} /></div>
+                        <div><span style={s.fieldLabel}>Tipo</span><input style={s.inputSmall} placeholder="Formalización, APJO, JO..." value={nuevaAud.tipo} onChange={e => setNuevaAud(p => ({ ...p, tipo: e.target.value }))} /></div>
+                        <div><span style={s.fieldLabel}>Resultado</span><input style={s.inputSmall} placeholder="Resultado" value={nuevaAud.resultado} onChange={e => setNuevaAud(p => ({ ...p, resultado: e.target.value }))} /></div>
+                        <div><span style={s.fieldLabel}>Observaciones</span><input style={s.inputSmall} placeholder="Notas adicionales" value={nuevaAud.notas} onChange={e => setNuevaAud(p => ({ ...p, notas: e.target.value }))} /></div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button style={s.btnPrimary} onClick={saveAudiencia} disabled={saving}>{saving ? 'Guardando...' : 'Guardar'}</button>
+                        <button style={s.btnSecondary} onClick={() => setShowAudForm(false)}>Cancelar</button>
+                      </div>
+                    </div>
+                  )}
+                  <button style={s.btnPrimary} onClick={() => setShowAudForm(true)}>+ Nueva audiencia</button>
+                </div>
+              )}
+
+              {activeTab === 'carpeta' && (
+                <div>
+                  <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 16 }}>Carpeta física digitalizada — RUC {c.ruc}</p>
+                  <div style={{ marginBottom: 20 }}>
+                    <span style={s.fieldLabel}>Referencia carpeta física (caja, estante, número)</span>
+                    {editField === 'carpeta_ref' ? (
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <input style={s.fieldInput} value={editValue} onChange={e => setEditValue(e.target.value)} placeholder="Ej: Caja 3, Carpeta 12" autoFocus />
+                        <button style={s.btnPrimary} onClick={() => updateField('carpeta_ref', editValue)}>✓</button>
+                        <button style={s.btnSecondary} onClick={() => setEditField(null)}>✗</button>
+                      </div>
+                    ) : (
+                      <div style={{ ...s.fieldValue, cursor: 'pointer' }} onClick={() => { setEditField('carpeta_ref'); setEditValue(c.carpeta_ref || '') }}>
+                        {c.carpeta_ref || <span style={{ color: '#aaa', fontStyle: 'italic' }}>Clic para ingresar ubicación...</span>}
+                        <span style={{ marginLeft: 'auto', fontSize: 11, color: '#aaa', paddingLeft: 8 }}>✏️</span>
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ background: '#ffffff', borderRadius: 10, border: '2px dashed #d1d5db', padding: 32, textAlign: 'center', color: '#9ca3af' }}>
+                    <div style={{ fontSize: 40, marginBottom: 8 }}>📁</div>
+                    <div style={{ fontSize: 14, marginBottom: 8 }}>Sube documentos escaneados de esta causa</div>
+                    <div style={{ fontSize: 12, marginBottom: 16, color: '#d1d5db' }}>PDF, Word, Imágenes — Esta función estará disponible pronto</div>
+                    <button style={{ ...s.btnPrimary, opacity: 0.5, cursor: 'not-allowed' }}>📎 Próximamente</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // LIST VIEW
+  return (
+    <div style={s.app}>
+      <div style={s.header}>
+        <span style={s.logo}>⚖ GESTOR DE CAUSAS PENALES</span>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <span style={{ fontSize: 12, color: '#a0aec0' }}>{session.user.email}</span>
+          <button style={{ ...s.btnSecondary, color: '#ffffff', borderColor: '#ffffff', fontSize: 12 }} onClick={signOut}>Salir</button>
+        </div>
+      </div>
+
+      <div style={s.main}>
+        {stats.vencido > 0 && (
+          <div style={s.alertBanner}>
+            <span style={{ fontSize: 20 }}>🚨</span>
+            <span style={{ fontSize: 14, color: '#991b1b', fontWeight: 'bold' }}>
+              {stats.vencido} causa{stats.vencido > 1 ? 's' : ''} con plazo VENCIDO — Revisión urgente requerida
+            </span>
+          </div>
+        )}
+
+        {causas.length === 0 && !loading && (
+          <div style={{ background: '#fffbeb', border: '1.5px solid #f59e0b', borderRadius: 10, padding: '20px 24px', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ fontWeight: 'bold', color: '#92400e', marginBottom: 4 }}>Base de datos vacía</div>
+              <div style={{ fontSize: 13, color: '#b45309' }}>Carga tus {CAUSAS_SEED.length} causas del Excel con un clic.</div>
+            </div>
+            <button style={s.btnPrimary} onClick={seedDatabase} disabled={seeding}>
+              {seeding ? 'Cargando causas...' : '📥 Importar mis causas'}
+            </button>
+          </div>
+        )}
+
+        <div style={s.statsRow}>
+          {[
+            { key: '', label: 'Total', num: stats.total, color: '#111111', bg: '#f3f4f6' },
+            { key: 'vigente', label: 'Vigentes', num: stats.vigente, color: '#10b981', bg: '#f0fdf4' },
+            { key: 'vencido', label: 'Vencidos', num: stats.vencido, color: '#ef4444', bg: '#fef2f2' },
+            { key: 'proximo', label: 'Por vencer', num: stats.proximo, color: '#f59e0b', bg: '#fffbeb' },
+            { key: 'apjo', label: 'APJO', num: stats.apjo, color: '#8b5cf6', bg: '#f5f3ff' },
+          ].map(st => {
+            const active = filterEstado === st.key && st.key !== ''
+            return (
+              <div key={st.key} style={s.statCard(st.color, st.bg, active)} onClick={() => setFilterEstado(filterEstado === st.key ? '' : st.key)}>
+                <div style={s.statNum(st.color, active)}>{st.num}</div>
+                <div style={s.statLabel(active)}>{st.label}</div>
+              </div>
+            )
+          })}
+        </div>
+
+        <div style={s.toolbar}>
+          <input style={s.searchBox} placeholder="🔍 Buscar por RUC, RIT, imputado, delito, tribunal, fiscal..." value={search} onChange={e => setSearch(e.target.value)} />
+          <select style={s.select} value={filterTribunal} onChange={e => setFilterTribunal(e.target.value)}>
+            <option value="">Todos los tribunales</option>
+            {tribunales.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+          <select style={s.select} value={filterEstado} onChange={e => setFilterEstado(e.target.value)}>
+            <option value="">Todos los estados</option>
+            {Object.entries(estadoConfig).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+          </select>
+          <span style={{ fontSize: 13, color: '#6b7280' }}>{filtered.length} resultado{filtered.length !== 1 ? 's' : ''}</span>
+          <button style={s.btnPrimary} onClick={() => setShowNuevaCausa(true)}>+ Nueva causa</button>
+        </div>
+
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: 60, color: '#9ca3af', fontSize: 15 }}>Cargando causas...</div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={s.table}>
+              <thead>
+                <tr>
+                  {['RUC', 'RIT', 'Tribunal', 'Imputado', 'Delito', 'Fiscal', 'Plazo', 'Estado'].map(h => (
+                    <th key={h} style={s.th}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((c, idx) => (
+                  <tr key={c.id}
+                    style={{ cursor: 'pointer', background: idx % 2 === 0 ? '#fff' : '#fafafa', transition: 'background 0.1s' }}
+                    onClick={() => openCausa(c)}
+                    onMouseEnter={e => e.currentTarget.style.background = '#f0f4ff'}
+                    onMouseLeave={e => e.currentTarget.style.background = idx % 2 === 0 ? '#fff' : '#fafafa'}>
+                    <td style={{ ...s.td, fontFamily: 'monospace', fontSize: 12, fontWeight: 'bold', color: '#1a1a2e' }}>{c.ruc}</td>
+                    <td style={{ ...s.td, fontSize: 12, color: '#4b5563' }}>{c.rit || '—'}</td>
+                    <td style={{ ...s.td, fontSize: 12 }}>{c.tribunal}</td>
+                    <td style={s.td}><div style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={c.imputado}>{c.imputado}</div></td>
+                    <td style={s.td}><div style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={c.delito}>{c.delito || '—'}</div></td>
+                    <td style={{ ...s.td, fontSize: 12, color: c.fiscal ? '#1a1a2e' : '#d1d5db', fontStyle: c.fiscal ? 'normal' : 'italic' }}>{c.fiscal || 'Sin asignar'}</td>
+                    <td style={{ ...s.td, fontSize: 12 }}><div style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={c.plazo}>{c.plazo || '—'}</div></td>
+                    <td style={s.td}><span style={s.badge(c.estado)}>{estadoConfig[c.estado]?.label || c.estado}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {filtered.length === 0 && (
+              <div style={{ textAlign: 'center', padding: 40, color: '#9ca3af', fontSize: 15 }}>Sin resultados para esta búsqueda.</div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {showNuevaCausa && (
+        <div style={s.modal} onClick={e => e.target === e.currentTarget && setShowNuevaCausa(false)}>
+          <div style={s.modalCard}>
+            <h2 style={{ marginTop: 0, marginBottom: 20, fontSize: 18, color: '#1a1a2e' }}>➕ Nueva Causa</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              {[
+                { key: 'ruc', label: 'RUC *', placeholder: 'Ej: 2600123456-7', full: true },
+                { key: 'rit', label: 'RIT', placeholder: 'Ej: 1234-2026' },
+                { key: 'tribunal', label: 'Tribunal', placeholder: 'Ej: 7 JG STGO' },
+                { key: 'imputado', label: 'Imputado', placeholder: 'Nombre completo', full: true },
+                { key: 'delito', label: 'Delito', placeholder: 'Tipo de delito', full: true },
+                { key: 'fiscal', label: 'Fiscal', placeholder: 'Nombre del fiscal' },
+                { key: 'cautelar', label: 'Cautelar', placeholder: 'Prisión preventiva...' },
+                { key: 'plazo', label: 'Plazo', placeholder: 'VENCE DD-MM-YYYY', full: true },
+              ].map(field => (
+                <div key={field.key} style={{ gridColumn: field.full ? '1 / -1' : 'auto' }}>
+                  <span style={s.fieldLabel}>{field.label}</span>
+                  <input style={s.inputSmall} placeholder={field.placeholder} value={nuevaCausa[field.key]}
+                    onChange={e => setNuevaCausa(p => ({ ...p, [field.key]: e.target.value }))} />
+                </div>
+              ))}
+              <div style={{ gridColumn: '1 / -1' }}>
+                <span style={s.fieldLabel}>Estado</span>
+                <select style={{ ...s.select, width: '100%' }} value={nuevaCausa.estado} onChange={e => setNuevaCausa(p => ({ ...p, estado: e.target.value }))}>
+                  {Object.entries(estadoConfig).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                </select>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+              <button style={s.btnPrimary} onClick={saveCausa} disabled={saving || !nuevaCausa.ruc}>{saving ? 'Guardando...' : 'Guardar causa'}</button>
+              <button style={s.btnSecondary} onClick={() => setShowNuevaCausa(false)}>Cancelar</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
