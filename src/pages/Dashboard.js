@@ -2,6 +2,9 @@ import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { CAUSAS_SEED } from '../lib/seedData'
 import { motion, AnimatePresence } from 'framer-motion'
+import { supabase } from '../lib/supabase'
+import { CAUSAS_SEED } from '../lib/seedData'
+import { motion, AnimatePresence } from 'framer-motion'
 const estadoConfig={vencido:{label:'VENCIDO',color:'#dc2626',bg:'#fef2f2',dot:'#dc2626'},proximo:{label:'POR VENCER',color:'#d97706',bg:'#fffbeb',dot:'#f59e0b'},apjo:{label:'APJO',color:'#7c3aed',bg:'#f5f3ff',dot:'#8b5cf6'},suspendida:{label:'SUSPENDIDA',color:'#6b7280',bg:'#f9fafb',dot:'#9ca3af'},vigente:{label:'VIGENTE',color:'#059669',bg:'#ecfdf5',dot:'#10b981'}}
 const spring={type:'spring',stiffness:400,damping:30}
 const springGentle={type:'spring',stiffness:280,damping:24}
