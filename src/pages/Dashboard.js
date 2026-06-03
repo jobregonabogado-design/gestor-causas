@@ -130,13 +130,13 @@ export default function Dashboard({ session }) {
   const chartDelitos = useMemo(() => {
     const map = {}
     causas.forEach(c => { if (c.delito) { const k = c.delito.substring(0,30); map[k] = (map[k]||0)+1 } })
-    return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([name,value])=>({name,value}))
+    return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,12).map(([name,value])=>({name,value}))
   }, [causas])
 
   const chartTribunales = useMemo(() => {
     const map = {}
     causas.forEach(c => { if (c.tribunal) { map[c.tribunal] = (map[c.tribunal]||0)+1 } })
-    return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([name,value])=>({name,value}))
+    return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,15).map(([name,value])=>({name,value}))
   }, [causas])
 
   const COLORS = ['#6366f1','#10b981','#f59e0b','#ef4444','#0ea5e9','#8b5cf6','#ec4899','#14b8a6']
