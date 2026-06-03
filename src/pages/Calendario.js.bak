@@ -167,43 +167,43 @@ export default function Calendario() {
   const audsDia = fechaSel ? (porFecha[fechaSel] || []) : []
   const totalMes = AUDIENCIAS.filter(a => a.fecha.startsWith(anno + "-" + String(mes+1).padStart(2,"0"))).length
 
-  const css = `@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap");*{box-sizing:border-box;margin:0;padding:0}body{font-family:"Inter",sans-serif;background:#f9fafb;color:#e2e8f0}.dh:hover{background:#f3f4f6!important;cursor:pointer}.ac:hover{background:rgba(17,17,17,0.07)!important}.nb:hover{background:rgba(17,17,17,0.12)!important}::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:#e5e7eb;border-radius:4px}input:focus{border-color:#111111!important;outline:none}`
+  const css = `@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap");*{box-sizing:border-box;margin:0;padding:0}body{font-family:"Inter",sans-serif;background:#080810;color:#e2e8f0}.dh:hover{background:rgba(99,102,241,0.15)!important;cursor:pointer}.ac:hover{background:rgba(99,102,241,0.07)!important}.nb:hover{background:rgba(99,102,241,0.12)!important}::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:#1e293b;border-radius:4px}input:focus{border-color:#6366f1!important;outline:none}`
 
   return (
-    <div style={{padding:"24px",background:"#f9fafb",minHeight:"100vh"}}>
+    <div style={{padding:"24px",background:"#080810",minHeight:"100vh"}}>
       <style>{css}</style>
       <div style={{marginBottom:20}}>
-        <div style={{fontSize:20,fontWeight:700,color:"#111111",marginBottom:4}}>Calendario de Audiencias</div>
-        <div style={{fontSize:12,color:"#374151"}}>{totalMes} audiencias en {MESES[mes]} {anno}</div>
+        <div style={{fontSize:20,fontWeight:700,color:"#f1f5f9",marginBottom:4}}>Calendario de Audiencias</div>
+        <div style={{fontSize:12,color:"#475569"}}>{totalMes} audiencias en {MESES[mes]} {anno}</div>
       </div>
       <div style={{marginBottom:16}}>
-        <input style={{width:"100%",maxWidth:480,padding:"10px 14px",background:"#ffffff",border:"1px solid #e5e7eb",borderRadius:10,fontSize:13,color:"#e2e8f0",transition:"border-color 0.15s"}} placeholder="Buscar imputado, RIT, tipo, tribunal..." value={busq} onChange={e=>setBusq(e.target.value)}/>
+        <input style={{width:"100%",maxWidth:480,padding:"10px 14px",background:"#0d0d18",border:"1px solid #1e293b",borderRadius:10,fontSize:13,color:"#e2e8f0",transition:"border-color 0.15s"}} placeholder="Buscar imputado, RIT, tipo, tribunal..." value={busq} onChange={e=>setBusq(e.target.value)}/>
       </div>
       {busq && (
-        <div style={{marginBottom:16,background:"#ffffff",borderRadius:12,border:"1px solid #e5e7eb",overflow:"hidden",maxHeight:280,overflowY:"auto"}}>
-          {filtradas.length === 0 ? <div style={{padding:"16px",color:"#6b7280",fontSize:13}}>Sin resultados</div> :
+        <div style={{marginBottom:16,background:"#0d0d18",borderRadius:12,border:"1px solid #1e293b",overflow:"hidden",maxHeight:280,overflowY:"auto"}}>
+          {filtradas.length === 0 ? <div style={{padding:"16px",color:"#334155",fontSize:13}}>Sin resultados</div> :
           filtradas.map((a,i) => (
             <div key={i} className="ac" style={{padding:"12px 16px",borderBottom:"1px solid #0d0d14",transition:"background 0.1s"}}>
               <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
-                <span style={{fontFamily:"JetBrains Mono",fontSize:11,color:"#111111"}}>{a.fecha}</span>
+                <span style={{fontFamily:"JetBrains Mono",fontSize:11,color:"#818cf8"}}>{a.fecha}</span>
                 <span style={{fontSize:11,color:"#f59e0b",fontWeight:600}}>{a.hora}</span>
               </div>
               <div style={{fontSize:13,color:"#e2e8f0",fontWeight:500,marginBottom:2}}>{a.imputado}</div>
-              <div style={{fontSize:10,color:"#111111"}}>{a.tipo} · {a.tribunal}</div>
+              <div style={{fontSize:10,color:"#6366f1"}}>{a.tipo} · {a.tribunal}</div>
             </div>
           ))}
         </div>
       )}
       <div style={{display:"grid",gridTemplateColumns:"1fr 300px",gap:16}}>
         <div>
-          <div style={{background:"#ffffff",borderRadius:14,border:"1px solid #e5e7eb",overflow:"hidden"}}>
-            <div style={{padding:"14px 18px",borderBottom:"1px solid #e5e7eb",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-              <button className="nb" onClick={()=>{if(mes===0){setMes(11);setAnno(a=>a-1)}else setMes(m=>m-1)}} style={{background:"transparent",border:"1px solid #e5e7eb",color:"#94a3b8",borderRadius:8,padding:"5px 12px",fontSize:13,cursor:"pointer",transition:"background 0.15s"}}>←</button>
-              <div style={{fontSize:15,fontWeight:700,color:"#111111"}}>{MESES[mes]} {anno}</div>
-              <button className="nb" onClick={()=>{if(mes===11){setMes(0);setAnno(a=>a+1)}else setMes(m=>m+1)}} style={{background:"transparent",border:"1px solid #e5e7eb",color:"#94a3b8",borderRadius:8,padding:"5px 12px",fontSize:13,cursor:"pointer",transition:"background 0.15s"}}>→</button>
+          <div style={{background:"#0d0d18",borderRadius:14,border:"1px solid #1e293b",overflow:"hidden"}}>
+            <div style={{padding:"14px 18px",borderBottom:"1px solid #111827",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <button className="nb" onClick={()=>{if(mes===0){setMes(11);setAnno(a=>a-1)}else setMes(m=>m-1)}} style={{background:"transparent",border:"1px solid #1e293b",color:"#94a3b8",borderRadius:8,padding:"5px 12px",fontSize:13,cursor:"pointer",transition:"background 0.15s"}}>←</button>
+              <div style={{fontSize:15,fontWeight:700,color:"#f1f5f9"}}>{MESES[mes]} {anno}</div>
+              <button className="nb" onClick={()=>{if(mes===11){setMes(0);setAnno(a=>a+1)}else setMes(m=>m+1)}} style={{background:"transparent",border:"1px solid #1e293b",color:"#94a3b8",borderRadius:8,padding:"5px 12px",fontSize:13,cursor:"pointer",transition:"background 0.15s"}}>→</button>
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",borderBottom:"1px solid #e5e7eb"}}>
-              {DS.map(d => <div key={d} style={{padding:"8px 0",textAlign:"center",fontSize:10,color:"#374151",fontWeight:600,letterSpacing:0.5}}>{d}</div>)}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",borderBottom:"1px solid #111827"}}>
+              {DS.map(d => <div key={d} style={{padding:"8px 0",textAlign:"center",fontSize:10,color:"#475569",fontWeight:600,letterSpacing:0.5}}>{d}</div>)}
             </div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)"}}>
               {diasMes.map((dia,i) => {
@@ -213,37 +213,37 @@ export default function Calendario() {
                 const esH = dia === diaHoy
                 const esS = dia === diaS
                 return (
-                  <div key={i} className="dh" onClick={()=>setDiaS(dia===diaS?null:dia)} style={{minHeight:72,padding:"5px",borderBottom:"1px solid #0a0a10",borderRight:"1px solid #0a0a10",background:esS?"rgba(17,17,17,0.1)":"transparent",transition:"background 0.1s"}}>
-                    <div style={{fontSize:11,fontWeight:esH||esS?700:400,color:esH?"#111111":esS?"#111111":"#374151",width:20,height:20,borderRadius:"50%",background:esH?"rgba(17,17,17,0.2)":"transparent",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:3}}>{dia}</div>
-                    {a.slice(0,2).map((x,j) => <div key={j} style={{fontSize:8,background:"rgba(17,17,17,0.18)",color:"#111111",borderRadius:3,padding:"1px 3px",marginBottom:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{x.hora} {x.imputado.split(" ")[0]}</div>)}
-                    {a.length > 2 && <div style={{fontSize:8,color:"#374151"}}>+{a.length-2}</div>}
+                  <div key={i} className="dh" onClick={()=>setDiaS(dia===diaS?null:dia)} style={{minHeight:72,padding:"5px",borderBottom:"1px solid #0a0a10",borderRight:"1px solid #0a0a10",background:esS?"rgba(99,102,241,0.1)":"transparent",transition:"background 0.1s"}}>
+                    <div style={{fontSize:11,fontWeight:esH||esS?700:400,color:esH?"#6366f1":esS?"#818cf8":"#475569",width:20,height:20,borderRadius:"50%",background:esH?"rgba(99,102,241,0.2)":"transparent",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:3}}>{dia}</div>
+                    {a.slice(0,2).map((x,j) => <div key={j} style={{fontSize:8,background:"rgba(99,102,241,0.18)",color:"#818cf8",borderRadius:3,padding:"1px 3px",marginBottom:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{x.hora} {x.imputado.split(" ")[0]}</div>)}
+                    {a.length > 2 && <div style={{fontSize:8,color:"#475569"}}>+{a.length-2}</div>}
                   </div>
                 )
               })}
             </div>
           </div>
           {diaS && (
-            <div style={{marginTop:14,background:"#ffffff",borderRadius:14,border:"1px solid #e5e7eb",overflow:"hidden"}}>
-              <div style={{padding:"12px 16px",borderBottom:"1px solid #e5e7eb",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <div style={{fontWeight:700,color:"#111111",fontSize:13}}>{DS[new Date(anno,mes,diaS).getDay()]} {diaS} de {MESES[mes]}</div>
-                <span style={{fontSize:11,color:"#374151"}}>{audsDia.length} audiencia{audsDia.length!==1?"s":""}</span>
+            <div style={{marginTop:14,background:"#0d0d18",borderRadius:14,border:"1px solid #1e293b",overflow:"hidden"}}>
+              <div style={{padding:"12px 16px",borderBottom:"1px solid #111827",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div style={{fontWeight:700,color:"#f1f5f9",fontSize:13}}>{DS[new Date(anno,mes,diaS).getDay()]} {diaS} de {MESES[mes]}</div>
+                <span style={{fontSize:11,color:"#475569"}}>{audsDia.length} audiencia{audsDia.length!==1?"s":""}</span>
               </div>
-              {audsDia.length === 0 ? <div style={{padding:"20px 16px",color:"#6b7280",fontSize:13,textAlign:"center"}}>Sin audiencias</div> :
+              {audsDia.length === 0 ? <div style={{padding:"20px 16px",color:"#334155",fontSize:13,textAlign:"center"}}>Sin audiencias</div> :
               audsDia.map((a,i) => (
                 <div key={i} style={{padding:"12px 16px",borderBottom:"1px solid #0d0d14"}}>
                   <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
                     <span style={{fontSize:13,fontWeight:700,color:"#f59e0b"}}>{a.hora}</span>
-                    <span style={{fontSize:10,background:"#f3f4f6",color:"#111111",padding:"2px 10px",borderRadius:20,fontWeight:600}}>{a.tipo}</span>
+                    <span style={{fontSize:10,background:"rgba(99,102,241,0.15)",color:"#818cf8",padding:"2px 10px",borderRadius:20,fontWeight:600}}>{a.tipo}</span>
                   </div>
                   <div style={{fontSize:13,color:"#cbd5e1",fontWeight:500,marginBottom:3}}>{a.imputado}</div>
-                  <div style={{fontSize:11,color:"#374151"}}>{a.tribunal}{a.sala?" · "+a.sala:""} · RIT: {a.rit}</div>
+                  <div style={{fontSize:11,color:"#475569"}}>{a.tribunal}{a.sala?" · "+a.sala:""} · RIT: {a.rit}</div>
                 </div>
               ))}
             </div>
           )}
         </div>
-        <div style={{background:"#ffffff",borderRadius:14,border:"1px solid #e5e7eb",overflow:"hidden"}}>
-          <div style={{padding:"12px 16px",borderBottom:"1px solid #e5e7eb"}}><div style={{fontWeight:700,color:"#111111",fontSize:13}}>Proximas audiencias</div></div>
+        <div style={{background:"#0d0d18",borderRadius:14,border:"1px solid #1e293b",overflow:"hidden"}}>
+          <div style={{padding:"12px 16px",borderBottom:"1px solid #111827"}}><div style={{fontWeight:700,color:"#f1f5f9",fontSize:13}}>Proximas audiencias</div></div>
           <div style={{maxHeight:580,overflowY:"auto"}}>
             {proximas.map((a,i) => {
               const f = new Date(a.fecha+"T12:00:00")
@@ -251,14 +251,14 @@ export default function Calendario() {
               const urg = d <= 1
               const prn = d <= 7
               return (
-                <div key={i} className="ac" style={{padding:"10px 14px",borderBottom:"1px solid #0d0d14",transition:"background 0.1s",borderLeft:"3px solid "+(urg?"#ef4444":prn?"#f59e0b":"#e5e7eb")}}>
+                <div key={i} className="ac" style={{padding:"10px 14px",borderBottom:"1px solid #0d0d14",transition:"background 0.1s",borderLeft:"3px solid "+(urg?"#ef4444":prn?"#f59e0b":"#1e293b")}}>
                   <div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}>
-                    <span style={{fontSize:10,fontFamily:"JetBrains Mono",color:urg?"#ef4444":prn?"#f59e0b":"#374151",fontWeight:600}}>{f.toLocaleDateString("es-CL",{weekday:"short",day:"numeric",month:"short"})}</span>
-                    <span style={{fontSize:9,color:urg?"#ef4444":prn?"#f59e0b":"#e5e7eb",fontWeight:700}}>{d<=0?"HOY":d===1?"MANANA":d+"d"}</span>
+                    <span style={{fontSize:10,fontFamily:"JetBrains Mono",color:urg?"#ef4444":prn?"#f59e0b":"#475569",fontWeight:600}}>{f.toLocaleDateString("es-CL",{weekday:"short",day:"numeric",month:"short"})}</span>
+                    <span style={{fontSize:9,color:urg?"#ef4444":prn?"#f59e0b":"#1e293b",fontWeight:700}}>{d<=0?"HOY":d===1?"MANANA":d+"d"}</span>
                   </div>
                   <div style={{fontSize:11,color:"#e2e8f0",fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.imputado}</div>
-                  <div style={{fontSize:10,color:"#111111",marginTop:1}}>{a.tipo}</div>
-                  <div style={{fontSize:9,color:"#6b7280"}}>{a.hora} · {a.tribunal}</div>
+                  <div style={{fontSize:10,color:"#6366f1",marginTop:1}}>{a.tipo}</div>
+                  <div style={{fontSize:9,color:"#334155"}}>{a.hora} · {a.tribunal}</div>
                 </div>
               )
             })}
