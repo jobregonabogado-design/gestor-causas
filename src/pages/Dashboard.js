@@ -227,30 +227,35 @@ function ImputadoCard({ imp, idx, onUpdate, onDelete }) {
 
 // ─── FUNCIONES DE CÁLCULO DE PLAZO ───────────────────────────────────────────
 
+// Días corridos desde la fecha de formalización
 function calcularVencimiento(fechaInicio, diasPlazo) {
   if (!fechaInicio || !diasPlazo) return ''
   const inicio = new Date(fechaInicio + 'T12:00:00')
-  let dias = parseInt(diasPlazo)
-  let count = 0
-  while (count < dias) {
-    inicio.setDate(inicio.getDate() + 1)
-    const dow = inicio.getDay()
-    if (dow !== 0 && dow !== 6) count++
-  }
+  inicio.setDate(inicio.getDate() + parseInt(diasPlazo))
   return inicio.toLocaleDateString('es-CL', { day:'2-digit', month:'2-digit', year:'numeric' })
 }
 
-function calcularSubestado(plazoStr) {
-  if (!plazoStr) return null
-  const limpio = plazoStr.replace(/VENCE\s*/i, '').trim()
-  const partes = limpio.split(/[\/\-\.]/)
+// Parsea "DD-MM-YYYY" o "VENCE DD-MM-YYYY" → Date
+function parseFechaCL(str) {
+  if (!str) return null
+  const limpio = str.replace(/VENCE\s*/i, '').trim()
+  const partes = limpio.split(/[\/\-\.]/  )
   if (partes.length < 3) return null
   const [d, m, a] = partes
   const fecha = new Date(`${a.length===2?'20'+a:a}-${m.padStart(2,'0')}-${d.padStart(2,'0')}T12:00:00`)
-  if (isNaN(fecha)) return null
-  const hoy = new Date()
-  hoy.setHours(0, 0, 0, 0)
-  const diff = Math.ceil((fecha - hoy) / (1000 * 60 * 60 * 24))
+  return isNaN(fecha) ? null : fecha
+}
+
+function diasRestantes(plazoStr) {
+  const fecha = parseFechaCL(plazoStr)
+  if (!fecha) return null
+  const hoy = new Date(); hoy.setHours(0,0,0,0)
+  return Math.ceil((fecha - hoy) / (1000*60*60*24))
+}
+
+function calcularSubestado(plazoStr) {
+  const diff = diasRestantes(plazoStr)
+  if (diff === null) return null
   if (diff < 0) return 'vencido'
   if (diff <= 3) return 'proximo'
   return null
@@ -258,63 +263,148 @@ function calcularSubestado(plazoStr) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-function PlazoCalculador({ causaId, plazoActual, onGuardar }) {
-  const [fechaInicio, setFechaInicio] = useState('')
-  const [diasPlazo, setDiasPlazo] = useState('')
-  const [plazoManual, setPlazoManual] = useState('')
+function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudiencia }) {
+  const [showForm, setShowForm] = useState(false)
+  const [form, setForm] = useState({ fecha_audiencia:'', tipo_audiencia:'Formalización', dias_plazo:'', observacion:'' })
   const [guardando, setGuardando] = useState(false)
   const f = { fontFamily:"'Inter',sans-serif" }
   const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:'#0f172a', background:'#fff', ...f }
 
-  const vencimientoCalculado = fechaInicio && diasPlazo ? calcularVencimiento(fechaInicio, diasPlazo) : ''
+  // Calcular vencimiento acumulado desde todas las audiencias
+  const calcularVencimientoTotal = (auds) => {
+    if (!auds || auds.length === 0) return null
+    // Ordenar por fecha
+    const sorted = [...auds].sort((a,b) => a.fecha_audiencia.localeCompare(b.fecha_audiencia))
+    // La primera audiencia define el inicio
+    const primera = sorted[0]
+    const diasTotal = auds.reduce((s,a) => s + (parseInt(a.dias_plazo)||0), 0)
+    return calcularVencimiento(primera.fecha_audiencia, diasTotal)
+  }
+
+  const vencimientoPreview = form.fecha_audiencia && form.dias_plazo
+    ? calcularVencimiento(form.fecha_audiencia, form.dias_plazo)
+    : ''
 
   const handleGuardar = async () => {
-    const plazoFinal = vencimientoCalculado
-      ? 'VENCE ' + vencimientoCalculado
-      : plazoManual
-    if (!plazoFinal) return
+    if (!form.fecha_audiencia || !form.dias_plazo) return
     setGuardando(true)
-    const subestadoAuto = calcularSubestado(plazoFinal)
-    await onGuardar(plazoFinal, subestadoAuto)
-    setFechaInicio(''); setDiasPlazo(''); setPlazoManual('')
+    await onGuardarAudiencia(form)
+    setForm({ fecha_audiencia:'', tipo_audiencia:'Formalización', dias_plazo:'', observacion:'' })
+    setShowForm(false)
     setGuardando(false)
   }
 
+  const diasTotal = aumentos ? aumentos.reduce((s,a) => s + (parseInt(a.dias_plazo)||0), 0) : 0
+  const vencFinal = calcularVencimientoTotal(aumentos)
+  const subestado = calcularSubestado(vencFinal)
+  const diff = diasRestantes(vencFinal)
+
   return (
     <div>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
-        <div>
-          <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Fecha inicio</div>
-          <input type="date" style={inp} value={fechaInicio} onChange={e=>setFechaInicio(e.target.value)}/>
+      {/* RESUMEN SUPERIOR */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,marginBottom:20}}>
+        <div style={{background:'#eff6ff',border:'1.5px solid #bfdbfe',borderRadius:12,padding:'14px 16px',textAlign:'center'}}>
+          <div style={{fontSize:28,fontWeight:900,color:'#2563eb',letterSpacing:'-1px',...f}}>{aumentos?aumentos.length:0}</div>
+          <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1,marginTop:4,fontWeight:600,...f}}>Audiencias registradas</div>
         </div>
-        <div>
-          <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Días plazo (ACD)</div>
-          <input type="number" style={inp} placeholder="Ej: 210" value={diasPlazo} onChange={e=>setDiasPlazo(e.target.value)}/>
+        <div style={{background:'#fffbeb',border:'1.5px solid #fde68a',borderRadius:12,padding:'14px 16px',textAlign:'center'}}>
+          <div style={{fontSize:28,fontWeight:900,color:'#d97706',letterSpacing:'-1px',...f}}>{diasTotal}</div>
+          <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1,marginTop:4,fontWeight:600,...f}}>Días corridos totales</div>
+        </div>
+        <div style={{
+          background: subestado==='vencido'?'#fef2f2': subestado==='proximo'?'#fffbeb':'#f0fdf4',
+          border: `1.5px solid ${subestado==='vencido'?'#fecaca':subestado==='proximo'?'#fde68a':'#a7f3d0'}`,
+          borderRadius:12, padding:'14px 16px', textAlign:'center'
+        }}>
+          <div style={{fontSize:13,fontWeight:800,color:subestado==='vencido'?'#dc2626':subestado==='proximo'?'#d97706':'#059669',...f}}>
+            {vencFinal || '—'}
+          </div>
+          {diff !== null && (
+            <div style={{fontSize:11,fontWeight:600,marginTop:4,color:subestado==='vencido'?'#dc2626':subestado==='proximo'?'#d97706':'#64748b',...f}}>
+              {subestado==='vencido' ? `Venció hace ${Math.abs(diff)} días` : subestado==='proximo' ? `⚠️ Vence en ${diff} días` : `Faltan ${diff} días`}
+            </div>
+          )}
+          <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1,marginTop:2,fontWeight:600,...f}}>Vencimiento</div>
         </div>
       </div>
 
-      {vencimientoCalculado && (
-        <div style={{marginBottom:10,padding:'10px 14px',background:'#fff',borderRadius:8,border:'1px solid #a7f3d0',display:'flex',alignItems:'center',gap:8}}>
-          <span style={{fontSize:16}}>📅</span>
-          <div>
-            <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1,fontWeight:700,...f}}>Vencimiento calculado</div>
-            <div style={{fontSize:15,fontWeight:800,color:'#059669',...f}}>{vencimientoCalculado}</div>
+      {/* HISTORIAL DE AUDIENCIAS DE PLAZO */}
+      <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:10,fontWeight:600,...f}}>Historial de audiencias de plazo</div>
+      {(!aumentos||aumentos.length===0) && (
+        <p style={{color:'#cbd5e1',fontSize:13,marginBottom:14,...f}}>Sin audiencias registradas. Agrega la audiencia de formalización para comenzar.</p>
+      )}
+      {aumentos && aumentos.map((a,i) => {
+        // Calcular vencimiento acumulado hasta esta audiencia
+        const audsHasta = [...aumentos].sort((x,y)=>x.fecha_audiencia.localeCompare(y.fecha_audiencia)).slice(0,i+1)
+        const diasAcum = audsHasta.reduce((s,x)=>s+(parseInt(x.dias_plazo)||0),0)
+        const vencAcum = calcularVencimiento(audsHasta[0].fecha_audiencia, diasAcum)
+        return (
+          <div key={a.id} style={{display:'flex',gap:12,alignItems:'center',padding:'14px 16px',background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:10,marginBottom:8}}>
+            <div style={{width:30,height:30,background:'linear-gradient(135deg,#2563eb,#1d4ed8)',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:12,fontWeight:700,flexShrink:0}}>{i+1}</div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:13,fontWeight:600,color:'#0f172a',...f}}>{a.tipo_audiencia||'Audiencia'}</div>
+              <div style={{fontSize:12,color:'#94a3b8',marginTop:2,...f}}>📅 {a.fecha_audiencia}</div>
+              {a.observacion&&<div style={{fontSize:12,color:'#64748b',marginTop:2,...f}}>{a.observacion}</div>}
+            </div>
+            <div style={{textAlign:'right'}}>
+              <div style={{fontSize:16,fontWeight:800,color:'#2563eb',...f}}>+{a.dias_plazo}d</div>
+              <div style={{fontSize:11,color:'#94a3b8',marginTop:2,...f}}>Vence: {vencAcum}</div>
+              <div style={{fontSize:10,color:'#cbd5e1',...f}}>Acum. {diasAcum}d</div>
+            </div>
+          </div>
+        )
+      })}
+
+      {/* FORMULARIO NUEVA AUDIENCIA */}
+      {showForm ? (
+        <div style={{background:'#f0f7ff',border:'1.5px solid #bfdbfe',borderRadius:12,padding:16,marginTop:12}}>
+          <div style={{fontSize:12,fontWeight:700,color:'#2563eb',marginBottom:12,...f}}>
+            {aumentos && aumentos.length === 0 ? '📋 Registrar audiencia de formalización' : '📋 Registrar nueva audiencia de plazo'}
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
+            <div>
+              <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Tipo de audiencia</div>
+              <select style={inp} value={form.tipo_audiencia} onChange={e=>setForm(p=>({...p,tipo_audiencia:e.target.value}))}>
+                <option>Formalización</option>
+                <option>Control de detención + Formalización</option>
+                <option>Ampliación de plazo</option>
+                <option>Reapertura de investigación</option>
+              </select>
+            </div>
+            <div>
+              <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Fecha de audiencia</div>
+              <input type="date" style={inp} value={form.fecha_audiencia} onChange={e=>setForm(p=>({...p,fecha_audiencia:e.target.value}))}/>
+            </div>
+            <div>
+              <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Días de plazo otorgados</div>
+              <input type="number" style={inp} placeholder="Ej: 30, 90, 210" value={form.dias_plazo} onChange={e=>setForm(p=>({...p,dias_plazo:e.target.value}))}/>
+            </div>
+            <div>
+              <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Observación</div>
+              <input style={inp} placeholder="Ej: Diligencias pendientes" value={form.observacion} onChange={e=>setForm(p=>({...p,observacion:e.target.value}))}/>
+            </div>
+          </div>
+          {vencimientoPreview && (
+            <div style={{marginBottom:12,padding:'10px 14px',background:'#fff',borderRadius:8,border:'1px solid #bfdbfe',display:'flex',alignItems:'center',gap:8}}>
+              <span style={{fontSize:16}}>📅</span>
+              <div>
+                <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1,fontWeight:700,...f}}>Vencimiento de este plazo</div>
+                <div style={{fontSize:15,fontWeight:800,color:'#2563eb',...f}}>{vencimientoPreview}</div>
+              </div>
+            </div>
+          )}
+          <div style={{display:'flex',gap:8}}>
+            <button className="btn-primary" style={{fontSize:12}} onClick={handleGuardar} disabled={guardando||!form.fecha_audiencia||!form.dias_plazo}>
+              {guardando?'Guardando...':'💾 Guardar audiencia'}
+            </button>
+            <button className="btn-secondary" style={{fontSize:12}} onClick={()=>setShowForm(false)}>Cancelar</button>
           </div>
         </div>
+      ) : (
+        <button className="btn-secondary" style={{marginTop:12}} onClick={()=>setShowForm(true)}>
+          + {aumentos && aumentos.length === 0 ? 'Registrar formalización' : 'Registrar nueva audiencia de plazo'}
+        </button>
       )}
-
-      <div style={{marginBottom:12}}>
-        <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>O ingresa plazo manualmente</div>
-        <input style={inp} placeholder="VENCE DD-MM-YYYY" value={plazoManual} onChange={e=>setPlazoManual(e.target.value)}/>
-      </div>
-
-      {plazoActual && (
-        <div style={{fontSize:12,color:'#94a3b8',marginBottom:10,...f}}>Plazo actual: <span style={{fontWeight:600,color:'#475569'}}>{plazoActual}</span></div>
-      )}
-
-      <button className="btn-primary" style={{fontSize:12}} onClick={handleGuardar} disabled={guardando||(!vencimientoCalculado&&!plazoManual)}>
-        {guardando ? 'Guardando...' : '💾 Guardar nuevo plazo'}
-      </button>
     </div>
   )
 }
@@ -572,48 +662,34 @@ export default function Dashboard({ session }) {
             )}
             {activeTab==='plazo'&&(
               <div>
-                <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:14,marginBottom:24}}>
-                  {[{label:'Audiencias de aumento',val:aumentos.length,color:'#2563eb',bg:'#eff6ff'},{label:'Días aumentados',val:totalDias,color:'#d97706',bg:'#fffbeb'},{label:'Vencimiento',val:c.plazo||'Sin fecha',color:calcularSubestado(c.plazo)==='vencido'?'#dc2626':calcularSubestado(c.plazo)==='proximo'?'#d97706':'#059669',bg:calcularSubestado(c.plazo)==='vencido'?'#fef2f2':calcularSubestado(c.plazo)==='proximo'?'#fffbeb':'#f0fdf4',small:true}].map(st=>(
-                    <div key={st.label} style={{background:st.bg,border:`1.5px solid ${st.color}22`,borderRadius:12,padding:'16px 18px',textAlign:'center'}}>
-                      <div style={{fontSize:st.small?13:28,fontWeight:st.small?600:800,color:st.color,letterSpacing:st.small?0:'-1px',...f}}>{st.val}</div>
-                      <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1,marginTop:4,fontWeight:600,...f}}>{st.label}</div>
-                    </div>
-                  ))}
-                </div>
 
-                {/* CALCULADOR ACD EN CAUSA EXISTENTE */}
-                <div style={{background:'#f0fdf4',border:'1.5px solid #a7f3d0',borderRadius:12,padding:16,marginBottom:24}}>
-                  <div style={{fontSize:11,fontWeight:700,color:'#059669',marginBottom:14,...f}}>⏱ Actualizar plazo ACD (días hábiles)</div>
-                  <PlazoCalculador causaId={c.id} plazoActual={c.plazo} onGuardar={(nuevoPlazo,subestadoAuto)=>{
-                    updateField('plazo', nuevoPlazo)
-                    updateField('subestado', subestadoAuto)
-                  }}/>
-                </div>
-
-                <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:12,fontWeight:600,...f}}>Historial de aumentos</div>
-                {aumentos.length===0?<p style={{color:'#cbd5e1',fontSize:13,marginBottom:16,...f}}>Sin aumentos registrados.</p>:aumentos.map((a,i)=>(
-                  <div key={a.id} style={{display:'flex',gap:12,alignItems:'center',padding:'12px 16px',background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:10,marginBottom:8}}>
-                    <div style={{width:28,height:28,background:'linear-gradient(135deg,#2563eb,#1d4ed8)',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:11,fontWeight:700,flexShrink:0}}>{i+1}</div>
-                    <div style={{flex:1}}>
-                      <div style={{fontSize:13,fontWeight:500,color:'#0f172a',...f}}>{a.fecha_audiencia}</div>
-                      {a.observacion&&<div style={{fontSize:12,color:'#94a3b8',marginTop:2,...f}}>{a.observacion}</div>}
-                    </div>
-                    <div style={{textAlign:'right'}}>
-                      <div style={{fontSize:16,fontWeight:800,color:'#d97706',letterSpacing:'-0.5px',...f}}>+{a.dias_aumento}d</div>
-                      <div style={{fontSize:10,color:'#94a3b8',...f}}>Acum. {a.plazo_acumulado}d</div>
-                    </div>
-                  </div>
-                ))}
-                {showAumentoForm?(
-                  <div style={{background:'#f8fafc',border:'1.5px solid #e2e8f0',borderRadius:12,padding:18,marginTop:14}}>
-                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:12}}>
-                      <div><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Fecha audiencia</div><input type="date" style={inp} value={nuevoAumento.fecha_audiencia} onChange={e=>setNuevoAumento(p=>({...p,fecha_audiencia:e.target.value}))}/></div>
-                      <div><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Días otorgados</div><input type="number" style={inp} placeholder="Ej: 90" value={nuevoAumento.dias_aumento} onChange={e=>setNuevoAumento(p=>({...p,dias_aumento:e.target.value}))}/></div>
-                      <div style={{gridColumn:'1/-1'}}><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Observación</div><input style={inp} placeholder="Ej: Diligencias pendientes" value={nuevoAumento.observacion} onChange={e=>setNuevoAumento(p=>({...p,observacion:e.target.value}))}/></div>
-                    </div>
-                    <div style={{display:'flex',gap:8}}><button className="btn-primary" onClick={saveAumento} disabled={saving}>{saving?'Guardando...':'Guardar'}</button><button className="btn-secondary" onClick={()=>setShowAumentoForm(false)}>Cancelar</button></div>
-                  </div>
-                ):<button className="btn-secondary" style={{marginTop:12}} onClick={()=>setShowAumentoForm(true)}>+ Registrar aumento</button>}
+                <PlazoCalculador
+                  causaId={c.id}
+                  plazoActual={c.plazo}
+                  aumentos={aumentos}
+                  onGuardarAudiencia={async(form)=>{
+                    const{data,error}=await supabase.from('aumentos_plazo').insert({
+                      causa_id:c.id,
+                      fecha_audiencia:form.fecha_audiencia,
+                      tipo_audiencia:form.tipo_audiencia,
+                      dias_plazo:parseInt(form.dias_plazo),
+                      dias_aumento:parseInt(form.dias_plazo),
+                      observacion:form.observacion,
+                    }).select().single()
+                    if(!error){
+                      const nuevosAumentos=[...aumentos,data].sort((a,b)=>a.fecha_audiencia.localeCompare(b.fecha_audiencia))
+                      setAumentos(nuevosAumentos)
+                      // Recalcular vencimiento total y actualizar causa
+                      const diasTotal=nuevosAumentos.reduce((s,a)=>s+(parseInt(a.dias_plazo)||0),0)
+                      const primera=nuevosAumentos[0]
+                      const nuevoVenc='VENCE '+calcularVencimiento(primera.fecha_audiencia,diasTotal)
+                      const nuevoSub=calcularSubestado(nuevoVenc)
+                      await supabase.from('causas').update({plazo:nuevoVenc,subestado:nuevoSub,updated_at:new Date()}).eq('id',c.id)
+                      const u={...selectedCausa,plazo:nuevoVenc,subestado:nuevoSub}
+                      setSelectedCausa(u);setCausas(prev=>prev.map(x=>x.id===u.id?u:x))
+                    }
+                  }}
+                />
               </div>
             )}
             {activeTab==='audiencias'&&(
