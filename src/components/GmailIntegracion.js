@@ -57,38 +57,62 @@ export default function GmailIntegracion() {
         (audienciasExistentes || []).map(a => `${a.ruc}-${a.fecha}-${a.tipo}`)
       )
 
+      // Deduplicar correos en memoria (mismo RUC + misma fecha = mismo evento aunque lleguen 9 copias)
+      const clavesProcesadas = new Set()
+
+      // Normalizar RUC: quitar espacios y guiones para comparar
+      const normalizarRuc = (ruc) => ruc?.replace(/[\s\-]/g, '') || ''
+
+      // Reconstruir mapa con RUC normalizado
+      const causasPorRucNorm = {}
+      ;(causasVigentes || []).forEach(c => {
+        causasPorRucNorm[normalizarRuc(c.ruc)] = c
+      })
+
       const nuevosAgregados = []
       const nuevosErrores = []
       const sinCausaVigente = []
+      const sinCausaVistos = new Set()
 
       setProcesando(true)
 
       for (const n of notificaciones) {
         const rucLimpio = n.ruc?.replace(/\s/g, '')
-        const causa = causasPorRuc[rucLimpio]
+        const rucNorm = normalizarRuc(rucLimpio)
+        const causa = causasPorRucNorm[rucNorm]
 
-        // Sin causa vigente
+        // Sin causa vigente (mostrar solo una vez por RUC)
         if (!causa) {
-          sinCausaVigente.push(n)
+          if (!sinCausaVistos.has(rucNorm)) {
+            sinCausaVistos.add(rucNorm)
+            sinCausaVigente.push(n)
+          }
           continue
         }
 
         // Sin audiencia detectada
         if (!n.audiencia?.fecha) {
-          nuevosErrores.push({ ...n, motivo: 'No se detectó fecha de audiencia en el correo' })
+          const claveErr = `${rucNorm}-sin-fecha`
+          if (!clavesProcesadas.has(claveErr)) {
+            clavesProcesadas.add(claveErr)
+            nuevosErrores.push({ ...n, motivo: 'No se detectó fecha de audiencia en el correo' })
+          }
           continue
         }
 
-        // Ya existe esta audiencia
-        const clave = `${rucLimpio}-${n.audiencia.fecha}-${n.audiencia.tipo}`
-        if (claveExistente.has(clave)) {
-          continue // ya está, ignorar silenciosamente
+        // Deduplicar: mismo RUC + misma fecha + mismo tipo = mismo evento
+        const clave = `${rucNorm}-${n.audiencia.fecha}-${n.audiencia.tipo}`
+
+        // Ya existe en BD o ya procesado en esta sesión
+        if (claveExistente.has(clave) || clavesProcesadas.has(clave)) {
+          continue
         }
+        clavesProcesadas.add(clave)
 
         // Agregar audiencia
         const { data, error } = await supabase.from('audiencias').insert({
           causa_id: causa.id,
-          ruc: rucLimpio,
+          ruc: rucLimpio || causa.ruc,
           rit: n.rit || causa.rit || '',
           fecha: n.audiencia.fecha,
           hora: n.audiencia.hora || '',
