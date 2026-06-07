@@ -258,6 +258,69 @@ function calcularSubestado(plazoStr) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+function PlazoCalculador({ causaId, plazoActual, onGuardar }) {
+  const [fechaInicio, setFechaInicio] = useState('')
+  const [diasPlazo, setDiasPlazo] = useState('')
+  const [plazoManual, setPlazoManual] = useState('')
+  const [guardando, setGuardando] = useState(false)
+  const f = { fontFamily:"'Inter',sans-serif" }
+  const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:'#0f172a', background:'#fff', ...f }
+
+  const vencimientoCalculado = fechaInicio && diasPlazo ? calcularVencimiento(fechaInicio, diasPlazo) : ''
+
+  const handleGuardar = async () => {
+    const plazoFinal = vencimientoCalculado
+      ? 'VENCE ' + vencimientoCalculado
+      : plazoManual
+    if (!plazoFinal) return
+    setGuardando(true)
+    const subestadoAuto = calcularSubestado(plazoFinal)
+    await onGuardar(plazoFinal, subestadoAuto)
+    setFechaInicio(''); setDiasPlazo(''); setPlazoManual('')
+    setGuardando(false)
+  }
+
+  return (
+    <div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
+        <div>
+          <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Fecha inicio</div>
+          <input type="date" style={inp} value={fechaInicio} onChange={e=>setFechaInicio(e.target.value)}/>
+        </div>
+        <div>
+          <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Días plazo (ACD)</div>
+          <input type="number" style={inp} placeholder="Ej: 210" value={diasPlazo} onChange={e=>setDiasPlazo(e.target.value)}/>
+        </div>
+      </div>
+
+      {vencimientoCalculado && (
+        <div style={{marginBottom:10,padding:'10px 14px',background:'#fff',borderRadius:8,border:'1px solid #a7f3d0',display:'flex',alignItems:'center',gap:8}}>
+          <span style={{fontSize:16}}>📅</span>
+          <div>
+            <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1,fontWeight:700,...f}}>Vencimiento calculado</div>
+            <div style={{fontSize:15,fontWeight:800,color:'#059669',...f}}>{vencimientoCalculado}</div>
+          </div>
+        </div>
+      )}
+
+      <div style={{marginBottom:12}}>
+        <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>O ingresa plazo manualmente</div>
+        <input style={inp} placeholder="VENCE DD-MM-YYYY" value={plazoManual} onChange={e=>setPlazoManual(e.target.value)}/>
+      </div>
+
+      {plazoActual && (
+        <div style={{fontSize:12,color:'#94a3b8',marginBottom:10,...f}}>Plazo actual: <span style={{fontWeight:600,color:'#475569'}}>{plazoActual}</span></div>
+      )}
+
+      <button className="btn-primary" style={{fontSize:12}} onClick={handleGuardar} disabled={guardando||(!vencimientoCalculado&&!plazoManual)}>
+        {guardando ? 'Guardando...' : '💾 Guardar nuevo plazo'}
+      </button>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function Dashboard({ session }) {
   const [causas,setCausas]=useState([])
   const [loading,setLoading]=useState(true)
@@ -510,13 +573,23 @@ export default function Dashboard({ session }) {
             {activeTab==='plazo'&&(
               <div>
                 <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:14,marginBottom:24}}>
-                  {[{label:'Audiencias de aumento',val:aumentos.length,color:'#2563eb',bg:'#eff6ff'},{label:'Días aumentados',val:totalDias,color:'#d97706',bg:'#fffbeb'},{label:'Vencimiento',val:c.plazo||'Sin fecha',color:'#059669',bg:'#f0fdf4',small:true}].map(st=>(
+                  {[{label:'Audiencias de aumento',val:aumentos.length,color:'#2563eb',bg:'#eff6ff'},{label:'Días aumentados',val:totalDias,color:'#d97706',bg:'#fffbeb'},{label:'Vencimiento',val:c.plazo||'Sin fecha',color:calcularSubestado(c.plazo)==='vencido'?'#dc2626':calcularSubestado(c.plazo)==='proximo'?'#d97706':'#059669',bg:calcularSubestado(c.plazo)==='vencido'?'#fef2f2':calcularSubestado(c.plazo)==='proximo'?'#fffbeb':'#f0fdf4',small:true}].map(st=>(
                     <div key={st.label} style={{background:st.bg,border:`1.5px solid ${st.color}22`,borderRadius:12,padding:'16px 18px',textAlign:'center'}}>
                       <div style={{fontSize:st.small?13:28,fontWeight:st.small?600:800,color:st.color,letterSpacing:st.small?0:'-1px',...f}}>{st.val}</div>
                       <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1,marginTop:4,fontWeight:600,...f}}>{st.label}</div>
                     </div>
                   ))}
                 </div>
+
+                {/* CALCULADOR ACD EN CAUSA EXISTENTE */}
+                <div style={{background:'#f0fdf4',border:'1.5px solid #a7f3d0',borderRadius:12,padding:16,marginBottom:24}}>
+                  <div style={{fontSize:11,fontWeight:700,color:'#059669',marginBottom:14,...f}}>⏱ Actualizar plazo ACD (días hábiles)</div>
+                  <PlazoCalculador causaId={c.id} plazoActual={c.plazo} onGuardar={(nuevoPlazo,subestadoAuto)=>{
+                    updateField('plazo', nuevoPlazo)
+                    updateField('subestado', subestadoAuto)
+                  }}/>
+                </div>
+
                 <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:12,fontWeight:600,...f}}>Historial de aumentos</div>
                 {aumentos.length===0?<p style={{color:'#cbd5e1',fontSize:13,marginBottom:16,...f}}>Sin aumentos registrados.</p>:aumentos.map((a,i)=>(
                   <div key={a.id} style={{display:'flex',gap:12,alignItems:'center',padding:'12px 16px',background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:10,marginBottom:8}}>
