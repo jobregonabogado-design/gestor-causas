@@ -7,9 +7,10 @@ const f = { fontFamily:"'Inter',sans-serif" }
 export default function GmailIntegracion() {
   const [conectado, setConectado] = useState(isGmailConnected())
   const [cargando, setCargando] = useState(false)
-  const [notificaciones, setNotificaciones] = useState([])
   const [procesando, setProcesando] = useState(false)
-  const [resultado, setResultado] = useState(null)
+  const [agregados, setAgregados] = useState([])      // lo que se agregó automáticamente
+  const [errores, setErrores] = useState([])           // lo que falló
+  const [sinCausa, setSinCausa] = useState([])         // correos sin causa vigente
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -26,63 +27,118 @@ export default function GmailIntegracion() {
     }
   }, [])
 
-  const cargarNotificaciones = async () => {
+  const revisarCorreos = async () => {
     setCargando(true)
-    const data = await fetchNotificacionesPJUD()
-    
-    // Obtener causas vigentes (no terminadas)
-    const { data: causasVigentes } = await supabase
-      .from('causas')
-      .select('ruc, estado')
-      .neq('estado', 'terminada')
-    
-    const rucsVigentes = new Set((causasVigentes || []).map(c => c.ruc))
-    
-    // Filtrar por causas vigentes y deduplicar por RUC
-    const vistos = new Set()
-    const filtradas = data.filter(n => {
-      const rucLimpio = n.ruc?.replace(/\s/g, '')
-      if (!rucsVigentes.has(rucLimpio)) return false
-      if (vistos.has(rucLimpio)) return false
-      vistos.add(rucLimpio)
-      return true
-    })
-    
-    setNotificaciones(filtradas)
-    setCargando(false)
-  }
+    setAgregados([])
+    setErrores([])
+    setSinCausa([])
 
-  const importarAudiencia = async (n) => {
-    if (!n.audiencia?.fecha) { alert('No se pudo detectar la fecha de esta audiencia'); return }
-    setProcesando(true)
-    const { error } = await supabase.from('audiencias').insert({
-      fecha: n.audiencia.fecha,
-      hora: n.audiencia.hora || '',
-      tipo: n.audiencia.tipo || 'AUDIENCIA',
-      tribunal: n.audiencia.tribunal || '',
-      ruc: n.ruc,
-      rit: n.rit || '',
-      imputado: '',
-      notas: `Importado automáticamente desde correo PJUD\nAsunto: ${n.asunto}`,
-    })
-    if (!error) {
-      setResultado({ ok: true, msg: `Audiencia agregada al calendario — RUC ${n.ruc}` })
-      setNotificaciones(prev => prev.filter(x => x !== n))
-    } else {
-      setResultado({ ok: false, msg: 'Error al agregar: ' + error.message })
+    try {
+      // 1. Obtener notificaciones de Gmail
+      const notificaciones = await fetchNotificacionesPJUD()
+
+      // 2. Obtener causas vigentes
+      const { data: causasVigentes } = await supabase
+        .from('causas')
+        .select('id, ruc, rit, imputado, estado')
+        .neq('estado', 'terminada')
+
+      const causasPorRuc = {}
+      ;(causasVigentes || []).forEach(c => {
+        causasPorRuc[c.ruc?.replace(/\s/g, '')] = c
+      })
+
+      // 3. Deduplicar por RUC+fecha para no agregar dos veces
+      const { data: audienciasExistentes } = await supabase
+        .from('audiencias')
+        .select('ruc, fecha, tipo')
+
+      const claveExistente = new Set(
+        (audienciasExistentes || []).map(a => `${a.ruc}-${a.fecha}-${a.tipo}`)
+      )
+
+      const nuevosAgregados = []
+      const nuevosErrores = []
+      const sinCausaVigente = []
+
+      setProcesando(true)
+
+      for (const n of notificaciones) {
+        const rucLimpio = n.ruc?.replace(/\s/g, '')
+        const causa = causasPorRuc[rucLimpio]
+
+        // Sin causa vigente
+        if (!causa) {
+          sinCausaVigente.push(n)
+          continue
+        }
+
+        // Sin audiencia detectada
+        if (!n.audiencia?.fecha) {
+          nuevosErrores.push({ ...n, motivo: 'No se detectó fecha de audiencia en el correo' })
+          continue
+        }
+
+        // Ya existe esta audiencia
+        const clave = `${rucLimpio}-${n.audiencia.fecha}-${n.audiencia.tipo}`
+        if (claveExistente.has(clave)) {
+          continue // ya está, ignorar silenciosamente
+        }
+
+        // Agregar audiencia
+        const { data, error } = await supabase.from('audiencias').insert({
+          causa_id: causa.id,
+          ruc: rucLimpio,
+          rit: n.rit || causa.rit || '',
+          fecha: n.audiencia.fecha,
+          hora: n.audiencia.hora || '',
+          tipo: n.audiencia.tipo || 'AUDIENCIA',
+          tribunal: n.audiencia.tribunal || '',
+          resultado: '',
+          notas: `Importado automáticamente desde correo ${n.tipo}\nAsunto: ${n.asunto}\nFecha correo: ${new Date(n.fecha_correo).toLocaleDateString('es-CL')}`,
+        }).select().single()
+
+        if (!error && data) {
+          claveExistente.add(clave)
+          nuevosAgregados.push({
+            id: data.id,
+            ruc: rucLimpio,
+            imputado: causa.imputado,
+            tipo: n.audiencia.tipo,
+            fecha: n.audiencia.fecha,
+            hora: n.audiencia.hora,
+            tribunal: n.audiencia.tribunal,
+            asunto: n.asunto,
+            origen: n.tipo,
+          })
+        } else if (error) {
+          nuevosErrores.push({ ...n, motivo: error.message })
+        }
+      }
+
+      setAgregados(nuevosAgregados)
+      setErrores(nuevosErrores)
+      setSinCausa(sinCausaVigente)
+    } catch (e) {
+      setErrores([{ asunto: 'Error general', motivo: e.message }])
     }
+
+    setCargando(false)
     setProcesando(false)
-    setTimeout(() => setResultado(null), 4000)
   }
 
-  const ignorar = (n) => setNotificaciones(prev => prev.filter(x => x !== n))
+  const eliminarAudiencia = async (item) => {
+    if (!window.confirm(`¿Eliminar audiencia ${item.tipo} del ${item.fecha}?`)) return
+    await supabase.from('audiencias').delete().eq('id', item.id)
+    setAgregados(prev => prev.filter(x => x.id !== item.id))
+  }
 
   if (!conectado) return (
     <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:16, padding:32, textAlign:'center' }}>
       <div style={{ fontSize:40, marginBottom:12 }}>📧</div>
       <div style={{ fontSize:17, fontWeight:700, color:'#0f172a', marginBottom:8, ...f }}>Conectar Gmail</div>
       <div style={{ fontSize:13, color:'#94a3b8', marginBottom:24, maxWidth:400, margin:'0 auto 24px', lineHeight:1.7, ...f }}>
-        Conecta <strong>notificacion.defensapenal@gmail.com</strong> para importar automáticamente las audiencias notificadas por el PJUD y la Fiscalía.
+        Conecta tu correo para importar automáticamente las audiencias notificadas por el PJUD y la Fiscalía.
       </div>
       {cargando ? (
         <div style={{ fontSize:13, color:'#94a3b8', ...f }}>Conectando...</div>
@@ -94,17 +150,21 @@ export default function GmailIntegracion() {
     </div>
   )
 
+  const hayResultados = agregados.length > 0 || errores.length > 0 || sinCausa.length > 0
+
   return (
     <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:16, padding:28 }}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
+
+      {/* HEADER */}
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:24 }}>
         <div>
           <div style={{ fontSize:16, fontWeight:700, color:'#0f172a', ...f }}>📧 Gmail conectado</div>
-          <div style={{ fontSize:12, color:'#94a3b8', marginTop:3, ...f }}>notificacion.defensapenal@gmail.com</div>
+          <div style={{ fontSize:12, color:'#94a3b8', marginTop:3, ...f }}>Importación automática desde PJUD y Fiscalía</div>
         </div>
         <div style={{ display:'flex', gap:8 }}>
-          <button onClick={cargarNotificaciones} disabled={cargando}
-            style={{ background:'linear-gradient(135deg,#2563eb,#1d4ed8)', color:'#fff', border:'none', borderRadius:8, padding:'8px 18px', fontSize:13, fontWeight:600, cursor:'pointer', ...f }}>
-            {cargando ? 'Cargando...' : '🔄 Revisar correos'}
+          <button onClick={revisarCorreos} disabled={cargando || procesando}
+            style={{ background:'linear-gradient(135deg,#2563eb,#1d4ed8)', color:'#fff', border:'none', borderRadius:8, padding:'9px 20px', fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:'0 4px 12px rgba(37,99,235,0.25)', ...f }}>
+            {cargando ? '⏳ Revisando...' : '🔄 Revisar correos'}
           </button>
           <button onClick={() => { logoutGmail(); setConectado(false) }}
             style={{ background:'#fff', border:'1.5px solid #e2e8f0', borderRadius:8, padding:'8px 14px', fontSize:12, color:'#94a3b8', cursor:'pointer', ...f }}>
@@ -113,62 +173,113 @@ export default function GmailIntegracion() {
         </div>
       </div>
 
-      {resultado && (
-        <div style={{ background: resultado.ok ? '#f0fdf4' : '#fef2f2', border:`1px solid ${resultado.ok?'#a7f3d0':'#fecaca'}`, borderRadius:10, padding:'12px 16px', marginBottom:16, fontSize:13, color: resultado.ok ? '#059669' : '#dc2626', fontWeight:500, ...f }}>
-          {resultado.ok ? '✅' : '❌'} {resultado.msg}
+      {/* LOADING */}
+      {(cargando || procesando) && (
+        <div style={{ background:'#f0f7ff', border:'1px solid #bfdbfe', borderRadius:12, padding:'16px 20px', marginBottom:20, display:'flex', alignItems:'center', gap:12 }}>
+          <div style={{ width:20, height:20, border:'2px solid #2563eb', borderTopColor:'transparent', borderRadius:'50%', animation:'spin 0.8s linear infinite' }}/>
+          <span style={{ fontSize:13, color:'#2563eb', fontWeight:500, ...f }}>Leyendo correos y procesando audiencias automáticamente...</span>
+          <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
         </div>
       )}
 
-      {notificaciones.length === 0 && !cargando && (
-        <div style={{ textAlign:'center', padding:'32px 20px', background:'#f8fafc', borderRadius:12, border:'1.5px dashed #e2e8f0' }}>
-          <div style={{ fontSize:28, marginBottom:8 }}>📭</div>
-          <div style={{ fontSize:13, color:'#94a3b8', ...f }}>Haz clic en "Revisar correos" para buscar notificaciones del PJUD y Fiscalía</div>
+      {/* ESTADO INICIAL */}
+      {!hayResultados && !cargando && (
+        <div style={{ textAlign:'center', padding:'40px 20px', background:'#f8fafc', borderRadius:12, border:'1.5px dashed #e2e8f0' }}>
+          <div style={{ fontSize:32, marginBottom:8 }}>📭</div>
+          <div style={{ fontSize:13, color:'#94a3b8', ...f }}>Haz clic en "Revisar correos" para importar automáticamente las audiencias notificadas</div>
         </div>
       )}
 
-      <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-        {notificaciones.map((n, i) => (
-          <div key={i} style={{ background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:12, padding:'16px 18px' }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:10 }}>
-              <div>
-                <span style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:1, color: n.tipo==='PJUD'?'#2563eb':'#7c3aed', background: n.tipo==='PJUD'?'#eff6ff':'#faf5ff', padding:'3px 8px', borderRadius:20, border:`1px solid ${n.tipo==='PJUD'?'#bfdbfe':'#ddd6fe'}`, ...f }}>
-                  {n.tipo}
-                </span>
-                <div style={{ fontSize:13, fontWeight:600, color:'#0f172a', marginTop:6, ...f }}>{n.asunto}</div>
+      {/* BANNER: AUDIENCIAS AGREGADAS */}
+      {agregados.length > 0 && (
+        <div style={{ background:'linear-gradient(135deg,#f0fdf4,#dcfce7)', border:'1.5px solid #a7f3d0', borderRadius:14, padding:'16px 20px', marginBottom:16 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:14 }}>
+            <div style={{ width:32, height:32, background:'linear-gradient(135deg,#10b981,#059669)', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, flexShrink:0 }}>✅</div>
+            <div>
+              <div style={{ fontSize:14, fontWeight:700, color:'#065f46', ...f }}>
+                {agregados.length} audiencia{agregados.length > 1 ? 's' : ''} agregada{agregados.length > 1 ? 's' : ''} automáticamente
               </div>
-              <div style={{ fontSize:11, color:'#94a3b8', ...f }}>{new Date(n.fecha_correo).toLocaleDateString('es-CL')}</div>
-            </div>
-
-            <div style={{ display:'flex', gap:12, marginBottom:12, flexWrap:'wrap' }}>
-              {n.ruc && <div style={{ fontSize:11, color:'#64748b', ...f }}>RUC: <span style={{ fontFamily:'monospace', fontWeight:600, color:'#0f172a' }}>{n.ruc}</span></div>}
-              {n.rit && <div style={{ fontSize:11, color:'#64748b', ...f }}>RIT: <span style={{ fontFamily:'monospace', fontWeight:600, color:'#0f172a' }}>{n.rit}</span></div>}
-            </div>
-
-            {n.audiencia?.fecha && (
-              <div style={{ background:'#f0f7ff', border:'1px solid #bfdbfe', borderRadius:8, padding:'10px 14px', marginBottom:12 }}>
-                <div style={{ fontSize:10, color:'#64748b', textTransform:'uppercase', letterSpacing:1.2, marginBottom:4, fontWeight:600, ...f }}>Audiencia detectada</div>
-                <div style={{ display:'flex', gap:16, flexWrap:'wrap' }}>
-                  {n.audiencia.fecha && <span style={{ fontSize:12, fontWeight:600, color:'#2563eb', ...f }}>📅 {n.audiencia.fecha}</span>}
-                  {n.audiencia.hora && <span style={{ fontSize:12, color:'#475569', ...f }}>🕐 {n.audiencia.hora}</span>}
-                  {n.audiencia.tipo && <span style={{ fontSize:12, color:'#475569', ...f }}>⚖ {n.audiencia.tipo}</span>}
-                  {n.audiencia.tribunal && <span style={{ fontSize:12, color:'#475569', ...f }}>🏛 {n.audiencia.tribunal.substring(0,30)}</span>}
-                </div>
-              </div>
-            )}
-
-            <div style={{ display:'flex', gap:8 }}>
-              <button onClick={() => importarAudiencia(n)} disabled={procesando || !n.audiencia?.fecha}
-                style={{ background: n.audiencia?.fecha ? 'linear-gradient(135deg,#2563eb,#1d4ed8)' : '#e2e8f0', color: n.audiencia?.fecha ? '#fff' : '#94a3b8', border:'none', borderRadius:7, padding:'7px 16px', fontSize:12, fontWeight:600, cursor: n.audiencia?.fecha ? 'pointer' : 'not-allowed', ...f }}>
-                {procesando ? 'Importando...' : '+ Agregar al calendario'}
-              </button>
-              <button onClick={() => ignorar(n)}
-                style={{ background:'#fff', border:'1.5px solid #e2e8f0', borderRadius:7, padding:'7px 14px', fontSize:12, color:'#94a3b8', cursor:'pointer', ...f }}>
-                Ignorar
-              </button>
+              <div style={{ fontSize:11, color:'#059669', ...f }}>Revisa que los datos sean correctos. Si hay un error, puedes eliminarla.</div>
             </div>
           </div>
-        ))}
-      </div>
+          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+            {agregados.map((item, i) => (
+              <div key={i} style={{ background:'#fff', border:'1px solid #a7f3d0', borderRadius:10, padding:'12px 16px', display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12 }}>
+                <div style={{ flex:1 }}>
+                  <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:4, flexWrap:'wrap' }}>
+                    <span style={{ fontSize:10, fontWeight:700, background: item.origen==='PJUD'?'#eff6ff':'#faf5ff', color: item.origen==='PJUD'?'#2563eb':'#7c3aed', border:`1px solid ${item.origen==='PJUD'?'#bfdbfe':'#ddd6fe'}`, padding:'2px 8px', borderRadius:20, textTransform:'uppercase', ...f }}>{item.origen}</span>
+                    <span style={{ fontSize:12, fontWeight:600, color:'#0f172a', ...f }}>{item.tipo}</span>
+                  </div>
+                  <div style={{ fontSize:12, color:'#64748b', ...f }}>
+                    RUC <span style={{ fontFamily:'monospace', fontWeight:600, color:'#0f172a' }}>{item.ruc}</span>
+                    {item.imputado && <span style={{ marginLeft:8 }}>· {item.imputado.split('|')[0]}</span>}
+                  </div>
+                  <div style={{ fontSize:12, color:'#059669', fontWeight:500, marginTop:4, ...f }}>
+                    📅 {item.fecha}{item.hora ? ` · 🕐 ${item.hora}` : ''}{item.tribunal ? ` · 🏛 ${item.tribunal?.substring(0,30)}` : ''}
+                  </div>
+                </div>
+                <button onClick={() => eliminarAudiencia(item)}
+                  style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:7, padding:'5px 12px', fontSize:11, color:'#dc2626', cursor:'pointer', fontWeight:600, flexShrink:0, ...f }}>
+                  ✕ Eliminar
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* BANNER: ERRORES */}
+      {errores.length > 0 && (
+        <div style={{ background:'#fef2f2', border:'1.5px solid #fecaca', borderRadius:14, padding:'16px 20px', marginBottom:16 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
+            <div style={{ width:32, height:32, background:'linear-gradient(135deg,#ef4444,#dc2626)', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16 }}>⚠️</div>
+            <div style={{ fontSize:14, fontWeight:700, color:'#991b1b', ...f }}>
+              {errores.length} correo{errores.length > 1 ? 's' : ''} no pudo{errores.length > 1 ? 'ron' : ''} procesarse
+            </div>
+          </div>
+          <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+            {errores.map((e, i) => (
+              <div key={i} style={{ background:'#fff', border:'1px solid #fecaca', borderRadius:8, padding:'10px 14px' }}>
+                <div style={{ fontSize:12, fontWeight:600, color:'#0f172a', marginBottom:2, ...f }}>{e.asunto}</div>
+                <div style={{ fontSize:11, color:'#dc2626', ...f }}>⚠ {e.motivo}</div>
+                {e.ruc && <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>RUC: {e.ruc}</div>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* BANNER: SIN CAUSA VIGENTE */}
+      {sinCausa.length > 0 && (
+        <div style={{ background:'#f8fafc', border:'1.5px solid #e2e8f0', borderRadius:14, padding:'16px 20px', marginBottom:16 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
+            <div style={{ width:32, height:32, background:'#e2e8f0', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16 }}>📂</div>
+            <div style={{ fontSize:14, fontWeight:700, color:'#475569', ...f }}>
+              {sinCausa.length} correo{sinCausa.length > 1 ? 's' : ''} sin causa vigente
+            </div>
+          </div>
+          <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+            {sinCausa.map((n, i) => (
+              <div key={i} style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:8, padding:'10px 14px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                <div>
+                  <div style={{ fontSize:12, fontWeight:600, color:'#0f172a', ...f }}>{n.asunto}</div>
+                  {n.ruc && <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>RUC: <span style={{ fontFamily:'monospace' }}>{n.ruc}</span> — no existe o está terminada</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* RESUMEN FINAL */}
+      {hayResultados && !cargando && (
+        <div style={{ textAlign:'center', marginTop:8 }}>
+          <button onClick={() => { setAgregados([]); setErrores([]); setSinCausa([]) }}
+            style={{ background:'#fff', border:'1.5px solid #e2e8f0', borderRadius:8, padding:'7px 18px', fontSize:12, color:'#94a3b8', cursor:'pointer', ...f }}>
+            Limpiar resultados
+          </button>
+        </div>
+      )}
     </div>
   )
 }
