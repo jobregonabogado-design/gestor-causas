@@ -75,13 +75,14 @@ async function gmailFetch(path, options = {}) {
 
 export async function fetchNotificacionesPJUD() {
   try {
-    // Buscar correos de notificacion_judicial y fiscalia en los últimos 30 días
-    const query = 'from:(notificacion_judicial OR minpublico.cl OR fiscaliadechile.cl) newer_than:30d'
-    const data = await gmailFetch(`/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=50`)
+    // Buscar correos judiciales — ampliado para capturar todos los remitentes relevantes
+    const query = 'from:(notificacion_judicial OR minpublico.cl OR fiscaliadechile.cl OR pjud.cl OR notificacion OR judicial) newer_than:60d'
+    const data = await gmailFetch(`/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=200`)
     if (!data.messages) return []
-    
+
     const mensajes = []
-    for (const msg of data.messages.slice(0, 20)) {
+    // Procesar hasta 100 correos (antes era 20)
+    for (const msg of data.messages.slice(0, 100)) {
       try {
         const detalle = await gmailFetch(`/gmail/v1/users/me/messages/${msg.id}?format=full`)
         const parsed = parsearCorreo(detalle)
@@ -124,7 +125,7 @@ function parsearCorreo(msg) {
   const asunto = getHeader(headers, 'subject')
   const de = getHeader(headers, 'from')
   const cuerpo = getBody(msg.payload)
-  
+
   let resultado = null
 
   // Tipo 1: PJUD — "Notificación en RUC: XXXX, RIT XXXX"
@@ -132,24 +133,24 @@ function parsearCorreo(msg) {
   if (matchPJUD) {
     resultado = {
       tipo: 'PJUD',
-      ruc: matchPJUD[1],
+      ruc: matchPJUD[1].replace(/\s/g, ''),
       rit: matchPJUD[2],
       asunto,
-      cuerpo: cuerpo.substring(0, 500),
+      cuerpo: cuerpo.substring(0, 1000),
       fecha_correo: new Date(parseInt(msg.internalDate)).toISOString(),
       audiencia: extraerAudienciaPJUD(cuerpo, asunto),
     }
   }
 
-  // Tipo 2: Fiscalía — "Entrevista causa RUC XXXX"
+  // Tipo 2: Fiscalía — "Entrevista causa RUC XXXX" o "RUC XXXX"
   const matchFiscalia = asunto.match(/RUC[:\s]+([0-9]+-[0-9A-Za-z]+)/i)
-  if (!resultado && matchFiscalia && (de.includes('minpublico') || de.includes('fiscalia'))) {
+  if (!resultado && matchFiscalia && (de.includes('minpublico') || de.includes('fiscalia') || de.includes('Fiscalia'))) {
     resultado = {
       tipo: 'FISCALIA',
-      ruc: matchFiscalia[1],
+      ruc: matchFiscalia[1].replace(/\s/g, ''),
       rit: '',
       asunto,
-      cuerpo: cuerpo.substring(0, 500),
+      cuerpo: cuerpo.substring(0, 1000),
       fecha_correo: new Date(parseInt(msg.internalDate)).toISOString(),
       audiencia: extraerAudienciaFiscalia(cuerpo, asunto),
     }
@@ -159,9 +160,8 @@ function parsearCorreo(msg) {
 }
 
 function extraerAudienciaPJUD(cuerpo, asunto) {
-  // Buscar fecha en formato DD/MM/YYYY o DD de mes de YYYY
   const meses = {enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,julio:7,agosto:8,septiembre:9,octubre:10,noviembre:11,diciembre:12}
-  
+
   let fecha = null, hora = null, tipo = null, tribunal = null
 
   // Fecha escrita: "26 de mayo de 2026"
@@ -175,29 +175,40 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
     }
   }
 
+  // Fecha numérica: "26/05/2026" o "26-05-2026"
+  if (!fecha) {
+    const matchFechaNum = cuerpo.match(/(\d{2})[\/\-](\d{2})[\/\-](\d{4})/)
+    if (matchFechaNum) {
+      fecha = `${matchFechaNum[3]}-${matchFechaNum[2]}-${matchFechaNum[1]}`
+    }
+  }
+
   // Hora: "13:30" o "13:30 horas"
   const matchHora = cuerpo.match(/(\d{1,2}:\d{2})\s*(horas?|hrs?)?/i)
   if (matchHora) hora = matchHora[1]
 
-  // Tipo audiencia desde cuerpo
+  // Tipo audiencia
   if (cuerpo.match(/juicio oral/i)) tipo = 'JUICIO ORAL'
-  else if (cuerpo.match(/preparaci[oó]n.*juicio/i)) tipo = 'APJO'
+  else if (cuerpo.match(/preparaci[oó]n.*juicio|APJO/i)) tipo = 'APJO'
   else if (cuerpo.match(/abreviado/i)) tipo = 'ABREVIADO'
   else if (cuerpo.match(/formalizaci[oó]n/i)) tipo = 'FORMALIZACION'
-  else if (cuerpo.match(/cautelar/i)) tipo = 'CAUTELA DE GARANTIAS'
+  else if (cuerpo.match(/cautelar|garant[ií]a/i)) tipo = 'CAUTELA DE GARANTIAS'
   else if (cuerpo.match(/reprogramac/i)) tipo = 'REPROGRAMACION'
+  else if (cuerpo.match(/coordinaci[oó]n/i)) tipo = 'COORDINACION JO'
+  else if (cuerpo.match(/control.*detenci[oó]n/i)) tipo = 'CONTROL DETENCION'
+  else if (cuerpo.match(/revisi[oó]n.*PP|rev.*pp/i)) tipo = 'REVISION PP'
   else tipo = 'AUDIENCIA'
 
-  // Tribunal desde cuerpo
-  const matchTribunal = cuerpo.match(/(?:el\s+)?([A-Z\s]+(?:JUZGADO|TRIBUNAL|TOP|JG|ICA)[A-Z\s]+)/i)
-  if (matchTribunal) tribunal = matchTribunal[1].trim().substring(0, 50)
+  // Tribunal
+  const matchTribunal = cuerpo.match(/((?:\d+[°º]?\s+)?(?:Juzgado|Tribunal|TOP|JG)[^,\n\.]{3,50})/i)
+  if (matchTribunal) tribunal = matchTribunal[1].trim().substring(0, 60)
 
   return { fecha, hora, tipo, tribunal }
 }
 
 function extraerAudienciaFiscalia(cuerpo, asunto) {
   const meses = {enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,julio:7,agosto:8,septiembre:9,octubre:10,noviembre:11,diciembre:12}
-  
+
   let fecha = null, hora = null, tipo = 'ENTREVISTA'
 
   const matchFecha = cuerpo.match(/(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/i)
@@ -207,6 +218,13 @@ function extraerAudienciaFiscalia(cuerpo, asunto) {
       const d = String(matchFecha[1]).padStart(2,'0')
       const m = String(mes).padStart(2,'0')
       fecha = `${matchFecha[3]}-${m}-${d}`
+    }
+  }
+
+  if (!fecha) {
+    const matchFechaNum = cuerpo.match(/(\d{2})[\/\-](\d{2})[\/\-](\d{4})/)
+    if (matchFechaNum) {
+      fecha = `${matchFechaNum[3]}-${matchFechaNum[2]}-${matchFechaNum[1]}`
     }
   }
 

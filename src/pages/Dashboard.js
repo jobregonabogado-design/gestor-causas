@@ -448,10 +448,21 @@ export default function Dashboard({ session }) {
     const { data, error } = await supabase.from('causas').select('*').order('created_at', { ascending:false })
     if (!error) {
       const causasActualizadas = (data||[]).map(c => {
-        const subestadoAuto = c.estado === 'vigente'
-          ? (calcularSubestado(c.plazo) || c.subestado)
-          : c.subestado
-        return { ...c, tribunal: normT(c.tribunal), subestado: subestadoAuto }
+        // Solo recalcular subestado si es vigente Y no tiene subestado manual especial
+        const subestadosEspeciales = ['apjo','juicio_oral']
+        let subestado = c.subestado
+        if (c.estado === 'vigente' && !subestadosEspeciales.includes(c.subestado)) {
+          // Recalcular solo si tiene plazo en formato reconocible
+          const autoSub = calcularSubestado(c.plazo)
+          // Si el plazo es futuro y subestado dice vencido, corregir
+          if (autoSub !== 'vencido' && c.subestado === 'vencido') {
+            subestado = autoSub // corregir error
+          } else if (autoSub) {
+            subestado = autoSub // aplicar auto
+          }
+          // Si no hay plazo o plazo no reconocible, respetar el subestado guardado
+        }
+        return { ...c, tribunal: normT(c.tribunal), subestado }
       })
       setCausas(causasActualizadas)
     }
