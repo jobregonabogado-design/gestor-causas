@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head><title>Conectando Gmail...</title></head>
+<body>
+<script>
+  const hash = window.location.hash.substring(1)
+  const params = new URLSearchParams(hash)
+  const token = params.get('access_token')
+  if (token) {
+    localStorage.setItem('gmail_access_token', token)
+    window.location.href = '/?gmail_connected=1'
+  } else {
+    const search = new URLSearchParams(window.location.search)
+    const code = search.get('code')
+    if (code) {
+      localStorage.setItem('gmail_auth_code', code)
+      window.location.href = '/?gmail_connected=1'
+    } else {
+      window.location.href = '/?gmail_error=1'
+    }
+  }
+</script>
+<p>Conectando con Gmail...</p>
+</body>
+</html>
