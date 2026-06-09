@@ -95,9 +95,9 @@ function PanelActividad({ onClose }) {
             <button onClick={onClose} style={{ background:'rgba(255,255,255,0.1)', border:'none', borderRadius:8, padding:'6px 12px', color:'#fff', cursor:'pointer', fontSize:13 }}>✕ Cerrar</button>
           </div>
           <div style={{ display:'flex', gap:6 }}>
-            {['hoy','semana','mes'].map(f => (
-              <button key={f} onClick={() => setFiltro(f)} style={{ padding:'5px 14px', borderRadius:20, fontSize:11, fontWeight:600, border:'none', cursor:'pointer', textTransform:'uppercase', letterSpacing:0.5, background: filtro===f ? '#2563eb' : 'rgba(255,255,255,0.1)', color: filtro===f ? '#fff' : '#94a3b8', ...f }}>
-                {f === 'hoy' ? 'Hoy' : f === 'semana' ? '7 días' : '30 días'}
+            {['hoy','semana','mes'].map(opcion => (
+              <button key={opcion} onClick={() => setFiltro(opcion)} style={{ padding:'5px 14px', borderRadius:20, fontSize:11, fontWeight:600, border:'none', cursor:'pointer', textTransform:'uppercase', letterSpacing:0.5, background: filtro===f ? '#2563eb' : 'rgba(255,255,255,0.1)', color: filtro===f ? '#fff' : '#94a3b8', ...f }}>
+                {{opcion === 'hoy' ? 'Hoy' : {opcion === 'semana' ? '7 días' : '30 días'}
               </button>
             ))}
           </div>
