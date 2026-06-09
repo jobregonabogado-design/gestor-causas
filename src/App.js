@@ -192,7 +192,7 @@ function NotifToast({ notif, onClose }) {
       border: `1.5px solid ${esIngreso?'#a7f3d0':'#fecaca'}`,
       borderRadius:12, padding:'14px 18px', minWidth:300, maxWidth:380,
       boxShadow:'0 8px 32px rgba(0,0,0,0.12)',
-      animation:'slideIn 0.3s ease', ...f
+      animation:'slideIn 0.3s ease', fontFamily:"'Inter',sans-serif"
     }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12 }}>
         <div style={{ display:'flex', gap:10, alignItems:'center' }}>
@@ -373,7 +373,7 @@ export default function App() {
             background: esTitular ? 'linear-gradient(135deg,#2563eb,#1d4ed8)' : '#f1f5f9',
             color: esTitular ? '#fff' : '#64748b',
             border: esTitular ? 'none' : '1px solid #e2e8f0',
-            ...f
+            
           }}>
             {esTitular ? '⚖ Titular' : '👤 Asistente'}
           </span>
@@ -385,7 +385,7 @@ export default function App() {
               border: `1.5px solid ${solicitudesPendientes > 0 ? '#fecaca' : '#e2e8f0'}`,
               borderRadius:8, padding:'5px 12px', fontSize:12, cursor:'pointer', fontWeight:600,
               color: solicitudesPendientes > 0 ? '#dc2626' : '#64748b',
-              display:'flex', alignItems:'center', gap:6, ...f
+              display:'flex', alignItems:'center', gap:6, 
             }}>
               👁 Control
               {solicitudesPendientes > 0 && (
