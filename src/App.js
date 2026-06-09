@@ -83,7 +83,7 @@ function PanelActividad({ onClose }) {
   return (
     <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', justifyContent:'flex-end' }}>
       <div style={{ position:'absolute', inset:0, background:'rgba(15,23,42,0.4)', backdropFilter:'blur(4px)' }} onClick={onClose}/>
-      <div style={{ position:'relative', width:520, background:'#fff', height:'100vh', overflowY:'auto', boxShadow:'-8px 0 40px rgba(0,0,0,0.15)', animation:'slideIn 0.3s ease', ...f }}>
+      <div style={{ position:'relative', width:520, background:'#fff', height:'100vh', overflowY:'auto', boxShadow:'-8px 0 40px rgba(0,0,0,0.15)', animation:'slideIn 0.3s ease'}}>
         
         {/* Header */}
         <div style={{ background:'linear-gradient(135deg,#1e293b,#0f172a)', padding:'24px 24px 20px', position:'sticky', top:0, zIndex:10 }}>
@@ -96,7 +96,7 @@ function PanelActividad({ onClose }) {
           </div>
           <div style={{ display:'flex', gap:6 }}>
             {['hoy','semana','mes'].map(opcion => (
-              <button key={opcion} onClick={() => setFiltro(opcion)} style={{ padding:'5px 14px', borderRadius:20, fontSize:11, fontWeight:600, border:'none', cursor:'pointer', textTransform:'uppercase', letterSpacing:0.5, background: filtro===f ? '#2563eb' : 'rgba(255,255,255,0.1)', color: filtro===f ? '#fff' : '#94a3b8', ...f }}>
+              <button key={opcion} onClick={() => setFiltro(opcion)} style={{ padding:'5px 14px', borderRadius:20, fontSize:11, fontWeight:600, border:'none', cursor:'pointer', textTransform:'uppercase', letterSpacing:0.5, background: filtro===opcion ? '#2563eb' : 'rgba(255,255,255,0.1)', color: filtro===opcion ? '#fff' : '#94a3b8'}}>
                 {{opcion === 'hoy' ? 'Hoy' : {opcion === 'semana' ? '7 días' : '30 días'}
               </button>
             ))}
