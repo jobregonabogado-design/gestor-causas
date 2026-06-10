@@ -875,7 +875,7 @@ export default function Dashboard({ session }) {
         {loading?(
           <div style={{textAlign:'center',padding:60,color:'#94a3b8',fontSize:14,...f}}>Cargando causas...</div>
         ):(
-          <div className='table-wrap' style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:16,overflow:'hidden',boxShadow:'0 2px 12px rgba(0,0,0,0.05)'}}>
+          <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:16,boxShadow:'0 2px 12px rgba(0,0,0,0.05)',overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
             <table style={{width:'100%',borderCollapse:'collapse'}}>
               <thead>
                 <tr style={{borderBottom:'2px solid #f1f5f9',background:'#fafbff'}}>
