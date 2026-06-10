@@ -230,7 +230,7 @@ export default function Calendario() {
         {loading ? (
           <div style={{textAlign:"center",padding:60,color:"#94a3b8",fontSize:14,...f}}>Cargando audiencias...</div>
         ) : !vistaLista ? (
-          <div style={{display:"grid",gridTemplateColumns:"1fr",gap:20}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr",gap:20,overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
             {/* Calendario */}
             <div style={{background:"#fff",borderRadius:16,border:"1px solid #e2e8f0",overflow:"hidden",boxShadow:"0 1px 8px rgba(0,0,0,0.05)"}}>
               <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",background:"#0f172a"}}>
