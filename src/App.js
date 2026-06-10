@@ -83,7 +83,7 @@ function PanelActividad({ onClose }) {
   return (
     <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', justifyContent:'flex-end' }}>
       <div style={{ position:'absolute', inset:0, background:'rgba(15,23,42,0.4)' }} onClick={onClose}/>
-      <div style={{ position:'relative', width:520, background:'#fff', height:'100vh', overflowY:'auto', boxShadow:'-8px 0 40px rgba(0,0,0,0.15)', animation:'slideIn 0.3s ease', ...f }}>
+      <div style={{ position:'relative', width:520, background:'#fff', height:'100vh', overflowY:'auto', boxShadow:'-8px 0 40px rgba(0,0,0,0.15)', animation:'slideIn 0.3s ease', fontFamily:"'Inter',sans-serif" }}>
         
         {/* Header */}
         <div style={{ background:'linear-gradient(135deg,#1e293b,#0f172a)', padding:'24px 24px 20px', position:'sticky', top:0, zIndex:10 }}>
@@ -95,9 +95,9 @@ function PanelActividad({ onClose }) {
             <button onClick={onClose} style={{ background:'rgba(255,255,255,0.1)', border:'none', borderRadius:8, padding:'6px 12px', color:'#fff', cursor:'pointer', fontSize:13 }}>✕ Cerrar</button>
           </div>
           <div style={{ display:'flex', gap:6 }}>
-            {['hoy','semana','mes'].map(f => (
-              <button key={f} onClick={() => setFiltro(f)} style={{ padding:'5px 14px', borderRadius:20, fontSize:11, fontWeight:600, border:'none', cursor:'pointer', textTransform:'uppercase', letterSpacing:0.5, background: filtro===f ? '#2563eb' : 'rgba(255,255,255,0.1)', color: filtro===f ? '#fff' : '#94a3b8', ...f }}>
-                {f === 'hoy' ? 'Hoy' : f === 'semana' ? '7 días' : '30 días'}
+            {['hoy','semana','mes'].map(opcion => (
+              <button key={opcion} onClick={() => setFiltro(opcion)} style={{ padding:'5px 14px', borderRadius:20, fontSize:11, fontWeight:600, border:'none', cursor:'pointer', textTransform:'uppercase', letterSpacing:0.5, background: filtro===opcion ? '#2563eb' : 'rgba(255,255,255,0.1)', color: filtro===opcion ? '#fff' : '#94a3b8', fontFamily:"'Inter',sans-serif" }}>
+                {opcion === 'hoy' ? 'Hoy' : f === 'semana' ? '7 días' : '30 días'}
               </button>
             ))}
           </div>
@@ -192,7 +192,7 @@ function NotifToast({ notif, onClose }) {
       border: `1.5px solid ${esIngreso?'#a7f3d0':'#fecaca'}`,
       borderRadius:12, padding:'14px 18px', minWidth:300, maxWidth:380,
       boxShadow:'0 8px 32px rgba(0,0,0,0.12)',
-      animation:'slideIn 0.3s ease', ...f
+      animation:'slideIn 0.3s ease', fontFamily:"'Inter',sans-serif"
     }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12 }}>
         <div style={{ display:'flex', gap:10, alignItems:'center' }}>
@@ -373,7 +373,7 @@ export default function App() {
             background: esTitular ? 'linear-gradient(135deg,#2563eb,#1d4ed8)' : '#f1f5f9',
             color: esTitular ? '#fff' : '#64748b',
             border: esTitular ? 'none' : '1px solid #e2e8f0',
-            ...f
+            fontFamily:"'Inter',sans-serif"
           }}>
             {esTitular ? '⚖ Titular' : '👤 Asistente'}
           </span>
@@ -385,7 +385,7 @@ export default function App() {
               border: `1.5px solid ${solicitudesPendientes > 0 ? '#fecaca' : '#e2e8f0'}`,
               borderRadius:8, padding:'5px 12px', fontSize:12, cursor:'pointer', fontWeight:600,
               color: solicitudesPendientes > 0 ? '#dc2626' : '#64748b',
-              display:'flex', alignItems:'center', gap:6, ...f
+              display:'flex', alignItems:'center', gap:6, fontFamily:"'Inter',sans-serif"
             }}>
               👁 Control
               {solicitudesPendientes > 0 && (
