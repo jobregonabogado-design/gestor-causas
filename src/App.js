@@ -424,7 +424,7 @@ export default function App() {
       </nav>
 
       <div className="page-in" key={pagina}>
-        {pagina === 'causas' && <Dashboard session={session} userRol={userRol} registrarActividad={registrarActividad} />}
+        {pagina === 'causas' && <Dashboard session={session} />}
         {pagina === 'calendario' && <Calendario />}
       </div>
     </div>
