@@ -97,7 +97,7 @@ function PanelActividad({ onClose }) {
           <div style={{ display:'flex', gap:6 }}>
             {['hoy','semana','mes'].map(opcion => (
               <button key={opcion} onClick={() => setFiltro(opcion)} style={{ padding:'5px 14px', borderRadius:20, fontSize:11, fontWeight:600, border:'none', cursor:'pointer', textTransform:'uppercase', letterSpacing:0.5, background: filtro===opcion ? '#2563eb' : 'rgba(255,255,255,0.1)', color: filtro===opcion ? '#fff' : '#94a3b8'}}>
-                {{opcion === 'hoy' ? 'Hoy' : {opcion === 'semana' ? '7 días' : '30 días'}
+                {opcion === 'hoy' ? 'Hoy' : opcion === 'semana' ? '7 días' : '30 días'}
               </button>
             ))}
           </div>
