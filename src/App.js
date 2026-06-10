@@ -249,8 +249,8 @@ export default function App() {
       setSession(session)
       if (session) {
         const rol = await cargarRol(session.user.id)
-        if (rol) {
-          await registrarActividad('ingreso', `Ingresó a LexOffice`, { pagina: 'inicio' })
+        
+      
         }
       }
       setLoading(false)
