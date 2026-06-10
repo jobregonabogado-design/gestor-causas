@@ -372,7 +372,7 @@ export default function App() {
           <div style={{ width:34, height:34, background:'linear-gradient(135deg,#2563eb,#1d4ed8)', borderRadius:9, display:'flex', alignItems:'center', justifyContent:'center', fontSize:17, boxShadow:'0 4px 10px rgba(37,99,235,0.25)' }}>⚖</div>
           <div>
             <div style={{ fontFamily:'Inter,sans-serif', fontSize:15, fontWeight:800, color:'#0f172a', letterSpacing:'-0.5px' }}>LexOffice</div>
-            <div style={{ fontSize:9, color:'#94a3b8', letterSpacing:2, textTransform:'uppercase', fontWeight:500, marginTop:-1 }}>Gestión Penal</div>
+            <div style={{ fontSize:9, color:'#94a3b8', letterSpacing:2, textTransform:'uppercase', fontWeight:500, marginTop:-1 }}>Gestión Penal </div>
           </div>
         </div>
 
