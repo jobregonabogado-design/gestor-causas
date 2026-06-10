@@ -117,7 +117,7 @@ export default function Calendario() {
   const [mes, setMes] = useState(hoy.getMonth())
   const [anio, setAnio] = useState(hoy.getFullYear())
   const [selDia, setSelDia] = useState(null)
-  const [vistaLista, setVistaLista] = useState(false)
+  const [vistaLista, setVistaLista] = useState(typeof window !== 'undefined' && window.innerWidth < 640)
   const [filtroTipo, setFiltroTipo] = useState("")
   const [audiencias, setAudiencias] = useState([])
   const [loading, setLoading] = useState(true)
@@ -230,7 +230,7 @@ export default function Calendario() {
         {loading ? (
           <div style={{textAlign:"center",padding:60,color:"#94a3b8",fontSize:14,...f}}>Cargando audiencias...</div>
         ) : !vistaLista ? (
-          <div style={{display:"grid",gridTemplateColumns:"1fr 380px",gap:20}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr",gap:20}}>
             {/* Calendario */}
             <div style={{background:"#fff",borderRadius:16,border:"1px solid #e2e8f0",overflow:"hidden",boxShadow:"0 1px 8px rgba(0,0,0,0.05)"}}>
               <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",background:"#0f172a"}}>
