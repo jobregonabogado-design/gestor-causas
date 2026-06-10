@@ -28,6 +28,7 @@ function PanelActividad({ onClose }) {
   const [loading, setLoading] = useState(true)
   const [filtro, setFiltro] = useState('hoy')
   const [solicitudes, setSolicitudes] = useState([])
+  const [usuarioExpandido, setUsuarioExpandido] = useState(null)
 
   useEffect(() => {
     cargarActividad()
@@ -128,32 +129,51 @@ function PanelActividad({ onClose }) {
             </div>
           )}
 
-          {/* Stats por usuario */}
-          {Object.entries(stats).map(([email, s]) => (
-            <div key={email} style={{ background:'#f8fafc', border:'1.5px solid #e2e8f0', borderRadius:12, padding:16, marginBottom:16 }}>
-              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
-                <div style={{ width:32, height:32, borderRadius:'50%', background:'linear-gradient(135deg,#7c3aed,#2563eb)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:12, fontWeight:700 }}>
-                  {email[0]?.toUpperCase()}
-                </div>
-                <div>
-                  <div style={{ fontSize:13, fontWeight:600, color:'#0f172a' }}>{email}</div>
-                  {s.ultimoIngreso && <div style={{ fontSize:11, color:'#94a3b8' }}>Último ingreso: {new Date(s.ultimoIngreso).toLocaleString('es-CL')}</div>}
-                </div>
-              </div>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
-                {[
-                  { label:'Ingresos', val:s.ingresos, color:'#059669', bg:'#f0fdf4' },
-                  { label:'Acciones', val:s.acciones, color:'#2563eb', bg:'#eff6ff' },
-                  { label:'Salidas', val: actividad.filter(a=>a.email===email&&a.tipo==='salida').length, color:'#dc2626', bg:'#fef2f2' },
-                ].map(st => (
-                  <div key={st.label} style={{ background:st.bg, borderRadius:8, padding:'10px 12px', textAlign:'center' }}>
-                    <div style={{ fontSize:20, fontWeight:800, color:st.color }}>{st.val}</div>
-                    <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:0.5, marginTop:2 }}>{st.label}</div>
+          {/* Stats por usuario con detalle expandible */}
+          {Object.entries(stats).map(([email, s]) => {
+            const actividadUsuario = actividad.filter(a => a.email === email)
+            const salidas = actividadUsuario.filter(a => a.tipo === 'salida').length
+            const acciones = actividadUsuario.filter(a => a.tipo === 'accion').length
+            const ingresos = actividadUsuario.filter(a => a.tipo === 'ingreso').length
+            return (
+              <div key={email} style={{ background:'#f8fafc', border:'1.5px solid #e2e8f0', borderRadius:12, marginBottom:12, overflow:'hidden' }}>
+                <div onClick={() => setUsuarioExpandido(prev => prev === email ? null : email)}
+                  style={{ padding:'14px 16px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'space-between', background: usuarioExpandido===email ? '#f0f7ff' : '#f8fafc' }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                    <div style={{ width:36, height:36, borderRadius:'50%', background:'linear-gradient(135deg,#7c3aed,#2563eb)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:14, fontWeight:700 }}>
+                      {email[0]?.toUpperCase()}
+                    </div>
+                    <div>
+                      <div style={{ fontSize:13, fontWeight:700, color:'#0f172a' }}>{email}</div>
+                      {s.ultimoIngreso && <div style={{ fontSize:11, color:'#94a3b8' }}>Último ingreso: {new Date(s.ultimoIngreso).toLocaleString('es-CL')}</div>}
+                    </div>
                   </div>
-                ))}
+                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                    <span style={{ fontSize:11, fontWeight:700, color:'#059669', background:'#f0fdf4', padding:'2px 8px', borderRadius:20 }}>🟢 {ingresos}</span>
+                    <span style={{ fontSize:11, fontWeight:700, color:'#2563eb', background:'#eff6ff', padding:'2px 8px', borderRadius:20 }}>📝 {acciones}</span>
+                    <span style={{ fontSize:11, fontWeight:700, color:'#dc2626', background:'#fef2f2', padding:'2px 8px', borderRadius:20 }}>🔴 {salidas}</span>
+                    <span style={{ fontSize:12, color:'#94a3b8' }}>{usuarioExpandido===email ? '▲' : '▼'}</span>
+                  </div>
+                </div>
+                {usuarioExpandido === email && (
+                  <div style={{ borderTop:'1px solid #e2e8f0', padding:'12px 16px' }}>
+                    {actividadUsuario.length === 0 ? (
+                      <div style={{ fontSize:12, color:'#cbd5e1', textAlign:'center', padding:12 }}>Sin actividad en este período</div>
+                    ) : actividadUsuario.map(a => (
+                      <div key={a.id} style={{ display:'flex', gap:10, padding:'8px 0', borderBottom:'1px solid #f1f5f9', alignItems:'center' }}>
+                        <span style={{ fontSize:13, flexShrink:0 }}>{tipoIcon(a.tipo)}</span>
+                        <div style={{ flex:1 }}>
+                          <div style={{ fontSize:12, fontWeight:500, color:'#0f172a' }}>{a.descripcion}</div>
+                          <div style={{ fontSize:11, color:'#94a3b8', marginTop:1 }}>{new Date(a.created_at).toLocaleString('es-CL')}</div>
+                        </div>
+                        <span style={{ fontSize:10, fontWeight:700, color: tipoColor(a.tipo), textTransform:'uppercase', padding:'2px 6px', borderRadius:4, background: a.tipo==='ingreso'?'#f0fdf4':a.tipo==='salida'?'#fef2f2':'#eff6ff', flexShrink:0 }}>{a.tipo}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            )
+          })}
 
           {/* Log de actividad */}
           <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, fontWeight:600, marginBottom:10 }}>Registro de actividad</div>
