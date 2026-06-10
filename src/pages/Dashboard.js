@@ -91,7 +91,7 @@ function AudienciaCard({ a, onUpdate }) {
   const [editing, setEditing] = useState(false)
   const [motivo, setMotivo] = useState('')
   const [form, setForm] = useState({ fecha:a.fecha||'', hora:a.hora||'', tipo:a.tipo||'', resultado:a.resultado||'', tribunal:a.tribunal||'', sala:a.sala||'' })
-  const [isSaving, setIsSaving] = useState(false)
+  const [saving, setSaving] = useState(false)
   const f = { fontFamily:"'Inter',sans-serif" }
   const inp = { width:'100%', padding:'7px 10px', border:'1.5px solid #e2e8f0', borderRadius:7, fontSize:12, color:'#0f172a', background:'#fff', ...f }
 
@@ -108,10 +108,10 @@ function AudienciaCard({ a, onUpdate }) {
 
   const handleSave = async () => {
     if (!motivo.trim()) { alert('Ingresa el motivo de la modificación'); return }
-    setIsSaving(true)
+    setSaving(true)
     await onUpdate(form, motivo)
     setEditing(false)
-    setIsSaving(false)
+    setSaving(false)
   }
 
   const color = tipoColor(a.tipo)
@@ -134,7 +134,7 @@ function AudienciaCard({ a, onUpdate }) {
         <input style={{...inp,borderColor:'#fecaca'}} placeholder="Ej: Error en la hora, reprogramación por el tribunal..." value={motivo} onChange={e=>setMotivo(e.target.value)}/>
       </div>
       <div style={{display:'flex',gap:8}}>
-        <button className="btn-primary" style={{fontSize:12,padding:'7px 16px'}} onClick={handleSave} disabled={isSaving}>{isSaving?'Guardando...':'Guardar cambios'}</button>
+        <button className="btn-primary" style={{fontSize:12,padding:'7px 16px'}} onClick={handleSave} disabled={saving}>{saving?'Guardando...':'Guardar cambios'}</button>
         <button className="btn-secondary" style={{fontSize:12,padding:'7px 14px'}} onClick={()=>setEditing(false)}>Cancelar</button>
       </div>
     </div>
@@ -433,7 +433,7 @@ export default function Dashboard({ session }) {
   const [showAumentoForm,setShowAumentoForm]=useState(false)
   const [nuevaAud,setNuevaAud]=useState({fecha:'',tipo:'',resultado:'',notas:''})
   const [nuevoAumento,setNuevoAumento]=useState({fecha_audiencia:'',dias_aumento:'',observacion:''})
-  const [isSaving,setIsSaving]=useState(false)
+  const [saving,setSaving]=useState(false)
   const [showNuevaCausa,setShowNuevaCausa]=useState(false)
   const [showStats,setShowStats]=useState(false)
   const [nuevaCausa,setNuevaCausa]=useState({
@@ -448,21 +448,10 @@ export default function Dashboard({ session }) {
     const { data, error } = await supabase.from('causas').select('*').order('created_at', { ascending:false })
     if (!error) {
       const causasActualizadas = (data||[]).map(c => {
-        // Solo recalcular subestado si es vigente Y no tiene subestado manual especial
-        const subestadosEspeciales = ['apjo','juicio_oral']
-        let subestado = c.subestado
-        if (c.estado === 'vigente' && !subestadosEspeciales.includes(c.subestado)) {
-          // Recalcular solo si tiene plazo en formato reconocible
-          const autoSub = calcularSubestado(c.plazo)
-          // Si el plazo es futuro y subestado dice vencido, corregir
-          if (autoSub !== 'vencido' && c.subestado === 'vencido') {
-            subestado = autoSub // corregir error
-          } else if (autoSub) {
-            subestado = autoSub // aplicar auto
-          }
-          // Si no hay plazo o plazo no reconocible, respetar el subestado guardado
-        }
-        return { ...c, tribunal: normT(c.tribunal), subestado }
+        const subestadoAuto = c.estado === 'vigente'
+          ? (calcularSubestado(c.plazo) || c.subestado)
+          : c.subestado
+        return { ...c, tribunal: normT(c.tribunal), subestado: subestadoAuto }
       })
       setCausas(causasActualizadas)
     }
@@ -481,37 +470,37 @@ export default function Dashboard({ session }) {
   }
 
   const updateField=async(field,value)=>{
-    setIsSaving(true)
+    setSaving(true)
     const{error}=await supabase.from('causas').update({[field]:value,updated_at:new Date()}).eq('id',selectedCausa.id)
     if(!error){const u={...selectedCausa,[field]:value};setSelectedCausa(u);setCausas(prev=>prev.map(c=>c.id===u.id?u:c))}
-    setEditField(null);setIsSaving(false)
+    setEditField(null);setSaving(false)
   }
 
   const saveNota=async()=>{
-    if(!nuevaNota.trim())return;setIsSaving(true)
+    if(!nuevaNota.trim())return;setSaving(true)
     const{data,error}=await supabase.from('notas').insert({causa_id:selectedCausa.id,contenido:nuevaNota}).select().single()
     if(!error)setNotas(prev=>[data,...prev])
-    setNuevaNota('');setIsSaving(false)
+    setNuevaNota('');setSaving(false)
   }
 
   const saveAudiencia=async()=>{
-    if(!nuevaAud.fecha)return;setIsSaving(true)
+    if(!nuevaAud.fecha)return;setSaving(true)
     const{data,error}=await supabase.from('audiencias').insert({causa_id:selectedCausa.id,...nuevaAud}).select().single()
     if(!error)setAudiencias(prev=>[data,...prev].sort((a,b)=>b.fecha.localeCompare(a.fecha)))
-    setNuevaAud({fecha:'',tipo:'',resultado:'',notas:''});setShowAudForm(false);setIsSaving(false)
+    setNuevaAud({fecha:'',tipo:'',resultado:'',notas:''});setShowAudForm(false);setSaving(false)
   }
 
   const saveAumento=async()=>{
-    if(!nuevoAumento.fecha_audiencia||!nuevoAumento.dias_aumento)return;setIsSaving(true)
+    if(!nuevoAumento.fecha_audiencia||!nuevoAumento.dias_aumento)return;setSaving(true)
     const total=aumentos.reduce((s,a)=>s+(a.dias_aumento||0),0)+parseInt(nuevoAumento.dias_aumento)
     const{data,error}=await supabase.from('aumentos_plazo').insert({causa_id:selectedCausa.id,fecha_audiencia:nuevoAumento.fecha_audiencia,dias_aumento:parseInt(nuevoAumento.dias_aumento),plazo_acumulado:total,observacion:nuevoAumento.observacion}).select().single()
     if(!error)setAumentos(prev=>[...prev,data])
-    setNuevoAumento({fecha_audiencia:'',dias_aumento:'',observacion:''});setShowAumentoForm(false);setIsSaving(false)
+    setNuevoAumento({fecha_audiencia:'',dias_aumento:'',observacion:''});setShowAumentoForm(false);setSaving(false)
   }
 
   const saveCausa = async () => {
     if (!nuevaCausa.ruc) return
-    setIsSaving(true)
+    setSaving(true)
     let plazoFinal = nuevaCausa.plazo
     if (nuevaCausa.fecha_inicio && nuevaCausa.dias_plazo) {
       plazoFinal = 'VENCE ' + calcularVencimiento(nuevaCausa.fecha_inicio, nuevaCausa.dias_plazo)
@@ -536,7 +525,7 @@ export default function Dashboard({ session }) {
       setShowNuevaCausa(false)
       setNuevaCausa({ruc:'',rit:'',tribunal:'',delito:'',imputado:'',fiscal:'',cautelar:'',centro_penal:'',plazo:'',fecha_inicio:'',dias_plazo:'',estado:'vigente'})
     }
-    setIsSaving(false)
+    setSaving(false)
   }
 
   const handleSort=col=>{if(sortCol===col)setSortDir(d=>d==='asc'?'desc':'asc');else{setSortCol(col);setSortDir('asc')}}
@@ -587,7 +576,7 @@ export default function Dashboard({ session }) {
                 </div>
               </div>
               <div style={{display:'flex',gap:8,alignItems:'center'}}>
-                {isSaving&&<span style={{fontSize:11,color:'#94a3b8',...f}}>Guardando...</span>}
+                {saving&&<span style={{fontSize:11,color:'#94a3b8',...f}}>Guardando...</span>}
                 {c.esta_detenido&&<span style={{background:'#fef2f2',color:'#dc2626',border:'1px solid #fecaca',padding:'3px 10px',borderRadius:20,fontSize:10,fontWeight:700,textTransform:'uppercase',...f}}>🔒 Detenido</span>}
                 <Badge estado={c.estado} subestado={c.subestado}/>
               </div>
@@ -720,7 +709,7 @@ export default function Dashboard({ session }) {
                         <div key={field.key}><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>{field.label}</div><input type={field.type||'text'} style={inp} placeholder={field.ph} value={nuevaAud[field.key]} onChange={e=>setNuevaAud(p=>({...p,[field.key]:e.target.value}))}/></div>
                       ))}
                     </div>
-                    <div style={{display:'flex',gap:8}}><button className="btn-primary" onClick={saveAudiencia} disabled={isSaving}>{isSaving?'Guardando...':'Guardar'}</button><button className="btn-secondary" onClick={()=>setShowAudForm(false)}>Cancelar</button></div>
+                    <div style={{display:'flex',gap:8}}><button className="btn-primary" onClick={saveAudiencia} disabled={saving}>{saving?'Guardando...':'Guardar'}</button><button className="btn-secondary" onClick={()=>setShowAudForm(false)}>Cancelar</button></div>
                   </div>
                 )}
                 <button className="btn-secondary" onClick={()=>setShowAudForm(true)}>+ Nueva audiencia</button>
@@ -755,7 +744,7 @@ export default function Dashboard({ session }) {
                 ))}
                 {notas.length===0&&<p style={{color:'#cbd5e1',fontSize:13,marginBottom:14,...f}}>Sin notas.</p>}
                 <textarea style={{...inp,minHeight:100,resize:'vertical',marginTop:8}} placeholder="Nueva nota..." value={nuevaNota} onChange={e=>setNuevaNota(e.target.value)}/>
-                <button className="btn-primary" style={{marginTop:10}} onClick={saveNota} disabled={isSaving}>{isSaving?'Guardando...':'+ Agregar nota'}</button>
+                <button className="btn-primary" style={{marginTop:10}} onClick={saveNota} disabled={saving}>{saving?'Guardando...':'+ Agregar nota'}</button>
               </div>
             )}
             {activeTab==='carpeta'&&(
@@ -903,8 +892,8 @@ export default function Dashboard({ session }) {
 
       {/* MODAL NUEVA CAUSA */}
       {showNuevaCausa&&(
-        <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,background:'rgba(15,23,42,0.5)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:9999}} onClick={e=>e.target===e.currentTarget&&setShowNuevaCausa(false)}>
-          <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:16,padding:32,width:540,maxWidth:'90vw',boxShadow:'0 24px 80px rgba(0,0,0,0.2)',maxHeight:'90vh',overflowY:'auto',position:'relative',zIndex:10000}}>
+        <div style={{position:'fixed',inset:0,background:'rgba(15,23,42,0.5)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:200,backdropFilter:'blur(4px)'}} onClick={e=>e.target===e.currentTarget&&setShowNuevaCausa(false)}>
+          <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:16,padding:32,width:540,maxWidth:'90vw',boxShadow:'0 24px 80px rgba(0,0,0,0.2)',maxHeight:'90vh',overflowY:'auto'}}>
             <div style={{fontSize:20,fontWeight:800,color:'#0f172a',marginBottom:24,letterSpacing:'-0.5px',...f}}>Nueva Causa</div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
 
@@ -967,7 +956,7 @@ export default function Dashboard({ session }) {
             </div>
 
             <div style={{display:'flex',gap:10,marginTop:24}}>
-              <button className="btn-primary" onClick={saveCausa} disabled={isSaving||!nuevaCausa.ruc}>{isSaving?'Guardando...':'Guardar causa'}</button>
+              <button className="btn-primary" onClick={saveCausa} disabled={saving||!nuevaCausa.ruc}>{saving?'Guardando...':'Guardar causa'}</button>
               <button className="btn-secondary" onClick={()=>setShowNuevaCausa(false)}>Cancelar</button>
             </div>
           </div>
