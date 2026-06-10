@@ -82,7 +82,7 @@ function PanelActividad({ onClose }) {
   const tipoIcon = (tipo) => tipo === 'ingreso' ? '🟢' : tipo === 'salida' ? '🔴' : '📝'
 
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', justifyContent:'flex-end' }}>
+    <div style={{ position:'fixed', inset:0, zIndex:999, display:'flex', justifyContent:'flex-end' }}>
       <div style={{ position:'absolute', inset:0, background:'rgba(15,23,42,0.4)', backdropFilter:'blur(4px)' }} onClick={onClose}/>
       <div style={{ position:'relative', width:520, background:'#fff', height:'100vh', overflowY:'auto', boxShadow:'-8px 0 40px rgba(0,0,0,0.15)', animation:'slideIn 0.3s ease'}}>
         
