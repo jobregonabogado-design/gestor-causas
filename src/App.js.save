@@ -246,9 +246,11 @@ export default function App() {
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session)
-      if (session) {
+      setSession(session)      if (session) {
         const rol = await cargarRol(session.user.id)
+        
+      
+        }
       }
       setLoading(false)
     })
