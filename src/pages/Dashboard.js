@@ -587,7 +587,7 @@ export default function Dashboard({ session }) {
                 </div>
               </div>
               <div style={{display:'flex',gap:8,alignItems:'center'}}>
-                {saving&&<span style={{fontSize:11,color:'#94a3b8',...f}}>Guardando...</span>}
+                {isSaving&&<span style={{fontSize:11,color:'#94a3b8',...f}}>Guardando...</span>}
                 {c.esta_detenido&&<span style={{background:'#fef2f2',color:'#dc2626',border:'1px solid #fecaca',padding:'3px 10px',borderRadius:20,fontSize:10,fontWeight:700,textTransform:'uppercase',...f}}>🔒 Detenido</span>}
                 <Badge estado={c.estado} subestado={c.subestado}/>
               </div>
