@@ -24,6 +24,11 @@ const CSS = `
   @keyframes detailIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
   input,select,textarea { font-family:'Inter',sans-serif !important; transition:border-color 0.2s,box-shadow 0.2s; }
   input:focus,select:focus,textarea:focus { outline:none; border-color:#2563eb !important; box-shadow:0 0 0 3px rgba(37,99,235,0.1) !important; }
+  @media (max-width: 640px) {
+    .stats-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 8px !important; }
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .hide-mobile { display: none !important; }
+  }
 `
 
 const estadoConfig = {
@@ -796,7 +801,7 @@ export default function Dashboard({ session }) {
         {/* Si no hay alertas, dejar el margen igual */}
         {stats.vencido===0&&stats.proximo===0&&<div style={{marginBottom:24}}/>}
 
-        <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:12,marginBottom:24}}>
+        <div className='stats-grid' style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:12,marginBottom:24}}>
           {[
             {key:'',         label:'Total',        num:stats.total,       color:'#0f172a', grad:'linear-gradient(135deg,#1e293b,#0f172a)', border:'#e2e8f0', light:'#f8fafc'},
             {key:'vigente',  label:'Vigentes',     num:stats.vigente,     color:'#059669', grad:'linear-gradient(135deg,#10b981,#059669)', border:'#a7f3d0', light:'#f0fdf4'},
@@ -870,7 +875,7 @@ export default function Dashboard({ session }) {
         {loading?(
           <div style={{textAlign:'center',padding:60,color:'#94a3b8',fontSize:14,...f}}>Cargando causas...</div>
         ):(
-          <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:16,overflow:'hidden',boxShadow:'0 2px 12px rgba(0,0,0,0.05)'}}>
+          <div className='table-wrap' style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:16,overflow:'hidden',boxShadow:'0 2px 12px rgba(0,0,0,0.05)'}}>
             <table style={{width:'100%',borderCollapse:'collapse'}}>
               <thead>
                 <tr style={{borderBottom:'2px solid #f1f5f9',background:'#fafbff'}}>

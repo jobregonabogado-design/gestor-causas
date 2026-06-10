@@ -18,6 +18,11 @@ const css = `
   .salir-btn:hover { border-color:#2563eb; color:#2563eb; }
   @keyframes slideIn { from{transform:translateX(100%);opacity:0} to{transform:translateX(0);opacity:1} }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.7} }
+  @media (max-width: 640px) {
+    .nav-email { display: none !important; }
+    .nav-badge { display: none !important; }
+    .nav-nombre { display: none !important; }
+  }
 `
 
 const f = { fontFamily:"'Inter',sans-serif" }
@@ -420,7 +425,7 @@ export default function App() {
             <div style={{ width:28, height:28, borderRadius:'50%', background: esTitular ? 'linear-gradient(135deg,#2563eb,#1d4ed8)' : 'linear-gradient(135deg,#7c3aed,#6d28d9)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:11, fontWeight:700 }}>
               {session.user.email?.[0]?.toUpperCase()}
             </div>
-            <span style={{ fontSize:12, color:'#64748b', fontFamily:'Inter,sans-serif' }}>{userRol?.nombre || session.user.email}</span>
+            <span className='nav-nombre' style={{ fontSize:12, color:'#64748b', fontFamily:'Inter,sans-serif' }}>{userRol?.nombre || session.user.email}</span>
           </div>
           <button className="salir-btn" onClick={handleSignOut}>Salir</button>
         </div>
