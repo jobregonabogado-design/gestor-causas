@@ -91,7 +91,7 @@ function AudienciaCard({ a, onUpdate }) {
   const [editing, setEditing] = useState(false)
   const [motivo, setMotivo] = useState('')
   const [form, setForm] = useState({ fecha:a.fecha||'', hora:a.hora||'', tipo:a.tipo||'', resultado:a.resultado||'', tribunal:a.tribunal||'', sala:a.sala||'' })
-  const [saving, setSaving] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
   const f = { fontFamily:"'Inter',sans-serif" }
   const inp = { width:'100%', padding:'7px 10px', border:'1.5px solid #e2e8f0', borderRadius:7, fontSize:12, color:'#0f172a', background:'#fff', ...f }
 
@@ -108,10 +108,10 @@ function AudienciaCard({ a, onUpdate }) {
 
   const handleSave = async () => {
     if (!motivo.trim()) { alert('Ingresa el motivo de la modificación'); return }
-    setSaving(true)
+    setIsSaving(true)
     await onUpdate(form, motivo)
     setEditing(false)
-    setSaving(false)
+    setIsSaving(false)
   }
 
   const color = tipoColor(a.tipo)
@@ -134,7 +134,7 @@ function AudienciaCard({ a, onUpdate }) {
         <input style={{...inp,borderColor:'#fecaca'}} placeholder="Ej: Error en la hora, reprogramación por el tribunal..." value={motivo} onChange={e=>setMotivo(e.target.value)}/>
       </div>
       <div style={{display:'flex',gap:8}}>
-        <button className="btn-primary" style={{fontSize:12,padding:'7px 16px'}} onClick={handleSave} disabled={saving}>{saving?'Guardando...':'Guardar cambios'}</button>
+        <button className="btn-primary" style={{fontSize:12,padding:'7px 16px'}} onClick={handleSave} disabled={isSaving}>{isSaving?'Guardando...':'Guardar cambios'}</button>
         <button className="btn-secondary" style={{fontSize:12,padding:'7px 14px'}} onClick={()=>setEditing(false)}>Cancelar</button>
       </div>
     </div>
@@ -433,7 +433,7 @@ export default function Dashboard({ session }) {
   const [showAumentoForm,setShowAumentoForm]=useState(false)
   const [nuevaAud,setNuevaAud]=useState({fecha:'',tipo:'',resultado:'',notas:''})
   const [nuevoAumento,setNuevoAumento]=useState({fecha_audiencia:'',dias_aumento:'',observacion:''})
-  const [saving,setSaving]=useState(false)
+  const [isSaving,setIsSaving]=useState(false)
   const [showNuevaCausa,setShowNuevaCausa]=useState(false)
   const [showStats,setShowStats]=useState(false)
   const [nuevaCausa,setNuevaCausa]=useState({
@@ -481,37 +481,37 @@ export default function Dashboard({ session }) {
   }
 
   const updateField=async(field,value)=>{
-    setSaving(true)
+    setIsSaving(true)
     const{error}=await supabase.from('causas').update({[field]:value,updated_at:new Date()}).eq('id',selectedCausa.id)
     if(!error){const u={...selectedCausa,[field]:value};setSelectedCausa(u);setCausas(prev=>prev.map(c=>c.id===u.id?u:c))}
-    setEditField(null);setSaving(false)
+    setEditField(null);setIsSaving(false)
   }
 
   const saveNota=async()=>{
-    if(!nuevaNota.trim())return;setSaving(true)
+    if(!nuevaNota.trim())return;setIsSaving(true)
     const{data,error}=await supabase.from('notas').insert({causa_id:selectedCausa.id,contenido:nuevaNota}).select().single()
     if(!error)setNotas(prev=>[data,...prev])
-    setNuevaNota('');setSaving(false)
+    setNuevaNota('');setIsSaving(false)
   }
 
   const saveAudiencia=async()=>{
-    if(!nuevaAud.fecha)return;setSaving(true)
+    if(!nuevaAud.fecha)return;setIsSaving(true)
     const{data,error}=await supabase.from('audiencias').insert({causa_id:selectedCausa.id,...nuevaAud}).select().single()
     if(!error)setAudiencias(prev=>[data,...prev].sort((a,b)=>b.fecha.localeCompare(a.fecha)))
-    setNuevaAud({fecha:'',tipo:'',resultado:'',notas:''});setShowAudForm(false);setSaving(false)
+    setNuevaAud({fecha:'',tipo:'',resultado:'',notas:''});setShowAudForm(false);setIsSaving(false)
   }
 
   const saveAumento=async()=>{
-    if(!nuevoAumento.fecha_audiencia||!nuevoAumento.dias_aumento)return;setSaving(true)
+    if(!nuevoAumento.fecha_audiencia||!nuevoAumento.dias_aumento)return;setIsSaving(true)
     const total=aumentos.reduce((s,a)=>s+(a.dias_aumento||0),0)+parseInt(nuevoAumento.dias_aumento)
     const{data,error}=await supabase.from('aumentos_plazo').insert({causa_id:selectedCausa.id,fecha_audiencia:nuevoAumento.fecha_audiencia,dias_aumento:parseInt(nuevoAumento.dias_aumento),plazo_acumulado:total,observacion:nuevoAumento.observacion}).select().single()
     if(!error)setAumentos(prev=>[...prev,data])
-    setNuevoAumento({fecha_audiencia:'',dias_aumento:'',observacion:''});setShowAumentoForm(false);setSaving(false)
+    setNuevoAumento({fecha_audiencia:'',dias_aumento:'',observacion:''});setShowAumentoForm(false);setIsSaving(false)
   }
 
   const saveCausa = async () => {
     if (!nuevaCausa.ruc) return
-    setSaving(true)
+    setIsSaving(true)
     let plazoFinal = nuevaCausa.plazo
     if (nuevaCausa.fecha_inicio && nuevaCausa.dias_plazo) {
       plazoFinal = 'VENCE ' + calcularVencimiento(nuevaCausa.fecha_inicio, nuevaCausa.dias_plazo)
@@ -536,7 +536,7 @@ export default function Dashboard({ session }) {
       setShowNuevaCausa(false)
       setNuevaCausa({ruc:'',rit:'',tribunal:'',delito:'',imputado:'',fiscal:'',cautelar:'',centro_penal:'',plazo:'',fecha_inicio:'',dias_plazo:'',estado:'vigente'})
     }
-    setSaving(false)
+    setIsSaving(false)
   }
 
   const handleSort=col=>{if(sortCol===col)setSortDir(d=>d==='asc'?'desc':'asc');else{setSortCol(col);setSortDir('asc')}}
@@ -720,7 +720,7 @@ export default function Dashboard({ session }) {
                         <div key={field.key}><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>{field.label}</div><input type={field.type||'text'} style={inp} placeholder={field.ph} value={nuevaAud[field.key]} onChange={e=>setNuevaAud(p=>({...p,[field.key]:e.target.value}))}/></div>
                       ))}
                     </div>
-                    <div style={{display:'flex',gap:8}}><button className="btn-primary" onClick={saveAudiencia} disabled={saving}>{saving?'Guardando...':'Guardar'}</button><button className="btn-secondary" onClick={()=>setShowAudForm(false)}>Cancelar</button></div>
+                    <div style={{display:'flex',gap:8}}><button className="btn-primary" onClick={saveAudiencia} disabled={isSaving}>{isSaving?'Guardando...':'Guardar'}</button><button className="btn-secondary" onClick={()=>setShowAudForm(false)}>Cancelar</button></div>
                   </div>
                 )}
                 <button className="btn-secondary" onClick={()=>setShowAudForm(true)}>+ Nueva audiencia</button>
@@ -755,7 +755,7 @@ export default function Dashboard({ session }) {
                 ))}
                 {notas.length===0&&<p style={{color:'#cbd5e1',fontSize:13,marginBottom:14,...f}}>Sin notas.</p>}
                 <textarea style={{...inp,minHeight:100,resize:'vertical',marginTop:8}} placeholder="Nueva nota..." value={nuevaNota} onChange={e=>setNuevaNota(e.target.value)}/>
-                <button className="btn-primary" style={{marginTop:10}} onClick={saveNota} disabled={saving}>{saving?'Guardando...':'+ Agregar nota'}</button>
+                <button className="btn-primary" style={{marginTop:10}} onClick={saveNota} disabled={isSaving}>{isSaving?'Guardando...':'+ Agregar nota'}</button>
               </div>
             )}
             {activeTab==='carpeta'&&(
@@ -967,7 +967,7 @@ export default function Dashboard({ session }) {
             </div>
 
             <div style={{display:'flex',gap:10,marginTop:24}}>
-              <button className="btn-primary" onClick={saveCausa} disabled={saving||!nuevaCausa.ruc}>{saving?'Guardando...':'Guardar causa'}</button>
+              <button className="btn-primary" onClick={saveCausa} disabled={isSaving||!nuevaCausa.ruc}>{isSaving?'Guardando...':'Guardar causa'}</button>
               <button className="btn-secondary" onClick={()=>setShowNuevaCausa(false)}>Cancelar</button>
             </div>
           </div>
