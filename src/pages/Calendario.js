@@ -372,7 +372,7 @@ export default function Calendario() {
               <div style={{gridColumn:"1/-1"}}><div style={{fontSize:10,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1.2,marginBottom:5,...f}}>Notas</div><textarea style={{...inp,minHeight:70,resize:"vertical"}} placeholder="Observaciones adicionales..." value={nueva.notas} onChange={e=>setNueva(p=>({...p,notas:e.target.value}))}/></div>
             </div>
             <div style={{display:"flex",gap:10,marginTop:22}}>
-              <button className="btn-blue" onClick={saveAudiencia} disabled={saving||!nueva.fecha||!nueva.tipo}>{saving?"Guardando...":"Guardar audiencia"}</button>
+              <button className="btn-blue" onClick={saveAudiencia} disabled={savingForm||!nueva.fecha||!nueva.tipo}>{savingForm?"Guardando...":"Guardar audiencia"}</button>
               <button className="btn-out" onClick={()=>setShowForm(false)}>Cancelar</button>
             </div>
           </div>
