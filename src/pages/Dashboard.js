@@ -827,7 +827,7 @@ export default function Dashboard({ session }) {
           <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:16,padding:28,marginBottom:24,boxShadow:'0 2px 12px rgba(0,0,0,0.05)'}}>
             <div style={{fontSize:17,fontWeight:800,color:'#0f172a',marginBottom:24,letterSpacing:'-0.5px',...f}}>Estadísticas del portfolio</div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:32}}>
-              <div>
+              <div className="hide-mobile">
                 <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:16,fontWeight:700,...f}}>Top Delitos</div>
                 <ResponsiveContainer width="100%" height={320}>
                   <PieChart>
