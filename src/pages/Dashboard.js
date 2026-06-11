@@ -444,7 +444,7 @@ export default function Dashboard({ session, registrarActividad }) {
   const [imputados,setImputados]=useState([])
   const [showAudForm,setShowAudForm]=useState(false)
   const [showAumentoForm,setShowAumentoForm]=useState(false)
-  const [nuevaAud,setNuevaAud]=useState({fecha:'',tipo:'',resultado:'',notas:''})
+  const [nuevaAud,setNuevaAud]=useState({fecha:'',hora:'',tipo:'',tribunal:'',sala:'',resultado:'',notas:''})
   const [nuevoAumento,setNuevoAumento]=useState({fecha_audiencia:'',dias_aumento:'',observacion:''})
   const [saving,setSaving]=useState(false)
   const [showNuevaCausa,setShowNuevaCausa]=useState(false)
@@ -517,7 +517,7 @@ export default function Dashboard({ session, registrarActividad }) {
       setAudiencias(prev=>[data,...prev].sort((a,b)=>b.fecha.localeCompare(a.fecha)))
       if (registrarActividad) registrarActividad('accion', `Nueva audiencia agregada en RUC ${selectedCausa.ruc}: ${nuevaAud.tipo||'Audiencia'} ${nuevaAud.fecha}`)
     }
-    setNuevaAud({fecha:'',tipo:'',resultado:'',notas:''});setShowAudForm(false);setSaving(false)
+    setNuevaAud({fecha:'',hora:'',tipo:'',tribunal:'',sala:'',resultado:'',notas:''});setShowAudForm(false);setSaving(false)
   }
 
   const saveAumento=async()=>{
@@ -736,7 +736,7 @@ export default function Dashboard({ session, registrarActividad }) {
                 {showAudForm&&(
                   <div style={{background:'#f8fafc',border:'1.5px solid #e2e8f0',borderRadius:12,padding:16,marginBottom:14}}>
                     <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:12}}>
-                      {[{key:'fecha',label:'Fecha',type:'date'},{key:'tipo',label:'Tipo',ph:'Formalización, APJO, JO...'},{key:'resultado',label:'Resultado',ph:'Resultado'},{key:'notas',label:'Observaciones',ph:'Notas'}].map(field=>(
+                      {[{key:'fecha',label:'Fecha',type:'date'},{key:'hora',label:'Hora',type:'time'},{key:'tipo',label:'Tipo',ph:'Formalización, APJO, JO...'},{key:'tribunal',label:'Tribunal',ph:'Ej: 4 JG STGO'},{key:'sala',label:'Sala',ph:'Ej: 903'},{key:'resultado',label:'Resultado',ph:'Resultado'},{key:'notas',label:'Observaciones',ph:'Notas'}].map(field=>(
                         <div key={field.key}><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>{field.label}</div><input type={field.type||'text'} style={inp} placeholder={field.ph} value={nuevaAud[field.key]} onChange={e=>setNuevaAud(p=>({...p,[field.key]:e.target.value}))}/></div>
                       ))}
                     </div>
