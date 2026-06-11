@@ -257,7 +257,8 @@ export default function Calendario() {
                         const c=tipoColor(a.tipo)
                         return(
                           <div key={idx} style={{fontSize:10,padding:"2px 5px",borderRadius:4,background:c.bg,borderLeft:`2px solid ${c.dot}`,color:c.text,marginBottom:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",fontWeight:500,...f}}>
-                            {a.hora} {(a.tipo||"").split("/")[0].substring(0,13)}
+                            {a.hora} {(a.tipo||"").split("/")[0].substring(0,10)}
+                            {a.imputado&&<div style={{fontSize:9,opacity:0.85,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{(a.imputado||"").split(" ")[0]}</div>}
                           </div>
                         )
                       })}
