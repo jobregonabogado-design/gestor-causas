@@ -444,7 +444,7 @@ export default function Dashboard({ session, registrarActividad }) {
   const [imputados,setImputados]=useState([])
   const [showAudForm,setShowAudForm]=useState(false)
   const [showAumentoForm,setShowAumentoForm]=useState(false)
-  const [nuevaAud,setNuevaAud]=useState({fecha:'',hora:'',tipo:'',tribunal:selectedCausa?.tribunal||'',sala:'',resultado:'',notas:''})
+  const [nuevaAud,setNuevaAud]=useState({fecha:'',hora:'',tipo:'',tribunal:'',sala:'',resultado:'',notas:''})
   const [nuevoAumento,setNuevoAumento]=useState({fecha_audiencia:'',dias_aumento:'',observacion:''})
   const [saving,setSaving]=useState(false)
   const [showNuevaCausa,setShowNuevaCausa]=useState(false)
@@ -743,7 +743,7 @@ export default function Dashboard({ session, registrarActividad }) {
                     <div style={{display:'flex',gap:8}}><button className="btn-primary" onClick={saveAudiencia} disabled={saving}>{saving?'Guardando...':'Guardar'}</button><button className="btn-secondary" onClick={()=>setShowAudForm(false)}>Cancelar</button></div>
                   </div>
                 )}
-                <button className="btn-secondary" onClick={()=>setShowAudForm(true)}>+ Nueva audiencia</button>
+                <button className="btn-secondary" onClick={()=>{setShowAudForm(true);setNuevaAud(p=>({...p,tribunal:selectedCausa?.tribunal||''}))}}>+ Nueva audiencia</button>
               </div>
             )}
             {activeTab==='top'&&(
