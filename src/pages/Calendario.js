@@ -233,12 +233,12 @@ export default function Calendario() {
           <div style={{display:"grid",gridTemplateColumns:"1fr",gap:20,overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
             {/* Calendario */}
             <div style={{background:"#fff",borderRadius:16,border:"1px solid #e2e8f0",overflowX:"auto",WebkitOverflowScrolling:"touch",boxShadow:"0 1px 8px rgba(0,0,0,0.05)"}}>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",background:"#0f172a"}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",background:"#0f172a",minWidth:500}}>
                 {DIAS.map((d,i)=>(
                   <div key={d} style={{padding:"14px 0",textAlign:"center",fontSize:12,fontWeight:700,color:i===0||i===6?"#f87171":"#94a3b8",letterSpacing:0.8,...f}}>{d}</div>
                 ))}
               </div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)"}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",minWidth:500}}>
                 {diasDelMes.map((dia,i)=>{
                   if(!dia) return <div key={`e${i}`} style={{minHeight:80,background:"#fafafa",borderRight:"1px solid #f1f5f9",borderBottom:"1px solid #f1f5f9"}}/>
                   const key=`${anio}-${String(mes+1).padStart(2,"0")}-${String(dia).padStart(2,"0")}`
