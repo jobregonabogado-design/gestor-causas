@@ -416,7 +416,7 @@ function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudiencia })
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function Dashboard({ session }) {
+export default function Dashboard({ session, registrarActividad }) {
   const [causas,setCausas]=useState([])
   const [loading,setLoading]=useState(true)
   const [search,setSearch]=useState('')
@@ -488,7 +488,10 @@ export default function Dashboard({ session }) {
   const updateField=async(field,value)=>{
     setSaving(true)
     const{error}=await supabase.from('causas').update({[field]:value,updated_at:new Date()}).eq('id',selectedCausa.id)
-    if(!error){const u={...selectedCausa,[field]:value};setSelectedCausa(u);setCausas(prev=>prev.map(c=>c.id===u.id?u:c))}
+    if(!error){
+      const u={...selectedCausa,[field]:value};setSelectedCausa(u);setCausas(prev=>prev.map(c=>c.id===u.id?u:c))
+      if (registrarActividad) registrarActividad('accion', `Editó campo "${field}" en RUC ${selectedCausa.ruc}`)
+    }
     setEditField(null);setSaving(false)
   }
 
@@ -502,7 +505,10 @@ export default function Dashboard({ session }) {
   const saveAudiencia=async()=>{
     if(!nuevaAud.fecha)return;setSaving(true)
     const{data,error}=await supabase.from('audiencias').insert({causa_id:selectedCausa.id,...nuevaAud}).select().single()
-    if(!error)setAudiencias(prev=>[data,...prev].sort((a,b)=>b.fecha.localeCompare(a.fecha)))
+    if(!error){
+      setAudiencias(prev=>[data,...prev].sort((a,b)=>b.fecha.localeCompare(a.fecha)))
+      if (registrarActividad) registrarActividad('accion', `Nueva audiencia agregada en RUC ${selectedCausa.ruc}: ${nuevaAud.tipo||'Audiencia'} ${nuevaAud.fecha}`)
+    }
     setNuevaAud({fecha:'',tipo:'',resultado:'',notas:''});setShowAudForm(false);setSaving(false)
   }
 
@@ -539,6 +545,7 @@ export default function Dashboard({ session }) {
     if (!error) {
       setCausas(prev => [data, ...prev])
       setShowNuevaCausa(false)
+      if (registrarActividad) registrarActividad('accion', `Nueva causa agregada: RUC ${causaData.ruc}`)
       setNuevaCausa({ruc:'',rit:'',tribunal:'',delito:'',imputado:'',fiscal:'',cautelar:'',centro_penal:'',plazo:'',fecha_inicio:'',dias_plazo:'',estado:'vigente'})
     }
     setSaving(false)
