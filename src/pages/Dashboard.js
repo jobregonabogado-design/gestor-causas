@@ -630,7 +630,7 @@ export default function Dashboard({ session, registrarActividad }) {
                   {(c.imputado||'').split('|').filter((_,i)=>i>0).map((imp,i)=>(
                     <div key={i} style={{display:'flex',gap:8,marginBottom:6,alignItems:'center'}}>
                       <div style={{flex:1,padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#0f172a',background:'#f8fafc',...f}}>{imp.trim()}</div>
-                      <button onClick={()=>{const imps=(c.imputado||'').split('|');imps.splice(i+1,1);updateField('imputado',imps.join('|'))}} style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:7,padding:'7px 10px',fontSize:12,color:'#dc2626',cursor:'pointer',...f}}>✕</button>
+                      <button onClick={async()=>{const imps=(c.imputado||'').split('|');imps.splice(i+1,1);updateField('imputado',imps.join('|'));const impEncontrado=imputados.find(x=>x.nombre&&x.nombre.trim()===imp.trim());if(impEncontrado){await supabase.from('imputados').delete().eq('id',impEncontrado.id);setImputados(prev=>prev.filter(x=>x.id!==impEncontrado.id))}}} style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:7,padding:'7px 10px',fontSize:12,color:'#dc2626',cursor:'pointer',...f}}>✕</button>
                     </div>
                   ))}
                   {editField==='nuevo_imputado'?(
