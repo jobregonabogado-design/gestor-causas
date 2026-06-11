@@ -897,7 +897,12 @@ export default function Dashboard({ session, registrarActividad }) {
                 {filtered.map((c)=>(
                   <tr key={c.id} className="row-hover" onClick={()=>openCausa(c)} style={{borderBottom:'1px solid #f8fafc',background:'#fff'}}>
                     <td style={{padding:'12px 16px',fontFamily:'monospace',fontSize:12,fontWeight:700,color:'#0f172a'}}>{c.ruc}</td>
-                    <td style={{padding:'12px 16px',fontSize:12,color:'#94a3b8',fontWeight:500,...f}}>{c.rit||'—'}</td>
+                    <td style={{padding:'12px 16px',fontSize:12,color:'#94a3b8',fontWeight:500,...f}}>
+                      <div style={{display:'flex',alignItems:'center',gap:6}}>
+                        {(()=>{const s=getSemaforo(c.updated_at);return <span title={s.title} style={{width:8,height:8,borderRadius:'50%',background:s.color,flexShrink:0,display:'inline-block'}}/>})()}
+                        {c.rit||'—'}
+                      </div>
+                    </td>
                     <td style={{padding:'12px 16px',fontSize:12,color:'#475569',fontWeight:500,...f}}>{c.tribunal}</td>
                     <td style={{padding:'12px 16px',...f}}><div style={{maxWidth:210,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:13,color:'#0f172a',fontWeight:500}} title={c.imputado}>{c.imputado}</div></td>
                     <td style={{padding:'12px 16px',...f}}><div style={{maxWidth:180,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:12,color:'#64748b'}} title={c.delito}>{c.delito||'—'}</div></td>
