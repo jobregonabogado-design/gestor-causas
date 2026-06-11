@@ -635,8 +635,8 @@ export default function Dashboard({ session, registrarActividad }) {
                   ))}
                   {editField==='nuevo_imputado'?(
                     <div style={{display:'flex',gap:8,marginTop:6}}>
-                      <input style={{flex:1,padding:'9px 12px',border:'1.5px solid #2563eb',borderRadius:8,fontSize:13,...f}} placeholder="Nombre del imputado adicional" value={editValue} onChange={e=>setEditValue(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){updateField('imputado',(c.imputado||'')+'|'+editValue);setEditField(null)}if(e.key==='Escape')setEditField(null)}} autoFocus/>
-                      <button className="btn-primary" style={{padding:'8px 14px',fontSize:12}} onClick={()=>{updateField('imputado',(c.imputado||'')+'|'+editValue);setEditField(null)}}>+ Agregar</button>
+                      <input style={{flex:1,padding:'9px 12px',border:'1.5px solid #2563eb',borderRadius:8,fontSize:13,...f}} placeholder="Nombre del imputado adicional" value={editValue} onChange={e=>setEditValue(e.target.value)} onKeyDown={async e=>{if(e.key==='Enter'){updateField('imputado',(c.imputado||'')+'|'+editValue);const{data}=await supabase.from('imputados').insert({causa_id:c.id,nombre:editValue}).select().single();if(data)setImputados(prev=>[...prev,data]);setEditField(null)}if(e.key==='Escape')setEditField(null)}} autoFocus/>
+                      <button className="btn-primary" style={{padding:'8px 14px',fontSize:12}} onClick={async()=>{updateField('imputado',(c.imputado||'')+'|'+editValue);const{data}=await supabase.from('imputados').insert({causa_id:c.id,nombre:editValue}).select().single();if(data)setImputados(prev=>[...prev,data]);setEditField(null)}}>+ Agregar</button>
                       <button className="btn-secondary" style={{padding:'8px 12px',fontSize:12}} onClick={()=>setEditField(null)}>✕</button>
                     </div>
                   ):(
