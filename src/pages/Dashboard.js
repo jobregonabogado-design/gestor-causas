@@ -444,7 +444,7 @@ export default function Dashboard({ session, registrarActividad }) {
   const [imputados,setImputados]=useState([])
   const [showAudForm,setShowAudForm]=useState(false)
   const [showAumentoForm,setShowAumentoForm]=useState(false)
-  const [nuevaAud,setNuevaAud]=useState({fecha:'',hora:'',tipo:'',tribunal:'',sala:'',resultado:'',notas:''})
+  const [nuevaAud,setNuevaAud]=useState({fecha:'',hora:'',tipo:'',tribunal:selectedCausa?.tribunal||'',sala:'',resultado:'',notas:''})
   const [nuevoAumento,setNuevoAumento]=useState({fecha_audiencia:'',dias_aumento:'',observacion:''})
   const [saving,setSaving]=useState(false)
   const [showNuevaCausa,setShowNuevaCausa]=useState(false)
@@ -517,7 +517,7 @@ export default function Dashboard({ session, registrarActividad }) {
       setAudiencias(prev=>[data,...prev].sort((a,b)=>b.fecha.localeCompare(a.fecha)))
       if (registrarActividad) registrarActividad('accion', `Nueva audiencia agregada en RUC ${selectedCausa.ruc}: ${nuevaAud.tipo||'Audiencia'} ${nuevaAud.fecha}`)
     }
-    setNuevaAud({fecha:'',hora:'',tipo:'',tribunal:'',sala:'',resultado:'',notas:''});setShowAudForm(false);setSaving(false)
+    setNuevaAud({fecha:'',hora:'',tipo:'',tribunal:selectedCausa?.tribunal||'',sala:'',resultado:'',notas:''});setShowAudForm(false);setSaving(false)
   }
 
   const saveAumento=async()=>{
