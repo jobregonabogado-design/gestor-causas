@@ -416,6 +416,14 @@ function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudiencia })
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+const getSemaforo = (updated_at) => {
+  if (!updated_at) return { color:'#dc2626', title:'Sin actividad registrada' }
+  const dias = Math.floor((new Date() - new Date(updated_at)) / (1000*60*60*24))
+  if (dias <= 3) return { color:'#22c55e', title:`Trabajada hace ${dias} día${dias!==1?'s':''}` }
+  if (dias <= 6) return { color:'#f59e0b', title:`Trabajada hace ${dias} días` }
+  return { color:'#dc2626', title:`Sin actividad hace ${dias} días` }
+}
+
 export default function Dashboard({ session, registrarActividad }) {
   const [causas,setCausas]=useState([])
   const [loading,setLoading]=useState(true)
