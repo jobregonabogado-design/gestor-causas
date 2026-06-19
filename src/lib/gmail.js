@@ -126,7 +126,7 @@ function parsearCorreo(msg) {
 
   let resultado = null
 
-  // Tipo 1: PJUD — "Notificación en RUC: XXXX, RIT XXXX"
+  // Tipo 1: PJUD
   const matchPJUD = asunto.match(/RUC[:\s]+([0-9]+-[0-9A-Za-z]+)[,\s]+RIT[:\s]+([0-9]+-[0-9]+)/i)
   if (matchPJUD) {
     resultado = {
@@ -140,7 +140,7 @@ function parsearCorreo(msg) {
     }
   }
 
-  // Tipo 2: Fiscalía — "Entrevista causa RUC XXXX" o "RUC XXXX"
+  // Tipo 2: Fiscalía
   const matchFiscalia = asunto.match(/RUC[:\s]+([0-9]+-[0-9A-Za-z]+)/i)
   if (!resultado && matchFiscalia && (de.includes('minpublico') || de.includes('fiscalia') || de.includes('Fiscalia'))) {
     resultado = {
@@ -181,7 +181,7 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
     }
   }
 
-  // ✅ FIX 1 — Fecha formato PDF: "2026/05/26"
+  // FIX: Fecha formato PDF "2026/05/26"
   if (!fecha) {
     const matchPDF = cuerpo.match(/(\d{4})\/(\d{2})\/(\d{2})/)
     if (matchPDF) {
@@ -189,8 +189,10 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
     }
   }
 
-  // Hora: "13:30" o "13:30 horas"
-  const matchHora = cuerpo.match(/(\d{1,2}:\d{2})\s*(horas?|hrs?)?/i)
+  // FIX: Hora solo con contexto — evita capturar timestamps del correo
+  const matchHora =
+    cuerpo.match(/(?:a\s+las|hora[:\s]+|inicio[:\s]+|programad[oa]\s+a\s+las)\s*(\d{1,2}:\d{2})/i) ||
+    cuerpo.match(/(\d{1,2}:\d{2})\s*(?:horas?|hrs?)\b/i)
   if (matchHora) hora = matchHora[1]
 
   // Tipo audiencia
@@ -205,7 +207,7 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
   else if (cuerpo.match(/revisi[oó]n.*PP|rev.*pp/i)) tipo = 'REVISION PP'
   else tipo = 'AUDIENCIA'
 
-  // ✅ FIX 2 — Tribunal limpio: solo captura nombre formal, no texto del cuerpo
+  // FIX: Tribunal limpio — solo nombre formal
   const matchTribunal = cuerpo.match(
     /((?:\d+[°º]?\s+)?(?:Juzgado\s+de\s+(?:Garantía|Letras|Garantia)|Tribunal\s+de\s+(?:Juicio\s+Oral\s+en\s+lo\s+Penal|Juicio\s+Oral|Familia|Garantía|Garantia)|TOP|JG)\s+de\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)?)/i
   )
@@ -219,7 +221,6 @@ function extraerAudienciaFiscalia(cuerpo, asunto) {
 
   let fecha = null, hora = null, tipo = 'ENTREVISTA'
 
-  // Fecha escrita: "26 de mayo de 2026"
   const matchFecha = cuerpo.match(/(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/i)
   if (matchFecha) {
     const mes = meses[matchFecha[2].toLowerCase()]
@@ -230,7 +231,6 @@ function extraerAudienciaFiscalia(cuerpo, asunto) {
     }
   }
 
-  // Fecha numérica DD/MM/YYYY o DD-MM-YYYY
   if (!fecha) {
     const matchFechaNum = cuerpo.match(/(\d{2})[\/\-](\d{2})[\/\-](\d{4})/)
     if (matchFechaNum) {
@@ -238,7 +238,7 @@ function extraerAudienciaFiscalia(cuerpo, asunto) {
     }
   }
 
-  // ✅ FIX 3 — Fecha formato PDF: "2026/05/26"
+  // FIX: Fecha formato PDF "2026/05/26"
   if (!fecha) {
     const matchPDF = cuerpo.match(/(\d{4})\/(\d{2})\/(\d{2})/)
     if (matchPDF) {
@@ -246,7 +246,10 @@ function extraerAudienciaFiscalia(cuerpo, asunto) {
     }
   }
 
-  const matchHora = cuerpo.match(/(\d{1,2}:\d{2})\s*(horas?|hrs?)?/i)
+  // FIX: Hora solo con contexto
+  const matchHora =
+    cuerpo.match(/(?:a\s+las|hora[:\s]+|inicio[:\s]+)\s*(\d{1,2}:\d{2})/i) ||
+    cuerpo.match(/(\d{1,2}:\d{2})\s*(?:horas?|hrs?)\b/i)
   if (matchHora) hora = matchHora[1]
 
   if (asunto.match(/entrevista/i)) tipo = 'ENTREVISTA'
