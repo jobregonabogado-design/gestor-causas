@@ -128,6 +128,12 @@ export default function Calendario() {
 
   useEffect(() => { loadAudiencias() }, [])
 
+  // ✅ FIX: recarga audiencias cuando se cierra el panel Gmail (por si se agregaron nuevas)
+  const handleGmailToggle = () => {
+    if (showGmail) loadAudiencias()
+    setShowGmail(!showGmail)
+  }
+
   const loadAudiencias = async () => {
     setLoading(true)
     const { data, error } = await supabase.from("audiencias").select("*").order("fecha", { ascending: true })
@@ -137,10 +143,14 @@ export default function Calendario() {
 
   const saveAudiencia = async () => {
     if (!nueva.fecha || !nueva.tipo) return
-    setSavingForm(true)
+    setSavingForm(true)  // ✅ FIX: era setSaving (variable inexistente)
     const { error } = await supabase.from("audiencias").insert(nueva)
-    if (!error) { await loadAudiencias(); setShowForm(false); setNueva({ fecha:"", hora:"", tipo:"", tribunal:"", sala:"", imputado:"", rit:"", ruc:"", notas:"" }) }
-    setSaving(false)
+    if (!error) {
+      await loadAudiencias()
+      setShowForm(false)
+      setNueva({ fecha:"", hora:"", tipo:"", tribunal:"", sala:"", imputado:"", rit:"", ruc:"", notas:"" })
+    }
+    setSavingForm(false)  // ✅ FIX
   }
 
   const deleteAudiencia = async (id) => {
@@ -194,7 +204,7 @@ export default function Calendario() {
           </div>
           <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
             <button className="btn-blue" onClick={()=>setShowForm(true)}>+ Nueva audiencia</button>
-            <button onClick={()=>setShowGmail(!showGmail)} style={{background:showGmail?'#0f172a':'#fff',color:showGmail?'#fff':'#475569',border:'1.5px solid #e2e8f0',borderRadius:8,padding:'8px 16px',fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:"'Inter',sans-serif",transition:'all 0.2s'}}>
+            <button onClick={handleGmailToggle} style={{background:showGmail?'#0f172a':'#fff',color:showGmail?'#fff':'#475569',border:'1.5px solid #e2e8f0',borderRadius:8,padding:'8px 16px',fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:"'Inter',sans-serif",transition:'all 0.2s'}}>
               📧 Gmail
             </button>
             <button onClick={()=>setVistaLista(!vistaLista)} className="btn-out"
@@ -223,7 +233,7 @@ export default function Calendario() {
 
         {showGmail && (
           <div style={{marginBottom:20}}>
-            <GmailIntegracion/>
+            <GmailIntegracion onImportComplete={loadAudiencias}/>
           </div>
         )}
 
