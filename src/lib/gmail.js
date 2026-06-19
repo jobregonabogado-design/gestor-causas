@@ -75,13 +75,11 @@ async function gmailFetch(path, options = {}) {
 
 export async function fetchNotificacionesPJUD() {
   try {
-    // Buscar correos judiciales — ampliado para capturar todos los remitentes relevantes
     const query = 'from:(notificacion_judicial OR minpublico.cl OR fiscaliadechile.cl OR pjud.cl OR notificacion OR judicial) newer_than:60d'
-    const data = await gmailFetch(`/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=200`)
+    const data = await gmailFetch(`/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=100`)
     if (!data.messages) return []
 
     const mensajes = []
-    // Procesar hasta 100 correos (antes era 20)
     for (const msg of data.messages.slice(0, 100)) {
       try {
         const detalle = await gmailFetch(`/gmail/v1/users/me/messages/${msg.id}?format=full`)
@@ -175,11 +173,19 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
     }
   }
 
-  // Fecha numérica: "26/05/2026" o "26-05-2026"
+  // Fecha numérica DD/MM/YYYY o DD-MM-YYYY
   if (!fecha) {
     const matchFechaNum = cuerpo.match(/(\d{2})[\/\-](\d{2})[\/\-](\d{4})/)
     if (matchFechaNum) {
       fecha = `${matchFechaNum[3]}-${matchFechaNum[2]}-${matchFechaNum[1]}`
+    }
+  }
+
+  // ✅ FIX 1 — Fecha formato PDF: "2026/05/26"
+  if (!fecha) {
+    const matchPDF = cuerpo.match(/(\d{4})\/(\d{2})\/(\d{2})/)
+    if (matchPDF) {
+      fecha = `${matchPDF[1]}-${matchPDF[2]}-${matchPDF[3]}`
     }
   }
 
@@ -199,9 +205,11 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
   else if (cuerpo.match(/revisi[oó]n.*PP|rev.*pp/i)) tipo = 'REVISION PP'
   else tipo = 'AUDIENCIA'
 
-  // Tribunal
-  const matchTribunal = cuerpo.match(/((?:\d+[°º]?\s+)?(?:Juzgado|Tribunal|TOP|JG)[^,\n\.]{3,50})/i)
-  if (matchTribunal) tribunal = matchTribunal[1].trim().substring(0, 60)
+  // ✅ FIX 2 — Tribunal limpio: solo captura nombre formal, no texto del cuerpo
+  const matchTribunal = cuerpo.match(
+    /((?:\d+[°º]?\s+)?(?:Juzgado\s+de\s+(?:Garantía|Letras|Garantia)|Tribunal\s+de\s+(?:Juicio\s+Oral\s+en\s+lo\s+Penal|Juicio\s+Oral|Familia|Garantía|Garantia)|TOP|JG)\s+de\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)?)/i
+  )
+  if (matchTribunal) tribunal = matchTribunal[1].trim()
 
   return { fecha, hora, tipo, tribunal }
 }
@@ -211,6 +219,7 @@ function extraerAudienciaFiscalia(cuerpo, asunto) {
 
   let fecha = null, hora = null, tipo = 'ENTREVISTA'
 
+  // Fecha escrita: "26 de mayo de 2026"
   const matchFecha = cuerpo.match(/(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/i)
   if (matchFecha) {
     const mes = meses[matchFecha[2].toLowerCase()]
@@ -221,10 +230,19 @@ function extraerAudienciaFiscalia(cuerpo, asunto) {
     }
   }
 
+  // Fecha numérica DD/MM/YYYY o DD-MM-YYYY
   if (!fecha) {
     const matchFechaNum = cuerpo.match(/(\d{2})[\/\-](\d{2})[\/\-](\d{4})/)
     if (matchFechaNum) {
       fecha = `${matchFechaNum[3]}-${matchFechaNum[2]}-${matchFechaNum[1]}`
+    }
+  }
+
+  // ✅ FIX 3 — Fecha formato PDF: "2026/05/26"
+  if (!fecha) {
+    const matchPDF = cuerpo.match(/(\d{4})\/(\d{2})\/(\d{2})/)
+    if (matchPDF) {
+      fecha = `${matchPDF[1]}-${matchPDF[2]}-${matchPDF[3]}`
     }
   }
 
