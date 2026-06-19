@@ -4,13 +4,13 @@ import { supabase } from '../lib/supabase'
 
 const f = { fontFamily:"'Inter',sans-serif" }
 
-export default function GmailIntegracion() {
+export default function GmailIntegracion({ onImportComplete }) {
   const [conectado, setConectado] = useState(isGmailConnected())
   const [cargando, setCargando] = useState(false)
   const [procesando, setProcesando] = useState(false)
-  const [agregados, setAgregados] = useState([])      // lo que se agregó automáticamente
-  const [errores, setErrores] = useState([])           // lo que falló
-  const [sinCausa, setSinCausa] = useState([])         // correos sin causa vigente
+  const [agregados, setAgregados] = useState([])
+  const [errores, setErrores] = useState([])
+  const [sinCausa, setSinCausa] = useState([])
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -37,16 +37,11 @@ export default function GmailIntegracion() {
       // 1. Obtener notificaciones de Gmail
       const notificaciones = await fetchNotificacionesPJUD()
 
-      // 2. Obtener causas vigentes
+      // 2. Obtener causas vigentes — incluye tribunal e imputado
       const { data: causasVigentes } = await supabase
         .from('causas')
-        .select('id, ruc, rit, imputado, estado')
+        .select('id, ruc, rit, imputado, tribunal, estado')
         .neq('estado', 'terminada')
-
-      const causasPorRuc = {}
-      ;(causasVigentes || []).forEach(c => {
-        causasPorRuc[c.ruc?.replace(/\s/g, '')] = c
-      })
 
       // 3. Deduplicar por RUC+fecha para no agregar dos veces
       const { data: audienciasExistentes } = await supabase
@@ -57,13 +52,11 @@ export default function GmailIntegracion() {
         (audienciasExistentes || []).map(a => `${a.ruc}-${a.fecha}-${a.tipo}`)
       )
 
-      // Deduplicar correos en memoria (mismo RUC + misma fecha = mismo evento aunque lleguen 9 copias)
       const clavesProcesadas = new Set()
 
-      // Normalizar RUC: quitar espacios y guiones para comparar
       const normalizarRuc = (ruc) => ruc?.replace(/[\s\-]/g, '') || ''
 
-      // Reconstruir mapa con RUC normalizado
+      // Mapa con RUC normalizado
       const causasPorRucNorm = {}
       ;(causasVigentes || []).forEach(c => {
         causasPorRucNorm[normalizarRuc(c.ruc)] = c
@@ -81,7 +74,7 @@ export default function GmailIntegracion() {
         const rucNorm = normalizarRuc(rucLimpio)
         const causa = causasPorRucNorm[rucNorm]
 
-        // Sin causa vigente (mostrar solo una vez por RUC)
+        // Sin causa vigente
         if (!causa) {
           if (!sinCausaVistos.has(rucNorm)) {
             sinCausaVistos.add(rucNorm)
@@ -100,16 +93,12 @@ export default function GmailIntegracion() {
           continue
         }
 
-        // Deduplicar: mismo RUC + misma fecha + mismo tipo = mismo evento
+        // Deduplicar
         const clave = `${rucNorm}-${n.audiencia.fecha}-${n.audiencia.tipo}`
-
-        // Ya existe en BD o ya procesado en esta sesión
-        if (claveExistente.has(clave) || clavesProcesadas.has(clave)) {
-          continue
-        }
+        if (claveExistente.has(clave) || clavesProcesadas.has(clave)) continue
         clavesProcesadas.add(clave)
 
-        // Agregar audiencia
+        // ✅ FIX: incluye imputado y tribunal con fallback desde la causa
         const { data, error } = await supabase.from('audiencias').insert({
           causa_id: causa.id,
           ruc: rucLimpio || causa.ruc,
@@ -117,7 +106,8 @@ export default function GmailIntegracion() {
           fecha: n.audiencia.fecha,
           hora: n.audiencia.hora || '',
           tipo: n.audiencia.tipo || 'AUDIENCIA',
-          tribunal: n.audiencia.tribunal || '',
+          tribunal: n.audiencia.tribunal || causa.tribunal || '',
+          imputado: causa.imputado || '',
           resultado: '',
           notas: `Importado automáticamente desde correo ${n.tipo}\nAsunto: ${n.asunto}\nFecha correo: ${new Date(n.fecha_correo).toLocaleDateString('es-CL')}`,
         }).select().single()
@@ -131,7 +121,7 @@ export default function GmailIntegracion() {
             tipo: n.audiencia.tipo,
             fecha: n.audiencia.fecha,
             hora: n.audiencia.hora,
-            tribunal: n.audiencia.tribunal,
+            tribunal: n.audiencia.tribunal || causa.tribunal,
             asunto: n.asunto,
             origen: n.tipo,
           })
@@ -143,6 +133,12 @@ export default function GmailIntegracion() {
       setAgregados(nuevosAgregados)
       setErrores(nuevosErrores)
       setSinCausa(sinCausaVigente)
+
+      // ✅ Notificar al calendario para que recargue
+      if (onImportComplete && nuevosAgregados.length > 0) {
+        onImportComplete()
+      }
+
     } catch (e) {
       setErrores([{ asunto: 'Error general', motivo: e.message }])
     }
