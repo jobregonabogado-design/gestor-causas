@@ -189,21 +189,19 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
   }
 
   // Patrón 1b: "DD de MES de dos mil veintiséis" — año en palabras (formato actas PJUD)
+  // Ejemplo exacto: "Fecha 25 de junio de dos mil veintiséis"
   if (!fecha) {
-    const matchAñoPalabras = cuerpo.match(/(\d{1,2})\s+de\s+(\w+)\s+de\s+((?:dos|tres|cuatro)\s+mil\s+\w+(?:\s+\w+)?)/gi)
-    if (matchAñoPalabras) {
-      for (const m of matchAñoPalabras) {
-        const partes = m.match(/(\d{1,2})\s+de\s+(\w+)\s+de\s+(.+)/i)
-        if (partes) {
-          const mes = meses[partes[2].toLowerCase()]
-          const anio = añoEnPalabrasANumero(partes[3])
-          if (mes && anio) {
-            const d = String(partes[1]).padStart(2,'0')
-            const mm = String(mes).padStart(2,'0')
-            const posible = `${anio}-${mm}-${d}`
-            if (esFechaFuturaOReciente(posible)) { fecha = posible; break }
-          }
-        }
+    const regexAnioPalabras = /(\d{1,2})\s+de\s+(\w+)\s+de\s+(dos|tres|cuatro)\s+mil\s+(\w+(?:\s+\w+)?)/gi
+    const matchesAP = [...cuerpo.matchAll(regexAnioPalabras)]
+    for (const m of matchesAP) {
+      const mes = meses[m[2].toLowerCase().replace(/á/g,'a').replace(/é/g,'e').replace(/í/g,'i').replace(/ó/g,'o').replace(/ú/g,'u')]
+      const anioTexto = `${m[3]} mil ${m[4]}`
+      const anio = añoEnPalabrasANumero(anioTexto)
+      if (mes && anio) {
+        const d = String(m[1]).padStart(2,'0')
+        const mm = String(mes).padStart(2,'0')
+        const posible = `${anio}-${mm}-${d}`
+        if (esFechaFuturaOReciente(posible)) { fecha = posible; break }
       }
     }
   }
@@ -340,14 +338,16 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
 
 // Convierte año en palabras a número: "dos mil veintiséis" → 2026
 function añoEnPalabrasANumero(str) {
+  // Normalizar: quitar tildes para comparación robusta
+  const normalizar = s => s.toLowerCase().trim()
+    .replace(/á/g,'a').replace(/é/g,'e').replace(/í/g,'i').replace(/ó/g,'o').replace(/ú/g,'u')
   const map = {
-    'dos mil veintiuno':2021,'dos mil veintidós':2022,'dos mil veintitres':2023,
-    'dos mil veintitrés':2023,'dos mil veinticuatro':2024,'dos mil veinticinco':2025,
-    'dos mil veintiséis':2026,'dos mil veintiseis':2026,'dos mil veintisiete':2027,
+    'dos mil veintiuno':2021,'dos mil veintidos':2022,'dos mil veintitres':2023,
+    'dos mil veinticuatro':2024,'dos mil veinticinco':2025,
+    'dos mil veintiseis':2026,'dos mil veintisiete':2027,
     'dos mil veintiocho':2028,'dos mil veintinueve':2029,'dos mil treinta':2030,
   }
-  const lower = str.toLowerCase().trim()
-  return map[lower] || null
+  return map[normalizar(str)] || null
 }
 
 // Verifica si una fecha es futura o de los últimos 7 días (audiencia reciente)
