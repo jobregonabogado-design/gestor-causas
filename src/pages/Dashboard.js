@@ -21,7 +21,7 @@ const CSS = `
   .btn-secondary:hover { border-color:#2563eb; color:#2563eb; background:#f0f7ff; }
   .detail-enter { animation:detailIn 0.25s cubic-bezier(0.4,0,0.2,1) forwards; }
   @keyframes detailIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
-  input,select,textarea { font-family:'Inter',sans-serif !important; transition:border-color 0.2s,box-shadow 0.2s; }
+  input,select,textarea { font-family:'Inter',sans-serif !important; transition:border-color 0.2s,box-shadow 0.2s; text-transform:uppercase; }
   input:focus,select:focus,textarea:focus { outline:none; border-color:#2563eb !important; box-shadow:0 0 0 3px rgba(37,99,235,0.1) !important; }
   .tc-section textarea:focus { box-shadow: none !important; border-color: transparent !important; }
   @media (max-width: 640px) {
@@ -770,7 +770,7 @@ export default function Dashboard({ session, registrarActividad }) {
     setAudiencias(a||[]);setAumentos(au||[]);setImputados(imp||[])
   }
 
-  const updateField=async(field,value)=>{
+  const updateField=async(field,value)=>{ value = typeof value === 'string' ? value.toUpperCase() : value
     setSaving(true)
     const{error}=await supabase.from('causas').update({[field]:value,updated_at:new Date()}).eq('id',selectedCausa.id)
     if(!error){
