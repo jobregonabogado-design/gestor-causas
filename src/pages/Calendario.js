@@ -16,7 +16,7 @@ const CSS = `
   .btn-blue:hover { background:#1d4ed8; box-shadow:0 4px 14px rgba(37,99,235,0.25); }
   .btn-out { font-family:"Plus Jakarta Sans",sans-serif; background:#fff; color:#374151; border:1.5px solid #e5e7eb; border-radius:8px; padding:8px 18px; font-size:13px; font-weight:500; cursor:pointer; transition:all 0.18s; }
   .btn-out:hover { border-color:#2563eb; color:#2563eb; }
-  input,select,textarea { font-family:"Plus Jakarta Sans",sans-serif !important; }
+  input,select,textarea { font-family:"Plus Jakarta Sans",sans-serif !important; text-transform:uppercase; }
   input:focus,select:focus,textarea:focus { outline:none; border-color:#2563eb !important; box-shadow:0 0 0 3px rgba(37,99,235,0.08); }
 `
 
