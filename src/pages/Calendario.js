@@ -112,7 +112,7 @@ function AudienciaEditCard({ a, onDelete, onUpdate, f }) {
   )
 }
 
-export default function Calendario() {
+export default function Calendario({ onVerCausa }) {
   const hoy = new Date()
   const [mes, setMes] = useState(hoy.getMonth())
   const [anio, setAnio] = useState(hoy.getFullYear())
@@ -132,6 +132,18 @@ export default function Calendario() {
   const handleGmailToggle = () => {
     if (showGmail) loadAudiencias()
     setShowGmail(!showGmail)
+  }
+
+  // Navegar a causa por RUC
+  const irACausa = async (ruc) => {
+    if (!ruc || !onVerCausa) return
+    const { data } = await supabase
+      .from('causas')
+      .select('*')
+      .ilike('ruc', `%${ruc.replace(/\s/g,'')}%`)
+      .limit(1)
+      .maybeSingle()
+    if (data) onVerCausa(data)
   }
 
   // Autorelleno al escribir RUC
@@ -310,11 +322,18 @@ export default function Calendario() {
                     {audDelDia.map((a,i)=>{
                       const c=tipoColor(a.tipo)
                       return(
+                        <div key={i}>
+                        {a.ruc && onVerCausa && (
+                          <div onClick={()=>irACausa(a.ruc)} style={{fontSize:11,color:'#2563eb',cursor:'pointer',marginBottom:4,display:'flex',alignItems:'center',gap:4,...f}}>
+                            🔗 <span style={{fontFamily:'monospace',textDecoration:'underline'}}>{a.ruc}</span> — ver causa
+                          </div>
+                        )}
                         <AudienciaEditCard key={i} a={a} onDelete={deleteAudiencia} onUpdate={async(updated,motivo)=>{
                           const historial = a.notas ? a.notas + `\n[${new Date().toLocaleDateString('es-CL')}] Modificado: ${motivo}` : `[${new Date().toLocaleDateString('es-CL')}] Modificado: ${motivo}`
                           const{error}=await supabase.from("audiencias").update({...updated,notas:historial}).eq("id",a.id)
                           if(!error)setAudiencias(prev=>prev.map(x=>x.id===a.id?{...x,...updated,notas:historial}:x))
                         }} f={f}/>
+                        </div>
                       )
                     })}
                   </div>
@@ -364,6 +383,13 @@ export default function Calendario() {
                   const c=tipoColor(a.tipo)
                   return(
                     <tr key={i} style={{borderBottom:"1px solid #f1f5f9",background:i%2===0?"#fff":"#fafafa"}}>
+                      <td style={{padding:"11px 16px",...f}}>
+                        {a.ruc && onVerCausa ? (
+                          <span onClick={()=>irACausa(a.ruc)} style={{fontFamily:'monospace',fontSize:12,fontWeight:700,color:'#2563eb',cursor:'pointer',textDecoration:'underline',...f}}>{a.ruc}</span>
+                        ) : (
+                          <span style={{fontFamily:'monospace',fontSize:12,color:'#94a3b8'}}>{a.ruc||'—'}</span>
+                        )}
+                      </td>
                       <td style={{padding:"11px 16px",fontSize:13,fontWeight:600,color:"#1e293b",...f}}>{a.fecha}</td>
                       <td style={{padding:"11px 16px",fontSize:13,color:"#475569",...f}}>{a.hora}</td>
                       <td style={{padding:"11px 16px"}}><span style={{fontSize:11,padding:"3px 8px",borderRadius:20,background:c.bg,color:c.text,border:`1px solid ${c.border}`,fontWeight:600,...f}}>{a.tipo}</span></td>
