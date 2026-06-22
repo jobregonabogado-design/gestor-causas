@@ -208,11 +208,32 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
     }
   }
 
-  // Patrón 2: "Fecha  2026/07/31" — tabla del PDF
+  // Patrón 2a: "Fecha  2026/07/31" — tabla del PDF
   if (!fecha) {
     const matchTablaFecha = cuerpo.match(/Fecha\s+(\d{4})\/(\d{2})\/(\d{2})/i)
     if (matchTablaFecha) {
       fecha = `${matchTablaFecha[1]}-${matchTablaFecha[2]}-${matchTablaFecha[3]}`
+    }
+  }
+
+  // Patrón 2b: "Fecha 25 de junio de dos mil veintiséis" — tabla acta PJUD con año en palabras
+  // Captura específica para este formato de tabla
+  if (!fecha) {
+    const matchTablaAP = cuerpo.match(/Fecha\s+(\d{1,2})\s+de\s+([a-z\u00e0-\u00ff]+)\s+de\s+(dos|tres|cuatro)\s+mil\s+([a-z\u00e0-\u00ff]+(?:\s+[a-z\u00e0-\u00ff]+)?)/i)
+    if (matchTablaAP) {
+      const normalizar = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+      const mesNorm = normalizar(matchTablaAP[2])
+      const mesesNorm = {enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,julio:7,agosto:8,septiembre:9,octubre:10,noviembre:11,diciembre:12}
+      const mes = mesesNorm[mesNorm]
+      const anioTexto = normalizar(`${matchTablaAP[3]} mil ${matchTablaAP[4]}`)
+      const mapAnio = {'dos mil veintiuno':2021,'dos mil veintidos':2022,'dos mil veintitres':2023,'dos mil veinticuatro':2024,'dos mil veinticinco':2025,'dos mil veintiseis':2026,'dos mil veintisiete':2027,'dos mil veintiocho':2028,'dos mil veintinueve':2029,'dos mil treinta':2030}
+      const anio = mapAnio[anioTexto]
+      if (mes && anio) {
+        const d = String(matchTablaAP[1]).padStart(2,'0')
+        const m = String(mes).padStart(2,'0')
+        const posible = `${anio}-${m}-${d}`
+        if (esFechaFuturaOReciente(posible)) fecha = posible
+      }
     }
   }
 
