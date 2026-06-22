@@ -232,16 +232,102 @@ function ImputadoCard({ imp, idx, onUpdate, onDelete }) {
 
 // ─── TEORÍA DEL CASO ──────────────────────────────────────────────────────────
 const TC_SECCIONES = [
-  { key:'hechos',      icon:'📋', label:'Hechos del caso',        placeholder:'Describe los hechos relevantes: lugar, fecha, circunstancias, cronología de los eventos...' },
-  { key:'teoria',      icon:'⚖️',  label:'Teoría jurídica',        placeholder:'Calificación jurídica, tipo penal, elementos del delito, circunstancias modificatorias...' },
-  { key:'prueba',      icon:'🔍', label:'Prueba y testigos',       placeholder:'Lista de testigos, peritos, documentos, evidencias materiales, cadena de custodia...' },
-  { key:'argumentos',  icon:'💬', label:'Argumentos de defensa',   placeholder:'Estrategia de defensa, alegaciones, excepciones, jurisprudencia aplicable...' },
-  { key:'observaciones',icon:'📝',label:'Observaciones y fallos',  placeholder:'Fallos relevantes, criterios del tribunal, notas de seguimiento, pendientes...' },
+  { key:'hechos',        icon:'📋', label:'Hechos del caso',       placeholder:'Describe los hechos relevantes: lugar, fecha, circunstancias, cronología de los eventos...' },
+  { key:'teoria_defensa',icon:'⚖️',  label:'Teoría y Defensa',      placeholder:'Calificación jurídica, tipo penal, elementos del delito, circunstancias modificatorias, estrategia de defensa, alegaciones, excepciones, jurisprudencia aplicable...' },
+  { key:'prueba',        icon:'🔍', label:'Prueba y testigos',      placeholder:'Lista de testigos, peritos, documentos, evidencias materiales, cadena de custodia...' },
+  { key:'fallos',        icon:'📄', label:'Fallos de referencia',   placeholder:null },
+  { key:'observaciones', icon:'📝', label:'Observaciones',          placeholder:'Notas de seguimiento, criterios del tribunal, pendientes...' },
 ]
+
+function FallosReferencia({ causaId, ruc, email }) {
+  const [fallos, setFallos] = useState([])
+  const [subiendo, setSubiendo] = useState(false)
+  const [drag, setDrag] = useState(false)
+  const inputRef = useRef(null)
+
+  useEffect(() => { cargarFallos() }, [causaId])
+
+  const cargarFallos = async () => {
+    const { data } = await supabase.from('fallos_referencia').select('*').eq('causa_id', causaId).order('created_at', { ascending: false })
+    setFallos(data || [])
+  }
+
+  const subirArchivo = async (file) => {
+    if (!file || file.type !== 'application/pdf') { alert('Solo se permiten archivos PDF'); return }
+    setSubiendo(true)
+    const path = `${causaId}/${Date.now()}_${file.name}`
+    const { error: uploadError } = await supabase.storage.from('fallos').upload(path, file, { contentType: 'application/pdf' })
+    if (uploadError) { alert('Error al subir: ' + uploadError.message); setSubiendo(false); return }
+    const { data: urlData } = supabase.storage.from('fallos').getPublicUrl(path)
+    await supabase.from('fallos_referencia').insert({ causa_id: causaId, nombre: file.name, storage_path: path, url: urlData.publicUrl, subido_por: email })
+    await cargarFallos()
+    setSubiendo(false)
+  }
+
+  const eliminar = async (fallo) => {
+    if (!window.confirm(`¿Eliminar "${fallo.nombre}"?`)) return
+    await supabase.storage.from('fallos').remove([fallo.storage_path])
+    await supabase.from('fallos_referencia').delete().eq('id', fallo.id)
+    setFallos(prev => prev.filter(f => f.id !== fallo.id))
+  }
+
+  const onDrop = (e) => {
+    e.preventDefault(); setDrag(false)
+    const files = Array.from(e.dataTransfer.files)
+    files.forEach(f => subirArchivo(f))
+  }
+
+  return (
+    <div>
+      {/* Zona de arrastre */}
+      <div
+        onDragOver={e => { e.preventDefault(); setDrag(true) }}
+        onDragLeave={() => setDrag(false)}
+        onDrop={onDrop}
+        onClick={() => inputRef.current?.click()}
+        style={{
+          border: `2px dashed ${drag ? '#2563eb' : '#e2e8f0'}`,
+          borderRadius: 12, padding: '28px 20px', textAlign: 'center',
+          background: drag ? '#eff6ff' : '#f8fafc',
+          cursor: 'pointer', transition: 'all 0.2s', marginBottom: 16
+        }}>
+        <input ref={inputRef} type="file" accept=".pdf" multiple style={{ display:'none' }} onChange={e => Array.from(e.target.files).forEach(f => subirArchivo(f))}/>
+        <div style={{ fontSize: 32, marginBottom: 8 }}>{subiendo ? '⏳' : '📄'}</div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: drag ? '#2563eb' : '#475569', ...f }}>
+          {subiendo ? 'Subiendo...' : drag ? 'Suelta aquí el fallo' : 'Arrastra fallos PDF aquí'}
+        </div>
+        <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, ...f }}>o haz clic para seleccionar desde tu carpeta de descargas</div>
+      </div>
+
+      {/* Lista de fallos */}
+      {fallos.length === 0 ? (
+        <div style={{ fontSize: 13, color: '#cbd5e1', textAlign: 'center', padding: '12px 0', ...f }}>Sin fallos de referencia aún.</div>
+      ) : fallos.map((fallo, i) => (
+        <div key={i} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', background:'#fff', border:'1px solid #e2e8f0', borderRadius:10, marginBottom:8 }}>
+          <div style={{ width:36, height:36, background:'#fef2f2', border:'1px solid #fecaca', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, flexShrink:0 }}>📄</div>
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ fontSize:13, fontWeight:600, color:'#0f172a', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', ...f }}>{fallo.nombre}</div>
+            <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>
+              Subido por {fallo.subido_por || 'usuario'} · {new Date(fallo.created_at).toLocaleDateString('es-CL')}
+            </div>
+          </div>
+          <a href={fallo.url} target="_blank" rel="noreferrer"
+            style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:7, padding:'5px 12px', fontSize:11, color:'#2563eb', cursor:'pointer', fontWeight:600, textDecoration:'none', ...f }}>
+            Ver PDF
+          </a>
+          <button onClick={() => eliminar(fallo)}
+            style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:7, padding:'5px 10px', fontSize:11, color:'#dc2626', cursor:'pointer', fontWeight:600, ...f }}>
+            ✕
+          </button>
+        </div>
+      ))}
+    </div>
+  )
+}
 
 function TeoriaDelCaso({ causaId, ruc, session, registrarActividad }) {
   const [teoria, setTeoria] = useState(null)
-  const [form, setForm] = useState({ hechos:'', teoria:'', prueba:'', argumentos:'', observaciones:'' })
+  const [form, setForm] = useState({ hechos:'', teoria_defensa:'', prueba:'', observaciones:'' })
   const [historial, setHistorial] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -428,20 +514,24 @@ function TeoriaDelCaso({ causaId, ruc, session, registrarActividad }) {
           </div>
         )}
 
-        {/* Textarea */}
+        {/* Contenido sección */}
         <div className="tc-section" style={{ flex:1, padding:'20px' }}>
-          <textarea
-            value={form[seccionActiva] || ''}
-            onChange={e => handleChange(seccionActiva, e.target.value)}
-            placeholder={seccionActual?.placeholder}
-            style={{
-              width:'100%', height:'100%', minHeight:360,
-              border:'none', outline:'none', resize:'none',
-              fontSize:14, lineHeight:1.8, color:'#1e293b',
-              background:'transparent', fontFamily:"'Inter',sans-serif",
-              padding:0,
-            }}
-          />
+          {seccionActiva === 'fallos' ? (
+            <FallosReferencia causaId={causaId} ruc={ruc} email={session?.user?.email || ''} />
+          ) : (
+            <textarea
+              value={form[seccionActiva] || ''}
+              onChange={e => handleChange(seccionActiva, e.target.value)}
+              placeholder={seccionActual?.placeholder}
+              style={{
+                width:'100%', height:'100%', minHeight:360,
+                border:'none', outline:'none', resize:'none',
+                fontSize:14, lineHeight:1.8, color:'#1e293b',
+                background:'transparent', fontFamily:"'Inter',sans-serif",
+                padding:0,
+              }}
+            />
+          )}
         </div>
 
         {/* Footer */}
