@@ -713,7 +713,7 @@ const getSemaforo = (updated_at) => {
   return { color:'#dc2626', title:`Sin actividad hace ${dias} días` }
 }
 
-export default function Dashboard({ session, registrarActividad }) {
+export default function Dashboard({ session, registrarActividad, causaInicial, onCausaInicialUsada }) {
   const [causas,setCausas]=useState([])
   const [loading,setLoading]=useState(true)
   const [search,setSearch]=useState('')
@@ -740,6 +740,14 @@ export default function Dashboard({ session, registrarActividad }) {
   })
 
   useEffect(()=>{ loadCausas() },[])
+
+  // ✅ Abrir causa que viene desde el Calendario
+  useEffect(() => {
+    if (causaInicial) {
+      openCausa(causaInicial)
+      if (onCausaInicialUsada) onCausaInicialUsada()
+    }
+  }, [causaInicial])
 
   const loadCausas = async () => {
     setLoading(true)
