@@ -1,54 +1,60 @@
-import { useState } from 'react'
-
-const f = { fontFamily: "'Outfit', sans-serif" }
-
-const BASE_SHARE = 'https://onedrive.live.com/embed?resid=CFB783F3C750A65%210&authkey=!AGeZynSn31N0mnxsucbEeYg0'
+import { useState, useEffect } from 'react'
+const f = { fontFamily: "'Inter', sans-serif" }
 
 export default function CarpetaOneDrive({ ruc }) {
-  const [expanded, setExpanded] = useState(false)
+  const [copiado, setCopiado] = useState(false)
 
-  const oneDriveUrl = 'https://onedrive.live.com/?id=%2Fpersonal%2F0cfb783f3c750a65%2FDocuments%2FJOAQUIN%20OBREGON%2FCAUSAS%20JOA%2F' + ruc.replace(/-/g, '%2D') + '&sortField=LinkFilename&isAscending=true'
+  const oneDriveUrl = 'https://onedrive.live.com/?id=%2Fpersonal%2F0cfb783f3c750a65%2FDocuments%2FJOAQUIN%20OBREGON%2FCAUSAS%20JOA%2F'
+    + ruc.replace(/-/g, '%2D')
+    + '&sortField=LinkFilename&isAscending=true'
+
+  const copiarRuc = () => {
+    navigator.clipboard.writeText(ruc)
+    setCopiado(true)
+    setTimeout(() => setCopiado(false), 2000)
+  }
 
   return (
     <div>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
-        <div style={{ fontSize:13, color:'#6b7280', ...f }}>
-          📁 <span style={{ fontFamily:'monospace' }}>CAUSAS JOA / {ruc}</span>
-        </div>
-        <div style={{ display:'flex', gap:8 }}>
-          <button onClick={() => setExpanded(!expanded)}
-            style={{ background:'#2563eb', color:'#fff', border:'none', borderRadius:7, padding:'7px 14px', fontSize:12, cursor:'pointer', fontWeight:600, ...f }}>
-            {expanded ? 'Ocultar archivos' : '📂 Ver archivos'}
-          </button>
-          <a href={oneDriveUrl} target="_blank" rel="noreferrer"
-            style={{ background:'#fff', border:'1.5px solid #e5e7eb', borderRadius:7, padding:'7px 14px', fontSize:12, cursor:'pointer', textDecoration:'none', color:'#374151', ...f }}>
-            Abrir en OneDrive ↗
-          </a>
-        </div>
-      </div>
-
-      {expanded && (
-        <div style={{ borderRadius:10, overflow:'hidden', border:'1px solid #eaecf4' }}>
-          <iframe
-            src={`https://onedrive.live.com/embed?authkey=%21AGeZynSn31N0mnxsucbEeYg0&id=CFB783F3C750A65%210&path=%2FCAUSAS%20JOA%2F${encodeURIComponent(ruc)}&action=view`}
-            width="100%"
-            height="500"
-            frameBorder="0"
-            scrolling="yes"
-            title={`Carpeta ${ruc}`}
-            style={{ display:'block' }}
-          />
-        </div>
-      )}
-
-      {!expanded && (
-        <div style={{ textAlign:'center', padding:'24px 20px', background:'#f7f8fc', borderRadius:10, border:'1.5px dashed #e5e7eb' }}>
-          <div style={{ fontSize:32, marginBottom:8 }}>📁</div>
-          <div style={{ fontSize:13, color:'#9ca3af', marginBottom:12, ...f }}>
-            Haz clic en "Ver archivos" para ver los documentos de esta causa
+      {/* Card principal */}
+      <div style={{ background:'linear-gradient(135deg,#f0f7ff,#e8f0fe)', border:'1.5px solid #bfdbfe', borderRadius:14, padding:'20px 24px', marginBottom:16 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:16 }}>
+          <div style={{ width:48, height:48, background:'linear-gradient(135deg,#2563eb,#1d4ed8)', borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center', fontSize:24, flexShrink:0 }}>📁</div>
+          <div>
+            <div style={{ fontSize:14, fontWeight:700, color:'#1e3a8a', ...f }}>Carpeta OneDrive</div>
+            <div style={{ fontSize:12, color:'#3b82f6', marginTop:2, fontFamily:'monospace' }}>CAUSAS JOA / {ruc}</div>
           </div>
         </div>
-      )}
+
+        {/* Botón principal — abrir en OneDrive */}
+        <a href={oneDriveUrl} target="_blank" rel="noreferrer"
+          style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:10, background:'linear-gradient(135deg,#2563eb,#1d4ed8)', color:'#fff', borderRadius:10, padding:'12px 20px', fontSize:14, fontWeight:600, textDecoration:'none', boxShadow:'0 4px 14px rgba(37,99,235,0.3)', marginBottom:10, ...f }}>
+          <span style={{ fontSize:18 }}>📂</span>
+          Abrir carpeta en OneDrive
+          <span style={{ fontSize:12, opacity:0.8 }}>↗</span>
+        </a>
+
+        {/* Botón copiar RUC */}
+        <button onClick={copiarRuc}
+          style={{ width:'100%', background:'#fff', border:'1.5px solid #bfdbfe', borderRadius:10, padding:'9px 20px', fontSize:13, fontWeight:500, color:'#2563eb', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8, ...f }}>
+          {copiado ? '✅ RUC copiado' : '📋 Copiar RUC para buscar en OneDrive'}
+        </button>
+      </div>
+
+      {/* Instrucciones */}
+      <div style={{ background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:10, padding:'14px 18px' }}>
+        <div style={{ fontSize:11, fontWeight:700, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, marginBottom:10, ...f }}>Cómo acceder</div>
+        {[
+          { icon:'1️⃣', texto:'Haz clic en "Abrir carpeta en OneDrive"' },
+          { icon:'2️⃣', texto:'Si no carga directo, usa "Copiar RUC" y búscalo en OneDrive' },
+          { icon:'3️⃣', texto:'La carpeta está en: Documentos → JOAQUIN OBREGON → CAUSAS JOA → ' + ruc },
+        ].map((item, i) => (
+          <div key={i} style={{ display:'flex', gap:10, alignItems:'flex-start', marginBottom:8 }}>
+            <span style={{ fontSize:14, flexShrink:0 }}>{item.icon}</span>
+            <div style={{ fontSize:12, color:'#64748b', lineHeight:1.5, ...f }}>{item.texto}</div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
