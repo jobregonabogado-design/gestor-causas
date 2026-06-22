@@ -34,14 +34,31 @@ export default function GmailIntegracion({ onImportComplete }) {
     setSinCausa([])
 
     try {
-      // 1. Obtener notificaciones de Gmail
-      const notificaciones = await fetchNotificacionesPJUD()
-
-      // 2. Obtener causas vigentes — incluye tribunal e imputado
+      // 1. Obtener causas vigentes PRIMERO — solo procesamos correos de estas
       const { data: causasVigentes } = await supabase
         .from('causas')
         .select('id, ruc, rit, imputado, tribunal, estado')
-        .neq('estado', 'terminada')
+        .eq('estado', 'vigente')
+
+      if (!causasVigentes || causasVigentes.length === 0) {
+        setCargando(false)
+        setProcesando(false)
+        return
+      }
+
+      // Construir set de RUC vigentes para filtrado rápido
+      const rucsVigentes = new Set(
+        causasVigentes.map(c => c.ruc?.replace(/[\s\-]/g, '').toLowerCase())
+      )
+
+      // 2. Obtener notificaciones de Gmail — solo leer correos de causas vigentes
+      const todasNotificaciones = await fetchNotificacionesPJUD()
+
+      // Filtrar: solo procesar correos cuyo RUC esté en causas vigentes
+      const notificaciones = todasNotificaciones.filter(n => {
+        const rucNorm = n.ruc?.replace(/[\s\-]/g, '').toLowerCase()
+        return rucsVigentes.has(rucNorm)
+      })
 
       // 3. Deduplicar por RUC+fecha para no agregar dos veces
       const { data: audienciasExistentes } = await supabase
@@ -61,6 +78,9 @@ export default function GmailIntegracion({ onImportComplete }) {
       ;(causasVigentes || []).forEach(c => {
         causasPorRucNorm[normalizarRuc(c.ruc)] = c
       })
+
+      // Con el filtro previo, todas las notificaciones tienen causa vigente
+      // sinCausaVigente ya no aplica — lo dejamos vacío
 
       const nuevosAgregados = []
       const nuevosErrores = []
