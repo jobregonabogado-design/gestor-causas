@@ -126,7 +126,7 @@ function parsearCorreo(msg) {
 
   let resultado = null
 
-  // Tipo 1: PJUD
+  // Tipo 1: PJUD — asunto con RUC y RIT
   const matchPJUD = asunto.match(/RUC[:\s]+([0-9]+-[0-9A-Za-z]+)[,\s]+RIT[:\s]+([0-9]+-[0-9]+)/i)
   if (matchPJUD) {
     resultado = {
@@ -134,7 +134,7 @@ function parsearCorreo(msg) {
       ruc: matchPJUD[1].replace(/\s/g, ''),
       rit: matchPJUD[2],
       asunto,
-      cuerpo: cuerpo.substring(0, 1000),
+      cuerpo: cuerpo.substring(0, 2000),
       fecha_correo: new Date(parseInt(msg.internalDate)).toISOString(),
       audiencia: extraerAudienciaPJUD(cuerpo, asunto),
     }
@@ -148,7 +148,7 @@ function parsearCorreo(msg) {
       ruc: matchFiscalia[1].replace(/\s/g, ''),
       rit: '',
       asunto,
-      cuerpo: cuerpo.substring(0, 1000),
+      cuerpo: cuerpo.substring(0, 2000),
       fecha_correo: new Date(parseInt(msg.internalDate)).toISOString(),
       audiencia: extraerAudienciaFiscalia(cuerpo, asunto),
     }
@@ -157,96 +157,208 @@ function parsearCorreo(msg) {
   return resultado
 }
 
+// ─── PARSER PRINCIPAL PJUD ────────────────────────────────────────────────────
+// Los correos del PJUD son actas o resoluciones que al final fijan una FECHA FUTURA.
+// La estrategia es buscar primero en la sección de "fijación/reprogramación"
+// que aparece al final del documento, y solo si no hay, buscar en el encabezado.
+
 function extraerAudienciaPJUD(cuerpo, asunto) {
   const meses = {enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,julio:7,agosto:8,septiembre:9,octubre:10,noviembre:11,diciembre:12}
 
-  let fecha = null, hora = null, tipo = null, tribunal = null
+  let fecha = null, hora = null, tipo = null, tribunal = null, sala = null
 
-  // Fecha escrita: "26 de mayo de 2026"
-  const matchFechaEscrita = cuerpo.match(/(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/i)
-  if (matchFechaEscrita) {
-    const mes = meses[matchFechaEscrita[2].toLowerCase()]
+  // ═══════════════════════════════════════════════════════
+  // PASO 1: Buscar fecha en sección de FIJACIÓN (al final)
+  // Patrones de los PDFs reales del PJUD:
+  // - "para el día 31 de julio de 2026"
+  // - "Fecha  2026/07/31" (tabla al final)
+  // - "fijada para el día 22 de junio de 2026, a las 09:30 hrs"
+  // - "8 de octubre de 2026" (en tabla Reprogramación)
+  // ═══════════════════════════════════════════════════════
+
+  // Patrón 1: "para el día DD de MES de YYYY" — fecha futura fijada
+  const matchFijacion = cuerpo.match(/para\s+el\s+d[ií]a\s+(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/i)
+  if (matchFijacion) {
+    const mes = meses[matchFijacion[2].toLowerCase()]
     if (mes) {
-      const d = String(matchFechaEscrita[1]).padStart(2,'0')
+      const d = String(matchFijacion[1]).padStart(2,'0')
       const m = String(mes).padStart(2,'0')
-      fecha = `${matchFechaEscrita[3]}-${m}-${d}`
+      const posibleFecha = `${matchFijacion[3]}-${m}-${d}`
+      // Solo tomar si es fecha futura o reciente (no el encabezado del acta)
+      if (esFechaFuturaOReciente(posibleFecha)) fecha = posibleFecha
     }
   }
 
-  // Fecha numérica DD/MM/YYYY o DD-MM-YYYY
+  // Patrón 2: "Fecha  2026/07/31" — tabla del PDF
   if (!fecha) {
-    const matchFechaNum = cuerpo.match(/(\d{2})[\/\-](\d{2})[\/\-](\d{4})/)
-    if (matchFechaNum) {
-      fecha = `${matchFechaNum[3]}-${matchFechaNum[2]}-${matchFechaNum[1]}`
+    const matchTablaFecha = cuerpo.match(/Fecha\s+(\d{4})\/(\d{2})\/(\d{2})/i)
+    if (matchTablaFecha) {
+      fecha = `${matchTablaFecha[1]}-${matchTablaFecha[2]}-${matchTablaFecha[3]}`
     }
   }
 
-  // FIX: Fecha formato PDF "2026/05/26"
+  // Patrón 3: "fijada para el DD de MES de YYYY"
   if (!fecha) {
-    const matchPDF = cuerpo.match(/(\d{4})\/(\d{2})\/(\d{2})/)
-    if (matchPDF) {
-      fecha = `${matchPDF[1]}-${matchPDF[2]}-${matchPDF[3]}`
+    const matchFijada = cuerpo.match(/fijada?\s+para\s+el\s+(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/i)
+    if (matchFijada) {
+      const mes = meses[matchFijada[2].toLowerCase()]
+      if (mes) {
+        const d = String(matchFijada[1]).padStart(2,'0')
+        const m = String(mes).padStart(2,'0')
+        fecha = `${matchFijada[3]}-${m}-${d}`
+      }
     }
   }
 
-  // FIX: Hora solo con contexto — evita capturar timestamps del correo
+  // Patrón 4: tabla Reprogramación — "Fecha  8 de octubre de 2026"
+  if (!fecha) {
+    const matchReprog = cuerpo.match(/(?:Reprogramaci[oó]n|Fecha\s+de\s+Audiencia)[^\n]*\n[^\n]*?(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/i)
+    if (matchReprog) {
+      const mes = meses[matchReprog[2].toLowerCase()]
+      if (mes) {
+        const d = String(matchReprog[1]).padStart(2,'0')
+        const m = String(mes).padStart(2,'0')
+        fecha = `${matchReprog[3]}-${m}-${d}`
+      }
+    }
+  }
+
+  // Patrón 5: cualquier fecha escrita futura en el cuerpo (fallback)
+  if (!fecha) {
+    const matches = [...cuerpo.matchAll(/(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/gi)]
+    for (const m of matches) {
+      const mes = meses[m[2].toLowerCase()]
+      if (mes) {
+        const d = String(m[1]).padStart(2,'0')
+        const mm = String(mes).padStart(2,'0')
+        const posible = `${m[3]}-${mm}-${d}`
+        if (esFechaFuturaOReciente(posible)) { fecha = posible; break }
+      }
+    }
+  }
+
+  // Patrón 6: fecha numérica PDF YYYY/MM/DD (solo si es futura)
+  if (!fecha) {
+    const matchesPDF = [...cuerpo.matchAll(/(\d{4})\/(\d{2})\/(\d{2})/g)]
+    for (const m of matchesPDF) {
+      const posible = `${m[1]}-${m[2]}-${m[3]}`
+      if (esFechaFuturaOReciente(posible)) { fecha = posible; break }
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // PASO 2: Hora — solo con contexto real de audiencia
+  // Patrones: "a las 11:00 horas", "11:00AM", "Hora  11:00AM"
+  // ═══════════════════════════════════════════════════════
   const matchHora =
-    cuerpo.match(/(?:a\s+las|hora[:\s]+|inicio[:\s]+|programad[oa]\s+a\s+las)\s*(\d{1,2}:\d{2})/i) ||
+    cuerpo.match(/(?:a\s+las|Hora[:\s]+|inicio[:\s]+)\s*(\d{1,2}:\d{2})\s*(?:AM|PM|horas?|hrs?)?/i) ||
+    cuerpo.match(/(\d{1,2}:\d{2})\s*(?:AM|PM)\b/i) ||
     cuerpo.match(/(\d{1,2}:\d{2})\s*(?:horas?|hrs?)\b/i)
-  if (matchHora) hora = matchHora[1]
+  if (matchHora) {
+    hora = matchHora[1]
+    // Normalizar AM/PM
+    const ampm = matchHora[0].match(/(\d{1,2}:\d{2})\s*(AM|PM)/i)
+    if (ampm) {
+      let [h, min] = ampm[1].split(':').map(Number)
+      if (ampm[2].toUpperCase() === 'PM' && h < 12) h += 12
+      if (ampm[2].toUpperCase() === 'AM' && h === 12) h = 0
+      hora = `${String(h).padStart(2,'0')}:${String(min).padStart(2,'0')}`
+    }
+  }
 
-  // Tipo audiencia
-  if (cuerpo.match(/juicio oral/i)) tipo = 'JUICIO ORAL'
-  else if (cuerpo.match(/preparaci[oó]n.*juicio|APJO/i)) tipo = 'APJO'
-  else if (cuerpo.match(/abreviado/i)) tipo = 'ABREVIADO'
-  else if (cuerpo.match(/formalizaci[oó]n/i)) tipo = 'FORMALIZACION'
-  else if (cuerpo.match(/cautelar|garant[ií]a/i)) tipo = 'CAUTELA DE GARANTIAS'
-  else if (cuerpo.match(/reprogramac/i)) tipo = 'REPROGRAMACION'
-  else if (cuerpo.match(/coordinaci[oó]n/i)) tipo = 'COORDINACION JO'
-  else if (cuerpo.match(/control.*detenci[oó]n/i)) tipo = 'CONTROL DETENCION'
-  else if (cuerpo.match(/revisi[oó]n.*PP|rev.*pp/i)) tipo = 'REVISION PP'
-  else tipo = 'AUDIENCIA'
+  // ═══════════════════════════════════════════════════════
+  // PASO 3: Tipo de audiencia
+  // Prioriza la sección "Tipo de Audiencia" de la tabla
+  // ═══════════════════════════════════════════════════════
+  const matchTipoTabla = cuerpo.match(/Tipo\s+de\s+Audiencia\s+([^\n]{5,80})/i)
+  if (matchTipoTabla) {
+    const t = matchTipoTabla[1].trim()
+    if (t.match(/preparaci[oó]n.*juicio|APJO/i)) tipo = 'APJO'
+    else if (t.match(/abreviado/i)) tipo = 'ABREVIADO'
+    else if (t.match(/juicio oral/i)) tipo = 'JUICIO ORAL'
+    else if (t.match(/formalizaci[oó]n/i)) tipo = 'FORMALIZACION'
+  }
 
-  // FIX: Tribunal limpio — solo nombre formal
-  const matchTribunal = cuerpo.match(
-    /((?:\d+[°º]?\s+)?(?:Juzgado\s+de\s+(?:Garantía|Letras|Garantia)|Tribunal\s+de\s+(?:Juicio\s+Oral\s+en\s+lo\s+Penal|Juicio\s+Oral|Familia|Garantía|Garantia)|TOP|JG)\s+de\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)?)/i
-  )
-  if (matchTribunal) tribunal = matchTribunal[1].trim()
+  if (!tipo) {
+    if (cuerpo.match(/juicio oral/i)) tipo = 'JUICIO ORAL'
+    else if (cuerpo.match(/preparaci[oó]n.*juicio|APJO/i)) tipo = 'APJO'
+    else if (cuerpo.match(/abreviado/i)) tipo = 'ABREVIADO'
+    else if (cuerpo.match(/formalizaci[oó]n/i)) tipo = 'FORMALIZACION'
+    else if (cuerpo.match(/cautelar/i)) tipo = 'CAUTELA DE GARANTIAS'
+    else if (cuerpo.match(/reprogramac/i)) tipo = 'REPROGRAMACION'
+    else if (cuerpo.match(/coordinaci[oó]n/i)) tipo = 'COORDINACION JO'
+    else if (cuerpo.match(/control.*detenci[oó]n/i)) tipo = 'CONTROL DETENCION'
+    else if (cuerpo.match(/revisi[oó]n.*PP|rev.*pp/i)) tipo = 'REVISION PP'
+    else if (cuerpo.match(/cierre/i)) tipo = 'CIERRE'
+    else if (cuerpo.match(/apelaci[oó]n/i)) tipo = 'APELACION'
+    else tipo = 'AUDIENCIA'
+  }
 
-  return { fecha, hora, tipo, tribunal }
+  // ═══════════════════════════════════════════════════════
+  // PASO 4: Tribunal — desde campo "Tribunal" de la tabla
+  // Ejemplos reales: "7º Juzgado de Garantía de Santiago"
+  //                  "Juzgado de Garantía de Melipilla"
+  //                  "9° Juzgado de Garantía de Santiago"
+  // ═══════════════════════════════════════════════════════
+  const matchTribTabla = cuerpo.match(/Tribunal\s+((?:\d+[°º]?\s+)?(?:Juzgado|Tribunal)[^\n]{5,60})/i)
+  if (matchTribTabla) {
+    tribunal = matchTribTabla[1].trim().replace(/\s+/g, ' ')
+  }
+
+  if (!tribunal) {
+    const matchTrib = cuerpo.match(/((?:\d+[°º]?\s+)?(?:Juzgado\s+de\s+Garantía|Juzgado\s+de\s+Garantia|Tribunal\s+de\s+Juicio\s+Oral)[^\n,]{3,50})/i)
+    if (matchTrib) tribunal = matchTrib[1].trim().replace(/\s+/g, ' ').substring(0, 60)
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // PASO 5: Sala
+  // ═══════════════════════════════════════════════════════
+  const matchSala = cuerpo.match(/Sala\s+([A-Z0-9\s]{1,20}?)(?:\n|$)/i)
+  if (matchSala) sala = matchSala[1].trim()
+
+  return { fecha, hora, tipo, tribunal, sala }
 }
 
+// Verifica si una fecha es futura o de los últimos 7 días (audiencia reciente)
+function esFechaFuturaOReciente(fechaISO) {
+  try {
+    const fecha = new Date(fechaISO + 'T12:00:00')
+    const hoy = new Date()
+    hoy.setHours(0,0,0,0)
+    const hace7dias = new Date(hoy)
+    hace7dias.setDate(hace7dias.getDate() - 7)
+    return fecha >= hace7dias
+  } catch { return false }
+}
+
+// ─── PARSER FISCALÍA ─────────────────────────────────────────────────────────
 function extraerAudienciaFiscalia(cuerpo, asunto) {
   const meses = {enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,julio:7,agosto:8,septiembre:9,octubre:10,noviembre:11,diciembre:12}
 
   let fecha = null, hora = null, tipo = 'ENTREVISTA'
 
-  const matchFecha = cuerpo.match(/(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/i)
-  if (matchFecha) {
-    const mes = meses[matchFecha[2].toLowerCase()]
+  // Buscar todas las fechas escritas y tomar la más futura
+  const matches = [...cuerpo.matchAll(/(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/gi)]
+  for (const m of matches) {
+    const mes = meses[m[2].toLowerCase()]
     if (mes) {
-      const d = String(matchFecha[1]).padStart(2,'0')
-      const m = String(mes).padStart(2,'0')
-      fecha = `${matchFecha[3]}-${m}-${d}`
+      const d = String(m[1]).padStart(2,'0')
+      const mm = String(mes).padStart(2,'0')
+      const posible = `${m[3]}-${mm}-${d}`
+      if (esFechaFuturaOReciente(posible)) { fecha = posible; break }
     }
   }
 
   if (!fecha) {
     const matchFechaNum = cuerpo.match(/(\d{2})[\/\-](\d{2})[\/\-](\d{4})/)
-    if (matchFechaNum) {
-      fecha = `${matchFechaNum[3]}-${matchFechaNum[2]}-${matchFechaNum[1]}`
-    }
+    if (matchFechaNum) fecha = `${matchFechaNum[3]}-${matchFechaNum[2]}-${matchFechaNum[1]}`
   }
 
-  // FIX: Fecha formato PDF "2026/05/26"
   if (!fecha) {
     const matchPDF = cuerpo.match(/(\d{4})\/(\d{2})\/(\d{2})/)
-    if (matchPDF) {
-      fecha = `${matchPDF[1]}-${matchPDF[2]}-${matchPDF[3]}`
-    }
+    if (matchPDF) fecha = `${matchPDF[1]}-${matchPDF[2]}-${matchPDF[3]}`
   }
 
-  // FIX: Hora solo con contexto
   const matchHora =
     cuerpo.match(/(?:a\s+las|hora[:\s]+|inicio[:\s]+)\s*(\d{1,2}:\d{2})/i) ||
     cuerpo.match(/(\d{1,2}:\d{2})\s*(?:horas?|hrs?)\b/i)
@@ -256,5 +368,5 @@ function extraerAudienciaFiscalia(cuerpo, asunto) {
   else if (asunto.match(/declarac/i)) tipo = 'DECLARACION'
   else if (asunto.match(/audiencia/i)) tipo = 'AUDIENCIA'
 
-  return { fecha, hora, tipo, tribunal: 'FISCALÍA' }
+  return { fecha, hora, tipo, tribunal: 'FISCALÍA', sala: null }
 }
