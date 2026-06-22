@@ -107,6 +107,7 @@ export default function GmailIntegracion({ onImportComplete }) {
           hora: n.audiencia.hora || '',
           tipo: n.audiencia.tipo || 'AUDIENCIA',
           tribunal: n.audiencia.tribunal || causa.tribunal || '',
+          sala: n.audiencia.sala || '',
           imputado: causa.imputado || '',
           resultado: '',
           notas: `Importado automáticamente desde correo ${n.tipo}\nAsunto: ${n.asunto}\nFecha correo: ${new Date(n.fecha_correo).toLocaleDateString('es-CL')}`,
