@@ -134,6 +134,28 @@ export default function Calendario() {
     setShowGmail(!showGmail)
   }
 
+  // Autorelleno al escribir RUC
+  const buscarCausaPorRuc = async (ruc) => {
+    if (!ruc || ruc.length < 8) return
+    const rucLimpio = ruc.replace(/\s/g, '')
+    const { data } = await supabase
+      .from('causas')
+      .select('ruc, rit, imputado, tribunal, estado')
+      .ilike('ruc', `%${rucLimpio}%`)
+      .eq('estado', 'vigente')
+      .limit(1)
+      .maybeSingle()
+    if (data) {
+      setNueva(p => ({
+        ...p,
+        ruc: data.ruc,
+        rit: p.rit || data.rit || '',
+        imputado: data.imputado?.split('|')[0] || '',
+        tribunal: p.tribunal || data.tribunal || '',
+      }))
+    }
+  }
+
   const loadAudiencias = async () => {
     setLoading(true)
     const { data, error } = await supabase.from("audiencias").select("*").order("fecha", { ascending: true })
@@ -378,7 +400,7 @@ export default function Calendario() {
               <div style={{gridColumn:"1/-1"}}><div style={{fontSize:10,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1.2,marginBottom:5,...f}}>Imputado</div><input style={inp} placeholder="Nombre del imputado" value={nueva.imputado} onChange={e=>setNueva(p=>({...p,imputado:e.target.value}))}/></div>
               <div><div style={{fontSize:10,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1.2,marginBottom:5,...f}}>Tribunal</div><input style={inp} placeholder="Ej: 7 JG STGO" value={nueva.tribunal} onChange={e=>setNueva(p=>({...p,tribunal:e.target.value}))}/></div>
               <div><div style={{fontSize:10,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1.2,marginBottom:5,...f}}>Sala</div><input style={inp} placeholder="Ej: 903" value={nueva.sala} onChange={e=>setNueva(p=>({...p,sala:e.target.value}))}/></div>
-              <div><div style={{fontSize:10,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1.2,marginBottom:5,...f}}>RUC</div><input style={inp} placeholder="Ej: 2600123456-7" value={nueva.ruc} onChange={e=>setNueva(p=>({...p,ruc:e.target.value}))}/></div>
+              <div><div style={{fontSize:10,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1.2,marginBottom:5,...f}}>RUC</div><input style={inp} placeholder="Ej: 2600123456-7" value={nueva.ruc} onChange={e=>setNueva(p=>({...p,ruc:e.target.value}))} onBlur={e=>buscarCausaPorRuc(e.target.value)}/></div>
               <div><div style={{fontSize:10,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1.2,marginBottom:5,...f}}>RIT</div><input style={inp} placeholder="Ej: 1234-2026" value={nueva.rit} onChange={e=>setNueva(p=>({...p,rit:e.target.value}))}/></div>
               <div style={{gridColumn:"1/-1"}}><div style={{fontSize:10,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1.2,marginBottom:5,...f}}>Notas</div><textarea style={{...inp,minHeight:70,resize:"vertical"}} placeholder="Observaciones adicionales..." value={nueva.notas} onChange={e=>setNueva(p=>({...p,notas:e.target.value}))}/></div>
             </div>
