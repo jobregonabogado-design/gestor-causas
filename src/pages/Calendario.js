@@ -324,8 +324,10 @@ export default function Calendario({ onVerCausa }) {
                       return(
                         <div key={i}>
                         {a.ruc && onVerCausa && (
-                          <div onClick={()=>irACausa(a.ruc)} style={{fontSize:11,color:'#2563eb',cursor:'pointer',marginBottom:4,display:'flex',alignItems:'center',gap:4,...f}}>
-                            🔗 <span style={{fontFamily:'monospace',textDecoration:'underline'}}>{a.ruc}</span> — ver causa
+                          <div onClick={()=>irACausa(a.ruc)}
+                            style={{fontSize:13,color:'#2563eb',cursor:'pointer',marginBottom:6,display:'inline-flex',alignItems:'center',gap:6,background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:8,padding:'4px 12px',fontWeight:600,...f}}>
+                            🔗 <span style={{fontFamily:'monospace'}}>{a.ruc}</span>
+                            <span style={{fontSize:11,color:'#60a5fa'}}>→ ver causa</span>
                           </div>
                         )}
                         <AudienciaEditCard key={i} a={a} onDelete={deleteAudiencia} onUpdate={async(updated,motivo)=>{
