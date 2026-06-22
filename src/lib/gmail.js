@@ -190,11 +190,13 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
 
   // Patrón 1b: "DD de MES de dos mil veintiséis" — año en palabras (formato actas PJUD)
   // Ejemplo exacto: "Fecha 25 de junio de dos mil veintiséis"
+  // IMPORTANTE: usar [a-záéíóúüñ]+ en lugar de \w+ para capturar letras con tilde
   if (!fecha) {
-    const regexAnioPalabras = /(\d{1,2})\s+de\s+(\w+)\s+de\s+(dos|tres|cuatro)\s+mil\s+(\w+(?:\s+\w+)?)/gi
+    const regexAnioPalabras = /(\d{1,2})\s+de\s+([a-záéíóúüñ]+)\s+de\s+(dos|tres|cuatro)\s+mil\s+([a-záéíóúüñ]+(?:\s+[a-záéíóúüñ]+)?)/gi
     const matchesAP = [...cuerpo.matchAll(regexAnioPalabras)]
     for (const m of matchesAP) {
-      const mes = meses[m[2].toLowerCase().replace(/á/g,'a').replace(/é/g,'e').replace(/í/g,'i').replace(/ó/g,'o').replace(/ú/g,'u')]
+      const normalizar = s => s.toLowerCase().replace(/á/g,'a').replace(/é/g,'e').replace(/í/g,'i').replace(/ó/g,'o').replace(/ú/g,'u').replace(/ü/g,'u').replace(/ñ/g,'n')
+      const mes = meses[normalizar(m[2])]
       const anioTexto = `${m[3]} mil ${m[4]}`
       const anio = añoEnPalabrasANumero(anioTexto)
       if (mes && anio) {
