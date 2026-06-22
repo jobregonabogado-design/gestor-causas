@@ -1,7 +1,6 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { supabase } from '../lib/supabase'
-import { CAUSAS_SEED } from '../lib/seedData'
 import CarpetaOneDrive from '../components/CarpetaOneDrive'
 
 const CSS = `
@@ -24,6 +23,7 @@ const CSS = `
   @keyframes detailIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
   input,select,textarea { font-family:'Inter',sans-serif !important; transition:border-color 0.2s,box-shadow 0.2s; }
   input:focus,select:focus,textarea:focus { outline:none; border-color:#2563eb !important; box-shadow:0 0 0 3px rgba(37,99,235,0.1) !important; }
+  .tc-section textarea:focus { box-shadow: none !important; border-color: transparent !important; }
   @media (max-width: 640px) {
     .stats-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 8px !important; }
     .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -230,9 +230,235 @@ function ImputadoCard({ imp, idx, onUpdate, onDelete }) {
   )
 }
 
-// ─── FUNCIONES DE CÁLCULO DE PLAZO ───────────────────────────────────────────
+// ─── TEORÍA DEL CASO ──────────────────────────────────────────────────────────
+const TC_SECCIONES = [
+  { key:'hechos',      icon:'📋', label:'Hechos del caso',        placeholder:'Describe los hechos relevantes: lugar, fecha, circunstancias, cronología de los eventos...' },
+  { key:'teoria',      icon:'⚖️',  label:'Teoría jurídica',        placeholder:'Calificación jurídica, tipo penal, elementos del delito, circunstancias modificatorias...' },
+  { key:'prueba',      icon:'🔍', label:'Prueba y testigos',       placeholder:'Lista de testigos, peritos, documentos, evidencias materiales, cadena de custodia...' },
+  { key:'argumentos',  icon:'💬', label:'Argumentos de defensa',   placeholder:'Estrategia de defensa, alegaciones, excepciones, jurisprudencia aplicable...' },
+  { key:'observaciones',icon:'📝',label:'Observaciones y fallos',  placeholder:'Fallos relevantes, criterios del tribunal, notas de seguimiento, pendientes...' },
+]
 
-// Días corridos desde la fecha de formalización
+function TeoriaDelCaso({ causaId, ruc, session, registrarActividad }) {
+  const [teoria, setTeoria] = useState(null)
+  const [form, setForm] = useState({ hechos:'', teoria:'', prueba:'', argumentos:'', observaciones:'' })
+  const [historial, setHistorial] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [savedAt, setSavedAt] = useState(null)
+  const [seccionActiva, setSeccionActiva] = useState('hechos')
+  const [showHistorial, setShowHistorial] = useState(false)
+  const debounceRef = useRef(null)
+
+  useEffect(() => { cargar() }, [causaId])
+
+  const cargar = async () => {
+    setLoading(true)
+    // Buscar teoría existente en tabla notas con tipo='teoria_caso'
+    const { data } = await supabase
+      .from('notas')
+      .select('*')
+      .eq('causa_id', causaId)
+      .eq('tipo', 'teoria_caso')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (data) {
+      try {
+        const parsed = JSON.parse(data.contenido)
+        setForm(parsed.contenido || {})
+        setTeoria(data)
+      } catch {
+        setForm({ hechos: data.contenido || '', teoria:'', prueba:'', argumentos:'', observaciones:'' })
+        setTeoria(data)
+      }
+    }
+
+    // Historial de cambios
+    const { data: hist } = await supabase
+      .from('notas')
+      .select('*')
+      .eq('causa_id', causaId)
+      .eq('tipo', 'teoria_caso_historial')
+      .order('created_at', { ascending: false })
+      .limit(20)
+    setHistorial(hist || [])
+    setLoading(false)
+  }
+
+  const guardar = useCallback(async (formData, esAutoguardado = false) => {
+    setSaving(true)
+    const email = session?.user?.email || 'usuario'
+    const ahora = new Date()
+    const contenidoJSON = JSON.stringify({ contenido: formData, version: ahora.toISOString() })
+
+    if (teoria) {
+      // Guardar historial antes de sobreescribir
+      if (!esAutoguardado) {
+        await supabase.from('notas').insert({
+          causa_id: causaId,
+          tipo: 'teoria_caso_historial',
+          contenido: JSON.stringify({
+            contenido: form,
+            editor: email,
+            fecha: ahora.toLocaleDateString('es-CL'),
+            hora: ahora.toLocaleTimeString('es-CL', { hour:'2-digit', minute:'2-digit' }),
+          })
+        })
+      }
+      await supabase.from('notas').update({ contenido: contenidoJSON, updated_at: ahora }).eq('id', teoria.id)
+    } else {
+      const { data } = await supabase.from('notas').insert({
+        causa_id: causaId,
+        tipo: 'teoria_caso',
+        contenido: contenidoJSON,
+      }).select().single()
+      setTeoria(data)
+    }
+
+    if (!esAutoguardado && registrarActividad) {
+      registrarActividad('accion', `Editó Teoría del Caso en RUC ${ruc}`)
+    }
+
+    setSavedAt(ahora)
+    setSaving(false)
+    if (!esAutoguardado) await cargar()
+  }, [causaId, teoria, form, session, ruc, registrarActividad])
+
+  // Autoguardado con debounce 3 segundos
+  const handleChange = (key, value) => {
+    const nuevo = { ...form, [key]: value }
+    setForm(nuevo)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => guardar(nuevo, true), 3000)
+  }
+
+  const seccionActual = TC_SECCIONES.find(s => s.key === seccionActiva)
+  const totalCaracteres = Object.values(form).join('').length
+
+  if (loading) return <div style={{ textAlign:'center', padding:40, color:'#94a3b8', fontSize:13, ...f }}>Cargando teoría del caso...</div>
+
+  return (
+    <div style={{ display:'grid', gridTemplateColumns:'200px 1fr', gap:0, minHeight:500, border:'1px solid #e2e8f0', borderRadius:12, overflow:'hidden' }}>
+
+      {/* Sidebar secciones */}
+      <div style={{ background:'#0f172a', padding:'20px 0' }}>
+        <div style={{ fontSize:9, color:'#475569', textTransform:'uppercase', letterSpacing:2, fontWeight:700, padding:'0 16px 12px', ...f }}>Secciones</div>
+        {TC_SECCIONES.map(s => {
+          const tieneContenido = (form[s.key]||'').trim().length > 0
+          return (
+            <button key={s.key} onClick={() => setSeccionActiva(s.key)}
+              style={{ width:'100%', textAlign:'left', padding:'10px 16px', background: seccionActiva===s.key ? 'rgba(37,99,235,0.3)' : 'transparent', border:'none', borderLeft: seccionActiva===s.key ? '3px solid #2563eb' : '3px solid transparent', cursor:'pointer', display:'flex', alignItems:'center', gap:8, transition:'all 0.15s' }}>
+              <span style={{ fontSize:14 }}>{s.icon}</span>
+              <div style={{ flex:1 }}>
+                <div style={{ fontSize:11, fontWeight: seccionActiva===s.key ? 600 : 400, color: seccionActiva===s.key ? '#fff' : '#94a3b8', ...f, lineHeight:1.3 }}>{s.label}</div>
+                {tieneContenido && <div style={{ width:6, height:6, borderRadius:'50%', background:'#2563eb', marginTop:3 }}/>}
+              </div>
+            </button>
+          )
+        })}
+
+        {/* Stats */}
+        <div style={{ padding:'16px', marginTop:8, borderTop:'1px solid #1e293b' }}>
+          <div style={{ fontSize:9, color:'#475569', textTransform:'uppercase', letterSpacing:1.5, fontWeight:700, marginBottom:8, ...f }}>Progreso</div>
+          {TC_SECCIONES.map(s => {
+            const pct = Math.min(100, Math.round(((form[s.key]||'').length / 200) * 100))
+            return (
+              <div key={s.key} style={{ marginBottom:6 }}>
+                <div style={{ display:'flex', justifyContent:'space-between', marginBottom:2 }}>
+                  <span style={{ fontSize:9, color:'#475569', ...f }}>{s.icon}</span>
+                  <span style={{ fontSize:9, color:'#475569', ...f }}>{pct}%</span>
+                </div>
+                <div style={{ height:3, background:'#1e293b', borderRadius:2 }}>
+                  <div style={{ height:3, width:`${pct}%`, background: pct>0?'#2563eb':'transparent', borderRadius:2, transition:'width 0.3s' }}/>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Editor principal */}
+      <div style={{ display:'flex', flexDirection:'column', background:'#fff' }}>
+
+        {/* Header del editor */}
+        <div style={{ padding:'16px 20px', borderBottom:'1px solid #f1f5f9', display:'flex', justifyContent:'space-between', alignItems:'center', background:'#fafbff' }}>
+          <div>
+            <div style={{ fontSize:15, fontWeight:700, color:'#0f172a', ...f }}>{seccionActual?.icon} {seccionActual?.label}</div>
+            <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>
+              {totalCaracteres > 0 ? `${totalCaracteres.toLocaleString()} caracteres` : 'Sin contenido aún'}
+              {savedAt && <span style={{ marginLeft:8, color:'#a7f3d0' }}>✓ Guardado {savedAt.toLocaleTimeString('es-CL', { hour:'2-digit', minute:'2-digit' })}</span>}
+            </div>
+          </div>
+          <div style={{ display:'flex', gap:8 }}>
+            <button onClick={() => setShowHistorial(!showHistorial)}
+              style={{ background: showHistorial?'#0f172a':'#fff', color: showHistorial?'#fff':'#64748b', border:'1.5px solid #e2e8f0', borderRadius:8, padding:'6px 14px', fontSize:12, cursor:'pointer', fontWeight:500, ...f }}>
+              🕐 Historial {historial.length > 0 && `(${historial.length})`}
+            </button>
+            <button onClick={() => guardar(form, false)} disabled={saving}
+              style={{ background:'linear-gradient(135deg,#2563eb,#1d4ed8)', color:'#fff', border:'none', borderRadius:8, padding:'6px 16px', fontSize:12, cursor:'pointer', fontWeight:600, ...f }}>
+              {saving ? '⏳ Guardando...' : '💾 Guardar'}
+            </button>
+          </div>
+        </div>
+
+        {/* Historial */}
+        {showHistorial && (
+          <div style={{ background:'#f8fafc', borderBottom:'1px solid #e2e8f0', padding:'16px 20px', maxHeight:200, overflowY:'auto' }}>
+            <div style={{ fontSize:11, fontWeight:700, color:'#475569', textTransform:'uppercase', letterSpacing:1, marginBottom:10, ...f }}>Historial de modificaciones</div>
+            {historial.length === 0 ? (
+              <div style={{ fontSize:12, color:'#cbd5e1', ...f }}>Sin modificaciones registradas aún.</div>
+            ) : historial.map((h, i) => {
+              let info = {}
+              try { info = JSON.parse(h.contenido) } catch {}
+              return (
+                <div key={i} style={{ display:'flex', gap:10, alignItems:'center', padding:'8px 0', borderBottom:'1px solid #f1f5f9' }}>
+                  <div style={{ width:28, height:28, borderRadius:'50%', background:'linear-gradient(135deg,#2563eb,#7c3aed)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:10, fontWeight:700, flexShrink:0 }}>
+                    {(info.editor||'?')[0]?.toUpperCase()}
+                  </div>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontSize:12, fontWeight:500, color:'#0f172a', ...f }}>{info.editor || 'Usuario'}</div>
+                    <div style={{ fontSize:11, color:'#94a3b8', ...f }}>{info.fecha} {info.hora}</div>
+                  </div>
+                  <span style={{ fontSize:10, color:'#94a3b8', background:'#f1f5f9', padding:'2px 8px', borderRadius:20, ...f }}>modificó</span>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Textarea */}
+        <div className="tc-section" style={{ flex:1, padding:'20px' }}>
+          <textarea
+            value={form[seccionActiva] || ''}
+            onChange={e => handleChange(seccionActiva, e.target.value)}
+            placeholder={seccionActual?.placeholder}
+            style={{
+              width:'100%', height:'100%', minHeight:360,
+              border:'none', outline:'none', resize:'none',
+              fontSize:14, lineHeight:1.8, color:'#1e293b',
+              background:'transparent', fontFamily:"'Inter',sans-serif",
+              padding:0,
+            }}
+          />
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding:'10px 20px', borderTop:'1px solid #f1f5f9', display:'flex', gap:8, overflowX:'auto' }}>
+          {TC_SECCIONES.map(s => (
+            <button key={s.key} onClick={() => setSeccionActiva(s.key)}
+              style={{ padding:'4px 12px', borderRadius:20, fontSize:11, border:`1.5px solid ${seccionActiva===s.key?'#2563eb':'#e2e8f0'}`, background: seccionActiva===s.key?'#eff6ff':'#fff', color: seccionActiva===s.key?'#2563eb':'#94a3b8', cursor:'pointer', fontWeight:500, whiteSpace:'nowrap', ...f }}>
+              {s.icon} {s.label.split(' ')[0]}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── FUNCIONES DE CÁLCULO DE PLAZO ───────────────────────────────────────────
 function calcularVencimiento(fechaInicio, diasPlazo) {
   if (!fechaInicio || !diasPlazo) return ''
   const inicio = new Date(fechaInicio + 'T12:00:00')
@@ -240,11 +466,10 @@ function calcularVencimiento(fechaInicio, diasPlazo) {
   return inicio.toLocaleDateString('es-CL', { day:'2-digit', month:'2-digit', year:'numeric' })
 }
 
-// Parsea "DD-MM-YYYY" o "VENCE DD-MM-YYYY" → Date
 function parseFechaCL(str) {
   if (!str) return null
   const limpio = str.replace(/VENCE\s*/i, '').trim()
-  const partes = limpio.split(/[\/\-\.]/  )
+  const partes = limpio.split(/[\/\-\.]/)
   if (partes.length < 3) return null
   const [d, m, a] = partes
   const fecha = new Date(`${a.length===2?'20'+a:a}-${m.padStart(2,'0')}-${d.padStart(2,'0')}T12:00:00`)
@@ -266,8 +491,6 @@ function calcularSubestado(plazoStr) {
   return null
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-
 function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudiencia }) {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ fecha_audiencia:'', tipo_audiencia:'Formalización', dias_plazo:'', observacion:'' })
@@ -275,20 +498,14 @@ function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudiencia })
   const f = { fontFamily:"'Inter',sans-serif" }
   const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:'#0f172a', background:'#fff', ...f }
 
-  // Calcular vencimiento acumulado desde todas las audiencias
   const calcularVencimientoTotal = (auds) => {
     if (!auds || auds.length === 0) return null
-    // Ordenar por fecha
     const sorted = [...auds].sort((a,b) => a.fecha_audiencia.localeCompare(b.fecha_audiencia))
-    // La primera audiencia define el inicio
-    const primera = sorted[0]
     const diasTotal = auds.reduce((s,a) => s + (parseInt(a.dias_plazo)||0), 0)
-    return calcularVencimiento(primera.fecha_audiencia, diasTotal)
+    return calcularVencimiento(sorted[0].fecha_audiencia, diasTotal)
   }
 
-  const vencimientoPreview = form.fecha_audiencia && form.dias_plazo
-    ? calcularVencimiento(form.fecha_audiencia, form.dias_plazo)
-    : ''
+  const vencimientoPreview = form.fecha_audiencia && form.dias_plazo ? calcularVencimiento(form.fecha_audiencia, form.dias_plazo) : ''
 
   const handleGuardar = async () => {
     if (!form.fecha_audiencia || !form.dias_plazo) return
@@ -306,7 +523,6 @@ function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudiencia })
 
   return (
     <div>
-      {/* RESUMEN SUPERIOR */}
       <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,marginBottom:20}}>
         <div style={{background:'#eff6ff',border:'1.5px solid #bfdbfe',borderRadius:12,padding:'14px 16px',textAlign:'center'}}>
           <div style={{fontSize:28,fontWeight:900,color:'#2563eb',letterSpacing:'-1px',...f}}>{aumentos?aumentos.length:0}</div>
@@ -316,14 +532,8 @@ function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudiencia })
           <div style={{fontSize:28,fontWeight:900,color:'#d97706',letterSpacing:'-1px',...f}}>{diasTotal}</div>
           <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1,marginTop:4,fontWeight:600,...f}}>Días corridos totales</div>
         </div>
-        <div style={{
-          background: subestado==='vencido'?'#fef2f2': subestado==='proximo'?'#fffbeb':'#f0fdf4',
-          border: `1.5px solid ${subestado==='vencido'?'#fecaca':subestado==='proximo'?'#fde68a':'#a7f3d0'}`,
-          borderRadius:12, padding:'14px 16px', textAlign:'center'
-        }}>
-          <div style={{fontSize:13,fontWeight:800,color:subestado==='vencido'?'#dc2626':subestado==='proximo'?'#d97706':'#059669',...f}}>
-            {vencFinal || '—'}
-          </div>
+        <div style={{background:subestado==='vencido'?'#fef2f2':subestado==='proximo'?'#fffbeb':'#f0fdf4',border:`1.5px solid ${subestado==='vencido'?'#fecaca':subestado==='proximo'?'#fde68a':'#a7f3d0'}`,borderRadius:12,padding:'14px 16px',textAlign:'center'}}>
+          <div style={{fontSize:13,fontWeight:800,color:subestado==='vencido'?'#dc2626':subestado==='proximo'?'#d97706':'#059669',...f}}>{vencFinal || '—'}</div>
           {diff !== null && (
             <div style={{fontSize:11,fontWeight:600,marginTop:4,color:subestado==='vencido'?'#dc2626':subestado==='proximo'?'#d97706':'#64748b',...f}}>
               {subestado==='vencido' ? `Venció hace ${Math.abs(diff)} días` : subestado==='proximo' ? `⚠️ Vence en ${diff} días` : `Faltan ${diff} días`}
@@ -332,14 +542,9 @@ function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudiencia })
           <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1,marginTop:2,fontWeight:600,...f}}>Vencimiento</div>
         </div>
       </div>
-
-      {/* HISTORIAL DE AUDIENCIAS DE PLAZO */}
       <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:10,fontWeight:600,...f}}>Historial de audiencias de plazo</div>
-      {(!aumentos||aumentos.length===0) && (
-        <p style={{color:'#cbd5e1',fontSize:13,marginBottom:14,...f}}>Sin audiencias registradas. Agrega la audiencia de formalización para comenzar.</p>
-      )}
+      {(!aumentos||aumentos.length===0) && <p style={{color:'#cbd5e1',fontSize:13,marginBottom:14,...f}}>Sin audiencias registradas.</p>}
       {aumentos && aumentos.map((a,i) => {
-        // Calcular vencimiento acumulado hasta esta audiencia
         const audsHasta = [...aumentos].sort((x,y)=>x.fecha_audiencia.localeCompare(y.fecha_audiencia)).slice(0,i+1)
         const diasAcum = audsHasta.reduce((s,x)=>s+(parseInt(x.dias_plazo)||0),0)
         const vencAcum = calcularVencimiento(audsHasta[0].fecha_audiencia, diasAcum)
@@ -359,8 +564,6 @@ function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudiencia })
           </div>
         )
       })}
-
-      {/* FORMULARIO NUEVA AUDIENCIA */}
       {showForm ? (
         <div style={{background:'#f0f7ff',border:'1.5px solid #bfdbfe',borderRadius:12,padding:16,marginTop:12}}>
           <div style={{fontSize:12,fontWeight:700,color:'#2563eb',marginBottom:12,...f}}>
@@ -399,9 +602,7 @@ function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudiencia })
             </div>
           )}
           <div style={{display:'flex',gap:8}}>
-            <button className="btn-primary" style={{fontSize:12}} onClick={handleGuardar} disabled={guardando||!form.fecha_audiencia||!form.dias_plazo}>
-              {guardando?'Guardando...':'💾 Guardar audiencia'}
-            </button>
+            <button className="btn-primary" style={{fontSize:12}} onClick={handleGuardar} disabled={guardando||!form.fecha_audiencia||!form.dias_plazo}>{guardando?'Guardando...':'💾 Guardar audiencia'}</button>
             <button className="btn-secondary" style={{fontSize:12}} onClick={()=>setShowForm(false)}>Cancelar</button>
           </div>
         </div>
@@ -413,8 +614,6 @@ function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudiencia })
     </div>
   )
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
 
 const getSemaforo = (updated_at) => {
   if (!updated_at) return { color:'#dc2626', title:'Sin actividad registrada' }
@@ -437,15 +636,11 @@ export default function Dashboard({ session, registrarActividad }) {
   const [activeTab,setActiveTab]=useState('datos')
   const [editField,setEditField]=useState(null)
   const [editValue,setEditValue]=useState('')
-  const [nuevaNota,setNuevaNota]=useState('')
-  const [notas,setNotas]=useState([])
   const [audiencias,setAudiencias]=useState([])
   const [aumentos,setAumentos]=useState([])
   const [imputados,setImputados]=useState([])
   const [showAudForm,setShowAudForm]=useState(false)
-  const [showAumentoForm,setShowAumentoForm]=useState(false)
   const [nuevaAud,setNuevaAud]=useState({fecha:'',hora:'',tipo:'',tribunal:'',sala:'',resultado:'',notas:''})
-  const [nuevoAumento,setNuevoAumento]=useState({fecha_audiencia:'',dias_aumento:'',observacion:''})
   const [saving,setSaving]=useState(false)
   const [showNuevaCausa,setShowNuevaCausa]=useState(false)
   const [showStats,setShowStats]=useState(false)
@@ -461,19 +656,12 @@ export default function Dashboard({ session, registrarActividad }) {
     const { data, error } = await supabase.from('causas').select('*').order('created_at', { ascending:false })
     if (!error) {
       const causasActualizadas = (data||[]).map(c => {
-        // Solo recalcular subestado si es vigente Y no tiene subestado manual especial
         const subestadosEspeciales = ['apjo','juicio_oral']
         let subestado = c.subestado
         if (c.estado === 'vigente' && !subestadosEspeciales.includes(c.subestado)) {
-          // Recalcular solo si tiene plazo en formato reconocible
           const autoSub = calcularSubestado(c.plazo)
-          // Si el plazo es futuro y subestado dice vencido, corregir
-          if (autoSub !== 'vencido' && c.subestado === 'vencido') {
-            subestado = autoSub // corregir error
-          } else if (autoSub) {
-            subestado = autoSub // aplicar auto
-          }
-          // Si no hay plazo o plazo no reconocible, respetar el subestado guardado
+          if (autoSub !== 'vencido' && c.subestado === 'vencido') subestado = autoSub
+          else if (autoSub) subestado = autoSub
         }
         return { ...c, tribunal: normT(c.tribunal), subestado }
       })
@@ -484,13 +672,12 @@ export default function Dashboard({ session, registrarActividad }) {
 
   const openCausa=async(c)=>{
     setSelectedCausa(c);setView('detail');setActiveTab('datos')
-    const[{data:n},{data:a},{data:au},{data:imp}]=await Promise.all([
-      supabase.from('notas').select('*').eq('causa_id',c.id).order('created_at',{ascending:false}),
+    const[{data:a},{data:au},{data:imp}]=await Promise.all([
       supabase.from('audiencias').select('*').or(`causa_id.eq.${c.id},ruc.eq.${c.ruc}`).order('fecha',{ascending:false}),
       supabase.from('aumentos_plazo').select('*').eq('causa_id',c.id).order('fecha_audiencia',{ascending:true}),
       supabase.from('imputados').select('*').eq('causa_id',c.id).order('created_at',{ascending:true}),
     ])
-    setNotas(n||[]);setAudiencias(a||[]);setAumentos(au||[]);setImputados(imp||[])
+    setAudiencias(a||[]);setAumentos(au||[]);setImputados(imp||[])
   }
 
   const updateField=async(field,value)=>{
@@ -503,57 +690,28 @@ export default function Dashboard({ session, registrarActividad }) {
     setEditField(null);setSaving(false)
   }
 
-  const saveNota=async()=>{
-    if(!nuevaNota.trim())return;setSaving(true)
-    const{data,error}=await supabase.from('notas').insert({causa_id:selectedCausa.id,contenido:nuevaNota}).select().single()
-    if(!error)setNotas(prev=>[data,...prev])
-    setNuevaNota('');setSaving(false)
-  }
-
   const saveAudiencia=async()=>{
     if(!nuevaAud.fecha)return;setSaving(true)
     const{data,error}=await supabase.from('audiencias').insert({causa_id:selectedCausa.id,ruc:selectedCausa.ruc,imputado:selectedCausa.imputado?.split('|')[0],...nuevaAud}).select().single()
     if(!error){
       setAudiencias(prev=>[data,...prev].sort((a,b)=>b.fecha.localeCompare(a.fecha)))
-      if (registrarActividad) registrarActividad('accion', `Nueva audiencia agregada en RUC ${selectedCausa.ruc}: ${nuevaAud.tipo||'Audiencia'} ${nuevaAud.fecha}`)
+      if (registrarActividad) registrarActividad('accion', `Nueva audiencia en RUC ${selectedCausa.ruc}: ${nuevaAud.tipo||'Audiencia'} ${nuevaAud.fecha}`)
     }
     setNuevaAud({fecha:'',hora:'',tipo:'',tribunal:selectedCausa?.tribunal||'',sala:'',resultado:'',notas:''});setShowAudForm(false);setSaving(false)
-  }
-
-  const saveAumento=async()=>{
-    if(!nuevoAumento.fecha_audiencia||!nuevoAumento.dias_aumento)return;setSaving(true)
-    const total=aumentos.reduce((s,a)=>s+(a.dias_aumento||0),0)+parseInt(nuevoAumento.dias_aumento)
-    const{data,error}=await supabase.from('aumentos_plazo').insert({causa_id:selectedCausa.id,fecha_audiencia:nuevoAumento.fecha_audiencia,dias_aumento:parseInt(nuevoAumento.dias_aumento),plazo_acumulado:total,observacion:nuevoAumento.observacion}).select().single()
-    if(!error)setAumentos(prev=>[...prev,data])
-    setNuevoAumento({fecha_audiencia:'',dias_aumento:'',observacion:''});setShowAumentoForm(false);setSaving(false)
   }
 
   const saveCausa = async () => {
     if (!nuevaCausa.ruc) return
     setSaving(true)
     let plazoFinal = nuevaCausa.plazo
-    if (nuevaCausa.fecha_inicio && nuevaCausa.dias_plazo) {
-      plazoFinal = 'VENCE ' + calcularVencimiento(nuevaCausa.fecha_inicio, nuevaCausa.dias_plazo)
-    }
+    if (nuevaCausa.fecha_inicio && nuevaCausa.dias_plazo) plazoFinal = 'VENCE ' + calcularVencimiento(nuevaCausa.fecha_inicio, nuevaCausa.dias_plazo)
     const subestadoAuto = calcularSubestado(plazoFinal)
-    const causaData = {
-      ruc: nuevaCausa.ruc,
-      rit: nuevaCausa.rit,
-      tribunal: nuevaCausa.tribunal,
-      delito: nuevaCausa.delito,
-      imputado: nuevaCausa.imputado,
-      fiscal: nuevaCausa.fiscal,
-      cautelar: nuevaCausa.cautelar,
-      centro_penal: nuevaCausa.centro_penal,
-      plazo: plazoFinal,
-      estado: nuevaCausa.estado,
-      subestado: subestadoAuto,
-    }
+    const causaData = { ruc:nuevaCausa.ruc, rit:nuevaCausa.rit, tribunal:nuevaCausa.tribunal, delito:nuevaCausa.delito, imputado:nuevaCausa.imputado, fiscal:nuevaCausa.fiscal, cautelar:nuevaCausa.cautelar, centro_penal:nuevaCausa.centro_penal, plazo:plazoFinal, estado:nuevaCausa.estado, subestado:subestadoAuto }
     const { data, error } = await supabase.from('causas').insert(causaData).select().single()
     if (!error) {
       setCausas(prev => [data, ...prev])
       setShowNuevaCausa(false)
-      if (registrarActividad) registrarActividad('accion', `Nueva causa agregada: RUC ${causaData.ruc}`)
+      if (registrarActividad) registrarActividad('accion', `Nueva causa: RUC ${causaData.ruc}`)
       setNuevaCausa({ruc:'',rit:'',tribunal:'',delito:'',imputado:'',fiscal:'',cautelar:'',centro_penal:'',plazo:'',fecha_inicio:'',dias_plazo:'',estado:'vigente'})
     }
     setSaving(false)
@@ -572,13 +730,9 @@ export default function Dashboard({ session, registrarActividad }) {
   },[causas,search,filterTribunal,filterEstado,sortCol,sortDir])
 
   const stats=useMemo(()=>({
-    total:causas.length,
-    vigente:causas.filter(c=>c.estado==='vigente').length,
-    terminada:causas.filter(c=>c.estado==='terminada').length,
-    vencido:causas.filter(c=>c.subestado==='vencido').length,
-    proximo:causas.filter(c=>c.subestado==='proximo').length,
-    apjo:causas.filter(c=>c.subestado==='apjo').length,
-    juicioOral:causas.filter(c=>c.subestado==='juicio_oral'||c.tiene_top===true).length,
+    total:causas.length, vigente:causas.filter(c=>c.estado==='vigente').length, terminada:causas.filter(c=>c.estado==='terminada').length,
+    vencido:causas.filter(c=>c.subestado==='vencido').length, proximo:causas.filter(c=>c.subestado==='proximo').length,
+    apjo:causas.filter(c=>c.subestado==='apjo').length, juicioOral:causas.filter(c=>c.subestado==='juicio_oral'||c.tiene_top===true).length,
   }),[causas])
 
   const chartDelitos=useMemo(()=>{const map={};causas.forEach(c=>{if(c.delito){const k=c.delito.substring(0,28);map[k]=(map[k]||0)+1}});return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,12).map(([name,value])=>({name,value}))},[causas])
@@ -588,7 +742,6 @@ export default function Dashboard({ session, registrarActividad }) {
 
   if(view==='detail'&&selectedCausa){
     const c=causas.find(x=>x.id===selectedCausa.id)||selectedCausa
-    const totalDias=aumentos.reduce((s,a)=>s+(a.dias_aumento||0),0)
     return(
       <div style={{background:'#f8fafc',minHeight:'100vh',...f}} className="detail-enter">
         <style>{CSS}</style>
@@ -613,11 +766,14 @@ export default function Dashboard({ session, registrarActividad }) {
               </div>
             </div>
           </div>
+
+          {/* TABS — "Notas" reemplazada por "Teoría del Caso" */}
           <div style={{background:'#fff',borderLeft:'1px solid #e2e8f0',borderRight:'1px solid #e2e8f0',display:'flex',overflowX:'auto',borderBottom:'2px solid #f1f5f9'}}>
-            {[['datos','Datos'],['imputado','Imputado'],['plazo','Plazo'],['audiencias','Audiencias'],['top','Juicio Oral'],['notas','Notas'],['carpeta','Carpeta']].map(([k,l])=>(
+            {[['datos','Datos'],['imputado','Imputado'],['plazo','Plazo'],['audiencias','Audiencias'],['top','Juicio Oral'],['teoria','⚖️ Teoría del Caso'],['carpeta','Carpeta']].map(([k,l])=>(
               <button key={k} className="tab-btn" onClick={()=>setActiveTab(k)} style={{padding:'13px 20px',fontSize:13,fontWeight:activeTab===k?600:400,color:activeTab===k?'#2563eb':'#94a3b8',borderBottom:`2px solid ${activeTab===k?'#2563eb':'transparent'}`,whiteSpace:'nowrap',marginBottom:-2}}>{l}</button>
             ))}
           </div>
+
           <div style={{background:'#fff',border:'1px solid #e2e8f0',borderTop:'none',borderRadius:'0 0 16px 16px',padding:28,boxShadow:'0 2px 8px rgba(0,0,0,0.04)'}}>
             {activeTab==='datos'&&(
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
@@ -662,7 +818,7 @@ export default function Dashboard({ session, registrarActividad }) {
                     </div>
                   </div>
                   <div>
-                    <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:8,fontWeight:600,...f}}>Subestado (solo para vigentes)</div>
+                    <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:8,fontWeight:600,...f}}>Subestado</div>
                     <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
                       {[{k:'',label:'Sin subestado',color:'#94a3b8',border:'#e2e8f0',bg:'#f8fafc'},{k:'proximo',v:estadoConfig.proximo},{k:'vencido',v:estadoConfig.vencido},{k:'apjo',v:estadoConfig.apjo},{k:'juicio_oral',v:estadoConfig.juicio_oral}].map((item)=>{
                         const k=item.k; const v=item.v||item
@@ -692,36 +848,20 @@ export default function Dashboard({ session, registrarActividad }) {
               </div>
             )}
             {activeTab==='plazo'&&(
-              <div>
-
-                <PlazoCalculador
-                  causaId={c.id}
-                  plazoActual={c.plazo}
-                  aumentos={aumentos}
-                  onGuardarAudiencia={async(form)=>{
-                    const{data,error}=await supabase.from('aumentos_plazo').insert({
-                      causa_id:c.id,
-                      fecha_audiencia:form.fecha_audiencia,
-                      tipo_audiencia:form.tipo_audiencia,
-                      dias_plazo:parseInt(form.dias_plazo),
-                      dias_aumento:parseInt(form.dias_plazo),
-                      observacion:form.observacion,
-                    }).select().single()
-                    if(!error){
-                      const nuevosAumentos=[...aumentos,data].sort((a,b)=>a.fecha_audiencia.localeCompare(b.fecha_audiencia))
-                      setAumentos(nuevosAumentos)
-                      // Recalcular vencimiento total y actualizar causa
-                      const diasTotal=nuevosAumentos.reduce((s,a)=>s+(parseInt(a.dias_plazo)||0),0)
-                      const primera=nuevosAumentos[0]
-                      const nuevoVenc='VENCE '+calcularVencimiento(primera.fecha_audiencia,diasTotal)
-                      const nuevoSub=calcularSubestado(nuevoVenc)
-                      await supabase.from('causas').update({plazo:nuevoVenc,subestado:nuevoSub,updated_at:new Date()}).eq('id',c.id)
-                      const u={...selectedCausa,plazo:nuevoVenc,subestado:nuevoSub}
-                      setSelectedCausa(u);setCausas(prev=>prev.map(x=>x.id===u.id?u:x))
-                    }
-                  }}
-                />
-              </div>
+              <PlazoCalculador causaId={c.id} plazoActual={c.plazo} aumentos={aumentos} onGuardarAudiencia={async(form)=>{
+                const{data,error}=await supabase.from('aumentos_plazo').insert({causa_id:c.id,fecha_audiencia:form.fecha_audiencia,tipo_audiencia:form.tipo_audiencia,dias_plazo:parseInt(form.dias_plazo),dias_aumento:parseInt(form.dias_plazo),observacion:form.observacion}).select().single()
+                if(!error){
+                  const nuevosAumentos=[...aumentos,data].sort((a,b)=>a.fecha_audiencia.localeCompare(b.fecha_audiencia))
+                  setAumentos(nuevosAumentos)
+                  const diasTotal=nuevosAumentos.reduce((s,a)=>s+(parseInt(a.dias_plazo)||0),0)
+                  const primera=nuevosAumentos[0]
+                  const nuevoVenc='VENCE '+calcularVencimiento(primera.fecha_audiencia,diasTotal)
+                  const nuevoSub=calcularSubestado(nuevoVenc)
+                  await supabase.from('causas').update({plazo:nuevoVenc,subestado:nuevoSub,updated_at:new Date()}).eq('id',c.id)
+                  const u={...selectedCausa,plazo:nuevoVenc,subestado:nuevoSub}
+                  setSelectedCausa(u);setCausas(prev=>prev.map(x=>x.id===u.id?u:x))
+                }
+              }}/>
             )}
             {activeTab==='audiencias'&&(
               <div>
@@ -765,19 +905,17 @@ export default function Dashboard({ session, registrarActividad }) {
                 )}
               </div>
             )}
-            {activeTab==='notas'&&(
-              <div>
-                {notas.map(n=>(
-                  <div key={n.id} style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:10,padding:'12px 16px',marginBottom:8}}>
-                    <div style={{fontSize:10,color:'#cbd5e1',marginBottom:6,fontWeight:500,...f}}>{new Date(n.created_at).toLocaleString('es-CL')}</div>
-                    <div style={{fontSize:13,color:'#374151',whiteSpace:'pre-wrap',lineHeight:1.7,...f}}>{n.contenido}</div>
-                  </div>
-                ))}
-                {notas.length===0&&<p style={{color:'#cbd5e1',fontSize:13,marginBottom:14,...f}}>Sin notas.</p>}
-                <textarea style={{...inp,minHeight:100,resize:'vertical',marginTop:8}} placeholder="Nueva nota..." value={nuevaNota} onChange={e=>setNuevaNota(e.target.value)}/>
-                <button className="btn-primary" style={{marginTop:10}} onClick={saveNota} disabled={saving}>{saving?'Guardando...':'+ Agregar nota'}</button>
-              </div>
+
+            {/* ✅ TEORÍA DEL CASO — reemplaza Notas */}
+            {activeTab==='teoria'&&(
+              <TeoriaDelCaso
+                causaId={c.id}
+                ruc={c.ruc}
+                session={session}
+                registrarActividad={registrarActividad}
+              />
             )}
+
             {activeTab==='carpeta'&&(
               <div>
                 <Field label="Referencia carpeta física" value={c.carpeta_ref} editable editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField('carpeta_ref',editValue)}/>
@@ -796,35 +934,29 @@ export default function Dashboard({ session, registrarActividad }) {
     <div style={{background:'#f8fafc',minHeight:'100vh',...f}}>
       <style>{CSS}</style>
       <div style={{maxWidth:1380,margin:'0 auto',padding:'28px'}}>
-
-        {/* ALERTA VENCIDO */}
         {stats.vencido>0&&(
           <div style={{background:'linear-gradient(135deg,#fef2f2,#fff1f0)',border:'1px solid #fecaca',borderRadius:12,padding:'13px 20px',marginBottom:16,display:'flex',alignItems:'center',gap:10,boxShadow:'0 2px 8px rgba(220,38,38,0.08)'}}>
             <div style={{width:32,height:32,background:'linear-gradient(135deg,#ef4444,#dc2626)',borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,flexShrink:0}}>🚨</div>
             <span style={{fontSize:13,color:'#991b1b',fontWeight:600,...f}}>{stats.vencido} causa{stats.vencido>1?'s':''} con plazo VENCIDO — Revisión urgente requerida</span>
           </div>
         )}
-
-        {/* ALERTA POR VENCER */}
         {stats.proximo>0&&(
           <div style={{background:'linear-gradient(135deg,#fffbeb,#fef9c3)',border:'1px solid #fde68a',borderRadius:12,padding:'13px 20px',marginBottom:24,display:'flex',alignItems:'center',gap:10,boxShadow:'0 2px 8px rgba(217,119,6,0.08)'}}>
             <div style={{width:32,height:32,background:'linear-gradient(135deg,#f59e0b,#d97706)',borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,flexShrink:0}}>⚠️</div>
-            <span style={{fontSize:13,color:'#92400e',fontWeight:600,...f}}>{stats.proximo} causa{stats.proximo>1?'s':''} POR VENCER en los próximos 3 días — Atención requerida</span>
+            <span style={{fontSize:13,color:'#92400e',fontWeight:600,...f}}>{stats.proximo} causa{stats.proximo>1?'s':''} POR VENCER en los próximos 3 días</span>
           </div>
         )}
-
-        {/* Si no hay alertas, dejar el margen igual */}
         {stats.vencido===0&&stats.proximo===0&&<div style={{marginBottom:24}}/>}
 
         <div className='stats-grid' style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:12,marginBottom:24}}>
           {[
-            {key:'',         label:'Total',        num:stats.total,       color:'#0f172a', grad:'linear-gradient(135deg,#1e293b,#0f172a)', border:'#e2e8f0', light:'#f8fafc'},
-            {key:'vigente',  label:'Vigentes',     num:stats.vigente,     color:'#059669', grad:'linear-gradient(135deg,#10b981,#059669)', border:'#a7f3d0', light:'#f0fdf4'},
-            {key:'terminada',label:'Terminadas',   num:stats.terminada,   color:'#64748b', grad:'linear-gradient(135deg,#94a3b8,#64748b)', border:'#e2e8f0', light:'#f8fafc'},
-            {key:'vencido',  label:'Plazo Vencido',num:stats.vencido,     color:'#dc2626', grad:'linear-gradient(135deg,#ef4444,#dc2626)', border:'#fecaca', light:'#fef2f2'},
-            {key:'proximo',  label:'Por Vencer',   num:stats.proximo,     color:'#d97706', grad:'linear-gradient(135deg,#f59e0b,#d97706)', border:'#fde68a', light:'#fffbeb'},
-            {key:'apjo',     label:'APJO',         num:stats.apjo,        color:'#7c3aed', grad:'linear-gradient(135deg,#8b5cf6,#7c3aed)', border:'#ddd6fe', light:'#faf5ff'},
-            {key:'top',      label:'Juicio Oral',  num:stats.juicioOral,  color:'#0891b2', grad:'linear-gradient(135deg,#06b6d4,#0891b2)', border:'#a5f3fc', light:'#ecfeff'},
+            {key:'',label:'Total',num:stats.total,color:'#0f172a',grad:'linear-gradient(135deg,#1e293b,#0f172a)',border:'#e2e8f0',light:'#f8fafc'},
+            {key:'vigente',label:'Vigentes',num:stats.vigente,color:'#059669',grad:'linear-gradient(135deg,#10b981,#059669)',border:'#a7f3d0',light:'#f0fdf4'},
+            {key:'terminada',label:'Terminadas',num:stats.terminada,color:'#64748b',grad:'linear-gradient(135deg,#94a3b8,#64748b)',border:'#e2e8f0',light:'#f8fafc'},
+            {key:'vencido',label:'Plazo Vencido',num:stats.vencido,color:'#dc2626',grad:'linear-gradient(135deg,#ef4444,#dc2626)',border:'#fecaca',light:'#fef2f2'},
+            {key:'proximo',label:'Por Vencer',num:stats.proximo,color:'#d97706',grad:'linear-gradient(135deg,#f59e0b,#d97706)',border:'#fde68a',light:'#fffbeb'},
+            {key:'apjo',label:'APJO',num:stats.apjo,color:'#7c3aed',grad:'linear-gradient(135deg,#8b5cf6,#7c3aed)',border:'#ddd6fe',light:'#faf5ff'},
+            {key:'top',label:'Juicio Oral',num:stats.juicioOral,color:'#0891b2',grad:'linear-gradient(135deg,#06b6d4,#0891b2)',border:'#a5f3fc',light:'#ecfeff'},
           ].map(st=>{
             const active=filterEstado===st.key&&st.key!==''
             return(
@@ -926,32 +1058,19 @@ export default function Dashboard({ session, registrarActividad }) {
         )}
       </div>
 
-      {/* MODAL NUEVA CAUSA */}
       {showNuevaCausa&&(
         <div style={{position:'fixed',top:0,left:0,width:'100%',height:'100%',background:'rgba(15,23,42,0.5)',display:'flex',alignItems:'flex-start',justifyContent:'center',paddingTop:'5vh',zIndex:200,backdropFilter:'blur(4px)'}} onClick={e=>e.target===e.currentTarget&&setShowNuevaCausa(false)}>
           <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:16,padding:32,width:540,maxWidth:'90vw',boxShadow:'0 24px 80px rgba(0,0,0,0.2)',maxHeight:'90vh',overflowY:'auto'}}>
             <div style={{fontSize:20,fontWeight:800,color:'#0f172a',marginBottom:24,letterSpacing:'-0.5px',...f}}>Nueva Causa</div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
-
-              {/* Campos normales */}
-              {[
-                {key:'ruc',label:'RUC *',ph:'Ej: 2600123456-7',full:true},
-                {key:'rit',label:'RIT',ph:'Ej: 1234-2026'},
-                {key:'tribunal',label:'Tribunal',ph:'Ej: 7 JG STGO'},
-                {key:'imputado',label:'Imputado',ph:'Nombre completo',full:true},
-                {key:'delito',label:'Delito',ph:'Tipo de delito',full:true},
-                {key:'fiscal',label:'Fiscal',ph:'Nombre del fiscal'},
-                {key:'cautelar',label:'Cautelar',ph:'Prisión preventiva...'},
-              ].map(field=>(
+              {[{key:'ruc',label:'RUC *',ph:'Ej: 2600123456-7',full:true},{key:'rit',label:'RIT',ph:'Ej: 1234-2026'},{key:'tribunal',label:'Tribunal',ph:'Ej: 7 JG STGO'},{key:'imputado',label:'Imputado',ph:'Nombre completo',full:true},{key:'delito',label:'Delito',ph:'Tipo de delito',full:true},{key:'fiscal',label:'Fiscal',ph:'Nombre del fiscal'},{key:'cautelar',label:'Cautelar',ph:'Prisión preventiva...'}].map(field=>(
                 <div key={field.key} style={{gridColumn:field.full?'1/-1':'auto'}}>
                   <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>{field.label}</div>
                   <input style={inp} placeholder={field.ph} value={nuevaCausa[field.key]} onChange={e=>setNuevaCausa(p=>({...p,[field.key]:e.target.value}))}/>
                 </div>
               ))}
-
-              {/* BLOQUE PLAZO ACD */}
               <div style={{gridColumn:'1/-1',background:'#f0fdf4',border:'1.5px solid #a7f3d0',borderRadius:12,padding:16}}>
-                <div style={{fontSize:11,fontWeight:700,color:'#059669',marginBottom:14,...f}}>⏱ Cálculo de plazo ACD (días hábiles)</div>
+                <div style={{fontSize:11,fontWeight:700,color:'#059669',marginBottom:14,...f}}>⏱ Cálculo de plazo ACD</div>
                 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
                   <div>
                     <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Fecha inicio</div>
@@ -962,27 +1081,20 @@ export default function Dashboard({ session, registrarActividad }) {
                     <input type="number" style={inp} placeholder="Ej: 210" value={nuevaCausa.dias_plazo} onChange={e=>setNuevaCausa(p=>({...p,dias_plazo:e.target.value}))}/>
                   </div>
                 </div>
-
-                {/* Preview de vencimiento en tiempo real */}
                 {nuevaCausa.fecha_inicio && nuevaCausa.dias_plazo && (
                   <div style={{marginTop:10,padding:'10px 14px',background:'#fff',borderRadius:8,border:'1px solid #a7f3d0',display:'flex',alignItems:'center',gap:8}}>
                     <span style={{fontSize:16}}>📅</span>
                     <div>
                       <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1,fontWeight:700,...f}}>Vencimiento calculado</div>
-                      <div style={{fontSize:15,fontWeight:800,color:'#059669',...f}}>
-                        {calcularVencimiento(nuevaCausa.fecha_inicio, nuevaCausa.dias_plazo)}
-                      </div>
+                      <div style={{fontSize:15,fontWeight:800,color:'#059669',...f}}>{calcularVencimiento(nuevaCausa.fecha_inicio, nuevaCausa.dias_plazo)}</div>
                     </div>
                   </div>
                 )}
-
                 <div style={{marginTop:12}}>
                   <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>O ingresa plazo manualmente</div>
                   <input style={inp} placeholder="VENCE DD-MM-YYYY" value={nuevaCausa.plazo} onChange={e=>setNuevaCausa(p=>({...p,plazo:e.target.value}))}/>
                 </div>
               </div>
-
-              {/* Estado */}
               <div style={{gridColumn:'1/-1'}}>
                 <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Estado</div>
                 <select style={inp} value={nuevaCausa.estado} onChange={e=>setNuevaCausa(p=>({...p,estado:e.target.value}))}>
@@ -990,7 +1102,6 @@ export default function Dashboard({ session, registrarActividad }) {
                 </select>
               </div>
             </div>
-
             <div style={{display:'flex',gap:10,marginTop:24}}>
               <button className="btn-primary" onClick={saveCausa} disabled={saving||!nuevaCausa.ruc}>{saving?'Guardando...':'Guardar causa'}</button>
               <button className="btn-secondary" onClick={()=>setShowNuevaCausa(false)}>Cancelar</button>
