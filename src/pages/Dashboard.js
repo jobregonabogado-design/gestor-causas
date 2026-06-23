@@ -226,17 +226,21 @@ function ImputadoCard({ imp, idx, onUpdate, onDelete }) {
 
   const buscarPorRut = async (rut) => {
     if (!rut || rut.length < 6) return
+    console.log('🔍 Buscando RUT:', rut.trim())
     const { data, error } = await supabase
       .from('imputados')
       .select('nombre, nacionalidad, domicilio, fecha_nacimiento, otros_antecedentes')
       .ilike('rut', `%${rut.trim()}%`)
       .limit(10)
+    console.log('📦 Resultado:', data, 'Error:', error)
     if (error || !data || data.length === 0) return
     const encontrado = data.find(d => d.nombre && d.nombre.trim() !== '')
+    console.log('✅ Encontrado:', encontrado)
     if (!encontrado) return
     const campos = ['nombre','nacionalidad','domicilio','fecha_nacimiento','otros_antecedentes']
     for (const campo of campos) {
       if (encontrado[campo] && (!imp[campo] || imp[campo].trim() === '')) {
+        console.log('📝 Rellenando:', campo, '=', encontrado[campo])
         onUpdate(campo, encontrado[campo])
       }
     }
