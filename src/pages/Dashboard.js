@@ -226,18 +226,15 @@ function ImputadoCard({ imp, idx, onUpdate, onDelete }) {
 
   const buscarPorRut = async (rut) => {
     if (!rut || rut.length < 6) return
-    // Normalizar RUT: quitar puntos, guiones y espacios para comparar
-    const rutNorm = rut.replace(/[\.\-\s]/g, '').toUpperCase()
-    // Buscar por igualdad exacta en RUT normalizado o por los primeros dígitos
+    const rutNorm = rut.replace(/[.\-\s]/g, '').toUpperCase()
     const { data, error } = await supabase
       .from('imputados')
-      .select('nombre, nacionalidad, domicilio, fecha_nacimiento, otros_antecedentes, rut')
+      .select('*')
       .limit(500)
     if (error || !data || data.length === 0) return
-    // Filtrar en cliente normalizando ambos RUTs
     const encontrado = data.find(d => {
       if (!d.rut || !d.nombre) return false
-      const rutDB = d.rut.replace(/[\.\-\s]/g, '').toUpperCase()
+      const rutDB = d.rut.replace(/[.\-\s]/g, '').toUpperCase()
       return rutDB === rutNorm
     })
     if (!encontrado) return
