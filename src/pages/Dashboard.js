@@ -46,6 +46,37 @@ function getBadgeConfig(estado, subestado) {
   return estadoConfig[estado] || { label:estado||'—', color:'#64748b', bg:'#f8fafc', border:'#e2e8f0' }
 }
 
+// ─── VALIDACIÓN ORTOGRÁFICA ───────────────────────────────────────────────────
+const ERRORES_ORTOGRAFICOS = [
+  { mal: 'ALMACENIMIENTO', bien: 'ALMACENAMIENTO' },
+  { mal: 'BIENES NACIONES', bien: 'BIENES NACIONALES' },
+  { mal: 'RECEPTACION', bien: 'RECEPTACIÓN' },
+  { mal: 'FALSIFICACION', bien: 'FALSIFICACIÓN' },
+  { mal: 'ASOCIACION', bien: 'ASOCIACIÓN' },
+  { mal: 'ILICITA', bien: 'ILÍCITA' },
+  { mal: 'TRAFICO', bien: 'TRÁFICO' },
+  { mal: 'VIOLACION', bien: 'VIOLACIÓN' },
+  { mal: 'APELACION', bien: 'APELACIÓN' },
+  { mal: 'POSESION', bien: 'POSESIÓN' },
+  { mal: 'OBSTRUCCION', bien: 'OBSTRUCCIÓN' },
+  { mal: 'USURPACION', bien: 'USURPACIÓN' },
+  { mal: 'INTIMIDACION', bien: 'INTIMIDACIÓN' },
+  { mal: 'CONDUCCION', bien: 'CONDUCCIÓN' },
+  { mal: 'FORMALIZACION', bien: 'FORMALIZACIÓN' },
+  { mal: 'INSTRUMENTO PUBLICO', bien: 'INSTRUMENTO PÚBLICO' },
+]
+
+function validarOrtografia(texto) {
+  if (!texto) return null
+  const upper = texto.toUpperCase()
+  for (const e of ERRORES_ORTOGRAFICOS) {
+    if (upper.includes(e.mal)) {
+      return `"${e.mal}" debe escribirse "${e.bien}"`
+    }
+  }
+  return null
+}
+
 const TMAP = {'JG VINA DEL MAR':'JG VIÑA DEL MAR','JG CONCEPCION':'JG CONCEPCIÓN','JG VALPARAISO':'JG VALPARAÍSO','JG QUILPUE':'JG QUILPUÉ','JG CHILLAN':'JG CHILLÁN','JG AYSEN':'JG AYSÉN','JG CANETE':'JG CAÑETE','TOP CANETE':'TOP CAÑETE','13 JG DE STGO':'13 JG STGO','TOP SERENA':'TOP LA SERENA'}
 const normT = t => t ? (TMAP[t.trim()] || t.trim()) : t
 const f = { fontFamily:"'Inter',sans-serif" }
@@ -739,9 +770,14 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
   }, [])
 
   const updateField=async(field,value)=>{
-    // Solo estos campos se guardan en minúscula (son valores de control interno)
     const camposSinMayusculas = ['estado','subestado','tiene_top']
     if (typeof value === 'string' && !camposSinMayusculas.includes(field)) value = value.toUpperCase()
+    // Validación ortográfica en campos de texto
+    const camposValidar = ['delito','imputado','tribunal','fiscal','cautelar','centro_penal']
+    if (camposValidar.includes(field)) {
+      const err = validarOrtografia(value)
+      if (err) { alert('Error ortográfico: ' + err); return }
+    }
     setSaving(true)
     const{error}=await supabase.from('causas').update({[field]:value,updated_at:new Date()}).eq('id',selectedCausa.id)
     if(!error){
@@ -767,6 +803,13 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
 
   const saveCausa = async () => {
     if (!nuevaCausa.ruc) return
+    // Validación ortográfica
+    const errorDelito = validarOrtografia(nuevaCausa.delito)
+    if (errorDelito) { alert('Error ortográfico en el delito: ' + errorDelito); return }
+    const errorTribunal = validarOrtografia(nuevaCausa.tribunal)
+    if (errorTribunal) { alert('Error ortográfico en tribunal: ' + errorTribunal); return }
+    const errorImputado = validarOrtografia(nuevaCausa.imputado)
+    if (errorImputado) { alert('Error ortográfico en imputado: ' + errorImputado); return }
     setSaving(true)
     let plazoFinal = nuevaCausa.plazo
     if (nuevaCausa.fecha_inicio && nuevaCausa.dias_plazo) plazoFinal = 'VENCE ' + calcularVencimiento(nuevaCausa.fecha_inicio, nuevaCausa.dias_plazo)
