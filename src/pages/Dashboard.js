@@ -232,8 +232,7 @@ function ImputadoCard({ imp, idx, onUpdate, onDelete }) {
     const { data, error } = await supabase
       .from('imputados')
       .select('nombre, nacionalidad, domicilio, fecha_nacimiento, otros_antecedentes, rut')
-      .neq('nombre', '')
-      .limit(200)
+      .limit(500)
     if (error || !data || data.length === 0) return
     // Filtrar en cliente normalizando ambos RUTs
     const encontrado = data.find(d => {
