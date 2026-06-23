@@ -772,7 +772,7 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
           <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:'16px 16px 0 0',padding:'24px 28px',boxShadow:'0 1px 4px rgba(0,0,0,0.04)'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:12}}>
               <div>
-                <div style={{fontSize:22,fontWeight:800,color:'#0f172a',marginBottom:6,letterSpacing:'-0.5px',...f}}>RUC <span style={{color:'#2563eb'}}>{c.ruc}</span></div>
+                <div style={{fontSize:22,fontWeight:800,color:'#0f172a',marginBottom:6,letterSpacing:'-0.5px',...f}}>RUC <span style={{color:'#1e3a5f'}}>{c.ruc}</span></div>
                 <div style={{fontSize:13,color:'#94a3b8',display:'flex',gap:16,flexWrap:'wrap',alignItems:'center',...f}}>
                   <span>RIT <span style={{color:'#475569',fontWeight:500}}>{c.rit||'—'}</span></span>
                   <span style={{color:'#e2e8f0'}}>|</span>
@@ -997,7 +997,7 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
               <tbody>
                 {filtered.map((c)=>(
                   <tr key={c.id} className="row-hover" onClick={()=>openCausa(c)} style={{borderBottom:'1px solid #f8fafc',background:'#fff'}}>
-                    <td style={{padding:'12px 16px',fontFamily:'monospace',fontSize:12,fontWeight:700,color:'#0f172a'}}>{c.ruc}</td>
+                    <td style={{padding:'12px 16px',fontSize:12,fontWeight:700,color:'#1e3a5f',...f}}>{c.ruc}</td>
                     <td style={{padding:'12px 16px',fontSize:12,color:'#94a3b8',fontWeight:500,...f}}>
                       {/* ✅ Semáforo como tag visible en la lista — solo causas vigentes */}
                       <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
