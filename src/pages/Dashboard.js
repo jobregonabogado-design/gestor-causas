@@ -24,6 +24,7 @@ const CSS = `
   input,select,textarea { font-family:'Inter',sans-serif !important; transition:border-color 0.2s,box-shadow 0.2s; text-transform:uppercase; }
   input:focus,select:focus,textarea:focus { outline:none; border-color:#2563eb !important; box-shadow:0 0 0 3px rgba(37,99,235,0.1) !important; }
   .tc-section textarea:focus { box-shadow: none !important; border-color: transparent !important; }
+  @keyframes semaforo-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.7;transform:scale(1.15)} }
   @media (max-width: 640px) {
     .stats-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 8px !important; }
     .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -48,6 +49,58 @@ function getBadgeConfig(estado, subestado) {
 const TMAP = {'JG VINA DEL MAR':'JG VIÑA DEL MAR','JG CONCEPCION':'JG CONCEPCIÓN','JG VALPARAISO':'JG VALPARAÍSO','JG QUILPUE':'JG QUILPUÉ','JG CHILLAN':'JG CHILLÁN','JG AYSEN':'JG AYSÉN','JG CANETE':'JG CAÑETE','TOP CANETE':'TOP CAÑETE','13 JG DE STGO':'13 JG STGO','TOP SERENA':'TOP LA SERENA'}
 const normT = t => t ? (TMAP[t.trim()] || t.trim()) : t
 const f = { fontFamily:"'Inter',sans-serif" }
+
+// ─── SEMÁFORO MEJORADO — solo causas vigentes ─────────────────────────────────
+const getSemaforo = (updated_at, estado) => {
+  // Solo mostrar semáforo en causas vigentes
+  if (estado !== 'vigente') return null
+  if (!updated_at) return {
+    color: '#dc2626',
+    bg: '#fef2f2',
+    border: '#fecaca',
+    label: 'SIN ACTIVIDAD',
+    dias: null,
+    pulsar: true
+  }
+  const dias = Math.floor((new Date() - new Date(updated_at)) / (1000*60*60*24))
+  if (dias <= 2) return {
+    color: '#16a34a', bg: '#f0fdf4', border: '#a7f3d0',
+    label: dias === 0 ? 'HOY' : dias === 1 ? 'AYER' : `HACE ${dias} DÍAS`,
+    dias, pulsar: false
+  }
+  if (dias <= 6) return {
+    color: '#d97706', bg: '#fffbeb', border: '#fde68a',
+    label: `HACE ${dias} DÍAS`,
+    dias, pulsar: false
+  }
+  return {
+    color: '#dc2626', bg: '#fef2f2', border: '#fecaca',
+    label: `${dias} DÍAS SIN REVISAR`,
+    dias, pulsar: true
+  }
+}
+
+function SemaforoTag({ updated_at, estado }) {
+  const s = getSemaforo(updated_at, estado)
+  if (!s) return null
+  return (
+    <div style={{
+      display: 'inline-flex', alignItems: 'center', gap: 6,
+      background: s.bg, border: `1.5px solid ${s.border}`,
+      borderRadius: 20, padding: '3px 10px',
+    }}>
+      <span style={{
+        width: 10, height: 10, borderRadius: '50%',
+        background: s.color, flexShrink: 0, display: 'inline-block',
+        animation: s.pulsar ? 'semaforo-pulse 1.5s infinite' : 'none',
+        boxShadow: `0 0 6px ${s.color}88`
+      }}/>
+      <span style={{ fontSize: 10, fontWeight: 700, color: s.color, letterSpacing: 0.5, ...f }}>
+        {s.label}
+      </span>
+    </div>
+  )
+}
 
 function Badge({ estado, subestado }) {
   const c = getBadgeConfig(estado, subestado)
@@ -239,7 +292,7 @@ const TC_SECCIONES = [
   { key:'observaciones', icon:'📝', label:'Observaciones',          placeholder:'Notas de seguimiento, criterios del tribunal, pendientes...' },
 ]
 
-function FallosReferencia({ causaId, ruc, email }) {
+function FallosReferencia({ causaId, ruc, email, onAccion }) {
   const [fallos, setFallos] = useState([])
   const [subiendo, setSubiendo] = useState(false)
   const [drag, setDrag] = useState(false)
@@ -261,6 +314,7 @@ function FallosReferencia({ causaId, ruc, email }) {
     const { data: urlData } = supabase.storage.from('fallos').getPublicUrl(path)
     await supabase.from('fallos_referencia').insert({ causa_id: causaId, nombre: file.name, storage_path: path, url: urlData.publicUrl, subido_por: email })
     await cargarFallos()
+    if (onAccion) onAccion() // ✅ actualiza semáforo
     setSubiendo(false)
   }
 
@@ -269,6 +323,7 @@ function FallosReferencia({ causaId, ruc, email }) {
     await supabase.storage.from('fallos').remove([fallo.storage_path])
     await supabase.from('fallos_referencia').delete().eq('id', fallo.id)
     setFallos(prev => prev.filter(f => f.id !== fallo.id))
+    if (onAccion) onAccion() // ✅ actualiza semáforo
   }
 
   const onDrop = (e) => {
@@ -279,27 +334,13 @@ function FallosReferencia({ causaId, ruc, email }) {
 
   return (
     <div>
-      {/* Zona de arrastre */}
-      <div
-        onDragOver={e => { e.preventDefault(); setDrag(true) }}
-        onDragLeave={() => setDrag(false)}
-        onDrop={onDrop}
-        onClick={() => inputRef.current?.click()}
-        style={{
-          border: `2px dashed ${drag ? '#2563eb' : '#e2e8f0'}`,
-          borderRadius: 12, padding: '28px 20px', textAlign: 'center',
-          background: drag ? '#eff6ff' : '#f8fafc',
-          cursor: 'pointer', transition: 'all 0.2s', marginBottom: 16
-        }}>
+      <div onDragOver={e => { e.preventDefault(); setDrag(true) }} onDragLeave={() => setDrag(false)} onDrop={onDrop} onClick={() => inputRef.current?.click()}
+        style={{ border: `2px dashed ${drag ? '#2563eb' : '#e2e8f0'}`, borderRadius: 12, padding: '28px 20px', textAlign: 'center', background: drag ? '#eff6ff' : '#f8fafc', cursor: 'pointer', transition: 'all 0.2s', marginBottom: 16 }}>
         <input ref={inputRef} type="file" accept=".pdf" multiple style={{ display:'none' }} onChange={e => Array.from(e.target.files).forEach(f => subirArchivo(f))}/>
         <div style={{ fontSize: 32, marginBottom: 8 }}>{subiendo ? '⏳' : '📄'}</div>
-        <div style={{ fontSize: 13, fontWeight: 600, color: drag ? '#2563eb' : '#475569', ...f }}>
-          {subiendo ? 'Subiendo...' : drag ? 'Suelta aquí el fallo' : 'Arrastra fallos PDF aquí'}
-        </div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: drag ? '#2563eb' : '#475569', ...f }}>{subiendo ? 'Subiendo...' : drag ? 'Suelta aquí el fallo' : 'Arrastra fallos PDF aquí'}</div>
         <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, ...f }}>o haz clic para seleccionar desde tu carpeta de descargas</div>
       </div>
-
-      {/* Lista de fallos */}
       {fallos.length === 0 ? (
         <div style={{ fontSize: 13, color: '#cbd5e1', textAlign: 'center', padding: '12px 0', ...f }}>Sin fallos de referencia aún.</div>
       ) : fallos.map((fallo, i) => (
@@ -307,25 +348,17 @@ function FallosReferencia({ causaId, ruc, email }) {
           <div style={{ width:36, height:36, background:'#fef2f2', border:'1px solid #fecaca', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, flexShrink:0 }}>📄</div>
           <div style={{ flex:1, minWidth:0 }}>
             <div style={{ fontSize:13, fontWeight:600, color:'#0f172a', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', ...f }}>{fallo.nombre}</div>
-            <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>
-              Subido por {fallo.subido_por || 'usuario'} · {new Date(fallo.created_at).toLocaleDateString('es-CL')}
-            </div>
+            <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>Subido por {fallo.subido_por || 'usuario'} · {new Date(fallo.created_at).toLocaleDateString('es-CL')}</div>
           </div>
-          <a href={fallo.url} target="_blank" rel="noreferrer"
-            style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:7, padding:'5px 12px', fontSize:11, color:'#2563eb', cursor:'pointer', fontWeight:600, textDecoration:'none', ...f }}>
-            Ver PDF
-          </a>
-          <button onClick={() => eliminar(fallo)}
-            style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:7, padding:'5px 10px', fontSize:11, color:'#dc2626', cursor:'pointer', fontWeight:600, ...f }}>
-            ✕
-          </button>
+          <a href={fallo.url} target="_blank" rel="noreferrer" style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:7, padding:'5px 12px', fontSize:11, color:'#2563eb', cursor:'pointer', fontWeight:600, textDecoration:'none', ...f }}>Ver PDF</a>
+          <button onClick={() => eliminar(fallo)} style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:7, padding:'5px 10px', fontSize:11, color:'#dc2626', cursor:'pointer', fontWeight:600, ...f }}>✕</button>
         </div>
       ))}
     </div>
   )
 }
 
-function TeoriaDelCaso({ causaId, ruc, session, registrarActividad }) {
+function TeoriaDelCaso({ causaId, ruc, session, registrarActividad, onAccion }) {
   const [teoria, setTeoria] = useState(null)
   const [form, setForm] = useState({ hechos:'', teoria_defensa:'', prueba:'', observaciones:'' })
   const [historial, setHistorial] = useState([])
@@ -340,35 +373,12 @@ function TeoriaDelCaso({ causaId, ruc, session, registrarActividad }) {
 
   const cargar = async () => {
     setLoading(true)
-    // Buscar teoría existente en tabla notas con tipo='teoria_caso'
-    const { data } = await supabase
-      .from('notas')
-      .select('*')
-      .eq('causa_id', causaId)
-      .eq('tipo', 'teoria_caso')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
+    const { data } = await supabase.from('notas').select('*').eq('causa_id', causaId).eq('tipo', 'teoria_caso').order('created_at', { ascending: false }).limit(1).maybeSingle()
     if (data) {
-      try {
-        const parsed = JSON.parse(data.contenido)
-        setForm(parsed.contenido || {})
-        setTeoria(data)
-      } catch {
-        setForm({ hechos: data.contenido || '', teoria:'', prueba:'', argumentos:'', observaciones:'' })
-        setTeoria(data)
-      }
+      try { const parsed = JSON.parse(data.contenido); setForm(parsed.contenido || {}); setTeoria(data) }
+      catch { setForm({ hechos: data.contenido || '', teoria_defensa:'', prueba:'', observaciones:'' }); setTeoria(data) }
     }
-
-    // Historial de cambios
-    const { data: hist } = await supabase
-      .from('notas')
-      .select('*')
-      .eq('causa_id', causaId)
-      .eq('tipo', 'teoria_caso_historial')
-      .order('created_at', { ascending: false })
-      .limit(20)
+    const { data: hist } = await supabase.from('notas').select('*').eq('causa_id', causaId).eq('tipo', 'teoria_caso_historial').order('created_at', { ascending: false }).limit(20)
     setHistorial(hist || [])
     setLoading(false)
   }
@@ -378,41 +388,24 @@ function TeoriaDelCaso({ causaId, ruc, session, registrarActividad }) {
     const email = session?.user?.email || 'usuario'
     const ahora = new Date()
     const contenidoJSON = JSON.stringify({ contenido: formData, version: ahora.toISOString() })
-
     if (teoria) {
-      // Guardar historial antes de sobreescribir
       if (!esAutoguardado) {
-        await supabase.from('notas').insert({
-          causa_id: causaId,
-          tipo: 'teoria_caso_historial',
-          contenido: JSON.stringify({
-            contenido: form,
-            editor: email,
-            fecha: ahora.toLocaleDateString('es-CL'),
-            hora: ahora.toLocaleTimeString('es-CL', { hour:'2-digit', minute:'2-digit' }),
-          })
-        })
+        await supabase.from('notas').insert({ causa_id: causaId, tipo: 'teoria_caso_historial', contenido: JSON.stringify({ contenido: form, editor: email, fecha: ahora.toLocaleDateString('es-CL'), hora: ahora.toLocaleTimeString('es-CL', { hour:'2-digit', minute:'2-digit' }) }) })
       }
       await supabase.from('notas').update({ contenido: contenidoJSON, updated_at: ahora }).eq('id', teoria.id)
     } else {
-      const { data } = await supabase.from('notas').insert({
-        causa_id: causaId,
-        tipo: 'teoria_caso',
-        contenido: contenidoJSON,
-      }).select().single()
+      const { data } = await supabase.from('notas').insert({ causa_id: causaId, tipo: 'teoria_caso', contenido: contenidoJSON }).select().single()
       setTeoria(data)
     }
-
-    if (!esAutoguardado && registrarActividad) {
-      registrarActividad('accion', `Editó Teoría del Caso en RUC ${ruc}`)
+    if (!esAutoguardado) {
+      if (registrarActividad) registrarActividad('accion', `Editó Teoría del Caso en RUC ${ruc}`)
+      if (onAccion) onAccion() // ✅ actualiza semáforo
     }
-
     setSavedAt(ahora)
     setSaving(false)
     if (!esAutoguardado) await cargar()
-  }, [causaId, teoria, form, session, ruc, registrarActividad])
+  }, [causaId, teoria, form, session, ruc, registrarActividad, onAccion])
 
-  // Autoguardado con debounce 3 segundos
   const handleChange = (key, value) => {
     const nuevo = { ...form, [key]: value }
     setForm(nuevo)
@@ -427,8 +420,6 @@ function TeoriaDelCaso({ causaId, ruc, session, registrarActividad }) {
 
   return (
     <div style={{ display:'grid', gridTemplateColumns:'200px 1fr', gap:0, minHeight:500, border:'1px solid #e2e8f0', borderRadius:12, overflow:'hidden' }}>
-
-      {/* Sidebar secciones */}
       <div style={{ background:'#0f172a', padding:'20px 0' }}>
         <div style={{ fontSize:9, color:'#475569', textTransform:'uppercase', letterSpacing:2, fontWeight:700, padding:'0 16px 12px', ...f }}>Secciones</div>
         {TC_SECCIONES.map(s => {
@@ -444,8 +435,6 @@ function TeoriaDelCaso({ causaId, ruc, session, registrarActividad }) {
             </button>
           )
         })}
-
-        {/* Stats */}
         <div style={{ padding:'16px', marginTop:8, borderTop:'1px solid #1e293b' }}>
           <div style={{ fontSize:9, color:'#475569', textTransform:'uppercase', letterSpacing:1.5, fontWeight:700, marginBottom:8, ...f }}>Progreso</div>
           {TC_SECCIONES.map(s => {
@@ -464,11 +453,7 @@ function TeoriaDelCaso({ causaId, ruc, session, registrarActividad }) {
           })}
         </div>
       </div>
-
-      {/* Editor principal */}
       <div style={{ display:'flex', flexDirection:'column', background:'#fff' }}>
-
-        {/* Header del editor */}
         <div style={{ padding:'16px 20px', borderBottom:'1px solid #f1f5f9', display:'flex', justifyContent:'space-between', alignItems:'center', background:'#fafbff' }}>
           <div>
             <div style={{ fontSize:15, fontWeight:700, color:'#0f172a', ...f }}>{seccionActual?.icon} {seccionActual?.label}</div>
@@ -478,18 +463,14 @@ function TeoriaDelCaso({ causaId, ruc, session, registrarActividad }) {
             </div>
           </div>
           <div style={{ display:'flex', gap:8 }}>
-            <button onClick={() => setShowHistorial(!showHistorial)}
-              style={{ background: showHistorial?'#0f172a':'#fff', color: showHistorial?'#fff':'#64748b', border:'1.5px solid #e2e8f0', borderRadius:8, padding:'6px 14px', fontSize:12, cursor:'pointer', fontWeight:500, ...f }}>
+            <button onClick={() => setShowHistorial(!showHistorial)} style={{ background: showHistorial?'#0f172a':'#fff', color: showHistorial?'#fff':'#64748b', border:'1.5px solid #e2e8f0', borderRadius:8, padding:'6px 14px', fontSize:12, cursor:'pointer', fontWeight:500, ...f }}>
               🕐 Historial {historial.length > 0 && `(${historial.length})`}
             </button>
-            <button onClick={() => guardar(form, false)} disabled={saving}
-              style={{ background:'linear-gradient(135deg,#2563eb,#1d4ed8)', color:'#fff', border:'none', borderRadius:8, padding:'6px 16px', fontSize:12, cursor:'pointer', fontWeight:600, ...f }}>
+            <button onClick={() => guardar(form, false)} disabled={saving} style={{ background:'linear-gradient(135deg,#2563eb,#1d4ed8)', color:'#fff', border:'none', borderRadius:8, padding:'6px 16px', fontSize:12, cursor:'pointer', fontWeight:600, ...f }}>
               {saving ? '⏳ Guardando...' : '💾 Guardar'}
             </button>
           </div>
         </div>
-
-        {/* Historial */}
         {showHistorial && (
           <div style={{ background:'#f8fafc', borderBottom:'1px solid #e2e8f0', padding:'16px 20px', maxHeight:200, overflowY:'auto' }}>
             <div style={{ fontSize:11, fontWeight:700, color:'#475569', textTransform:'uppercase', letterSpacing:1, marginBottom:10, ...f }}>Historial de modificaciones</div>
@@ -500,9 +481,7 @@ function TeoriaDelCaso({ causaId, ruc, session, registrarActividad }) {
               try { info = JSON.parse(h.contenido) } catch {}
               return (
                 <div key={i} style={{ display:'flex', gap:10, alignItems:'center', padding:'8px 0', borderBottom:'1px solid #f1f5f9' }}>
-                  <div style={{ width:28, height:28, borderRadius:'50%', background:'linear-gradient(135deg,#2563eb,#7c3aed)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:10, fontWeight:700, flexShrink:0 }}>
-                    {(info.editor||'?')[0]?.toUpperCase()}
-                  </div>
+                  <div style={{ width:28, height:28, borderRadius:'50%', background:'linear-gradient(135deg,#2563eb,#7c3aed)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:10, fontWeight:700, flexShrink:0 }}>{(info.editor||'?')[0]?.toUpperCase()}</div>
                   <div style={{ flex:1 }}>
                     <div style={{ fontSize:12, fontWeight:500, color:'#0f172a', ...f }}>{info.editor || 'Usuario'}</div>
                     <div style={{ fontSize:11, color:'#94a3b8', ...f }}>{info.fecha} {info.hora}</div>
@@ -513,28 +492,14 @@ function TeoriaDelCaso({ causaId, ruc, session, registrarActividad }) {
             })}
           </div>
         )}
-
-        {/* Contenido sección */}
         <div className="tc-section" style={{ flex:1, padding:'20px' }}>
           {seccionActiva === 'fallos' ? (
-            <FallosReferencia causaId={causaId} ruc={ruc} email={session?.user?.email || ''} />
+            <FallosReferencia causaId={causaId} ruc={ruc} email={session?.user?.email || ''} onAccion={onAccion} />
           ) : (
-            <textarea
-              value={form[seccionActiva] || ''}
-              onChange={e => handleChange(seccionActiva, e.target.value)}
-              placeholder={seccionActual?.placeholder}
-              style={{
-                width:'100%', height:'100%', minHeight:360,
-                border:'none', outline:'none', resize:'none',
-                fontSize:14, lineHeight:1.8, color:'#1e293b',
-                background:'transparent', fontFamily:"'Inter',sans-serif",
-                padding:0,
-              }}
-            />
+            <textarea value={form[seccionActiva] || ''} onChange={e => handleChange(seccionActiva, e.target.value)} placeholder={seccionActual?.placeholder}
+              style={{ width:'100%', height:'100%', minHeight:360, border:'none', outline:'none', resize:'none', fontSize:14, lineHeight:1.8, color:'#1e293b', background:'transparent', fontFamily:"'Inter',sans-serif", padding:0 }}/>
           )}
         </div>
-
-        {/* Footer */}
         <div style={{ padding:'10px 20px', borderTop:'1px solid #f1f5f9', display:'flex', gap:8, overflowX:'auto' }}>
           {TC_SECCIONES.map(s => (
             <button key={s.key} onClick={() => setSeccionActiva(s.key)}
@@ -548,7 +513,6 @@ function TeoriaDelCaso({ causaId, ruc, session, registrarActividad }) {
   )
 }
 
-// ─── FUNCIONES DE CÁLCULO DE PLAZO ───────────────────────────────────────────
 function calcularVencimiento(fechaInicio, diasPlazo) {
   if (!fechaInicio || !diasPlazo) return ''
   const inicio = new Date(fechaInicio + 'T12:00:00')
@@ -624,11 +588,7 @@ function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudiencia })
         </div>
         <div style={{background:subestado==='vencido'?'#fef2f2':subestado==='proximo'?'#fffbeb':'#f0fdf4',border:`1.5px solid ${subestado==='vencido'?'#fecaca':subestado==='proximo'?'#fde68a':'#a7f3d0'}`,borderRadius:12,padding:'14px 16px',textAlign:'center'}}>
           <div style={{fontSize:13,fontWeight:800,color:subestado==='vencido'?'#dc2626':subestado==='proximo'?'#d97706':'#059669',...f}}>{vencFinal || '—'}</div>
-          {diff !== null && (
-            <div style={{fontSize:11,fontWeight:600,marginTop:4,color:subestado==='vencido'?'#dc2626':subestado==='proximo'?'#d97706':'#64748b',...f}}>
-              {subestado==='vencido' ? `Venció hace ${Math.abs(diff)} días` : subestado==='proximo' ? `⚠️ Vence en ${diff} días` : `Faltan ${diff} días`}
-            </div>
-          )}
+          {diff !== null && <div style={{fontSize:11,fontWeight:600,marginTop:4,color:subestado==='vencido'?'#dc2626':subestado==='proximo'?'#d97706':'#64748b',...f}}>{subestado==='vencido' ? `Venció hace ${Math.abs(diff)} días` : subestado==='proximo' ? `⚠️ Vence en ${diff} días` : `Faltan ${diff} días`}</div>}
           <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1,marginTop:2,fontWeight:600,...f}}>Vencimiento</div>
         </div>
       </div>
@@ -656,61 +616,21 @@ function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudiencia })
       })}
       {showForm ? (
         <div style={{background:'#f0f7ff',border:'1.5px solid #bfdbfe',borderRadius:12,padding:16,marginTop:12}}>
-          <div style={{fontSize:12,fontWeight:700,color:'#2563eb',marginBottom:12,...f}}>
-            {aumentos && aumentos.length === 0 ? '📋 Registrar audiencia de formalización' : '📋 Registrar nueva audiencia de plazo'}
-          </div>
+          <div style={{fontSize:12,fontWeight:700,color:'#2563eb',marginBottom:12,...f}}>{aumentos && aumentos.length === 0 ? '📋 Registrar audiencia de formalización' : '📋 Registrar nueva audiencia de plazo'}</div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
-            <div>
-              <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Tipo de audiencia</div>
-              <select style={inp} value={form.tipo_audiencia} onChange={e=>setForm(p=>({...p,tipo_audiencia:e.target.value}))}>
-                <option>Formalización</option>
-                <option>Control de detención + Formalización</option>
-                <option>Ampliación de plazo</option>
-                <option>Reapertura de investigación</option>
-              </select>
-            </div>
-            <div>
-              <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Fecha de audiencia</div>
-              <input type="date" style={inp} value={form.fecha_audiencia} onChange={e=>setForm(p=>({...p,fecha_audiencia:e.target.value}))}/>
-            </div>
-            <div>
-              <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Días de plazo otorgados</div>
-              <input type="number" style={inp} placeholder="Ej: 30, 90, 210" value={form.dias_plazo} onChange={e=>setForm(p=>({...p,dias_plazo:e.target.value}))}/>
-            </div>
-            <div>
-              <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Observación</div>
-              <input style={inp} placeholder="Ej: Diligencias pendientes" value={form.observacion} onChange={e=>setForm(p=>({...p,observacion:e.target.value}))}/>
-            </div>
+            <div><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Tipo de audiencia</div><select style={inp} value={form.tipo_audiencia} onChange={e=>setForm(p=>({...p,tipo_audiencia:e.target.value}))}><option>Formalización</option><option>Control de detención + Formalización</option><option>Ampliación de plazo</option><option>Reapertura de investigación</option></select></div>
+            <div><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Fecha de audiencia</div><input type="date" style={inp} value={form.fecha_audiencia} onChange={e=>setForm(p=>({...p,fecha_audiencia:e.target.value}))}/></div>
+            <div><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Días de plazo otorgados</div><input type="number" style={inp} placeholder="Ej: 30, 90, 210" value={form.dias_plazo} onChange={e=>setForm(p=>({...p,dias_plazo:e.target.value}))}/></div>
+            <div><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Observación</div><input style={inp} placeholder="Ej: Diligencias pendientes" value={form.observacion} onChange={e=>setForm(p=>({...p,observacion:e.target.value}))}/></div>
           </div>
-          {vencimientoPreview && (
-            <div style={{marginBottom:12,padding:'10px 14px',background:'#fff',borderRadius:8,border:'1px solid #bfdbfe',display:'flex',alignItems:'center',gap:8}}>
-              <span style={{fontSize:16}}>📅</span>
-              <div>
-                <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1,fontWeight:700,...f}}>Vencimiento de este plazo</div>
-                <div style={{fontSize:15,fontWeight:800,color:'#2563eb',...f}}>{vencimientoPreview}</div>
-              </div>
-            </div>
-          )}
-          <div style={{display:'flex',gap:8}}>
-            <button className="btn-primary" style={{fontSize:12}} onClick={handleGuardar} disabled={guardando||!form.fecha_audiencia||!form.dias_plazo}>{guardando?'Guardando...':'💾 Guardar audiencia'}</button>
-            <button className="btn-secondary" style={{fontSize:12}} onClick={()=>setShowForm(false)}>Cancelar</button>
-          </div>
+          {vencimientoPreview && <div style={{marginBottom:12,padding:'10px 14px',background:'#fff',borderRadius:8,border:'1px solid #bfdbfe',display:'flex',alignItems:'center',gap:8}}><span style={{fontSize:16}}>📅</span><div><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1,fontWeight:700,...f}}>Vencimiento de este plazo</div><div style={{fontSize:15,fontWeight:800,color:'#2563eb',...f}}>{vencimientoPreview}</div></div></div>}
+          <div style={{display:'flex',gap:8}}><button className="btn-primary" style={{fontSize:12}} onClick={handleGuardar} disabled={guardando||!form.fecha_audiencia||!form.dias_plazo}>{guardando?'Guardando...':'💾 Guardar audiencia'}</button><button className="btn-secondary" style={{fontSize:12}} onClick={()=>setShowForm(false)}>Cancelar</button></div>
         </div>
       ) : (
-        <button className="btn-secondary" style={{marginTop:12}} onClick={()=>setShowForm(true)}>
-          + {aumentos && aumentos.length === 0 ? 'Registrar formalización' : 'Registrar nueva audiencia de plazo'}
-        </button>
+        <button className="btn-secondary" style={{marginTop:12}} onClick={()=>setShowForm(true)}>+ {aumentos && aumentos.length === 0 ? 'Registrar formalización' : 'Registrar nueva audiencia de plazo'}</button>
       )}
     </div>
   )
-}
-
-const getSemaforo = (updated_at) => {
-  if (!updated_at) return { color:'#dc2626', title:'Sin actividad registrada' }
-  const dias = Math.floor((new Date() - new Date(updated_at)) / (1000*60*60*24))
-  if (dias <= 3) return { color:'#22c55e', title:`Trabajada hace ${dias} día${dias!==1?'s':''}` }
-  if (dias <= 6) return { color:'#f59e0b', title:`Trabajada hace ${dias} días` }
-  return { color:'#dc2626', title:`Sin actividad hace ${dias} días` }
 }
 
 export default function Dashboard({ session, registrarActividad, causaInicial, onCausaInicialUsada }) {
@@ -734,19 +654,12 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
   const [saving,setSaving]=useState(false)
   const [showNuevaCausa,setShowNuevaCausa]=useState(false)
   const [showStats,setShowStats]=useState(false)
-  const [nuevaCausa,setNuevaCausa]=useState({
-    ruc:'',rit:'',tribunal:'',delito:'',imputado:'',fiscal:'',
-    cautelar:'',centro_penal:'',plazo:'',fecha_inicio:'',dias_plazo:'',estado:'vigente'
-  })
+  const [nuevaCausa,setNuevaCausa]=useState({ruc:'',rit:'',tribunal:'',delito:'',imputado:'',fiscal:'',cautelar:'',centro_penal:'',plazo:'',fecha_inicio:'',dias_plazo:'',estado:'vigente'})
 
   useEffect(()=>{ loadCausas() },[])
 
-  // ✅ Abrir causa que viene desde el Calendario
   useEffect(() => {
-    if (causaInicial) {
-      openCausa(causaInicial)
-      if (onCausaInicialUsada) onCausaInicialUsada()
-    }
+    if (causaInicial) { openCausa(causaInicial); if (onCausaInicialUsada) onCausaInicialUsada() }
   }, [causaInicial])
 
   const loadCausas = async () => {
@@ -778,11 +691,21 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
     setAudiencias(a||[]);setAumentos(au||[]);setImputados(imp||[])
   }
 
-  const updateField=async(field,value)=>{ value = typeof value === 'string' ? value.toUpperCase() : value
+  // ✅ Función central para marcar acción real — actualiza updated_at y semáforo
+  const marcarAccion = useCallback(async (causaId) => {
+    const ahora = new Date()
+    await supabase.from('causas').update({ updated_at: ahora }).eq('id', causaId)
+    setCausas(prev => prev.map(c => c.id === causaId ? { ...c, updated_at: ahora.toISOString() } : c))
+    setSelectedCausa(prev => prev ? { ...prev, updated_at: ahora.toISOString() } : prev)
+  }, [])
+
+  const updateField=async(field,value)=>{
+    value = typeof value === 'string' ? value.toUpperCase() : value
     setSaving(true)
     const{error}=await supabase.from('causas').update({[field]:value,updated_at:new Date()}).eq('id',selectedCausa.id)
     if(!error){
-      const u={...selectedCausa,[field]:value};setSelectedCausa(u);setCausas(prev=>prev.map(c=>c.id===u.id?u:c))
+      const u={...selectedCausa,[field]:value,updated_at:new Date().toISOString()}
+      setSelectedCausa(u);setCausas(prev=>prev.map(c=>c.id===u.id?u:c))
       if (registrarActividad) registrarActividad('accion', `Editó campo "${field}" en RUC ${selectedCausa.ruc}`)
     }
     setEditField(null);setSaving(false)
@@ -794,6 +717,7 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
     if(!error){
       setAudiencias(prev=>[data,...prev].sort((a,b)=>b.fecha.localeCompare(a.fecha)))
       if (registrarActividad) registrarActividad('accion', `Nueva audiencia en RUC ${selectedCausa.ruc}: ${nuevaAud.tipo||'Audiencia'} ${nuevaAud.fecha}`)
+      await marcarAccion(selectedCausa.id) // ✅ actualiza semáforo
     }
     setNuevaAud({fecha:'',hora:'',tipo:'',tribunal:selectedCausa?.tribunal||'',sala:'',resultado:'',notas:''});setShowAudForm(false);setSaving(false)
   }
@@ -849,12 +773,14 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:12}}>
               <div>
                 <div style={{fontSize:22,fontWeight:800,color:'#0f172a',marginBottom:6,letterSpacing:'-0.5px',...f}}>RUC <span style={{color:'#2563eb'}}>{c.ruc}</span></div>
-                <div style={{fontSize:13,color:'#94a3b8',display:'flex',gap:16,flexWrap:'wrap',...f}}>
+                <div style={{fontSize:13,color:'#94a3b8',display:'flex',gap:16,flexWrap:'wrap',alignItems:'center',...f}}>
                   <span>RIT <span style={{color:'#475569',fontWeight:500}}>{c.rit||'—'}</span></span>
                   <span style={{color:'#e2e8f0'}}>|</span>
                   <span style={{color:'#475569',fontWeight:500}}>{c.tribunal}</span>
                   <span style={{color:'#e2e8f0'}}>|</span>
                   <span style={{color:'#475569',fontWeight:500}}>{c.imputado}</span>
+                  {/* ✅ Semáforo visible en el header de la causa */}
+                  <SemaforoTag updated_at={c.updated_at} estado={c.estado} />
                 </div>
               </div>
               <div style={{display:'flex',gap:8,alignItems:'center'}}>
@@ -864,27 +790,15 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
               </div>
             </div>
           </div>
-
-          {/* TABS — "Notas" reemplazada por "Teoría del Caso" */}
           <div style={{background:'#fff',borderLeft:'1px solid #e2e8f0',borderRight:'1px solid #e2e8f0',display:'flex',overflowX:'auto',borderBottom:'2px solid #f1f5f9'}}>
             {[['datos','Datos'],['imputado','Imputado'],['plazo','Plazo'],['audiencias','Audiencias'],['top','Juicio Oral'],['teoria','⚖️ Teoría del Caso'],['carpeta','Carpeta']].map(([k,l])=>(
               <button key={k} className="tab-btn" onClick={()=>setActiveTab(k)} style={{padding:'13px 20px',fontSize:13,fontWeight:activeTab===k?600:400,color:activeTab===k?'#2563eb':'#94a3b8',borderBottom:`2px solid ${activeTab===k?'#2563eb':'transparent'}`,whiteSpace:'nowrap',marginBottom:-2}}>{l}</button>
             ))}
           </div>
-
           <div style={{background:'#fff',border:'1px solid #e2e8f0',borderTop:'none',borderRadius:'0 0 16px 16px',padding:28,boxShadow:'0 2px 8px rgba(0,0,0,0.04)'}}>
             {activeTab==='datos'&&(
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
-                {[
-                  {key:'imputado',label:'Imputado(s)',full:true,editable:true},
-                  {key:'delito',label:'Delito',full:true,editable:true},
-                  {key:'tribunal',label:'Tribunal',editable:true},
-                  {key:'rit',label:'RIT JG',editable:true},
-                  {key:'fiscal',label:'Fiscal a cargo',editable:true},
-                  {key:'cautelar',label:'Cautelar procesal',editable:true},
-                  {key:'centro_penal',label:'Centro Penal',editable:true},
-                  {key:'plazo',label:'Plazo / Vencimiento',editable:true,full:true},
-                ].map(field=>(
+                {[{key:'imputado',label:'Imputado(s)',full:true,editable:true},{key:'delito',label:'Delito',full:true,editable:true},{key:'tribunal',label:'Tribunal',editable:true},{key:'rit',label:'RIT JG',editable:true},{key:'fiscal',label:'Fiscal a cargo',editable:true},{key:'cautelar',label:'Cautelar procesal',editable:true},{key:'centro_penal',label:'Centro Penal',editable:true},{key:'plazo',label:'Plazo / Vencimiento',editable:true,full:true}].map(field=>(
                   <Field key={field.key} label={field.label} value={c[field.key]} editable={field.editable} full={field.full} editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField(field.key,editValue)}/>
                 ))}
                 <div style={{gridColumn:'1/-1',marginTop:8}}>
@@ -933,15 +847,17 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
                   <ImputadoCard key={imp.id} imp={imp} idx={idx} onUpdate={async(field,value)=>{
                     await supabase.from('imputados').update({[field]:value}).eq('id',imp.id)
                     setImputados(prev=>prev.map(x=>x.id===imp.id?{...x,[field]:value}:x))
+                    await marcarAccion(c.id) // ✅ actualiza semáforo
                   }} onDelete={async()=>{
                     if(!window.confirm('¿Eliminar este imputado?'))return
                     await supabase.from('imputados').delete().eq('id',imp.id)
                     setImputados(prev=>prev.filter(x=>x.id!==imp.id))
+                    await marcarAccion(c.id) // ✅ actualiza semáforo
                   }}/>
                 ))}
                 <button className="btn-secondary" style={{marginTop:16}} onClick={async()=>{
                   const{data}=await supabase.from('imputados').insert({causa_id:c.id,nombre:'Nuevo imputado'}).select().single()
-                  if(data)setImputados(prev=>[...prev,data])
+                  if(data){ setImputados(prev=>[...prev,data]); await marcarAccion(c.id) }
                 }}>+ Agregar imputado</button>
               </div>
             )}
@@ -956,7 +872,7 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
                   const nuevoVenc='VENCE '+calcularVencimiento(primera.fecha_audiencia,diasTotal)
                   const nuevoSub=calcularSubestado(nuevoVenc)
                   await supabase.from('causas').update({plazo:nuevoVenc,subestado:nuevoSub,updated_at:new Date()}).eq('id',c.id)
-                  const u={...selectedCausa,plazo:nuevoVenc,subestado:nuevoSub}
+                  const u={...selectedCausa,plazo:nuevoVenc,subestado:nuevoSub,updated_at:new Date().toISOString()}
                   setSelectedCausa(u);setCausas(prev=>prev.map(x=>x.id===u.id?u:x))
                 }
               }}/>
@@ -967,7 +883,10 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
                   <AudienciaCard key={a.id} a={a} onUpdate={async(updated,motivo)=>{
                     const historial = a.notas ? a.notas + `\n[${new Date().toLocaleDateString('es-CL')}] Modificado: ${motivo}` : `[${new Date().toLocaleDateString('es-CL')}] Modificado: ${motivo}`
                     const{error}=await supabase.from('audiencias').update({...updated,notas:historial}).eq('id',a.id)
-                    if(!error)setAudiencias(prev=>prev.map(x=>x.id===a.id?{...x,...updated,notas:historial}:x))
+                    if(!error){
+                      setAudiencias(prev=>prev.map(x=>x.id===a.id?{...x,...updated,notas:historial}:x))
+                      await marcarAccion(c.id) // ✅ actualiza semáforo
+                    }
                   }}/>
                 ))}
                 {audiencias.length===0&&<p style={{color:'#cbd5e1',fontSize:13,marginBottom:14,...f}}>Sin audiencias registradas.</p>}
@@ -1003,17 +922,12 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
                 )}
               </div>
             )}
-
-            {/* ✅ TEORÍA DEL CASO — reemplaza Notas */}
             {activeTab==='teoria'&&(
               <TeoriaDelCaso
-                causaId={c.id}
-                ruc={c.ruc}
-                session={session}
-                registrarActividad={registrarActividad}
+                causaId={c.id} ruc={c.ruc} session={session} registrarActividad={registrarActividad}
+                onAccion={() => marcarAccion(c.id)} // ✅ actualiza semáforo
               />
             )}
-
             {activeTab==='carpeta'&&(
               <div>
                 <Field label="Referencia carpeta física" value={c.carpeta_ref} editable editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField('carpeta_ref',editValue)}/>
@@ -1032,69 +946,27 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
     <div style={{background:'#f8fafc',minHeight:'100vh',...f}}>
       <style>{CSS}</style>
       <div style={{maxWidth:1380,margin:'0 auto',padding:'28px'}}>
-        {stats.vencido>0&&(
-          <div style={{background:'linear-gradient(135deg,#fef2f2,#fff1f0)',border:'1px solid #fecaca',borderRadius:12,padding:'13px 20px',marginBottom:16,display:'flex',alignItems:'center',gap:10,boxShadow:'0 2px 8px rgba(220,38,38,0.08)'}}>
-            <div style={{width:32,height:32,background:'linear-gradient(135deg,#ef4444,#dc2626)',borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,flexShrink:0}}>🚨</div>
-            <span style={{fontSize:13,color:'#991b1b',fontWeight:600,...f}}>{stats.vencido} causa{stats.vencido>1?'s':''} con plazo VENCIDO — Revisión urgente requerida</span>
-          </div>
-        )}
-        {stats.proximo>0&&(
-          <div style={{background:'linear-gradient(135deg,#fffbeb,#fef9c3)',border:'1px solid #fde68a',borderRadius:12,padding:'13px 20px',marginBottom:24,display:'flex',alignItems:'center',gap:10,boxShadow:'0 2px 8px rgba(217,119,6,0.08)'}}>
-            <div style={{width:32,height:32,background:'linear-gradient(135deg,#f59e0b,#d97706)',borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,flexShrink:0}}>⚠️</div>
-            <span style={{fontSize:13,color:'#92400e',fontWeight:600,...f}}>{stats.proximo} causa{stats.proximo>1?'s':''} POR VENCER en los próximos 3 días</span>
-          </div>
-        )}
+        {stats.vencido>0&&(<div style={{background:'linear-gradient(135deg,#fef2f2,#fff1f0)',border:'1px solid #fecaca',borderRadius:12,padding:'13px 20px',marginBottom:16,display:'flex',alignItems:'center',gap:10}}><div style={{width:32,height:32,background:'linear-gradient(135deg,#ef4444,#dc2626)',borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,flexShrink:0}}>🚨</div><span style={{fontSize:13,color:'#991b1b',fontWeight:600,...f}}>{stats.vencido} causa{stats.vencido>1?'s':''} con plazo VENCIDO — Revisión urgente requerida</span></div>)}
+        {stats.proximo>0&&(<div style={{background:'linear-gradient(135deg,#fffbeb,#fef9c3)',border:'1px solid #fde68a',borderRadius:12,padding:'13px 20px',marginBottom:24,display:'flex',alignItems:'center',gap:10}}><div style={{width:32,height:32,background:'linear-gradient(135deg,#f59e0b,#d97706)',borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,flexShrink:0}}>⚠️</div><span style={{fontSize:13,color:'#92400e',fontWeight:600,...f}}>{stats.proximo} causa{stats.proximo>1?'s':''} POR VENCER en los próximos 3 días</span></div>)}
         {stats.vencido===0&&stats.proximo===0&&<div style={{marginBottom:24}}/>}
 
         <div className='stats-grid' style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:12,marginBottom:24}}>
-          {[
-            {key:'',label:'Total',num:stats.total,color:'#0f172a',grad:'linear-gradient(135deg,#1e293b,#0f172a)',border:'#e2e8f0',light:'#f8fafc'},
-            {key:'vigente',label:'Vigentes',num:stats.vigente,color:'#059669',grad:'linear-gradient(135deg,#10b981,#059669)',border:'#a7f3d0',light:'#f0fdf4'},
-            {key:'terminada',label:'Terminadas',num:stats.terminada,color:'#64748b',grad:'linear-gradient(135deg,#94a3b8,#64748b)',border:'#e2e8f0',light:'#f8fafc'},
-            {key:'vencido',label:'Plazo Vencido',num:stats.vencido,color:'#dc2626',grad:'linear-gradient(135deg,#ef4444,#dc2626)',border:'#fecaca',light:'#fef2f2'},
-            {key:'proximo',label:'Por Vencer',num:stats.proximo,color:'#d97706',grad:'linear-gradient(135deg,#f59e0b,#d97706)',border:'#fde68a',light:'#fffbeb'},
-            {key:'apjo',label:'APJO',num:stats.apjo,color:'#7c3aed',grad:'linear-gradient(135deg,#8b5cf6,#7c3aed)',border:'#ddd6fe',light:'#faf5ff'},
-            {key:'top',label:'Juicio Oral',num:stats.juicioOral,color:'#0891b2',grad:'linear-gradient(135deg,#06b6d4,#0891b2)',border:'#a5f3fc',light:'#ecfeff'},
-          ].map(st=>{
+          {[{key:'',label:'Total',num:stats.total,color:'#0f172a',grad:'linear-gradient(135deg,#1e293b,#0f172a)',border:'#e2e8f0'},{key:'vigente',label:'Vigentes',num:stats.vigente,color:'#059669',grad:'linear-gradient(135deg,#10b981,#059669)',border:'#a7f3d0'},{key:'terminada',label:'Terminadas',num:stats.terminada,color:'#64748b',grad:'linear-gradient(135deg,#94a3b8,#64748b)',border:'#e2e8f0'},{key:'vencido',label:'Plazo Vencido',num:stats.vencido,color:'#dc2626',grad:'linear-gradient(135deg,#ef4444,#dc2626)',border:'#fecaca'},{key:'proximo',label:'Por Vencer',num:stats.proximo,color:'#d97706',grad:'linear-gradient(135deg,#f59e0b,#d97706)',border:'#fde68a'},{key:'apjo',label:'APJO',num:stats.apjo,color:'#7c3aed',grad:'linear-gradient(135deg,#8b5cf6,#7c3aed)',border:'#ddd6fe'},{key:'top',label:'Juicio Oral',num:stats.juicioOral,color:'#0891b2',grad:'linear-gradient(135deg,#06b6d4,#0891b2)',border:'#a5f3fc'}].map(st=>{
             const active=filterEstado===st.key&&st.key!==''
-            return(
-              <div key={st.key} className="stat-card" onClick={()=>setFilterEstado(filterEstado===st.key?'':st.key)}
-                style={{background:active?st.grad:'#fff',border:`1.5px solid ${active?'transparent':st.border}`,borderRadius:14,padding:'16px 18px',boxShadow:active?`0 8px 24px ${st.color}33`:'0 1px 4px rgba(0,0,0,0.04)',position:'relative',overflow:'hidden'}}>
-                {active&&<div style={{position:'absolute',top:-10,right:-10,width:60,height:60,background:'rgba(255,255,255,0.15)',borderRadius:'50%'}}/>}
-                <div style={{fontSize:10,fontWeight:700,letterSpacing:1.2,textTransform:'uppercase',color:active?'rgba(255,255,255,0.7)':st.color,marginBottom:10,...f}}>{st.label}</div>
-                <div style={{fontSize:34,fontWeight:900,color:active?'#fff':st.color,lineHeight:1,letterSpacing:'-2px',...f}}>{st.num}</div>
-              </div>
-            )
+            return(<div key={st.key} className="stat-card" onClick={()=>setFilterEstado(filterEstado===st.key?'':st.key)} style={{background:active?st.grad:'#fff',border:`1.5px solid ${active?'transparent':st.border}`,borderRadius:14,padding:'16px 18px',boxShadow:active?`0 8px 24px ${st.color}33`:'0 1px 4px rgba(0,0,0,0.04)',position:'relative',overflow:'hidden'}}>
+              {active&&<div style={{position:'absolute',top:-10,right:-10,width:60,height:60,background:'rgba(255,255,255,0.15)',borderRadius:'50%'}}/>}
+              <div style={{fontSize:10,fontWeight:700,letterSpacing:1.2,textTransform:'uppercase',color:active?'rgba(255,255,255,0.7)':st.color,marginBottom:10,...f}}>{st.label}</div>
+              <div style={{fontSize:34,fontWeight:900,color:active?'#fff':st.color,lineHeight:1,letterSpacing:'-2px',...f}}>{st.num}</div>
+            </div>)
           })}
         </div>
 
         {showStats&&(
-          <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:16,padding:28,marginBottom:24,boxShadow:'0 2px 12px rgba(0,0,0,0.05)'}}>
-            <div style={{fontSize:17,fontWeight:800,color:'#0f172a',marginBottom:24,letterSpacing:'-0.5px',...f}}>Estadísticas del portfolio</div>
+          <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:16,padding:28,marginBottom:24}}>
+            <div style={{fontSize:17,fontWeight:800,color:'#0f172a',marginBottom:24,...f}}>Estadísticas del portfolio</div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:32}}>
-              <div className="hide-mobile">
-                <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:16,fontWeight:700,...f}}>Top Delitos</div>
-                <ResponsiveContainer width="100%" height={320}>
-                  <PieChart>
-                    <Pie data={chartDelitos} cx="50%" cy="50%" outerRadius={110} dataKey="value" label={({percent})=>`${(percent*100).toFixed(0)}%`} labelLine={false} fontSize={10}>
-                      {chartDelitos.map((_,i)=><Cell key={i} fill={COLORS[i%COLORS.length]}/>)}
-                    </Pie>
-                    <Tooltip contentStyle={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,fontSize:12,fontFamily:'Inter,sans-serif'}} formatter={(v,n)=>[v+' causas',n]}/>
-                    <Legend iconType="circle" iconSize={8} formatter={v=>v.substring(0,24)} wrapperStyle={{fontSize:11,fontFamily:'Inter,sans-serif',color:'#64748b'}}/>
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div>
-                <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:16,fontWeight:700,...f}}>Causas por Tribunal</div>
-                <ResponsiveContainer width="100%" height={320}>
-                  <BarChart data={chartTribunales} layout="vertical" margin={{left:8,right:24,top:4,bottom:4}}>
-                    <XAxis type="number" tick={{fontSize:10,fill:'#94a3b8',fontFamily:'Inter,sans-serif'}} axisLine={false} tickLine={false}/>
-                    <YAxis type="category" dataKey="name" tick={{fontSize:9,fill:'#64748b',fontFamily:'Inter,sans-serif'}} width={110} axisLine={false} tickLine={false}/>
-                    <Tooltip contentStyle={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,fontSize:12,fontFamily:'Inter,sans-serif'}}/>
-                    <Bar dataKey="value" radius={[0,6,6,0]}>{chartTribunales.map((_,i)=><Cell key={i} fill={COLORS[i%COLORS.length]}/>)}</Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+              <div className="hide-mobile"><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:16,fontWeight:700,...f}}>Top Delitos</div><ResponsiveContainer width="100%" height={320}><PieChart><Pie data={chartDelitos} cx="50%" cy="50%" outerRadius={110} dataKey="value" label={({percent})=>`${(percent*100).toFixed(0)}%`} labelLine={false} fontSize={10}>{chartDelitos.map((_,i)=><Cell key={i} fill={COLORS[i%COLORS.length]}/>)}</Pie><Tooltip contentStyle={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,fontSize:12}} formatter={(v,n)=>[v+' causas',n]}/><Legend iconType="circle" iconSize={8} formatter={v=>v.substring(0,24)} wrapperStyle={{fontSize:11,color:'#64748b'}}/></PieChart></ResponsiveContainer></div>
+              <div><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:16,fontWeight:700,...f}}>Causas por Tribunal</div><ResponsiveContainer width="100%" height={320}><BarChart data={chartTribunales} layout="vertical" margin={{left:8,right:24,top:4,bottom:4}}><XAxis type="number" tick={{fontSize:10,fill:'#94a3b8'}} axisLine={false} tickLine={false}/><YAxis type="category" dataKey="name" tick={{fontSize:9,fill:'#64748b'}} width={110} axisLine={false} tickLine={false}/><Tooltip contentStyle={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,fontSize:12}}/><Bar dataKey="value" radius={[0,6,6,0]}>{chartTribunales.map((_,i)=><Cell key={i} fill={COLORS[i%COLORS.length]}/>)}</Bar></BarChart></ResponsiveContainer></div>
             </div>
           </div>
         )}
@@ -1102,16 +974,10 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
         <div style={{display:'flex',gap:8,marginBottom:16,flexWrap:'wrap',alignItems:'center'}}>
           <div style={{flex:1,minWidth:260,position:'relative'}}>
             <span style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',color:'#94a3b8',fontSize:14}}>🔍</span>
-            <input style={{...inp,paddingLeft:36,boxShadow:'0 1px 3px rgba(0,0,0,0.04)'}} placeholder="Buscar por RUC, RIT, imputado, delito, tribunal..." value={search} onChange={e=>setSearch(e.target.value)}/>
+            <input style={{...inp,paddingLeft:36}} placeholder="Buscar por RUC, RIT, imputado, delito, tribunal..." value={search} onChange={e=>setSearch(e.target.value)}/>
           </div>
-          <select style={{...inp,width:'auto',minWidth:180}} value={filterTribunal} onChange={e=>setFilterTribunal(e.target.value)}>
-            <option value="">Todos los tribunales</option>
-            {tribunales.map(t=><option key={t} value={t}>{t}</option>)}
-          </select>
-          <select style={{...inp,width:'auto',minWidth:160}} value={filterEstado} onChange={e=>setFilterEstado(e.target.value)}>
-            <option value="">Todos los estados</option>
-            {Object.entries(estadoConfig).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}
-          </select>
+          <select style={{...inp,width:'auto',minWidth:180}} value={filterTribunal} onChange={e=>setFilterTribunal(e.target.value)}><option value="">Todos los tribunales</option>{tribunales.map(t=><option key={t} value={t}>{t}</option>)}</select>
+          <select style={{...inp,width:'auto',minWidth:160}} value={filterEstado} onChange={e=>setFilterEstado(e.target.value)}><option value="">Todos los estados</option>{Object.entries(estadoConfig).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}</select>
           <span style={{fontSize:12,color:'#94a3b8',fontWeight:500,...f}}>{filtered.length} resultado{filtered.length!==1?'s':''}</span>
           <button className="btn-primary" onClick={()=>setShowNuevaCausa(true)}>+ Nueva causa</button>
           <button className="btn-secondary" onClick={()=>setShowStats(!showStats)} style={{borderColor:showStats?'#2563eb':'#e2e8f0',color:showStats?'#2563eb':'#374151'}}>{showStats?'Ocultar':'📊 Estadísticas'}</button>
@@ -1120,14 +986,12 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
         {loading?(
           <div style={{textAlign:'center',padding:60,color:'#94a3b8',fontSize:14,...f}}>Cargando causas...</div>
         ):(
-          <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:16,boxShadow:'0 2px 12px rgba(0,0,0,0.05)',overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
+          <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:16,boxShadow:'0 2px 12px rgba(0,0,0,0.05)',overflowX:'auto'}}>
             <table style={{width:'100%',borderCollapse:'collapse'}}>
               <thead>
                 <tr style={{borderBottom:'2px solid #f1f5f9',background:'#fafbff'}}>
                   {[{key:'ruc',label:'RUC'},{key:'rit',label:'RIT'},{key:'tribunal',label:'Tribunal'},{key:'imputado',label:'Imputado'},{key:'delito',label:'Delito'},{key:'fiscal',label:'Fiscal'},{key:'plazo',label:'Plazo'},{key:'estado',label:'Estado'}].map(col=>(
-                    <th key={col.key} className="sort-col" onClick={()=>handleSort(col.key)} style={{padding:'13px 16px',textAlign:'left',fontSize:10,fontWeight:700,color:sortCol===col.key?'#2563eb':'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,...f}}>
-                      {col.label}<SortIcon col={col.key}/>
-                    </th>
+                    <th key={col.key} className="sort-col" onClick={()=>handleSort(col.key)} style={{padding:'13px 16px',textAlign:'left',fontSize:10,fontWeight:700,color:sortCol===col.key?'#2563eb':'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,...f}}>{col.label}<SortIcon col={col.key}/></th>
                   ))}
                 </tr>
               </thead>
@@ -1136,14 +1000,15 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
                   <tr key={c.id} className="row-hover" onClick={()=>openCausa(c)} style={{borderBottom:'1px solid #f8fafc',background:'#fff'}}>
                     <td style={{padding:'12px 16px',fontFamily:'monospace',fontSize:12,fontWeight:700,color:'#0f172a'}}>{c.ruc}</td>
                     <td style={{padding:'12px 16px',fontSize:12,color:'#94a3b8',fontWeight:500,...f}}>
-                      <div style={{display:'flex',alignItems:'center',gap:6}}>
-                        {(()=>{const s=getSemaforo(c.updated_at);return <span title={s.title} style={{width:10,height:10,borderRadius:'50%',background:s.color,flexShrink:0,display:'inline-block',cursor:'help'}}/>})()}
-                        {c.rit||'—'}
+                      {/* ✅ Semáforo como tag visible en la lista — solo causas vigentes */}
+                      <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+                        <SemaforoTag updated_at={c.updated_at} estado={c.estado} />
+                        <span>{c.rit||'—'}</span>
                       </div>
                     </td>
                     <td style={{padding:'12px 16px',fontSize:12,color:'#475569',fontWeight:500,...f}}>{c.tribunal}</td>
-                    <td style={{padding:'12px 16px',...f}}><div style={{maxWidth:210,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:13,color:'#0f172a',fontWeight:500}} title={c.imputado}>{c.imputado}</div></td>
-                    <td style={{padding:'12px 16px',...f}}><div style={{maxWidth:180,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:12,color:'#64748b'}} title={c.delito}>{c.delito||'—'}</div></td>
+                    <td style={{padding:'12px 16px',...f}}><div style={{maxWidth:210,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:13,color:'#0f172a',fontWeight:500}}>{c.imputado}</div></td>
+                    <td style={{padding:'12px 16px',...f}}><div style={{maxWidth:180,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:12,color:'#64748b'}}>{c.delito||'—'}</div></td>
                     <td style={{padding:'12px 16px',fontSize:12,color:c.fiscal?'#374151':'#e2e8f0',fontStyle:c.fiscal?'normal':'italic',...f}}>{c.fiscal||'Sin asignar'}</td>
                     <td style={{padding:'12px 16px',...f}}><div style={{maxWidth:130,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:11,color:'#94a3b8'}}>{c.plazo||'—'}</div></td>
                     <td style={{padding:'12px 16px'}}><Badge estado={c.estado} subestado={c.subestado}/></td>
@@ -1159,7 +1024,7 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
       {showNuevaCausa&&(
         <div style={{position:'fixed',top:0,left:0,width:'100%',height:'100%',background:'rgba(15,23,42,0.5)',display:'flex',alignItems:'flex-start',justifyContent:'center',paddingTop:'5vh',zIndex:200,backdropFilter:'blur(4px)'}} onClick={e=>e.target===e.currentTarget&&setShowNuevaCausa(false)}>
           <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:16,padding:32,width:540,maxWidth:'90vw',boxShadow:'0 24px 80px rgba(0,0,0,0.2)',maxHeight:'90vh',overflowY:'auto'}}>
-            <div style={{fontSize:20,fontWeight:800,color:'#0f172a',marginBottom:24,letterSpacing:'-0.5px',...f}}>Nueva Causa</div>
+            <div style={{fontSize:20,fontWeight:800,color:'#0f172a',marginBottom:24,...f}}>Nueva Causa</div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
               {[{key:'ruc',label:'RUC *',ph:'Ej: 2600123456-7',full:true},{key:'rit',label:'RIT',ph:'Ej: 1234-2026'},{key:'tribunal',label:'Tribunal',ph:'Ej: 7 JG STGO'},{key:'imputado',label:'Imputado',ph:'Nombre completo',full:true},{key:'delito',label:'Delito',ph:'Tipo de delito',full:true},{key:'fiscal',label:'Fiscal',ph:'Nombre del fiscal'},{key:'cautelar',label:'Cautelar',ph:'Prisión preventiva...'}].map(field=>(
                 <div key={field.key} style={{gridColumn:field.full?'1/-1':'auto'}}>
@@ -1170,35 +1035,13 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
               <div style={{gridColumn:'1/-1',background:'#f0fdf4',border:'1.5px solid #a7f3d0',borderRadius:12,padding:16}}>
                 <div style={{fontSize:11,fontWeight:700,color:'#059669',marginBottom:14,...f}}>⏱ Cálculo de plazo ACD</div>
                 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
-                  <div>
-                    <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Fecha inicio</div>
-                    <input type="date" style={inp} value={nuevaCausa.fecha_inicio} onChange={e=>setNuevaCausa(p=>({...p,fecha_inicio:e.target.value}))}/>
-                  </div>
-                  <div>
-                    <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Días plazo</div>
-                    <input type="number" style={inp} placeholder="Ej: 210" value={nuevaCausa.dias_plazo} onChange={e=>setNuevaCausa(p=>({...p,dias_plazo:e.target.value}))}/>
-                  </div>
+                  <div><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Fecha inicio</div><input type="date" style={inp} value={nuevaCausa.fecha_inicio} onChange={e=>setNuevaCausa(p=>({...p,fecha_inicio:e.target.value}))}/></div>
+                  <div><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Días plazo</div><input type="number" style={inp} placeholder="Ej: 210" value={nuevaCausa.dias_plazo} onChange={e=>setNuevaCausa(p=>({...p,dias_plazo:e.target.value}))}/></div>
                 </div>
-                {nuevaCausa.fecha_inicio && nuevaCausa.dias_plazo && (
-                  <div style={{marginTop:10,padding:'10px 14px',background:'#fff',borderRadius:8,border:'1px solid #a7f3d0',display:'flex',alignItems:'center',gap:8}}>
-                    <span style={{fontSize:16}}>📅</span>
-                    <div>
-                      <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1,fontWeight:700,...f}}>Vencimiento calculado</div>
-                      <div style={{fontSize:15,fontWeight:800,color:'#059669',...f}}>{calcularVencimiento(nuevaCausa.fecha_inicio, nuevaCausa.dias_plazo)}</div>
-                    </div>
-                  </div>
-                )}
-                <div style={{marginTop:12}}>
-                  <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>O ingresa plazo manualmente</div>
-                  <input style={inp} placeholder="VENCE DD-MM-YYYY" value={nuevaCausa.plazo} onChange={e=>setNuevaCausa(p=>({...p,plazo:e.target.value}))}/>
-                </div>
+                {nuevaCausa.fecha_inicio && nuevaCausa.dias_plazo && (<div style={{marginTop:10,padding:'10px 14px',background:'#fff',borderRadius:8,border:'1px solid #a7f3d0',display:'flex',alignItems:'center',gap:8}}><span style={{fontSize:16}}>📅</span><div><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1,fontWeight:700,...f}}>Vencimiento calculado</div><div style={{fontSize:15,fontWeight:800,color:'#059669',...f}}>{calcularVencimiento(nuevaCausa.fecha_inicio, nuevaCausa.dias_plazo)}</div></div></div>)}
+                <div style={{marginTop:12}}><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>O ingresa plazo manualmente</div><input style={inp} placeholder="VENCE DD-MM-YYYY" value={nuevaCausa.plazo} onChange={e=>setNuevaCausa(p=>({...p,plazo:e.target.value}))}/></div>
               </div>
-              <div style={{gridColumn:'1/-1'}}>
-                <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Estado</div>
-                <select style={inp} value={nuevaCausa.estado} onChange={e=>setNuevaCausa(p=>({...p,estado:e.target.value}))}>
-                  {Object.entries(estadoConfig).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}
-                </select>
-              </div>
+              <div style={{gridColumn:'1/-1'}}><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Estado</div><select style={inp} value={nuevaCausa.estado} onChange={e=>setNuevaCausa(p=>({...p,estado:e.target.value}))}>{Object.entries(estadoConfig).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}</select></div>
             </div>
             <div style={{display:'flex',gap:10,marginTop:24}}>
               <button className="btn-primary" onClick={saveCausa} disabled={saving||!nuevaCausa.ruc}>{saving?'Guardando...':'Guardar causa'}</button>
