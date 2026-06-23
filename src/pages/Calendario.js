@@ -3,38 +3,38 @@ import { supabase } from '../lib/supabase'
 import GmailIntegracion from '../components/GmailIntegracion'
 
 const CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-  .cal-day { transition: all 0.15s ease; cursor: pointer; }
-  .cal-day:hover { background: #f0f4ff !important; }
-  .aud-card { transition: all 0.18s ease; }
-  .aud-card:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,0.08) !important; }
-  .nav-btn { transition: all 0.15s ease; }
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+  .cal-day { transition: background 0.2s ease, outline 0.2s ease; cursor: pointer; }
+  .cal-day:hover { background: #f8faff !important; }
+  .aud-card { transition: box-shadow 0.25s ease, transform 0.25s ease; }
+  .aud-card:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,0,0,0.07) !important; }
+  .nav-btn { transition: background 0.2s ease; }
   .nav-btn:hover { background: #f1f5f9 !important; }
-  .tag-pill { transition: all 0.15s ease; cursor: pointer; }
-  .tag-pill:hover { opacity: 0.8; }
-  .btn-blue { font-family:"Plus Jakarta Sans",sans-serif; background:#2563eb; color:#fff; border:none; border-radius:8px; padding:9px 20px; font-size:13px; font-weight:600; cursor:pointer; transition:all 0.18s; }
-  .btn-blue:hover { background:#1d4ed8; box-shadow:0 4px 14px rgba(37,99,235,0.25); }
-  .btn-out { font-family:"Plus Jakarta Sans",sans-serif; background:#fff; color:#374151; border:1.5px solid #e5e7eb; border-radius:8px; padding:8px 18px; font-size:13px; font-weight:500; cursor:pointer; transition:all 0.18s; }
-  .btn-out:hover { border-color:#2563eb; color:#2563eb; }
-  input,select,textarea { font-family:"Plus Jakarta Sans",sans-serif !important; text-transform:uppercase; }
-  input:focus,select:focus,textarea:focus { outline:none; border-color:#2563eb !important; box-shadow:0 0 0 3px rgba(37,99,235,0.08); }
+  .tag-pill { transition: background 0.2s ease, border-color 0.2s ease; cursor: pointer; }
+  .tag-pill:hover { opacity: 0.85; }
+  .btn-blue { font-family:'Inter',sans-serif; background:#1e3a5f; color:#fff; border:none; border-radius:10px; padding:9px 20px; font-size:13px; font-weight:600; cursor:pointer; transition:background 0.25s ease, box-shadow 0.25s ease; box-shadow:0 2px 8px rgba(30,58,95,0.2); }
+  .btn-blue:hover { background:#1e40af; box-shadow:0 4px 16px rgba(30,58,95,0.3); }
+  .btn-out { font-family:'Inter',sans-serif; background:#fff; color:#374151; border:1.5px solid #e5e7eb; border-radius:10px; padding:8px 18px; font-size:13px; font-weight:500; cursor:pointer; transition:border-color 0.25s ease, color 0.25s ease, background 0.25s ease; }
+  .btn-out:hover { border-color:#93c5fd; color:#1e3a5f; background:#f8faff; }
+  input,select,textarea { font-family:'Inter',sans-serif !important; text-transform:uppercase; }
+  input:focus,select:focus,textarea:focus { outline:none; border-color:#93c5fd !important; box-shadow:0 0 0 3px rgba(37,99,235,0.08); }
 `
 
 function tipoColor(tipo) {
   const t = (tipo||"").toUpperCase()
-  if (t.includes("JUICIO ORAL") || t === "JO") return { bg:"#fff1f2", border:"#fda4af", dot:"#e11d48", text:"#9f1239" }
-  if (t.includes("ABREVIADO")) return { bg:"#eff6ff", border:"#93c5fd", dot:"#2563eb", text:"#1d4ed8" }
-  if (t.includes("APJO")) return { bg:"#faf5ff", border:"#c4b5fd", dot:"#7c3aed", text:"#5b21b6" }
-  if (t.includes("REV PP") || t.includes("REVPP")) return { bg:"#fff7ed", border:"#fdba74", dot:"#ea580c", text:"#9a3412" }
-  if (t.includes("AUMENTO") || t.includes("CIERRE")) return { bg:"#f0fdf4", border:"#86efac", dot:"#16a34a", text:"#15803d" }
-  if (t.includes("ENTREVISTA") || t.includes("DECLARACION")) return { bg:"#fefce8", border:"#fde047", dot:"#ca8a04", text:"#854d0e" }
-  if (t.includes("CAUTELA") || t.includes("APELACION") || t.includes("APELACIÓN")) return { bg:"#fdf2f8", border:"#f0abfc", dot:"#a21caf", text:"#701a75" }
-  return { bg:"#f8fafc", border:"#cbd5e1", dot:"#475569", text:"#334155" }
+  if (t.includes("JUICIO ORAL") || t === "JO") return { bg:"#fef2f2", border:"#fecdd3", dot:"#9f1239", text:"#9f1239" }
+  if (t.includes("ABREVIADO")) return { bg:"#eff6ff", border:"#bfdbfe", dot:"#1e40af", text:"#1e40af" }
+  if (t.includes("APJO")) return { bg:"#f5f3ff", border:"#ddd6fe", dot:"#5b21b6", text:"#5b21b6" }
+  if (t.includes("REV PP") || t.includes("REVPP")) return { bg:"#fff7ed", border:"#fed7aa", dot:"#92400e", text:"#92400e" }
+  if (t.includes("AUMENTO") || t.includes("CIERRE")) return { bg:"#ecfdf5", border:"#a7f3d0", dot:"#065f46", text:"#065f46" }
+  if (t.includes("ENTREVISTA") || t.includes("DECLARACION")) return { bg:"#fefce8", border:"#fef08a", dot:"#854d0e", text:"#854d0e" }
+  if (t.includes("CAUTELA") || t.includes("APELACION") || t.includes("APELACIÓN")) return { bg:"#fdf4ff", border:"#e9d5ff", dot:"#701a75", text:"#701a75" }
+  return { bg:"#f8fafc", border:"#e2e8f0", dot:"#475569", text:"#334155" }
 }
 
 const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"]
 const DIAS = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"]
-const f = { fontFamily:"'Plus Jakarta Sans', sans-serif" }
+const f = { fontFamily:"'Inter', sans-serif" }
 
 const leyenda = [
   { label:"Juicio Oral", color:"#e11d48" },
@@ -233,8 +233,8 @@ export default function Calendario({ onVerCausa }) {
         {/* Header */}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:24,flexWrap:"wrap",gap:12}}>
           <div>
-            <h1 style={{fontSize:26,fontWeight:800,color:"#0f172a",margin:0,letterSpacing:"-0.5px"}}>Calendario de Audiencias</h1>
-            <p style={{fontSize:14,color:"#64748b",marginTop:4}}><span style={{fontWeight:700,color:"#2563eb"}}>{audDelMes.length}</span> audiencias en {MESES[mes]} {anio}</p>
+            <h1 style={{fontSize:26,fontWeight:800,color:"#1e3a5f",margin:0,letterSpacing:"-0.5px"}}>Calendario de audiencias</h1>
+            <p style={{fontSize:14,color:"#64748b",marginTop:4}}><span style={{fontWeight:700,color:"#1e3a5f"}}>{audDelMes.length}</span> audiencias en {MESES[mes]} {anio}</p>
           </div>
           <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
             <button className="btn-blue" onClick={()=>setShowForm(true)}>+ Nueva audiencia</button>
@@ -277,7 +277,7 @@ export default function Calendario({ onVerCausa }) {
           <div style={{display:"grid",gridTemplateColumns:"1fr",gap:20,overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
             {/* Calendario */}
             <div style={{background:"#fff",borderRadius:16,border:"1px solid #e2e8f0",overflowX:"auto",WebkitOverflowScrolling:"touch",boxShadow:"0 1px 8px rgba(0,0,0,0.05)"}}>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",background:"#0f172a",minWidth:500}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",background:"#1e3a5f",minWidth:500}}>
                 {DIAS.map((d,i)=>(
                   <div key={d} style={{padding:"14px 0",textAlign:"center",fontSize:12,fontWeight:700,color:i===0||i===6?"#f87171":"#94a3b8",letterSpacing:0.8,...f}}>{d}</div>
                 ))}
@@ -293,9 +293,9 @@ export default function Calendario({ onVerCausa }) {
                   const esFind=diaSem===0||diaSem===6
                   return(
                     <div key={dia} className="cal-day" onClick={()=>setSelDia(dia===selDia?null:dia)}
-                      style={{minHeight:96,padding:"8px 6px",background:seleccionado?"#eff6ff":esFind?"#fafafa":"#fff",borderRight:"1px solid #f1f5f9",borderBottom:"1px solid #f1f5f9",outline:seleccionado?"2px solid #2563eb":"none",outlineOffset:-2}}>
+                      style={{minHeight:96,padding:"8px 6px",background:seleccionado?"#eff6ff":esFind?"#fafafa":"#fff",borderRight:"1px solid #f1f5f9",borderBottom:"1px solid #f1f5f9",outline:seleccionado?"2px solid #93c5fd":"none",outlineOffset:-2}}>
                       <div style={{display:"flex",justifyContent:"flex-end",marginBottom:5}}>
-                        <div style={{width:30,height:30,borderRadius:"50%",background:esHoy?"#2563eb":"transparent",color:esHoy?"#fff":esFind?"#94a3b8":"#1e293b",fontSize:14,fontWeight:esHoy?700:600,display:"flex",alignItems:"center",justifyContent:"center",...f}}>{dia}</div>
+                        <div style={{width:30,height:30,borderRadius:"50%",background:esHoy?"#1e3a5f":"transparent",color:esHoy?"#fff":esFind?"#94a3b8":"#1e293b",fontSize:14,fontWeight:esHoy?700:600,display:"flex",alignItems:"center",justifyContent:"center",...f}}>{dia}</div>
                       </div>
                       {auds.slice(0,3).map((a,idx)=>{
                         const c=tipoColor(a.tipo)
@@ -326,7 +326,7 @@ export default function Calendario({ onVerCausa }) {
                         {a.ruc && onVerCausa && (
                           <div onClick={()=>irACausa(a.ruc)}
                             style={{fontSize:13,color:'#2563eb',cursor:'pointer',marginBottom:6,display:'inline-flex',alignItems:'center',gap:6,background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:8,padding:'4px 12px',fontWeight:600,...f}}>
-                            🔗 <span style={{fontFamily:'monospace'}}>{a.ruc}</span>
+                            🔗 <span style={{fontWeight:600}}>{a.ruc}</span>
                             <span style={{fontSize:11,color:'#60a5fa'}}>→ ver causa</span>
                           </div>
                         )}
@@ -374,7 +374,7 @@ export default function Calendario({ onVerCausa }) {
           <div style={{background:"#fff",borderRadius:16,border:"1px solid #e2e8f0",overflowX:"auto",WebkitOverflowScrolling:"touch",boxShadow:"0 1px 8px rgba(0,0,0,0.05)"}}>
             <table style={{width:"100%",borderCollapse:"collapse"}}>
               <thead>
-                <tr style={{background:"#0f172a"}}>
+                <tr style={{background:"#1e3a5f"}}>
                   {["Fecha","Hora","Tipo","Imputado","Tribunal","Sala","RIT",""].map(h=>(
                     <th key={h} style={{padding:"13px 16px",textAlign:"left",fontSize:11,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:1,...f}}>{h}</th>
                   ))}
@@ -387,9 +387,9 @@ export default function Calendario({ onVerCausa }) {
                     <tr key={i} style={{borderBottom:"1px solid #f1f5f9",background:i%2===0?"#fff":"#fafafa"}}>
                       <td style={{padding:"11px 16px",...f}}>
                         {a.ruc && onVerCausa ? (
-                          <span onClick={()=>irACausa(a.ruc)} style={{fontFamily:'monospace',fontSize:12,fontWeight:700,color:'#2563eb',cursor:'pointer',textDecoration:'underline',...f}}>{a.ruc}</span>
+                          <span onClick={()=>irACausa(a.ruc)} style={{fontSize:12,fontWeight:700,color:'#1e3a5f',cursor:'pointer',textDecoration:'underline',...f}}>{a.ruc}</span>
                         ) : (
-                          <span style={{fontFamily:'monospace',fontSize:12,color:'#94a3b8'}}>{a.ruc||'—'}</span>
+                          <span style={{fontSize:12,color:'#94a3b8',...f}}>{a.ruc||'—'}</span>
                         )}
                       </td>
                       <td style={{padding:"11px 16px",fontSize:13,fontWeight:600,color:"#1e293b",...f}}>{a.fecha}</td>
