@@ -94,6 +94,7 @@ const CORRECCIONES = [
   ['UNICA', 'ÚNICA'],
   // ── Errores tipográficos ─────────────────────────────────────────────────
   ['ALMACENIMIENTO', 'ALMACENAMIENTO'],
+  ['DEVOLUCION', 'DEVOLUCIÓN'],
   ['BIENES NACIONES', 'BIENES NACIONALES'],
 ]
 
