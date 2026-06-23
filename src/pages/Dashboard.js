@@ -224,26 +224,42 @@ function ImputadoCard({ imp, idx, onUpdate, onDelete }) {
   const f = { fontFamily:"'Inter',sans-serif" }
   const inp = { width:'100%', padding:'8px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:'#0f172a', background:'#fff', ...f }
 
+  const normRut = (r) => (r||'').replace(/[.\-\s]/g,'').toUpperCase()
+
   const buscarPorRut = async (rut) => {
     if (!rut || rut.length < 6) return
-    const rutNorm = rut.replace(/[.\-\s]/g, '').toUpperCase()
-    const { data, error } = await supabase
-      .from('imputados')
-      .select('*')
-      .limit(500)
+    const rutNorm = normRut(rut)
+    const { data, error } = await supabase.from('imputados').select('*').limit(500)
     if (error || !data || data.length === 0) return
-    const encontrado = data.find(d => {
-      if (!d.rut || !d.nombre) return false
-      const rutDB = d.rut.replace(/[.\-\s]/g, '').toUpperCase()
-      return rutDB === rutNorm
-    })
-    if (!encontrado) return
+    // Filtrar todos los que tienen ese RUT
+    const coincidencias = data.filter(d => d.rut && normRut(d.rut) === rutNorm)
+    if (coincidencias.length === 0) return
+    // Tomar el más completo (más campos llenos)
     const campos = ['nombre','nacionalidad','domicilio','fecha_nacimiento','otros_antecedentes']
+    const masCompleto = coincidencias.reduce((mejor, actual) => {
+      const puntajeMejor = campos.filter(c => mejor[c] && mejor[c].trim()).length
+      const puntajeActual = campos.filter(c => actual[c] && actual[c].trim()).length
+      return puntajeActual > puntajeMejor ? actual : mejor
+    })
+    // Rellenar campos vacíos con los datos más completos
     for (const campo of campos) {
-      if (encontrado[campo] && (!imp[campo] || imp[campo].trim() === '')) {
-        onUpdate(campo, encontrado[campo])
+      if (masCompleto[campo] && masCompleto[campo].trim() && (!imp[campo] || imp[campo].trim() === '')) {
+        onUpdate(campo, masCompleto[campo])
       }
     }
+  }
+
+  const sincronizarRutEnTodasLasCausas = async (campo, valor, rut) => {
+    if (!rut || rut.length < 6) return
+    const rutNorm = normRut(rut)
+    // Obtener todos los imputados con ese RUT
+    const { data } = await supabase.from('imputados').select('id, rut').limit(500)
+    if (!data) return
+    const mismoRut = data.filter(d => d.rut && normRut(d.rut) === rutNorm && d.id !== imp.id)
+    // Actualizar en paralelo
+    await Promise.all(mismoRut.map(d =>
+      supabase.from('imputados').update({ [campo]: valor }).eq('id', d.id)
+    ))
   }
 
   const Field2 = ({ label, field }) => (
@@ -875,7 +891,17 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
                   <ImputadoCard key={imp.id} imp={imp} idx={idx} onUpdate={async(field,value)=>{
                     await supabase.from('imputados').update({[field]:value}).eq('id',imp.id)
                     setImputados(prev=>prev.map(x=>x.id===imp.id?{...x,[field]:value}:x))
-                    await marcarAccion(c.id) // ✅ actualiza semáforo
+                    // Sincronizar datos personales en TODAS las causas con el mismo RUT
+                    const camposPersonales = ['nombre','nacionalidad','domicilio','fecha_nacimiento','otros_antecedentes']
+                    if (camposPersonales.includes(field) && imp.rut) {
+                      const rn = imp.rut.replace(/[.\s]/g,'').toUpperCase()
+                      const { data: todos } = await supabase.from('imputados').select('id, rut').limit(500)
+                      if (todos) {
+                        const mismoRut = todos.filter(d => d.rut && d.rut.replace(/[.\s]/g,'').toUpperCase() === rn && d.id !== imp.id)
+                        await Promise.all(mismoRut.map(d => supabase.from('imputados').update({ [field]: value }).eq('id', d.id)))
+                      }
+                    }
+                    await marcarAccion(c.id)
                   }} onDelete={async()=>{
                     if(!window.confirm('¿Eliminar este imputado?'))return
                     await supabase.from('imputados').delete().eq('id',imp.id)
