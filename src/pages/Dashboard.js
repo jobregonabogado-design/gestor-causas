@@ -224,13 +224,42 @@ function ImputadoCard({ imp, idx, onUpdate, onDelete }) {
   const f = { fontFamily:"'Inter',sans-serif" }
   const inp = { width:'100%', padding:'8px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:'#0f172a', background:'#fff', ...f }
 
+  const buscarPorRut = async (rut) => {
+    if (!rut || rut.length < 7) return
+    const rutLimpio = rut.replace(/[\s\-\.]/g, '').toUpperCase()
+    // Buscar en otros imputados con el mismo RUT
+    const { data } = await supabase
+      .from('imputados')
+      .select('nombre, nacionalidad, domicilio, fecha_nacimiento, otros_antecedentes, rut')
+      .ilike('rut', `%${rutLimpio}%`)
+      .neq('causa_id', imp.causa_id)
+      .not('nombre', 'is', null)
+      .limit(1)
+      .maybeSingle()
+    if (data) {
+      // Autorrellenar solo campos personales comunes
+      const campos = ['nombre','nacionalidad','domicilio','fecha_nacimiento','otros_antecedentes']
+      for (const campo of campos) {
+        if (data[campo] && !imp[campo]) {
+          await onUpdate(campo, data[campo])
+        }
+      }
+    }
+  }
+
   const Field2 = ({ label, field }) => (
     <div>
       <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:5,fontWeight:600,...f}}>{label}</div>
       {editField===field?(
         <div style={{display:'flex',gap:6}}>
-          <input style={inp} value={editValue} onChange={e=>setEditValue(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){onUpdate(field,editValue);setEditField(null)}if(e.key==='Escape')setEditField(null)}} autoFocus/>
-          <button style={{background:'#2563eb',color:'#fff',border:'none',borderRadius:7,padding:'7px 12px',fontSize:12,cursor:'pointer',...f}} onClick={()=>{onUpdate(field,editValue);setEditField(null)}}>✓</button>
+          <input
+            style={inp}
+            value={editValue}
+            onChange={e=>setEditValue(e.target.value)}
+            onKeyDown={e=>{if(e.key==='Enter'){onUpdate(field,editValue);setEditField(null);if(field==='rut')buscarPorRut(editValue)}if(e.key==='Escape')setEditField(null)}}
+            onBlur={()=>{ if(field==='rut' && editValue) buscarPorRut(editValue) }}
+            autoFocus/>
+          <button style={{background:'#1e3a5f',color:'#fff',border:'none',borderRadius:7,padding:'7px 12px',fontSize:12,cursor:'pointer',...f}} onClick={()=>{onUpdate(field,editValue);setEditField(null);if(field==='rut')buscarPorRut(editValue)}}>✓</button>
           <button style={{background:'#fff',border:'1.5px solid #e2e8f0',borderRadius:7,padding:'7px 10px',fontSize:12,cursor:'pointer',...f}} onClick={()=>setEditField(null)}>✗</button>
         </div>
       ):(
