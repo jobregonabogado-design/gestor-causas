@@ -46,35 +46,65 @@ function getBadgeConfig(estado, subestado) {
   return estadoConfig[estado] || { label:estado||'—', color:'#64748b', bg:'#f8fafc', border:'#e2e8f0' }
 }
 
-// ─── VALIDACIÓN ORTOGRÁFICA ───────────────────────────────────────────────────
-const ERRORES_ORTOGRAFICOS = [
-  { mal: 'ALMACENIMIENTO', bien: 'ALMACENAMIENTO' },
-  { mal: 'BIENES NACIONES', bien: 'BIENES NACIONALES' },
-  { mal: 'RECEPTACION', bien: 'RECEPTACIÓN' },
-  { mal: 'FALSIFICACION', bien: 'FALSIFICACIÓN' },
-  { mal: 'ASOCIACION', bien: 'ASOCIACIÓN' },
-  { mal: 'ILICITA', bien: 'ILÍCITA' },
-  { mal: 'TRAFICO', bien: 'TRÁFICO' },
-  { mal: 'VIOLACION', bien: 'VIOLACIÓN' },
-  { mal: 'APELACION', bien: 'APELACIÓN' },
-  { mal: 'POSESION', bien: 'POSESIÓN' },
-  { mal: 'OBSTRUCCION', bien: 'OBSTRUCCIÓN' },
-  { mal: 'USURPACION', bien: 'USURPACIÓN' },
-  { mal: 'INTIMIDACION', bien: 'INTIMIDACIÓN' },
-  { mal: 'CONDUCCION', bien: 'CONDUCCIÓN' },
-  { mal: 'FORMALIZACION', bien: 'FORMALIZACIÓN' },
-  { mal: 'INSTRUMENTO PUBLICO', bien: 'INSTRUMENTO PÚBLICO' },
+// ─── AUTOCORRECCIÓN ORTOGRÁFICA ──────────────────────────────────────────────
+// Diccionario de correcciones: siempre se aplican automáticamente al guardar
+const CORRECCIONES = [
+  // Tildes en sustantivos jurídicos
+  ['RECEPTACION', 'RECEPTACIÓN'],
+  ['FALSIFICACION', 'FALSIFICACIÓN'],
+  ['ASOCIACION', 'ASOCIACIÓN'],
+  ['ILICITA', 'ILÍCITA'],
+  ['ILICITO', 'ILÍCITO'],
+  ['TRAFICO', 'TRÁFICO'],
+  ['VIOLACION', 'VIOLACIÓN'],
+  ['APELACION', 'APELACIÓN'],
+  ['APELACION', 'APELACIÓN'],
+  ['POSESION', 'POSESIÓN'],
+  ['OBSTRUCCION', 'OBSTRUCCIÓN'],
+  ['USURPACION', 'USURPACIÓN'],
+  ['INTIMIDACION', 'INTIMIDACIÓN'],
+  ['CONDUCCION', 'CONDUCCIÓN'],
+  ['FORMALIZACION', 'FORMALIZACIÓN'],
+  ['PRIVACION', 'PRIVACIÓN'],
+  ['INVESTIGACION', 'INVESTIGACIÓN'],
+  ['DETENCION', 'DETENCIÓN'],
+  ['ACUSACION', 'ACUSACIÓN'],
+  ['IMPUTACION', 'IMPUTACIÓN'],
+  ['ATENCION', 'ATENCIÓN'],
+  ['INTERVENCION', 'INTERVENCIÓN'],
+  ['DECLARACION', 'DECLARACIÓN'],
+  ['CONCEPCION', 'CONCEPCIÓN'],
+  ['REVISION', 'REVISIÓN'],
+  ['PARTICIPACION', 'PARTICIPACIÓN'],
+  ['SANCION', 'SANCIÓN'],
+  ['ACCION', 'ACCIÓN'],
+  ['FRUSTRACION', 'FRUSTRACIÓN'],
+  ['ADMINISTRACION', 'ADMINISTRACIÓN'],
+  // Tildes en adjetivos y otros
+  ['PUBLICO', 'PÚBLICO'],
+  ['PUBLICA', 'PÚBLICA'],
+  ['JURIDICO', 'JURÍDICO'],
+  ['UNICO', 'ÚNICO'],
+  ['CALIFICADO', 'CALIFICADO'], // sin cambio, ya correcto
+  ['PENALES', 'PENALES'], // sin cambio
+  // Errores tipográficos comunes
+  ['ALMACENIMIENTO', 'ALMACENAMIENTO'],
+  ['BIENES NACIONES', 'BIENES NACIONALES'],
+  // Acentos en verbos
+  ['CELEBRACION', 'CELEBRACIÓN'],
+  ['RESOLUCION', 'RESOLUCIÓN'],
+  ['EJECUCION', 'EJECUCIÓN'],
 ]
 
-function validarOrtografia(texto) {
-  if (!texto) return null
-  const upper = texto.toUpperCase()
-  for (const e of ERRORES_ORTOGRAFICOS) {
-    if (upper.includes(e.mal)) {
-      return `"${e.mal}" debe escribirse "${e.bien}"`
-    }
+function corregirOrtografia(texto) {
+  if (!texto) return texto
+  let resultado = texto.toUpperCase()
+  for (const [mal, bien] of CORRECCIONES) {
+    // Reemplazar solo palabras completas para no romper otras palabras
+    const regex = new RegExp('\\b' + mal + '\\b', 'g')
+    resultado = resultado.replace(regex, bien)
   }
-  return null
+  return resultado
 }
 
 const TMAP = {'JG VINA DEL MAR':'JG VIÑA DEL MAR','JG CONCEPCION':'JG CONCEPCIÓN','JG VALPARAISO':'JG VALPARAÍSO','JG QUILPUE':'JG QUILPUÉ','JG CHILLAN':'JG CHILLÁN','JG AYSEN':'JG AYSÉN','JG CANETE':'JG CAÑETE','TOP CANETE':'TOP CAÑETE','13 JG DE STGO':'13 JG STGO','TOP SERENA':'TOP LA SERENA'}
@@ -772,11 +802,10 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
   const updateField=async(field,value)=>{
     const camposSinMayusculas = ['estado','subestado','tiene_top']
     if (typeof value === 'string' && !camposSinMayusculas.includes(field)) value = value.toUpperCase()
-    // Validación ortográfica en campos de texto
-    const camposValidar = ['delito','imputado','tribunal','fiscal','cautelar','centro_penal']
-    if (camposValidar.includes(field)) {
-      const err = validarOrtografia(value)
-      if (err) { alert('Error ortográfico: ' + err); return }
+    // Autocorrección ortográfica en campos de texto
+    const camposCorregir = ['delito','imputado','tribunal','fiscal','cautelar','centro_penal','plazo']
+    if (camposCorregir.includes(field) && typeof value === 'string') {
+      value = corregirOrtografia(value)
     }
     setSaving(true)
     const{error}=await supabase.from('causas').update({[field]:value,updated_at:new Date()}).eq('id',selectedCausa.id)
@@ -791,7 +820,7 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
   const saveAudiencia=async()=>{
     if(!nuevaAud.fecha)return;setSaving(true)
     const upAud = {}
-    Object.entries(nuevaAud).forEach(([k,v]) => { upAud[k] = (typeof v === 'string' && !['fecha','hora'].includes(k)) ? v.toUpperCase() : v })
+    Object.entries(nuevaAud).forEach(([k,v]) => { upAud[k] = (typeof v === 'string' && !['fecha','hora'].includes(k)) ? corregirOrtografia(v.toUpperCase()) : v })
     const{data,error}=await supabase.from('audiencias').insert({causa_id:selectedCausa.id,ruc:selectedCausa.ruc,imputado:selectedCausa.imputado?.split('|')[0],...upAud}).select().single()
     if(!error){
       setAudiencias(prev=>[data,...prev].sort((a,b)=>b.fecha.localeCompare(a.fecha)))
@@ -803,18 +832,12 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
 
   const saveCausa = async () => {
     if (!nuevaCausa.ruc) return
-    // Validación ortográfica
-    const errorDelito = validarOrtografia(nuevaCausa.delito)
-    if (errorDelito) { alert('Error ortográfico en el delito: ' + errorDelito); return }
-    const errorTribunal = validarOrtografia(nuevaCausa.tribunal)
-    if (errorTribunal) { alert('Error ortográfico en tribunal: ' + errorTribunal); return }
-    const errorImputado = validarOrtografia(nuevaCausa.imputado)
-    if (errorImputado) { alert('Error ortográfico en imputado: ' + errorImputado); return }
+    // Autocorrección ortográfica antes de guardar
     setSaving(true)
     let plazoFinal = nuevaCausa.plazo
     if (nuevaCausa.fecha_inicio && nuevaCausa.dias_plazo) plazoFinal = 'VENCE ' + calcularVencimiento(nuevaCausa.fecha_inicio, nuevaCausa.dias_plazo)
     const subestadoAuto = calcularSubestado(plazoFinal)
-    const up = (v) => typeof v === 'string' ? v.toUpperCase() : v
+    const up = (v) => typeof v === 'string' ? corregirOrtografia(v.toUpperCase()) : v
     const causaData = { ruc:up(nuevaCausa.ruc), rit:up(nuevaCausa.rit), tribunal:up(nuevaCausa.tribunal), delito:up(nuevaCausa.delito), imputado:up(nuevaCausa.imputado), fiscal:up(nuevaCausa.fiscal), cautelar:up(nuevaCausa.cautelar), centro_penal:up(nuevaCausa.centro_penal), plazo:up(plazoFinal), estado:nuevaCausa.estado, subestado:subestadoAuto }
     const { data, error } = await supabase.from('causas').insert(causaData).select().single()
     if (!error) {
