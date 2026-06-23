@@ -225,24 +225,23 @@ function ImputadoCard({ imp, idx, onUpdate, onDelete }) {
   const inp = { width:'100%', padding:'8px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:'#0f172a', background:'#fff', ...f }
 
   const buscarPorRut = async (rut) => {
-    if (!rut || rut.length < 7) return
-    const rutLimpio = rut.replace(/[\s\-\.]/g, '').toUpperCase()
-    // Buscar en otros imputados con el mismo RUT
-    const { data } = await supabase
+    if (!rut || rut.length < 6) return
+    // Buscar RUT en cualquier imputado existente
+    const { data, error } = await supabase
       .from('imputados')
-      .select('nombre, nacionalidad, domicilio, fecha_nacimiento, otros_antecedentes, rut')
-      .ilike('rut', `%${rutLimpio}%`)
-      .neq('causa_id', imp.causa_id)
+      .select('nombre, nacionalidad, domicilio, fecha_nacimiento, otros_antecedentes')
+      .ilike('rut', `%${rut.trim()}%`)
       .not('nombre', 'is', null)
-      .limit(1)
-      .maybeSingle()
-    if (data) {
-      // Autorrellenar solo campos personales comunes
-      const campos = ['nombre','nacionalidad','domicilio','fecha_nacimiento','otros_antecedentes']
-      for (const campo of campos) {
-        if (data[campo] && !imp[campo]) {
-          await onUpdate(campo, data[campo])
-        }
+      .limit(5)
+    if (error || !data || data.length === 0) return
+    // Tomar el primero con nombre
+    const encontrado = data.find(d => d.nombre && d.nombre.trim() !== '')
+    if (!encontrado) return
+    // Autorrellenar solo campos personales vacíos
+    const campos = ['nombre','nacionalidad','domicilio','fecha_nacimiento','otros_antecedentes']
+    for (const campo of campos) {
+      if (encontrado[campo] && (!imp[campo] || imp[campo].trim() === '')) {
+        onUpdate(campo, encontrado[campo])
       }
     }
   }
