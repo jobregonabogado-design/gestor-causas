@@ -5,26 +5,26 @@ import CarpetaOneDrive from '../components/CarpetaOneDrive'
 
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-  .row-hover { transition:background 0.15s ease; cursor:pointer; }
-  .row-hover:hover { background:#f0f7ff !important; }
-  .stat-card { transition:all 0.25s cubic-bezier(0.4,0,0.2,1); cursor:pointer; }
-  .stat-card:hover { transform:translateY(-3px); box-shadow:0 12px 32px rgba(0,0,0,0.10) !important; }
-  .tab-btn { transition:all 0.2s ease; border:none; background:none; cursor:pointer; font-family:'Inter',sans-serif; }
-  .tab-btn:hover { color:#2563eb !important; }
-  .fld { transition:border-color 0.2s,background 0.2s; }
-  .fld:hover { border-color:#2563eb !important; background:#f8fbff !important; }
-  .sort-col { cursor:pointer; user-select:none; transition:color 0.15s; }
-  .sort-col:hover { color:#2563eb !important; }
-  .btn-primary { font-family:'Inter',sans-serif; background:linear-gradient(135deg,#2563eb,#1d4ed8); color:#fff; border:none; border-radius:8px; padding:9px 20px; font-size:13px; font-weight:600; cursor:pointer; transition:all 0.2s; box-shadow:0 4px 12px rgba(37,99,235,0.25); }
-  .btn-primary:hover { transform:translateY(-1px); box-shadow:0 6px 20px rgba(37,99,235,0.35); }
-  .btn-secondary { font-family:'Inter',sans-serif; background:#fff; color:#374151; border:1.5px solid #e2e8f0; border-radius:8px; padding:8px 18px; font-size:13px; font-weight:500; cursor:pointer; transition:all 0.2s; }
-  .btn-secondary:hover { border-color:#2563eb; color:#2563eb; background:#f0f7ff; }
-  .detail-enter { animation:detailIn 0.25s cubic-bezier(0.4,0,0.2,1) forwards; }
-  @keyframes detailIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
-  input,select,textarea { font-family:'Inter',sans-serif !important; transition:border-color 0.2s,box-shadow 0.2s; text-transform:uppercase; }
-  input:focus,select:focus,textarea:focus { outline:none; border-color:#2563eb !important; box-shadow:0 0 0 3px rgba(37,99,235,0.1) !important; }
+  .row-hover { transition:background 0.2s ease, border-color 0.2s ease; cursor:pointer; }
+  .row-hover:hover { background:#f8faff !important; }
+  .stat-card { transition:all 0.3s cubic-bezier(0.4,0,0.2,1); cursor:pointer; }
+  .stat-card:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,0.08) !important; }
+  .tab-btn { transition:color 0.2s ease, border-color 0.2s ease; border:none; background:none; cursor:pointer; font-family:'Inter',sans-serif; }
+  .tab-btn:hover { color:#1e3a5f !important; }
+  .fld { transition:border-color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease; }
+  .fld:hover { border-color:#93c5fd !important; background:#fafcff !important; box-shadow:0 0 0 3px rgba(37,99,235,0.05) !important; }
+  .sort-col { cursor:pointer; user-select:none; transition:color 0.2s ease; }
+  .sort-col:hover { color:#1e3a5f !important; }
+  .btn-primary { font-family:'Inter',sans-serif; background:#1e3a5f; color:#fff; border:none; border-radius:10px; padding:9px 20px; font-size:13px; font-weight:600; cursor:pointer; transition:background 0.25s ease, box-shadow 0.25s ease; box-shadow:0 2px 8px rgba(30,58,95,0.2); }
+  .btn-primary:hover { background:#1e40af; box-shadow:0 4px 16px rgba(30,58,95,0.3); }
+  .btn-secondary { font-family:'Inter',sans-serif; background:#fff; color:#374151; border:1.5px solid #e5e7eb; border-radius:10px; padding:8px 18px; font-size:13px; font-weight:500; cursor:pointer; transition:border-color 0.25s ease, color 0.25s ease, background 0.25s ease; }
+  .btn-secondary:hover { border-color:#93c5fd; color:#1e3a5f; background:#f8faff; }
+  .detail-enter { animation:detailIn 0.3s cubic-bezier(0.4,0,0.2,1) forwards; }
+  @keyframes detailIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  input,select,textarea { font-family:'Inter',sans-serif !important; transition:border-color 0.25s ease, box-shadow 0.25s ease; text-transform:uppercase; }
+  input:focus,select:focus,textarea:focus { outline:none; border-color:#93c5fd !important; box-shadow:0 0 0 3px rgba(37,99,235,0.08) !important; }
   .tc-section textarea:focus { box-shadow: none !important; border-color: transparent !important; }
-  @keyframes semaforo-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.7;transform:scale(1.15)} }
+  @keyframes semaforo-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.6;transform:scale(1.2)} }
   @media (max-width: 640px) {
     .stats-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 8px !important; }
     .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -33,12 +33,12 @@ const CSS = `
 `
 
 const estadoConfig = {
-  vencido:      { label:'PLAZO VENCIDO', color:'#dc2626', bg:'#fef2f2', border:'#fecaca' },
-  proximo:      { label:'POR VENCER',    color:'#d97706', bg:'#fffbeb', border:'#fde68a' },
-  apjo:         { label:'APJO',          color:'#7c3aed', bg:'#faf5ff', border:'#ddd6fe' },
-  juicio_oral:  { label:'JUICIO ORAL',   color:'#e11d48', bg:'#fff1f2', border:'#fda4af' },
-  terminada:    { label:'TERMINADA',     color:'#64748b', bg:'#f8fafc', border:'#e2e8f0' },
-  vigente:      { label:'VIGENTE',       color:'#059669', bg:'#f0fdf4', border:'#a7f3d0' },
+  vencido:      { label:'Plazo vencido', color:'#991b1b', bg:'#fef2f2', border:'#fecaca' },
+  proximo:      { label:'Por vencer',    color:'#92400e', bg:'#fff7ed', border:'#fed7aa' },
+  apjo:         { label:'APJO',          color:'#5b21b6', bg:'#f5f3ff', border:'#ddd6fe' },
+  juicio_oral:  { label:'Juicio oral',   color:'#9f1239', bg:'#fff1f2', border:'#fecdd3' },
+  terminada:    { label:'Terminada',     color:'#475569', bg:'#f8fafc', border:'#e2e8f0' },
+  vigente:      { label:'Vigente',       color:'#065f46', bg:'#ecfdf5', border:'#a7f3d0' },
 }
 
 function getBadgeConfig(estado, subestado) {
@@ -52,30 +52,25 @@ const f = { fontFamily:"'Inter',sans-serif" }
 
 // ─── SEMÁFORO MEJORADO — solo causas vigentes ─────────────────────────────────
 const getSemaforo = (updated_at, estado) => {
-  // Solo mostrar semáforo en causas vigentes
   if (estado !== 'vigente') return null
   if (!updated_at) return {
-    color: '#dc2626',
-    bg: '#fef2f2',
-    border: '#fecaca',
-    label: 'SIN ACTIVIDAD',
-    dias: null,
-    pulsar: true
+    color: '#991b1b', bg: '#fef2f2', border: '#fecaca',
+    label: 'Sin actividad', dias: null, pulsar: true
   }
   const dias = Math.floor((new Date() - new Date(updated_at)) / (1000*60*60*24))
   if (dias <= 2) return {
-    color: '#16a34a', bg: '#f0fdf4', border: '#a7f3d0',
-    label: dias === 0 ? 'HOY' : dias === 1 ? 'AYER' : `HACE ${dias} DÍAS`,
+    color: '#065f46', bg: '#ecfdf5', border: '#6ee7b7',
+    label: dias === 0 ? 'Hoy' : dias === 1 ? 'Ayer' : `Hace ${dias} días`,
     dias, pulsar: false
   }
   if (dias <= 6) return {
-    color: '#d97706', bg: '#fffbeb', border: '#fde68a',
-    label: `HACE ${dias} DÍAS`,
+    color: '#92400e', bg: '#fff7ed', border: '#fed7aa',
+    label: `Hace ${dias} días`,
     dias, pulsar: false
   }
   return {
-    color: '#dc2626', bg: '#fef2f2', border: '#fecaca',
-    label: `${dias} DÍAS SIN REVISAR`,
+    color: '#991b1b', bg: '#fef2f2', border: '#fecaca',
+    label: `${dias} días sin revisar`,
     dias, pulsar: true
   }
 }
@@ -951,17 +946,16 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
     <div style={{background:'#f8fafc',minHeight:'100vh',...f}}>
       <style>{CSS}</style>
       <div style={{maxWidth:1380,margin:'0 auto',padding:'28px'}}>
-        {stats.vencido>0&&(<div style={{background:'linear-gradient(135deg,#fef2f2,#fff1f0)',border:'1px solid #fecaca',borderRadius:12,padding:'13px 20px',marginBottom:16,display:'flex',alignItems:'center',gap:10}}><div style={{width:32,height:32,background:'linear-gradient(135deg,#ef4444,#dc2626)',borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,flexShrink:0}}>🚨</div><span style={{fontSize:13,color:'#991b1b',fontWeight:600,...f}}>{stats.vencido} causa{stats.vencido>1?'s':''} con plazo VENCIDO — Revisión urgente requerida</span></div>)}
-        {stats.proximo>0&&(<div style={{background:'linear-gradient(135deg,#fffbeb,#fef9c3)',border:'1px solid #fde68a',borderRadius:12,padding:'13px 20px',marginBottom:24,display:'flex',alignItems:'center',gap:10}}><div style={{width:32,height:32,background:'linear-gradient(135deg,#f59e0b,#d97706)',borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,flexShrink:0}}>⚠️</div><span style={{fontSize:13,color:'#92400e',fontWeight:600,...f}}>{stats.proximo} causa{stats.proximo>1?'s':''} POR VENCER en los próximos 3 días</span></div>)}
+        {stats.vencido>0&&(<div style={{background:'#fef2f2',border:'1px solid #fecaca',borderLeft:'4px solid #991b1b',borderRadius:10,padding:'12px 20px',marginBottom:12,display:'flex',alignItems:'center',gap:12}}><span style={{fontSize:14,flexShrink:0}}>⚠</span><span style={{fontSize:13,color:'#991b1b',fontWeight:500,...f}}>{stats.vencido} causa{stats.vencido>1?'s':''} con plazo vencido — revisión urgente requerida</span></div>)}
+        {stats.proximo>0&&(<div style={{background:'#fff7ed',border:'1px solid #fed7aa',borderLeft:'4px solid #92400e',borderRadius:10,padding:'12px 20px',marginBottom:20,display:'flex',alignItems:'center',gap:12}}><span style={{fontSize:14,flexShrink:0}}>⏱</span><span style={{fontSize:13,color:'#92400e',fontWeight:500,...f}}>{stats.proximo} causa{stats.proximo>1?'s':''} por vencer en los próximos 3 días</span></div>)}
         {stats.vencido===0&&stats.proximo===0&&<div style={{marginBottom:24}}/>}
 
         <div className='stats-grid' style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:12,marginBottom:24}}>
           {[{key:'',label:'Total',num:stats.total,color:'#0f172a',grad:'linear-gradient(135deg,#1e293b,#0f172a)',border:'#e2e8f0'},{key:'vigente',label:'Vigentes',num:stats.vigente,color:'#059669',grad:'linear-gradient(135deg,#10b981,#059669)',border:'#a7f3d0'},{key:'terminada',label:'Terminadas',num:stats.terminada,color:'#64748b',grad:'linear-gradient(135deg,#94a3b8,#64748b)',border:'#e2e8f0'},{key:'vencido',label:'Plazo Vencido',num:stats.vencido,color:'#dc2626',grad:'linear-gradient(135deg,#ef4444,#dc2626)',border:'#fecaca'},{key:'proximo',label:'Por Vencer',num:stats.proximo,color:'#d97706',grad:'linear-gradient(135deg,#f59e0b,#d97706)',border:'#fde68a'},{key:'apjo',label:'APJO',num:stats.apjo,color:'#7c3aed',grad:'linear-gradient(135deg,#8b5cf6,#7c3aed)',border:'#ddd6fe'},{key:'top',label:'Juicio Oral',num:stats.juicioOral,color:'#0891b2',grad:'linear-gradient(135deg,#06b6d4,#0891b2)',border:'#a5f3fc'}].map(st=>{
             const active=filterEstado===st.key&&st.key!==''
-            return(<div key={st.key} className="stat-card" onClick={()=>setFilterEstado(filterEstado===st.key?'':st.key)} style={{background:active?st.grad:'#fff',border:`1.5px solid ${active?'transparent':st.border}`,borderRadius:14,padding:'16px 18px',boxShadow:active?`0 8px 24px ${st.color}33`:'0 1px 4px rgba(0,0,0,0.04)',position:'relative',overflow:'hidden'}}>
-              {active&&<div style={{position:'absolute',top:-10,right:-10,width:60,height:60,background:'rgba(255,255,255,0.15)',borderRadius:'50%'}}/>}
-              <div style={{fontSize:10,fontWeight:700,letterSpacing:1.2,textTransform:'uppercase',color:active?'rgba(255,255,255,0.7)':st.color,marginBottom:10,...f}}>{st.label}</div>
-              <div style={{fontSize:34,fontWeight:900,color:active?'#fff':st.color,lineHeight:1,letterSpacing:'-2px',...f}}>{st.num}</div>
+            return(<div key={st.key} className="stat-card" onClick={()=>setFilterEstado(filterEstado===st.key?'':st.key)} style={{background:active?'#f8faff':'#fff',border:`1.5px solid ${active?st.border:st.border}`,borderLeft:`3px solid ${st.color}`,borderRadius:10,padding:'16px 18px',boxShadow:active?`0 4px 16px rgba(0,0,0,0.08)`:'0 1px 3px rgba(0,0,0,0.04)'}}>
+              <div style={{fontSize:9,fontWeight:600,letterSpacing:1.5,textTransform:'uppercase',color:'#94a3b8',marginBottom:8,...f}}>{st.label}</div>
+              <div style={{fontSize:32,fontWeight:800,color:st.color,lineHeight:1,letterSpacing:'-1px',...f}}>{st.num}</div>
             </div>)
           })}
         </div>
