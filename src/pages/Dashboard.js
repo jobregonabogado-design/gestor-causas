@@ -226,21 +226,25 @@ function ImputadoCard({ imp, idx, onUpdate, onDelete }) {
 
   const buscarPorRut = async (rut) => {
     if (!rut || rut.length < 6) return
-    console.log('🔍 Buscando RUT:', rut.trim())
+    // Normalizar RUT: quitar puntos, guiones y espacios para comparar
+    const rutNorm = rut.replace(/[\.\-\s]/g, '').toUpperCase()
+    // Buscar por igualdad exacta en RUT normalizado o por los primeros dígitos
     const { data, error } = await supabase
       .from('imputados')
-      .select('nombre, nacionalidad, domicilio, fecha_nacimiento, otros_antecedentes')
-      .ilike('rut', `%${rut.trim()}%`)
-      .limit(10)
-    console.log('📦 Resultado:', data, 'Error:', error)
+      .select('nombre, nacionalidad, domicilio, fecha_nacimiento, otros_antecedentes, rut')
+      .neq('nombre', '')
+      .limit(200)
     if (error || !data || data.length === 0) return
-    const encontrado = data.find(d => d.nombre && d.nombre.trim() !== '')
-    console.log('✅ Encontrado:', encontrado)
+    // Filtrar en cliente normalizando ambos RUTs
+    const encontrado = data.find(d => {
+      if (!d.rut || !d.nombre) return false
+      const rutDB = d.rut.replace(/[\.\-\s]/g, '').toUpperCase()
+      return rutDB === rutNorm
+    })
     if (!encontrado) return
     const campos = ['nombre','nacionalidad','domicilio','fecha_nacimiento','otros_antecedentes']
     for (const campo of campos) {
       if (encontrado[campo] && (!imp[campo] || imp[campo].trim() === '')) {
-        console.log('📝 Rellenando:', campo, '=', encontrado[campo])
         onUpdate(campo, encontrado[campo])
       }
     }
