@@ -49,60 +49,62 @@ function getBadgeConfig(estado, subestado) {
 // ─── AUTOCORRECCIÓN ORTOGRÁFICA ──────────────────────────────────────────────
 // Diccionario de correcciones: siempre se aplican automáticamente al guardar
 const CORRECCIONES = [
-  // Tildes en sustantivos jurídicos
+  // ── Delitos — palabras confirmadas en la BD ──────────────────────────────
+  ['INTIMIDACION', 'INTIMIDACIÓN'],
+  ['VEHICULO', 'VEHÍCULO'],
+  ['PORNOGRAFICO', 'PORNOGRÁFICO'],
+  ['PORNOGRAFICA', 'PORNOGRÁFICA'],
   ['RECEPTACION', 'RECEPTACIÓN'],
-  ['FALSIFICACION', 'FALSIFICACIÓN'],
   ['ASOCIACION', 'ASOCIACIÓN'],
   ['ILICITA', 'ILÍCITA'],
   ['ILICITO', 'ILÍCITO'],
-  ['TRAFICO', 'TRÁFICO'],
-  ['VIOLACION', 'VIOLACIÓN'],
-  ['APELACION', 'APELACIÓN'],
-  ['APELACION', 'APELACIÓN'],
-  ['POSESION', 'POSESIÓN'],
-  ['OBSTRUCCION', 'OBSTRUCCIÓN'],
-  ['USURPACION', 'USURPACIÓN'],
-  ['INTIMIDACION', 'INTIMIDACIÓN'],
+  ['FALSIFICACION', 'FALSIFICACIÓN'],
+  ['PUBLICO', 'PÚBLICO'],
+  ['PUBLICA', 'PÚBLICA'],
   ['CONDUCCION', 'CONDUCCIÓN'],
+  ['TRAFICO', 'TRÁFICO'],
+  ['TRANSITO', 'TRÁNSITO'],
+  ['OBSTRUCCION', 'OBSTRUCCIÓN'],
+  ['POSESION', 'POSESIÓN'],
+  ['USURPACION', 'USURPACIÓN'],
+  ['VIOLACION', 'VIOLACIÓN'],
+  ['GRAVISIMAS', 'GRAVÍSIMAS'],
+  ['GRAVISIMO', 'GRAVÍSIMO'],
+  // ── Otras palabras jurídicas comunes ─────────────────────────────────────
+  ['APELACION', 'APELACIÓN'],
   ['FORMALIZACION', 'FORMALIZACIÓN'],
   ['PRIVACION', 'PRIVACIÓN'],
   ['INVESTIGACION', 'INVESTIGACIÓN'],
   ['DETENCION', 'DETENCIÓN'],
   ['ACUSACION', 'ACUSACIÓN'],
   ['IMPUTACION', 'IMPUTACIÓN'],
-  ['ATENCION', 'ATENCIÓN'],
   ['INTERVENCION', 'INTERVENCIÓN'],
   ['DECLARACION', 'DECLARACIÓN'],
-  ['CONCEPCION', 'CONCEPCIÓN'],
   ['REVISION', 'REVISIÓN'],
   ['PARTICIPACION', 'PARTICIPACIÓN'],
   ['SANCION', 'SANCIÓN'],
-  ['ACCION', 'ACCIÓN'],
+  ['EJECUCION', 'EJECUCIÓN'],
+  ['RESOLUCION', 'RESOLUCIÓN'],
   ['FRUSTRACION', 'FRUSTRACIÓN'],
   ['ADMINISTRACION', 'ADMINISTRACIÓN'],
-  // Tildes en adjetivos y otros
-  ['PUBLICO', 'PÚBLICO'],
-  ['PUBLICA', 'PÚBLICA'],
+  ['CELEBRACION', 'CELEBRACIÓN'],
   ['JURIDICO', 'JURÍDICO'],
+  ['JURIDICA', 'JURÍDICA'],
   ['UNICO', 'ÚNICO'],
-  ['CALIFICADO', 'CALIFICADO'], // sin cambio, ya correcto
-  ['PENALES', 'PENALES'], // sin cambio
-  // Errores tipográficos comunes
+  ['UNICA', 'ÚNICA'],
+  // ── Errores tipográficos ─────────────────────────────────────────────────
   ['ALMACENIMIENTO', 'ALMACENAMIENTO'],
   ['BIENES NACIONES', 'BIENES NACIONALES'],
-  // Acentos en verbos
-  ['CELEBRACION', 'CELEBRACIÓN'],
-  ['RESOLUCION', 'RESOLUCIÓN'],
-  ['EJECUCION', 'EJECUCIÓN'],
 ]
 
 function corregirOrtografia(texto) {
   if (!texto) return texto
   let resultado = texto.toUpperCase()
   for (const [mal, bien] of CORRECCIONES) {
-    // Reemplazar solo palabras completas para no romper otras palabras
-    const regex = new RegExp('\\b' + mal + '\\b', 'g')
-    resultado = resultado.replace(regex, bien)
+    // Reemplazar todas las ocurrencias sin distinción de límite de palabra
+    while (resultado.includes(mal)) {
+      resultado = resultado.replace(mal, bien)
+    }
   }
   return resultado
 }
