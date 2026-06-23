@@ -700,7 +700,9 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
   }, [])
 
   const updateField=async(field,value)=>{
-    value = typeof value === 'string' ? value.toUpperCase() : value
+    // Solo estos campos se guardan en minúscula (son valores de control interno)
+    const camposSinMayusculas = ['estado','subestado','tiene_top']
+    if (typeof value === 'string' && !camposSinMayusculas.includes(field)) value = value.toUpperCase()
     setSaving(true)
     const{error}=await supabase.from('causas').update({[field]:value,updated_at:new Date()}).eq('id',selectedCausa.id)
     if(!error){
@@ -713,7 +715,9 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
 
   const saveAudiencia=async()=>{
     if(!nuevaAud.fecha)return;setSaving(true)
-    const{data,error}=await supabase.from('audiencias').insert({causa_id:selectedCausa.id,ruc:selectedCausa.ruc,imputado:selectedCausa.imputado?.split('|')[0],...nuevaAud}).select().single()
+    const upAud = {}
+    Object.entries(nuevaAud).forEach(([k,v]) => { upAud[k] = (typeof v === 'string' && !['fecha','hora'].includes(k)) ? v.toUpperCase() : v })
+    const{data,error}=await supabase.from('audiencias').insert({causa_id:selectedCausa.id,ruc:selectedCausa.ruc,imputado:selectedCausa.imputado?.split('|')[0],...upAud}).select().single()
     if(!error){
       setAudiencias(prev=>[data,...prev].sort((a,b)=>b.fecha.localeCompare(a.fecha)))
       if (registrarActividad) registrarActividad('accion', `Nueva audiencia en RUC ${selectedCausa.ruc}: ${nuevaAud.tipo||'Audiencia'} ${nuevaAud.fecha}`)
@@ -728,7 +732,8 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
     let plazoFinal = nuevaCausa.plazo
     if (nuevaCausa.fecha_inicio && nuevaCausa.dias_plazo) plazoFinal = 'VENCE ' + calcularVencimiento(nuevaCausa.fecha_inicio, nuevaCausa.dias_plazo)
     const subestadoAuto = calcularSubestado(plazoFinal)
-    const causaData = { ruc:nuevaCausa.ruc, rit:nuevaCausa.rit, tribunal:nuevaCausa.tribunal, delito:nuevaCausa.delito, imputado:nuevaCausa.imputado, fiscal:nuevaCausa.fiscal, cautelar:nuevaCausa.cautelar, centro_penal:nuevaCausa.centro_penal, plazo:plazoFinal, estado:nuevaCausa.estado, subestado:subestadoAuto }
+    const up = (v) => typeof v === 'string' ? v.toUpperCase() : v
+    const causaData = { ruc:up(nuevaCausa.ruc), rit:up(nuevaCausa.rit), tribunal:up(nuevaCausa.tribunal), delito:up(nuevaCausa.delito), imputado:up(nuevaCausa.imputado), fiscal:up(nuevaCausa.fiscal), cautelar:up(nuevaCausa.cautelar), centro_penal:up(nuevaCausa.centro_penal), plazo:up(plazoFinal), estado:nuevaCausa.estado, subestado:subestadoAuto }
     const { data, error } = await supabase.from('causas').insert(causaData).select().single()
     if (!error) {
       setCausas(prev => [data, ...prev])
