@@ -33,12 +33,12 @@ const CSS = `
 `
 
 const estadoConfig = {
-  vencido:      { label:'Plazo vencido', color:'#991b1b', bg:'#fef2f2', border:'#fecaca' },
-  proximo:      { label:'Por vencer',    color:'#92400e', bg:'#fff7ed', border:'#fed7aa' },
+  vencido:      { label:'PLAZO VENCIDO', color:'#991b1b', bg:'#fef2f2', border:'#fecaca' },
+  proximo:      { label:'POR VENCER',    color:'#92400e', bg:'#fff7ed', border:'#fed7aa' },
   apjo:         { label:'APJO',          color:'#5b21b6', bg:'#f5f3ff', border:'#ddd6fe' },
-  juicio_oral:  { label:'Juicio oral',   color:'#9f1239', bg:'#fff1f2', border:'#fecdd3' },
-  terminada:    { label:'Terminada',     color:'#475569', bg:'#f8fafc', border:'#e2e8f0' },
-  vigente:      { label:'Vigente',       color:'#065f46', bg:'#ecfdf5', border:'#a7f3d0' },
+  juicio_oral:  { label:'JUICIO ORAL',   color:'#9f1239', bg:'#fff1f2', border:'#fecdd3' },
+  terminada:    { label:'TERMINADA',     color:'#475569', bg:'#f8fafc', border:'#e2e8f0' },
+  vigente:      { label:'VIGENTE',       color:'#065f46', bg:'#ecfdf5', border:'#a7f3d0' },
 }
 
 function getBadgeConfig(estado, subestado) {
@@ -55,22 +55,22 @@ const getSemaforo = (updated_at, estado) => {
   if (estado !== 'vigente') return null
   if (!updated_at) return {
     color: '#991b1b', bg: '#fef2f2', border: '#fecaca',
-    label: 'Sin actividad', dias: null, pulsar: true
+    label: 'SIN ACTIVIDAD', dias: null, pulsar: true
   }
   const dias = Math.floor((new Date() - new Date(updated_at)) / (1000*60*60*24))
   if (dias <= 2) return {
     color: '#065f46', bg: '#ecfdf5', border: '#6ee7b7',
-    label: dias === 0 ? 'Hoy' : dias === 1 ? 'Ayer' : `Hace ${dias} días`,
+    label: dias === 0 ? 'HOY' : dias === 1 ? 'AYER' : `HACE ${dias} DÍAS`,
     dias, pulsar: false
   }
   if (dias <= 6) return {
     color: '#92400e', bg: '#fff7ed', border: '#fed7aa',
-    label: `Hace ${dias} días`,
+    label: `HACE ${dias} DÍAS`,
     dias, pulsar: false
   }
   return {
     color: '#991b1b', bg: '#fef2f2', border: '#fecaca',
-    label: `${dias} días sin revisar`,
+    label: `${dias} DÍAS SIN REVISAR`,
     dias, pulsar: true
   }
 }
@@ -415,32 +415,32 @@ function TeoriaDelCaso({ causaId, ruc, session, registrarActividad, onAccion }) 
 
   return (
     <div style={{ display:'grid', gridTemplateColumns:'200px 1fr', gap:0, minHeight:500, border:'1px solid #e2e8f0', borderRadius:12, overflow:'hidden' }}>
-      <div style={{ background:'#0f172a', padding:'20px 0' }}>
-        <div style={{ fontSize:9, color:'#475569', textTransform:'uppercase', letterSpacing:2, fontWeight:700, padding:'0 16px 12px', ...f }}>Secciones</div>
+      <div style={{ background:'#1e3a5f', padding:'20px 0' }}>
+        <div style={{ fontSize:9, color:'#93c5fd', textTransform:'uppercase', letterSpacing:2, fontWeight:700, padding:'0 16px 12px', ...f }}>Secciones</div>
         {TC_SECCIONES.map(s => {
           const tieneContenido = (form[s.key]||'').trim().length > 0
           return (
             <button key={s.key} onClick={() => setSeccionActiva(s.key)}
-              style={{ width:'100%', textAlign:'left', padding:'10px 16px', background: seccionActiva===s.key ? 'rgba(37,99,235,0.3)' : 'transparent', border:'none', borderLeft: seccionActiva===s.key ? '3px solid #2563eb' : '3px solid transparent', cursor:'pointer', display:'flex', alignItems:'center', gap:8, transition:'all 0.15s' }}>
-              <span style={{ fontSize:14 }}>{s.icon}</span>
+              style={{ width:'100%', textAlign:'left', padding:'10px 16px', background: seccionActiva===s.key ? 'rgba(147,197,253,0.15)' : 'transparent', border:'none', borderLeft: seccionActiva===s.key ? '3px solid #93c5fd' : '3px solid transparent', cursor:'pointer', display:'flex', alignItems:'center', gap:8, transition:'all 0.2s ease' }}>
+              <span style={{ fontSize:13, opacity: seccionActiva===s.key ? 1 : 0.6 }}>{s.icon}</span>
               <div style={{ flex:1 }}>
-                <div style={{ fontSize:11, fontWeight: seccionActiva===s.key ? 600 : 400, color: seccionActiva===s.key ? '#fff' : '#94a3b8', ...f, lineHeight:1.3 }}>{s.label}</div>
-                {tieneContenido && <div style={{ width:6, height:6, borderRadius:'50%', background:'#2563eb', marginTop:3 }}/>}
+                <div style={{ fontSize:11, fontWeight: seccionActiva===s.key ? 600 : 400, color: seccionActiva===s.key ? '#fff' : '#93c5fd', ...f, lineHeight:1.3, textTransform:'uppercase', letterSpacing:0.5 }}>{s.label}</div>
+                {tieneContenido && <div style={{ width:5, height:5, borderRadius:'50%', background:'#93c5fd', marginTop:3 }}/>}
               </div>
             </button>
           )
         })}
-        <div style={{ padding:'16px', marginTop:8, borderTop:'1px solid #1e293b' }}>
-          <div style={{ fontSize:9, color:'#475569', textTransform:'uppercase', letterSpacing:1.5, fontWeight:700, marginBottom:8, ...f }}>Progreso</div>
+        <div style={{ padding:'16px', marginTop:8, borderTop:'1px solid rgba(255,255,255,0.1)' }}>
+          <div style={{ fontSize:9, color:'#93c5fd', textTransform:'uppercase', letterSpacing:1.5, fontWeight:700, marginBottom:8, ...f }}>Progreso</div>
           {TC_SECCIONES.map(s => {
             const pct = Math.min(100, Math.round(((form[s.key]||'').length / 200) * 100))
             return (
               <div key={s.key} style={{ marginBottom:6 }}>
                 <div style={{ display:'flex', justifyContent:'space-between', marginBottom:2 }}>
                   <span style={{ fontSize:9, color:'#475569', ...f }}>{s.icon}</span>
-                  <span style={{ fontSize:9, color:'#475569', ...f }}>{pct}%</span>
+                  <span style={{ fontSize:9, color:'#93c5fd', ...f }}>{pct}%</span>
                 </div>
-                <div style={{ height:3, background:'#1e293b', borderRadius:2 }}>
+                <div style={{ height:3, background:'rgba(255,255,255,0.1)', borderRadius:2 }}>
                   <div style={{ height:3, width:`${pct}%`, background: pct>0?'#2563eb':'transparent', borderRadius:2, transition:'width 0.3s' }}/>
                 </div>
               </div>
@@ -946,8 +946,8 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
     <div style={{background:'#f8fafc',minHeight:'100vh',...f}}>
       <style>{CSS}</style>
       <div style={{maxWidth:1380,margin:'0 auto',padding:'28px'}}>
-        {stats.vencido>0&&(<div style={{background:'#fef2f2',border:'1px solid #fecaca',borderLeft:'4px solid #991b1b',borderRadius:10,padding:'12px 20px',marginBottom:12,display:'flex',alignItems:'center',gap:12}}><span style={{fontSize:14,flexShrink:0}}>⚠</span><span style={{fontSize:13,color:'#991b1b',fontWeight:500,...f}}>{stats.vencido} causa{stats.vencido>1?'s':''} con plazo vencido — revisión urgente requerida</span></div>)}
-        {stats.proximo>0&&(<div style={{background:'#fff7ed',border:'1px solid #fed7aa',borderLeft:'4px solid #92400e',borderRadius:10,padding:'12px 20px',marginBottom:20,display:'flex',alignItems:'center',gap:12}}><span style={{fontSize:14,flexShrink:0}}>⏱</span><span style={{fontSize:13,color:'#92400e',fontWeight:500,...f}}>{stats.proximo} causa{stats.proximo>1?'s':''} por vencer en los próximos 3 días</span></div>)}
+        {stats.vencido>0&&(<div style={{background:'#fef2f2',border:'1px solid #fecaca',borderLeft:'4px solid #991b1b',borderRadius:10,padding:'12px 20px',marginBottom:12,display:'flex',alignItems:'center',gap:12}}><span style={{fontSize:14,flexShrink:0}}>⚠</span><span style={{fontSize:13,color:'#991b1b',fontWeight:600,...f}}>{stats.vencido} CAUSA{stats.vencido>1?'S':''} CON PLAZO VENCIDO — REVISIÓN URGENTE REQUERIDA</span></div>)}
+        {stats.proximo>0&&(<div style={{background:'#fff7ed',border:'1px solid #fed7aa',borderLeft:'4px solid #92400e',borderRadius:10,padding:'12px 20px',marginBottom:20,display:'flex',alignItems:'center',gap:12}}><span style={{fontSize:14,flexShrink:0}}>⏱</span><span style={{fontSize:13,color:'#92400e',fontWeight:600,...f}}>{stats.proximo} CAUSA{stats.proximo>1?'S':''} POR VENCER EN LOS PRÓXIMOS 3 DÍAS</span></div>)}
         {stats.vencido===0&&stats.proximo===0&&<div style={{marginBottom:24}}/>}
 
         <div className='stats-grid' style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:12,marginBottom:24}}>
