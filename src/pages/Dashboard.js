@@ -958,6 +958,9 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
               <div>
                 {imputados.map((imp,idx)=>(
                   <ImputadoCard key={imp.id} imp={imp} idx={idx} onUpdate={async(field,value)=>{
+                    // Campos que NO deben convertirse a mayúsculas
+                    const camposSinUpper = ['fecha_nacimiento','fecha_detencion','rut']
+                    if (typeof value === 'string' && !camposSinUpper.includes(field)) value = value.toUpperCase()
                     await supabase.from('imputados').update({[field]:value}).eq('id',imp.id)
                     setImputados(prev=>prev.map(x=>x.id===imp.id?{...x,[field]:value}:x))
                     // Sincronizar datos personales en TODAS las causas con el mismo RUT
