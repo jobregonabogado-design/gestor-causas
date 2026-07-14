@@ -33,13 +33,26 @@ const CSS = `
 `
 
 const estadoConfig = {
-  vencido:      { label:'PLAZO VENCIDO', color:'#991b1b', bg:'#fef2f2', border:'#fecaca' },
-  proximo:      { label:'POR VENCER',    color:'#92400e', bg:'#fff7ed', border:'#fed7aa' },
-  apjo:         { label:'APJO',          color:'#5b21b6', bg:'#f5f3ff', border:'#ddd6fe' },
-  juicio_oral:  { label:'JUICIO ORAL',   color:'#9f1239', bg:'#fff1f2', border:'#fecdd3' },
-  terminada:    { label:'TERMINADA',     color:'#475569', bg:'#f8fafc', border:'#e2e8f0' },
-  vigente:      { label:'VIGENTE',       color:'#065f46', bg:'#ecfdf5', border:'#a7f3d0' },
+  // Subestados VIGENTE
+  vencido:           { label:'PLAZO VENCIDO',          color:'#991b1b', bg:'#fef2f2', border:'#fecaca' },
+  proximo:           { label:'POR VENCER',              color:'#92400e', bg:'#fff7ed', border:'#fed7aa' },
+  plazo_vigente:     { label:'PLAZO VIGENTE',           color:'#065f46', bg:'#ecfdf5', border:'#a7f3d0' },
+  apjo:              { label:'APJO',                    color:'#5b21b6', bg:'#f5f3ff', border:'#ddd6fe' },
+  juicio_oral:       { label:'JUICIO ORAL',             color:'#9f1239', bg:'#fff1f2', border:'#fecdd3' },
+  // Subestados TERMINADA
+  renuncia:          { label:'RENUNCIA',                color:'#475569', bg:'#f8fafc', border:'#e2e8f0' },
+  revocacion:        { label:'REVOCACIÓN',              color:'#475569', bg:'#f8fafc', border:'#e2e8f0' },
+  condena_preso:     { label:'CONDENA — PRESO',         color:'#991b1b', bg:'#fef2f2', border:'#fecaca' },
+  condena_libertad:  { label:'CONDENA — LIBERTAD',      color:'#92400e', bg:'#fff7ed', border:'#fed7aa' },
+  scp:               { label:'SALIDA ALTERNATIVA SCP',  color:'#065f46', bg:'#ecfdf5', border:'#a7f3d0' },
+  salida_ar:         { label:'SALIDA ALTERNATIVA AR',   color:'#065f46', bg:'#ecfdf5', border:'#a7f3d0' },
+  // Estados principales
+  terminada:         { label:'TERMINADA',               color:'#475569', bg:'#f8fafc', border:'#e2e8f0' },
+  vigente:           { label:'VIGENTE',                 color:'#065f46', bg:'#ecfdf5', border:'#a7f3d0' },
 }
+
+const SUBESTADOS_VIGENTE = ['plazo_vigente','proximo','vencido','apjo','juicio_oral']
+const SUBESTADOS_TERMINADA = ['renuncia','revocacion','condena_preso','condena_libertad','scp','salida_ar']
 
 function getBadgeConfig(estado, subestado) {
   if (subestado && estadoConfig[subestado]) return estadoConfig[subestado]
@@ -442,20 +455,87 @@ function SemaforoTag({ updated_at, estado }) {
 
 function Badge({ estado, subestado }) {
   const c = getBadgeConfig(estado, subestado)
-  if (estado === 'terminada') return (
-    <span style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'3px 10px', borderRadius:20, fontSize:10, fontWeight:700, letterSpacing:0.5, textTransform:'uppercase', color:'#64748b', background:'#f8fafc', border:'1px solid #e2e8f0', ...f }}>
-      <span style={{ width:5, height:5, borderRadius:'50%', background:'#64748b', flexShrink:0 }}/>TERMINADA
-    </span>
-  )
+  const sub = subestado && estadoConfig[subestado]
   return (
     <div style={{ display:'inline-flex', flexDirection:'column', gap:3, alignItems:'flex-start' }}>
-      <span style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'3px 10px', borderRadius:20, fontSize:10, fontWeight:700, letterSpacing:0.5, textTransform:'uppercase', color:'#059669', background:'#f0fdf4', border:'1px solid #a7f3d0', ...f }}>
-        <span style={{ width:5, height:5, borderRadius:'50%', background:'#059669', flexShrink:0 }}/>VIGENTE
+      <span style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'3px 10px', borderRadius:20, fontSize:10, fontWeight:700, letterSpacing:0.5, textTransform:'uppercase', color: estado==='terminada'?'#475569':'#065f46', background: estado==='terminada'?'#f8fafc':'#ecfdf5', border: `1px solid ${estado==='terminada'?'#e2e8f0':'#a7f3d0'}`, ...f }}>
+        <span style={{ width:5, height:5, borderRadius:'50%', background: estado==='terminada'?'#475569':'#065f46', flexShrink:0 }}/>{estado==='terminada'?'TERMINADA':'VIGENTE'}
       </span>
-      {subestado && estadoConfig[subestado] && (
+      {sub && (
         <span style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'3px 10px', borderRadius:20, fontSize:10, fontWeight:700, letterSpacing:0.5, textTransform:'uppercase', color:c.color, background:c.bg, border:`1px solid ${c.border}`, ...f }}>
           <span style={{ width:5, height:5, borderRadius:'50%', background:c.color, flexShrink:0 }}/>{c.label}
         </span>
+      )}
+    </div>
+  )
+}
+
+// Badge clickeable para el header de la causa
+function BadgeEditor({ estado, subestado, onChangeEstado, onChangeSubestado }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+  useEffect(() => {
+    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [])
+
+  const subestados = estado === 'vigente' ? SUBESTADOS_VIGENTE : SUBESTADOS_TERMINADA
+  const c = subestado && estadoConfig[subestado]
+  const eColor = estado === 'terminada' ? '#475569' : '#065f46'
+  const eBg = estado === 'terminada' ? '#f8fafc' : '#ecfdf5'
+  const eBorder = estado === 'terminada' ? '#e2e8f0' : '#a7f3d0'
+
+  return (
+    <div ref={ref} style={{ position:'relative', display:'inline-flex', flexDirection:'column', gap:3, alignItems:'flex-start' }}>
+      {/* Badge principal clickeable */}
+      <span onClick={()=>setOpen(!open)} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 12px', borderRadius:20, fontSize:10, fontWeight:700, letterSpacing:0.5, textTransform:'uppercase', color:eColor, background:eBg, border:`1.5px solid ${eBorder}`, cursor:'pointer', userSelect:'none', ...f }}>
+        <span style={{ width:5, height:5, borderRadius:'50%', background:eColor, flexShrink:0 }}/>
+        {estado==='terminada'?'TERMINADA':'VIGENTE'}
+        <span style={{ fontSize:9, opacity:0.6 }}>▼</span>
+      </span>
+      {c && (
+        <span style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'3px 10px', borderRadius:20, fontSize:10, fontWeight:700, letterSpacing:0.5, textTransform:'uppercase', color:c.color, background:c.bg, border:`1px solid ${c.border}`, ...f }}>
+          <span style={{ width:5, height:5, borderRadius:'50%', background:c.color, flexShrink:0 }}/>{c.label}
+        </span>
+      )}
+      {/* Dropdown */}
+      {open && (
+        <div style={{ position:'absolute', top:'100%', right:0, zIndex:500, background:'#fff', border:'1.5px solid #bfdbfe', borderRadius:12, boxShadow:'0 8px 24px rgba(0,0,0,0.12)', marginTop:6, minWidth:220, overflow:'hidden' }}>
+          {/* Cambiar estado principal */}
+          <div style={{ padding:'8px 12px', fontSize:9, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, fontWeight:700, borderBottom:'1px solid #f1f5f9', ...f }}>Estado principal</div>
+          {['vigente','terminada'].map(e => (
+            <div key={e} onClick={()=>{ onChangeEstado(e); setOpen(false) }}
+              style={{ padding:'9px 14px', fontSize:12, fontWeight: estado===e?700:400, color: estado===e?'#1e3a5f':'#374151', background: estado===e?'#eff6ff':'transparent', cursor:'pointer', display:'flex', alignItems:'center', gap:8, ...f }}
+              onMouseEnter={ev=>{ if(estado!==e) ev.currentTarget.style.background='#f8faff' }}
+              onMouseLeave={ev=>{ if(estado!==e) ev.currentTarget.style.background='transparent' }}>
+              <span style={{ width:7, height:7, borderRadius:'50%', background: e==='vigente'?'#065f46':'#475569', flexShrink:0 }}/>
+              {e==='vigente'?'VIGENTE':'TERMINADA'}
+              {estado===e && <span style={{ marginLeft:'auto', color:'#1e3a5f' }}>✓</span>}
+            </div>
+          ))}
+          {/* Subestados */}
+          <div style={{ padding:'8px 12px', fontSize:9, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, fontWeight:700, borderTop:'1px solid #f1f5f9', borderBottom:'1px solid #f1f5f9', ...f }}>Subestado</div>
+          <div onClick={()=>{ onChangeSubestado(null); setOpen(false) }}
+            style={{ padding:'8px 14px', fontSize:12, color:'#94a3b8', cursor:'pointer', fontStyle:'italic', ...f }}
+            onMouseEnter={ev=>ev.currentTarget.style.background='#f8faff'}
+            onMouseLeave={ev=>ev.currentTarget.style.background='transparent'}>
+            Sin subestado
+          </div>
+          {subestados.map(s => {
+            const sc = estadoConfig[s]
+            return (
+              <div key={s} onClick={()=>{ onChangeSubestado(s); setOpen(false) }}
+                style={{ padding:'9px 14px', fontSize:12, fontWeight: subestado===s?700:400, color: subestado===s?sc.color:'#374151', background: subestado===s?sc.bg:'transparent', cursor:'pointer', display:'flex', alignItems:'center', gap:8, ...f }}
+                onMouseEnter={ev=>{ if(subestado!==s) ev.currentTarget.style.background='#f8faff' }}
+                onMouseLeave={ev=>{ if(subestado!==s) ev.currentTarget.style.background='transparent' }}>
+                <span style={{ width:6, height:6, borderRadius:'50%', background:sc.color, flexShrink:0 }}/>
+                {sc.label}
+                {subestado===s && <span style={{ marginLeft:'auto', color:sc.color }}>✓</span>}
+              </div>
+            )
+          })}
+        </div>
       )}
     </div>
   )
@@ -1264,7 +1344,12 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
               <div style={{display:'flex',gap:8,alignItems:'center'}}>
                 {saving&&<span style={{fontSize:11,color:'#94a3b8',...f}}>Guardando...</span>}
                 {c.esta_detenido&&<span style={{background:'#fef2f2',color:'#dc2626',border:'1px solid #fecaca',padding:'3px 10px',borderRadius:20,fontSize:10,fontWeight:700,textTransform:'uppercase',...f}}>🔒 Detenido</span>}
-                <Badge estado={c.estado} subestado={c.subestado}/>
+                <BadgeEditor
+                  estado={c.estado}
+                  subestado={c.subestado}
+                  onChangeEstado={(e)=>updateField('estado',e)}
+                  onChangeSubestado={(s)=>updateField('subestado',s||null)}
+                />
               </div>
             </div>
           </div>
@@ -1334,26 +1419,7 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
                     <button className="btn-secondary" style={{fontSize:12,marginTop:4}} onClick={()=>{setEditField('nuevo_imputado');setEditValue('')}}>+ Agregar imputado</button>
                   )}
                 </div>
-                <div style={{gridColumn:'1/-1',marginTop:8}}>
-                  <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:10,fontWeight:600,...f}}>Estado Procesal</div>
-                  <div style={{marginBottom:12}}>
-                    <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:8,fontWeight:600,...f}}>Estado principal</div>
-                    <div style={{display:'flex',gap:8}}>
-                      {[{k:'vigente',v:estadoConfig.vigente},{k:'terminada',v:estadoConfig.terminada}].map(({k,v})=>(
-                        <button key={k} onClick={()=>updateField('estado',k)} style={{padding:'7px 18px',borderRadius:20,fontSize:12,cursor:'pointer',fontWeight:600,border:`1.5px solid ${c.estado===k?v.color:v.border}`,background:c.estado===k?v.bg:'#fff',color:c.estado===k?v.color:'#94a3b8',transition:'all 0.2s',...f}}>{v.label}</button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:8,fontWeight:600,...f}}>Subestado</div>
-                    <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-                      {[{k:'',label:'Sin subestado',color:'#94a3b8',border:'#e2e8f0',bg:'#f8fafc'},{k:'proximo',v:estadoConfig.proximo},{k:'vencido',v:estadoConfig.vencido},{k:'apjo',v:estadoConfig.apjo},{k:'juicio_oral',v:estadoConfig.juicio_oral}].map((item)=>{
-                        const k=item.k; const v=item.v||item
-                        return <button key={k} onClick={()=>updateField('subestado',k||null)} style={{padding:'7px 18px',borderRadius:20,fontSize:12,cursor:'pointer',fontWeight:600,border:`1.5px solid ${(c.subestado||'')=== k?v.color:v.border||'#e2e8f0'}`,background:(c.subestado||'')===k?v.bg||'#f8fafc':'#fff',color:(c.subestado||'')===k?v.color||'#94a3b8':'#94a3b8',transition:'all 0.2s',...f}}>{v.label}</button>
-                      })}
-                    </div>
-                  </div>
-                </div>
+
               </div>
             )}
             {activeTab==='imputado'&&(
