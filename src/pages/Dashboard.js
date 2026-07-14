@@ -8,17 +8,17 @@ const CSS = `
   .row-hover { transition:background 0.2s ease, border-color 0.2s ease; cursor:pointer; }
   .row-hover:hover { background:#f8faff !important; }
   .stat-card { transition:all 0.3s cubic-bezier(0.4,0,0.2,1); cursor:pointer; }
-  .stat-card:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,0.08) !important; }
+  .stat-card:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(15,23,42,0.10) !important; }
   .tab-btn { transition:color 0.2s ease, border-color 0.2s ease; border:none; background:none; cursor:pointer; font-family:'Inter',sans-serif; }
-  .tab-btn:hover { color:#1e3a5f !important; }
+  .tab-btn:hover { color:#1E293B !important; }
   .fld { transition:border-color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease; }
   .fld:hover { border-color:#93c5fd !important; background:#fafcff !important; box-shadow:0 0 0 3px rgba(37,99,235,0.05) !important; }
   .sort-col { cursor:pointer; user-select:none; transition:color 0.2s ease; }
-  .sort-col:hover { color:#1e3a5f !important; }
-  .btn-primary { font-family:'Inter',sans-serif; background:#1e3a5f; color:#fff; border:none; border-radius:10px; padding:9px 20px; font-size:13px; font-weight:600; cursor:pointer; transition:background 0.25s ease, box-shadow 0.25s ease; box-shadow:0 2px 8px rgba(30,58,95,0.2); }
+  .sort-col:hover { color:#1E293B !important; }
+  .btn-primary { font-family:'Inter',sans-serif; background:#1E293B; color:#fff; border:none; border-radius:10px; padding:9px 20px; font-size:13px; font-weight:600; cursor:pointer; transition:background 0.25s ease, box-shadow 0.25s ease; box-shadow:0 2px 8px rgba(30,58,95,0.2); }
   .btn-primary:hover { background:#1e40af; box-shadow:0 4px 16px rgba(30,58,95,0.3); }
   .btn-secondary { font-family:'Inter',sans-serif; background:#fff; color:#374151; border:1.5px solid #e5e7eb; border-radius:10px; padding:8px 18px; font-size:13px; font-weight:500; cursor:pointer; transition:border-color 0.25s ease, color 0.25s ease, background 0.25s ease; }
-  .btn-secondary:hover { border-color:#93c5fd; color:#1e3a5f; background:#f8faff; }
+  .btn-secondary:hover { border-color:#93c5fd; color:#1E293B; background:#f8faff; }
   .detail-enter { animation:detailIn 0.3s cubic-bezier(0.4,0,0.2,1) forwards; }
   @keyframes detailIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
   input,select,textarea { font-family:'Inter',sans-serif !important; transition:border-color 0.25s ease, box-shadow 0.25s ease; text-transform:uppercase; }
@@ -40,14 +40,14 @@ const estadoConfig = {
   apjo:              { label:'APJO',                    color:'#5b21b6', bg:'#f5f3ff', border:'#ddd6fe' },
   juicio_oral:       { label:'JUICIO ORAL',             color:'#9f1239', bg:'#fff1f2', border:'#fecdd3' },
   // Subestados TERMINADA
-  renuncia:          { label:'RENUNCIA',                color:'#475569', bg:'#f8fafc', border:'#e2e8f0' },
-  revocacion:        { label:'REVOCACIÓN',              color:'#475569', bg:'#f8fafc', border:'#e2e8f0' },
+  renuncia:          { label:'RENUNCIA',                color:'#475569', bg:'#F8F9FC', border:'#e2e8f0' },
+  revocacion:        { label:'REVOCACIÓN',              color:'#475569', bg:'#F8F9FC', border:'#e2e8f0' },
   condena_preso:     { label:'CONDENA — PRESO',         color:'#991b1b', bg:'#fef2f2', border:'#fecaca' },
   condena_libertad:  { label:'CONDENA — LIBERTAD',      color:'#92400e', bg:'#fff7ed', border:'#fed7aa' },
   scp:               { label:'SALIDA ALTERNATIVA SCP',  color:'#065f46', bg:'#ecfdf5', border:'#a7f3d0' },
   salida_ar:         { label:'SALIDA ALTERNATIVA AR',   color:'#065f46', bg:'#ecfdf5', border:'#a7f3d0' },
   // Estados principales
-  terminada:         { label:'TERMINADA',               color:'#475569', bg:'#f8fafc', border:'#e2e8f0' },
+  terminada:         { label:'TERMINADA',               color:'#475569', bg:'#F8F9FC', border:'#e2e8f0' },
   vigente:           { label:'VIGENTE',                 color:'#065f46', bg:'#ecfdf5', border:'#a7f3d0' },
 }
 
@@ -56,7 +56,7 @@ const SUBESTADOS_TERMINADA = ['renuncia','revocacion','condena_preso','condena_l
 
 function getBadgeConfig(estado, subestado) {
   if (subestado && estadoConfig[subestado]) return estadoConfig[subestado]
-  return estadoConfig[estado] || { label:estado||'—', color:'#64748b', bg:'#f8fafc', border:'#e2e8f0' }
+  return estadoConfig[estado] || { label:estado||'—', color:'#64748b', bg:'#F8F9FC', border:'#e2e8f0' }
 }
 
 // ─── AUTOCORRECCIÓN ORTOGRÁFICA ──────────────────────────────────────────────
@@ -318,7 +318,7 @@ function SearchableSelect({ value, onChange, options, placeholder, isDelito }) {
         onClick={() => { setOpen(!open); setQuery('') }}
         style={{
           padding: '9px 12px', border: '1.5px solid #e2e8f0', borderRadius: 8,
-          fontSize: 13, color: value ? '#0f172a' : '#94a3b8', background: '#fff',
+          fontSize: 13, color: value ? '#1E293B' : '#94a3b8', background: '#fff',
           cursor: 'pointer', display: 'flex', justifyContent: 'space-between',
           alignItems: 'center', minHeight: 38, fontFamily: "'Inter',sans-serif",
           transition: 'border-color 0.2s ease',
@@ -335,7 +335,7 @@ function SearchableSelect({ value, onChange, options, placeholder, isDelito }) {
         <div style={{
           position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000,
           background: '#fff', border: '1.5px solid #bfdbfe', borderRadius: 10,
-          boxShadow: '0 8px 24px rgba(0,0,0,0.12)', marginTop: 4, overflow: 'hidden',
+          boxShadow: '0 8px 24px rgba(15,23,42,0.14)', marginTop: 4, overflow: 'hidden',
         }}>
           <div style={{ padding: '8px 10px', borderBottom: '1px solid #f1f5f9' }}>
             <input
@@ -355,7 +355,7 @@ function SearchableSelect({ value, onChange, options, placeholder, isDelito }) {
             {value && (
               <div
                 onClick={() => { onChange(''); setOpen(false); setQuery('') }}
-                style={{ padding: '8px 12px', fontSize: 12, color: '#94a3b8', cursor: 'pointer', borderBottom: '1px solid #f8fafc', fontFamily: "'Inter',sans-serif" }}
+                style={{ padding: '8px 12px', fontSize: 12, color: '#94a3b8', cursor: 'pointer', borderBottom: '1px solid #F8F9FC', fontFamily: "'Inter',sans-serif" }}
               >
                 — Limpiar selección
               </div>
@@ -375,9 +375,9 @@ function SearchableSelect({ value, onChange, options, placeholder, isDelito }) {
                   style={{
                     padding: '9px 12px', fontSize: 12, cursor: 'pointer',
                     background: isSelected ? '#eff6ff' : 'transparent',
-                    color: isSelected ? '#1e3a5f' : '#374151',
+                    color: isSelected ? '#1E293B' : '#374151',
                     fontWeight: isSelected ? 600 : 400,
-                    borderBottom: '1px solid #f8fafc',
+                    borderBottom: '1px solid #F8F9FC',
                     fontFamily: "'Inter',sans-serif",
                     display: 'flex', gap: 8, alignItems: 'flex-start',
                   }}
@@ -458,7 +458,7 @@ function Badge({ estado, subestado }) {
   const sub = subestado && estadoConfig[subestado]
   return (
     <div style={{ display:'inline-flex', flexDirection:'column', gap:3, alignItems:'flex-start' }}>
-      <span style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'3px 10px', borderRadius:20, fontSize:10, fontWeight:700, letterSpacing:0.5, textTransform:'uppercase', color: estado==='terminada'?'#475569':'#065f46', background: estado==='terminada'?'#f8fafc':'#ecfdf5', border: `1px solid ${estado==='terminada'?'#e2e8f0':'#a7f3d0'}`, ...f }}>
+      <span style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'3px 10px', borderRadius:20, fontSize:10, fontWeight:700, letterSpacing:0.5, textTransform:'uppercase', color: estado==='terminada'?'#475569':'#065f46', background: estado==='terminada'?'#F8F9FC':'#ecfdf5', border: `1px solid ${estado==='terminada'?'#e2e8f0':'#a7f3d0'}`, ...f }}>
         <span style={{ width:5, height:5, borderRadius:'50%', background: estado==='terminada'?'#475569':'#065f46', flexShrink:0 }}/>{estado==='terminada'?'TERMINADA':'VIGENTE'}
       </span>
       {sub && (
@@ -483,7 +483,7 @@ function BadgeEditor({ estado, subestado, onChangeEstado, onChangeSubestado }) {
   const subestados = estado === 'vigente' ? SUBESTADOS_VIGENTE : SUBESTADOS_TERMINADA
   const c = subestado && estadoConfig[subestado]
   const eColor = estado === 'terminada' ? '#475569' : '#065f46'
-  const eBg = estado === 'terminada' ? '#f8fafc' : '#ecfdf5'
+  const eBg = estado === 'terminada' ? '#F8F9FC' : '#ecfdf5'
   const eBorder = estado === 'terminada' ? '#e2e8f0' : '#a7f3d0'
 
   return (
@@ -501,17 +501,17 @@ function BadgeEditor({ estado, subestado, onChangeEstado, onChangeSubestado }) {
       )}
       {/* Dropdown */}
       {open && (
-        <div style={{ position:'absolute', top:'100%', right:0, zIndex:500, background:'#fff', border:'1.5px solid #bfdbfe', borderRadius:12, boxShadow:'0 8px 24px rgba(0,0,0,0.12)', marginTop:6, minWidth:220, overflow:'hidden' }}>
+        <div style={{ position:'absolute', top:'100%', right:0, zIndex:500, background:'#fff', border:'1.5px solid #bfdbfe', borderRadius:12, boxShadow:'0 8px 24px rgba(15,23,42,0.14)', marginTop:6, minWidth:220, overflow:'hidden' }}>
           {/* Cambiar estado principal */}
           <div style={{ padding:'8px 12px', fontSize:9, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, fontWeight:700, borderBottom:'1px solid #f1f5f9', ...f }}>Estado principal</div>
           {['vigente','terminada'].map(e => (
             <div key={e} onClick={()=>{ onChangeEstado(e); setOpen(false) }}
-              style={{ padding:'9px 14px', fontSize:12, fontWeight: estado===e?700:400, color: estado===e?'#1e3a5f':'#374151', background: estado===e?'#eff6ff':'transparent', cursor:'pointer', display:'flex', alignItems:'center', gap:8, ...f }}
+              style={{ padding:'9px 14px', fontSize:12, fontWeight: estado===e?700:400, color: estado===e?'#1E293B':'#374151', background: estado===e?'#eff6ff':'transparent', cursor:'pointer', display:'flex', alignItems:'center', gap:8, ...f }}
               onMouseEnter={ev=>{ if(estado!==e) ev.currentTarget.style.background='#f8faff' }}
               onMouseLeave={ev=>{ if(estado!==e) ev.currentTarget.style.background='transparent' }}>
               <span style={{ width:7, height:7, borderRadius:'50%', background: e==='vigente'?'#065f46':'#475569', flexShrink:0 }}/>
               {e==='vigente'?'VIGENTE':'TERMINADA'}
-              {estado===e && <span style={{ marginLeft:'auto', color:'#1e3a5f' }}>✓</span>}
+              {estado===e && <span style={{ marginLeft:'auto', color:'#1E293B' }}>✓</span>}
             </div>
           ))}
           {/* Subestados */}
@@ -542,7 +542,7 @@ function BadgeEditor({ estado, subestado, onChangeEstado, onChangeSubestado }) {
 }
 
 function Field({ label, value, editable, editField, setEditField, editValue, setEditValue, onSave, full, fieldKey }) {
-  const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:'#0f172a', background:'#fff', ...f }
+  const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:'#1E293B', background:'#fff', ...f }
   const isTribunal = fieldKey === 'tribunal'
   const isDelito = fieldKey === 'delito'
   const useDropdown = isTribunal || isDelito
@@ -570,7 +570,7 @@ function Field({ label, value, editable, editField, setEditField, editValue, set
         </div>
       ) : (
         <div className={editable?'fld':''} onClick={()=>{if(editable){setEditField(label);setEditValue(value||'')}}}
-          style={{ padding:'9px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:value?'#0f172a':'#cbd5e1', minHeight:38, display:'flex', alignItems:'center', justifyContent:'space-between', cursor:editable?'pointer':'default', background:'#fff', ...f }}>
+          style={{ padding:'9px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:value?'#1E293B':'#cbd5e1', minHeight:38, display:'flex', alignItems:'center', justifyContent:'space-between', cursor:editable?'pointer':'default', background:'#fff', ...f }}>
           <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1}}>{value||(editable?'Clic para agregar...':'—')}</span>
           {editable && <span style={{fontSize:11,color:'#cbd5e1',flexShrink:0,marginLeft:8}}>✏</span>}
         </div>
@@ -585,7 +585,7 @@ function AudienciaCard({ a, onUpdate }) {
   const [form, setForm] = useState({ fecha:a.fecha||'', hora:a.hora||'', tipo:a.tipo||'', resultado:a.resultado||'', tribunal:a.tribunal||'', sala:a.sala||'' })
   const [saving, setSaving] = useState(false)
   const f = { fontFamily:"'Inter',sans-serif" }
-  const inp = { width:'100%', padding:'7px 10px', border:'1.5px solid #e2e8f0', borderRadius:7, fontSize:12, color:'#0f172a', background:'#fff', ...f }
+  const inp = { width:'100%', padding:'7px 10px', border:'1.5px solid #e2e8f0', borderRadius:7, fontSize:12, color:'#1E293B', background:'#fff', ...f }
 
   const tipoColor = (tipo) => {
     const t = (tipo||'').toUpperCase()
@@ -633,11 +633,11 @@ function AudienciaCard({ a, onUpdate }) {
   )
 
   return (
-    <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:12,padding:'14px 16px',marginBottom:8}}>
+    <div style={{background:'#F8F9FC',border:'1px solid #e2e8f0',borderRadius:12,padding:'14px 16px',marginBottom:8}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:6}}>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
           <div style={{width:6,height:6,borderRadius:'50%',background:color,flexShrink:0}}/>
-          <span style={{fontSize:13,fontWeight:600,color:'#0f172a',...f}}>{a.tipo||'Audiencia'}</span>
+          <span style={{fontSize:13,fontWeight:600,color:'#1E293B',...f}}>{a.tipo||'Audiencia'}</span>
         </div>
         <div style={{display:'flex',gap:6,alignItems:'center'}}>
           <span style={{fontSize:11,color:'#94a3b8',fontWeight:500,...f}}>{a.fecha}{a.hora?' · '+a.hora:''}</span>
@@ -661,7 +661,7 @@ function ImputadoCard({ imp, idx, onUpdate, onDelete }) {
   const [editField, setEditField] = useState(null)
   const [editValue, setEditValue] = useState('')
   const f = { fontFamily:"'Inter',sans-serif" }
-  const inp = { width:'100%', padding:'8px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:'#0f172a', background:'#fff', ...f }
+  const inp = { width:'100%', padding:'8px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:'#1E293B', background:'#fff', ...f }
 
   const normRut = (r) => (r||'').replace(/[.\-\s]/g,'').toUpperCase()
 
@@ -713,12 +713,12 @@ function ImputadoCard({ imp, idx, onUpdate, onDelete }) {
             onKeyDown={e=>{if(e.key==='Enter'){onUpdate(field,editValue);setEditField(null);if(field==='rut')buscarPorRut(editValue)}if(e.key==='Escape')setEditField(null)}}
             onBlur={()=>{ if(field==='rut' && editValue) buscarPorRut(editValue) }}
             autoFocus/>
-          <button style={{background:'#1e3a5f',color:'#fff',border:'none',borderRadius:7,padding:'7px 12px',fontSize:12,cursor:'pointer',...f}} onClick={()=>{onUpdate(field,editValue);setEditField(null);if(field==='rut')buscarPorRut(editValue)}}>✓</button>
+          <button style={{background:'#1E293B',color:'#fff',border:'none',borderRadius:7,padding:'7px 12px',fontSize:12,cursor:'pointer',...f}} onClick={()=>{onUpdate(field,editValue);setEditField(null);if(field==='rut')buscarPorRut(editValue)}}>✓</button>
           <button style={{background:'#fff',border:'1.5px solid #e2e8f0',borderRadius:7,padding:'7px 10px',fontSize:12,cursor:'pointer',...f}} onClick={()=>setEditField(null)}>✗</button>
         </div>
       ):(
         <div onClick={()=>{setEditField(field);setEditValue(imp[field]||'')}}
-          style={{padding:'8px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:imp[field]?'#0f172a':'#cbd5e1',minHeight:36,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
+          style={{padding:'8px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:imp[field]?'#1E293B':'#cbd5e1',minHeight:36,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
           <span>{imp[field]||'Clic para agregar...'}</span>
           <span style={{fontSize:11,color:'#cbd5e1'}}>✏</span>
         </div>
@@ -727,11 +727,11 @@ function ImputadoCard({ imp, idx, onUpdate, onDelete }) {
   )
 
   return (
-    <div style={{background:'#f8fafc',border:'1.5px solid #e2e8f0',borderRadius:14,padding:'18px 20px',marginBottom:14}}>
+    <div style={{background:'#F8F9FC',border:'1.5px solid #e2e8f0',borderRadius:14,padding:'18px 20px',marginBottom:14}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
         <div style={{display:'flex',alignItems:'center',gap:10}}>
           <div style={{width:30,height:30,background:'linear-gradient(135deg,#2563eb,#1d4ed8)',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:13,fontWeight:700,...f}}>{idx+1}</div>
-          <div style={{fontSize:14,fontWeight:700,color:'#0f172a',...f}}>{imp.nombre||'Sin nombre'}</div>
+          <div style={{fontSize:14,fontWeight:700,color:'#1E293B',...f}}>{imp.nombre||'Sin nombre'}</div>
         </div>
         <button onClick={onDelete} style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:7,padding:'5px 12px',fontSize:11,color:'#dc2626',cursor:'pointer',fontWeight:600,...f}}>✕ Eliminar</button>
       </div>
@@ -745,17 +745,17 @@ function ImputadoCard({ imp, idx, onUpdate, onDelete }) {
             <div style={{display:'flex',gap:6}}>
               <input type="date" style={inp} value={editValue} onChange={e=>setEditValue(e.target.value)}
                 onKeyDown={e=>{if(e.key==='Enter'){onUpdate('fecha_nacimiento',editValue);setEditField(null)}if(e.key==='Escape')setEditField(null)}} autoFocus/>
-              <button style={{background:'#1e3a5f',color:'#fff',border:'none',borderRadius:7,padding:'7px 12px',fontSize:12,cursor:'pointer',...f}} onClick={()=>{onUpdate('fecha_nacimiento',editValue);setEditField(null)}}>✓</button>
+              <button style={{background:'#1E293B',color:'#fff',border:'none',borderRadius:7,padding:'7px 12px',fontSize:12,cursor:'pointer',...f}} onClick={()=>{onUpdate('fecha_nacimiento',editValue);setEditField(null)}}>✓</button>
               <button style={{background:'#fff',border:'1.5px solid #e2e8f0',borderRadius:7,padding:'7px 10px',fontSize:12,cursor:'pointer',...f}} onClick={()=>setEditField(null)}>✗</button>
             </div>
           ):(
             <div onClick={()=>{setEditField('fecha_nacimiento');setEditValue(imp.fecha_nacimiento||'')}}
-              style={{padding:'8px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:imp.fecha_nacimiento?'#0f172a':'#cbd5e1',minHeight:36,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
+              style={{padding:'8px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:imp.fecha_nacimiento?'#1E293B':'#cbd5e1',minHeight:36,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
               <span>
                 {imp.fecha_nacimiento || 'Clic para agregar...'}
                 {imp.fecha_nacimiento && (() => {
                   const edad = calcularEdadActual(imp.fecha_nacimiento)
-                  return edad !== null ? <span style={{marginLeft:8,fontSize:11,color:'#1e3a5f',fontWeight:600,background:'#eff6ff',padding:'1px 7px',borderRadius:10}}>
+                  return edad !== null ? <span style={{marginLeft:8,fontSize:11,color:'#1E293B',fontWeight:600,background:'#eff6ff',padding:'1px 7px',borderRadius:10}}>
                     {edad} AÑOS HOY
                   </span> : null
                 })()}
@@ -775,7 +775,7 @@ function ImputadoCard({ imp, idx, onUpdate, onDelete }) {
             padding:'5px 14px',borderRadius:20,fontWeight:700,fontSize:12,
             background: imp.regimen==='RPA' ? '#faf5ff' : '#eff6ff',
             border: `1.5px solid ${imp.regimen==='RPA' ? '#ddd6fe' : '#bfdbfe'}`,
-            color: imp.regimen==='RPA' ? '#5b21b6' : '#1e3a5f',
+            color: imp.regimen==='RPA' ? '#5b21b6' : '#1E293B',
             ...f
           }}>
             {imp.regimen==='RPA' ? 'RPA — LEY PENAL ADOLESCENTE' : 'ADULTO — CÓDIGO PROCESAL PENAL'}
@@ -856,7 +856,7 @@ function FallosReferencia({ causaId, ruc, email, onAccion }) {
   return (
     <div>
       <div onDragOver={e => { e.preventDefault(); setDrag(true) }} onDragLeave={() => setDrag(false)} onDrop={onDrop} onClick={() => inputRef.current?.click()}
-        style={{ border: `2px dashed ${drag ? '#2563eb' : '#e2e8f0'}`, borderRadius: 12, padding: '28px 20px', textAlign: 'center', background: drag ? '#eff6ff' : '#f8fafc', cursor: 'pointer', transition: 'all 0.2s', marginBottom: 16 }}>
+        style={{ border: `2px dashed ${drag ? '#2563eb' : '#e2e8f0'}`, borderRadius: 12, padding: '28px 20px', textAlign: 'center', background: drag ? '#eff6ff' : '#F8F9FC', cursor: 'pointer', transition: 'all 0.2s', marginBottom: 16 }}>
         <input ref={inputRef} type="file" accept=".pdf" multiple style={{ display:'none' }} onChange={e => Array.from(e.target.files).forEach(f => subirArchivo(f))}/>
         <div style={{ fontSize: 32, marginBottom: 8 }}>{subiendo ? '⏳' : '📄'}</div>
         <div style={{ fontSize: 13, fontWeight: 600, color: drag ? '#2563eb' : '#475569', ...f }}>{subiendo ? 'Subiendo...' : drag ? 'Suelta aquí el fallo' : 'Arrastra fallos PDF aquí'}</div>
@@ -868,7 +868,7 @@ function FallosReferencia({ causaId, ruc, email, onAccion }) {
         <div key={i} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', background:'#fff', border:'1px solid #e2e8f0', borderRadius:10, marginBottom:8 }}>
           <div style={{ width:36, height:36, background:'#fef2f2', border:'1px solid #fecaca', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, flexShrink:0 }}>📄</div>
           <div style={{ flex:1, minWidth:0 }}>
-            <div style={{ fontSize:13, fontWeight:600, color:'#0f172a', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', ...f }}>{fallo.nombre}</div>
+            <div style={{ fontSize:13, fontWeight:600, color:'#1E293B', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', ...f }}>{fallo.nombre}</div>
             <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>Subido por {fallo.subido_por || 'usuario'} · {new Date(fallo.created_at).toLocaleDateString('es-CL')}</div>
           </div>
           <a href={fallo.url} target="_blank" rel="noreferrer" style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:7, padding:'5px 12px', fontSize:11, color:'#2563eb', cursor:'pointer', fontWeight:600, textDecoration:'none', ...f }}>Ver PDF</a>
@@ -941,7 +941,7 @@ function TeoriaDelCaso({ causaId, ruc, session, registrarActividad, onAccion }) 
 
   return (
     <div style={{ display:'grid', gridTemplateColumns:'200px 1fr', gap:0, minHeight:500, border:'1px solid #e2e8f0', borderRadius:12, overflow:'hidden' }}>
-      <div style={{ background:'#1e3a5f', padding:'20px 0' }}>
+      <div style={{ background:'#1E293B', padding:'20px 0' }}>
         <div style={{ fontSize:9, color:'#93c5fd', textTransform:'uppercase', letterSpacing:2, fontWeight:700, padding:'0 16px 12px', ...f }}>Secciones</div>
         {TC_SECCIONES.map(s => {
           const tieneContenido = (form[s.key]||'').trim().length > 0
@@ -977,14 +977,14 @@ function TeoriaDelCaso({ causaId, ruc, session, registrarActividad, onAccion }) 
       <div style={{ display:'flex', flexDirection:'column', background:'#fff' }}>
         <div style={{ padding:'16px 20px', borderBottom:'1px solid #f1f5f9', display:'flex', justifyContent:'space-between', alignItems:'center', background:'#fafbff' }}>
           <div>
-            <div style={{ fontSize:15, fontWeight:700, color:'#0f172a', ...f }}>{seccionActual?.icon} {seccionActual?.label}</div>
+            <div style={{ fontSize:15, fontWeight:700, color:'#1E293B', ...f }}>{seccionActual?.icon} {seccionActual?.label}</div>
             <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>
               {totalCaracteres > 0 ? `${totalCaracteres.toLocaleString()} caracteres` : 'Sin contenido aún'}
               {savedAt && <span style={{ marginLeft:8, color:'#a7f3d0' }}>✓ Guardado {savedAt.toLocaleTimeString('es-CL', { hour:'2-digit', minute:'2-digit' })}</span>}
             </div>
           </div>
           <div style={{ display:'flex', gap:8 }}>
-            <button onClick={() => setShowHistorial(!showHistorial)} style={{ background: showHistorial?'#0f172a':'#fff', color: showHistorial?'#fff':'#64748b', border:'1.5px solid #e2e8f0', borderRadius:8, padding:'6px 14px', fontSize:12, cursor:'pointer', fontWeight:500, ...f }}>
+            <button onClick={() => setShowHistorial(!showHistorial)} style={{ background: showHistorial?'#1E293B':'#fff', color: showHistorial?'#fff':'#64748b', border:'1.5px solid #e2e8f0', borderRadius:8, padding:'6px 14px', fontSize:12, cursor:'pointer', fontWeight:500, ...f }}>
               🕐 Historial {historial.length > 0 && `(${historial.length})`}
             </button>
             <button onClick={() => guardar(form, false)} disabled={saving} style={{ background:'linear-gradient(135deg,#2563eb,#1d4ed8)', color:'#fff', border:'none', borderRadius:8, padding:'6px 16px', fontSize:12, cursor:'pointer', fontWeight:600, ...f }}>
@@ -993,7 +993,7 @@ function TeoriaDelCaso({ causaId, ruc, session, registrarActividad, onAccion }) 
           </div>
         </div>
         {showHistorial && (
-          <div style={{ background:'#f8fafc', borderBottom:'1px solid #e2e8f0', padding:'16px 20px', maxHeight:200, overflowY:'auto' }}>
+          <div style={{ background:'#F8F9FC', borderBottom:'1px solid #e2e8f0', padding:'16px 20px', maxHeight:200, overflowY:'auto' }}>
             <div style={{ fontSize:11, fontWeight:700, color:'#475569', textTransform:'uppercase', letterSpacing:1, marginBottom:10, ...f }}>Historial de modificaciones</div>
             {historial.length === 0 ? (
               <div style={{ fontSize:12, color:'#cbd5e1', ...f }}>Sin modificaciones registradas aún.</div>
@@ -1004,7 +1004,7 @@ function TeoriaDelCaso({ causaId, ruc, session, registrarActividad, onAccion }) 
                 <div key={i} style={{ display:'flex', gap:10, alignItems:'center', padding:'8px 0', borderBottom:'1px solid #f1f5f9' }}>
                   <div style={{ width:28, height:28, borderRadius:'50%', background:'linear-gradient(135deg,#2563eb,#7c3aed)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:10, fontWeight:700, flexShrink:0 }}>{(info.editor||'?')[0]?.toUpperCase()}</div>
                   <div style={{ flex:1 }}>
-                    <div style={{ fontSize:12, fontWeight:500, color:'#0f172a', ...f }}>{info.editor || 'Usuario'}</div>
+                    <div style={{ fontSize:12, fontWeight:500, color:'#1E293B', ...f }}>{info.editor || 'Usuario'}</div>
                     <div style={{ fontSize:11, color:'#94a3b8', ...f }}>{info.fecha} {info.hora}</div>
                   </div>
                   <span style={{ fontSize:10, color:'#94a3b8', background:'#f1f5f9', padding:'2px 8px', borderRadius:20, ...f }}>modificó</span>
@@ -1094,7 +1094,7 @@ function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudiencia })
   const [form, setForm] = useState({ fecha_audiencia:'', tipo_audiencia:'Formalización', dias_plazo:'', observacion:'' })
   const [guardando, setGuardando] = useState(false)
   const f = { fontFamily:"'Inter',sans-serif" }
-  const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:'#0f172a', background:'#fff', ...f }
+  const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:'#1E293B', background:'#fff', ...f }
 
   const calcularVencimientoTotal = (auds) => {
     if (!auds || auds.length === 0) return null
@@ -1143,10 +1143,10 @@ function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudiencia })
         const diasAcum = audsHasta.reduce((s,x)=>s+(parseInt(x.dias_plazo)||0),0)
         const vencAcum = calcularVencimiento(audsHasta[0].fecha_audiencia, diasAcum)
         return (
-          <div key={a.id} style={{display:'flex',gap:12,alignItems:'center',padding:'14px 16px',background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:10,marginBottom:8}}>
+          <div key={a.id} style={{display:'flex',gap:12,alignItems:'center',padding:'14px 16px',background:'#F8F9FC',border:'1px solid #e2e8f0',borderRadius:10,marginBottom:8}}>
             <div style={{width:30,height:30,background:'linear-gradient(135deg,#2563eb,#1d4ed8)',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:12,fontWeight:700,flexShrink:0}}>{i+1}</div>
             <div style={{flex:1}}>
-              <div style={{fontSize:13,fontWeight:600,color:'#0f172a',...f}}>{a.tipo_audiencia||'Audiencia'}</div>
+              <div style={{fontSize:13,fontWeight:600,color:'#1E293B',...f}}>{a.tipo_audiencia||'Audiencia'}</div>
               <div style={{fontSize:12,color:'#94a3b8',marginTop:2,...f}}>📅 {a.fecha_audiencia}</div>
               {a.observacion&&<div style={{fontSize:12,color:'#64748b',marginTop:2,...f}}>{a.observacion}</div>}
             </div>
@@ -1373,19 +1373,19 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
   const chartDelitos=useMemo(()=>{const map={};causas.forEach(c=>{if(c.delito){const k=c.delito.substring(0,28);map[k]=(map[k]||0)+1}});return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,12).map(([name,value])=>({name,value}))},[causas])
   const chartTribunales=useMemo(()=>{const map={};causas.forEach(c=>{if(c.tribunal){map[c.tribunal]=(map[c.tribunal]||0)+1}});return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,15).map(([name,value])=>({name,value}))},[causas])
   const COLORS=['#2563eb','#7c3aed','#059669','#dc2626','#d97706','#0891b2','#db2777','#65a30d','#ea580c','#6366f1']
-  const inp={width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#0f172a',background:'#fff',...f}
+  const inp={width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}
 
   if(view==='detail'&&selectedCausa){
     const c=causas.find(x=>x.id===selectedCausa.id)||selectedCausa
     return(
-      <div style={{background:'#f8fafc',minHeight:'100vh',...f}} className="detail-enter">
+      <div style={{background:'#F8F9FC',minHeight:'100vh',...f}} className="detail-enter">
         <style>{CSS}</style>
         <div style={{maxWidth:1060,margin:'0 auto',padding:'24px 28px'}}>
           <button className="btn-secondary" onClick={()=>setView('list')} style={{marginBottom:20,fontSize:13}}>← Volver</button>
-          <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:'16px 16px 0 0',padding:'24px 28px',boxShadow:'0 1px 4px rgba(0,0,0,0.04)'}}>
+          <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:'16px 16px 0 0',padding:'24px 28px',boxShadow:'0 1px 4px rgba(15,23,42,0.05)'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:12}}>
               <div>
-                <div style={{fontSize:22,fontWeight:800,color:'#0f172a',marginBottom:6,letterSpacing:'-0.5px',...f}}>RUC <span style={{color:'#1e3a5f'}}>{c.ruc}</span></div>
+                <div style={{fontSize:22,fontWeight:800,color:'#1E293B',marginBottom:6,letterSpacing:'-0.5px',...f}}>RUC <span style={{color:'#1E293B'}}>{c.ruc}</span></div>
                 <div style={{fontSize:13,color:'#94a3b8',display:'flex',gap:16,flexWrap:'wrap',alignItems:'center',...f}}>
                   <span>RIT <span style={{color:'#475569',fontWeight:500}}>{c.rit||'—'}</span></span>
                   <span style={{color:'#e2e8f0'}}>|</span>
@@ -1397,7 +1397,7 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
                     <span key={i.id} style={{
                       fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:10,
                       background:i.regimen==='RPA'?'#faf5ff':'#eff6ff',
-                      color:i.regimen==='RPA'?'#5b21b6':'#1e3a5f',
+                      color:i.regimen==='RPA'?'#5b21b6':'#1E293B',
                       border:`1px solid ${i.regimen==='RPA'?'#ddd6fe':'#bfdbfe'}`,...f
                     }}>{i.regimen}</span>
                   ))}
@@ -1420,7 +1420,7 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
               <button key={k} className="tab-btn" onClick={()=>setActiveTab(k)} style={{padding:'13px 20px',fontSize:13,fontWeight:activeTab===k?600:400,color:activeTab===k?'#2563eb':'#94a3b8',borderBottom:`2px solid ${activeTab===k?'#2563eb':'transparent'}`,whiteSpace:'nowrap',marginBottom:-2}}>{l}</button>
             ))}
           </div>
-          <div style={{background:'#fff',border:'1px solid #e2e8f0',borderTop:'none',borderRadius:'0 0 16px 16px',padding:28,boxShadow:'0 2px 8px rgba(0,0,0,0.04)'}}>
+          <div style={{background:'#fff',border:'1px solid #e2e8f0',borderTop:'none',borderRadius:'0 0 16px 16px',padding:28,boxShadow:'0 2px 8px rgba(15,23,42,0.05)'}}>
             {activeTab==='datos'&&(
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
                 {[{key:'imputado',label:'Imputado(s)',full:true,editable:true},{key:'delito',label:'Delito',full:true,editable:true},{key:'tribunal',label:'Tribunal',editable:true},{key:'rit',label:'RIT JG',editable:true},{key:'fiscal',label:'Fiscal a cargo',editable:true},{key:'cautelar',label:'Cautelar procesal',editable:true},{key:'centro_penal',label:'Centro Penal',editable:true},{key:'plazo',label:'Plazo / Vencimiento',editable:true,full:true}].map(field=>(
@@ -1431,7 +1431,7 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
                   <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Fecha de los hechos</div>
                   {editField==='fecha_hechos'?(
                     <div style={{display:'flex',gap:6}}>
-                      <input type="date" style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#0f172a',background:'#fff',...f}}
+                      <input type="date" style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}}
                         value={editValue} onChange={e=>setEditValue(e.target.value)}
                         onKeyDown={e=>{if(e.key==='Enter')updateField('fecha_hechos',editValue);if(e.key==='Escape')setEditField(null)}} autoFocus/>
                       <button className="btn-primary" style={{padding:'8px 14px',fontSize:12}} onClick={()=>updateField('fecha_hechos',editValue)}>✓</button>
@@ -1439,7 +1439,7 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
                     </div>
                   ):(
                     <div className="fld" onClick={()=>{setEditField('fecha_hechos');setEditValue(c.fecha_hechos||'')}}
-                      style={{padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:c.fecha_hechos?'#0f172a':'#cbd5e1',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
+                      style={{padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:c.fecha_hechos?'#1E293B':'#cbd5e1',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
                       <div style={{display:'flex',alignItems:'center',gap:10}}>
                         <span>{c.fecha_hechos || 'Clic para agregar...'}</span>
                         {c.fecha_hechos && imputados.map(imp => {
@@ -1450,7 +1450,7 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
                             <span key={imp.id} style={{
                               fontSize:10,fontWeight:700,padding:'3px 10px',borderRadius:10,
                               background: regimen==='RPA'?'#faf5ff':'#eff6ff',
-                              color: regimen==='RPA'?'#5b21b6':'#1e3a5f',
+                              color: regimen==='RPA'?'#5b21b6':'#1E293B',
                               border: `1.5px solid ${regimen==='RPA'?'#ddd6fe':'#bfdbfe'}`,
                               ...f
                             }}>
@@ -1467,7 +1467,7 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
                   <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:8,fontWeight:600,...f}}>Imputados adicionales</div>
                   {(c.imputado||'').split('|').filter((_,i)=>i>0).map((imp,i)=>(
                     <div key={i} style={{display:'flex',gap:8,marginBottom:6,alignItems:'center'}}>
-                      <div style={{flex:1,padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#0f172a',background:'#f8fafc',...f}}>{imp.trim()}</div>
+                      <div style={{flex:1,padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#F8F9FC',...f}}>{imp.trim()}</div>
                       <button onClick={async()=>{const imps=(c.imputado||'').split('|');imps.splice(i+1,1);updateField('imputado',imps.join('|'));const impEncontrado=imputados.find(x=>x.nombre&&x.nombre.trim()===imp.trim());if(impEncontrado){await supabase.from('imputados').delete().eq('id',impEncontrado.id);setImputados(prev=>prev.filter(x=>x.id!==impEncontrado.id))}}} style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:7,padding:'7px 10px',fontSize:12,color:'#dc2626',cursor:'pointer',...f}}>✕</button>
                     </div>
                   ))}
@@ -1557,7 +1557,7 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
                 ))}
                 {audiencias.length===0&&<p style={{color:'#cbd5e1',fontSize:13,marginBottom:14,...f}}>Sin audiencias registradas.</p>}
                 {showAudForm&&(
-                  <div style={{background:'#f8fafc',border:'1.5px solid #e2e8f0',borderRadius:12,padding:16,marginBottom:14}}>
+                  <div style={{background:'#F8F9FC',border:'1.5px solid #e2e8f0',borderRadius:12,padding:16,marginBottom:14}}>
                     <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:12}}>
                       {[{key:'fecha',label:'Fecha',type:'date'},{key:'hora',label:'Hora',type:'time'},{key:'tipo',label:'Tipo',ph:'Formalización, APJO, JO...'},{key:'tribunal',label:'Tribunal',ph:'Ej: 4 JG STGO'},{key:'sala',label:'Sala',ph:'Ej: 903'},{key:'resultado',label:'Resultado',ph:'Resultado'},{key:'notas',label:'Observaciones',ph:'Notas'}].map(field=>(
                         <div key={field.key}><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>{field.label}</div><input type={field.type||'text'} style={inp} placeholder={field.ph} value={nuevaAud[field.key]} onChange={e=>setNuevaAud(p=>({...p,[field.key]:e.target.value}))}/></div>
@@ -1572,7 +1572,7 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
             {activeTab==='top'&&(
               <div>
                 <p style={{fontSize:13,color:'#94a3b8',marginBottom:20,lineHeight:1.7,...f}}>Cuando la causa pasa a Juicio Oral se asigna un nuevo RIT y Tribunal bajo el mismo RUC <span style={{fontFamily:'monospace',color:'#475569'}}>{c.ruc}</span>.</p>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',background:c.tiene_top?'#faf5ff':'#f8fafc',border:`1.5px solid ${c.tiene_top?'#ddd6fe':'#e2e8f0'}`,borderRadius:12,padding:'16px 20px',marginBottom:16}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',background:c.tiene_top?'#faf5ff':'#F8F9FC',border:`1.5px solid ${c.tiene_top?'#ddd6fe':'#e2e8f0'}`,borderRadius:12,padding:'16px 20px',marginBottom:16}}>
                   <div>
                     <div style={{fontSize:14,fontWeight:600,color:c.tiene_top?'#7c3aed':'#64748b',...f}}>{c.tiene_top?'⚖️ En Juicio Oral':'⚖️ Sin Juicio Oral asignado'}</div>
                     {c.tiene_top&&<div style={{fontSize:12,color:'#a78bfa',marginTop:3,...f}}>{c.tribunal_top||'—'} · RIT {c.rit_top||'—'}</div>}
@@ -1609,7 +1609,7 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
   const SortIcon=({col})=>sortCol!==col?<span style={{color:'#e2e8f0',marginLeft:5,fontSize:10}}>⇅</span>:sortDir==='asc'?<span style={{color:'#2563eb',marginLeft:5}}>↑</span>:<span style={{color:'#2563eb',marginLeft:5}}>↓</span>
 
   return(
-    <div style={{background:'#f8fafc',minHeight:'100vh',...f}}>
+    <div style={{background:'#F8F9FC',minHeight:'100vh',...f}}>
       <style>{CSS}</style>
       <div style={{maxWidth:1380,margin:'0 auto',padding:'28px'}}>
         {stats.vencido>0&&(<div style={{background:'#fef2f2',border:'1px solid #fecaca',borderLeft:'4px solid #991b1b',borderRadius:10,padding:'12px 20px',marginBottom:12,display:'flex',alignItems:'center',gap:12}}><span style={{fontSize:14,flexShrink:0}}>⚠</span><span style={{fontSize:13,color:'#991b1b',fontWeight:600,...f}}>{stats.vencido} CAUSA{stats.vencido>1?'S':''} CON PLAZO VENCIDO — REVISIÓN URGENTE REQUERIDA</span></div>)}
@@ -1617,9 +1617,9 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
         {stats.vencido===0&&stats.proximo===0&&<div style={{marginBottom:24}}/>}
 
         <div className='stats-grid' style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:12,marginBottom:24}}>
-          {[{key:'',label:'Total',num:stats.total,color:'#0f172a',grad:'linear-gradient(135deg,#1e293b,#0f172a)',border:'#e2e8f0'},{key:'vigente',label:'Vigentes',num:stats.vigente,color:'#059669',grad:'linear-gradient(135deg,#10b981,#059669)',border:'#a7f3d0'},{key:'terminada',label:'Terminadas',num:stats.terminada,color:'#64748b',grad:'linear-gradient(135deg,#94a3b8,#64748b)',border:'#e2e8f0'},{key:'vencido',label:'Plazo Vencido',num:stats.vencido,color:'#dc2626',grad:'linear-gradient(135deg,#ef4444,#dc2626)',border:'#fecaca'},{key:'proximo',label:'Por Vencer',num:stats.proximo,color:'#d97706',grad:'linear-gradient(135deg,#f59e0b,#d97706)',border:'#fde68a'},{key:'apjo',label:'APJO',num:stats.apjo,color:'#7c3aed',grad:'linear-gradient(135deg,#8b5cf6,#7c3aed)',border:'#ddd6fe'},{key:'top',label:'Juicio Oral',num:stats.juicioOral,color:'#0891b2',grad:'linear-gradient(135deg,#06b6d4,#0891b2)',border:'#a5f3fc'}].map(st=>{
+          {[{key:'',label:'Total',num:stats.total,color:'#1E293B',grad:'linear-gradient(135deg,#1e293b,#1E293B)',border:'#e2e8f0'},{key:'vigente',label:'Vigentes',num:stats.vigente,color:'#059669',grad:'linear-gradient(135deg,#10b981,#059669)',border:'#a7f3d0'},{key:'terminada',label:'Terminadas',num:stats.terminada,color:'#64748b',grad:'linear-gradient(135deg,#94a3b8,#64748b)',border:'#e2e8f0'},{key:'vencido',label:'Plazo Vencido',num:stats.vencido,color:'#dc2626',grad:'linear-gradient(135deg,#ef4444,#dc2626)',border:'#fecaca'},{key:'proximo',label:'Por Vencer',num:stats.proximo,color:'#d97706',grad:'linear-gradient(135deg,#f59e0b,#d97706)',border:'#fde68a'},{key:'apjo',label:'APJO',num:stats.apjo,color:'#7c3aed',grad:'linear-gradient(135deg,#8b5cf6,#7c3aed)',border:'#ddd6fe'},{key:'top',label:'Juicio Oral',num:stats.juicioOral,color:'#0891b2',grad:'linear-gradient(135deg,#06b6d4,#0891b2)',border:'#a5f3fc'}].map(st=>{
             const active=filterEstado===st.key&&st.key!==''
-            return(<div key={st.key} className="stat-card" onClick={()=>setFilterEstado(filterEstado===st.key?'':st.key)} style={{background:active?'#f8faff':'#fff',border:`1.5px solid ${active?st.border:st.border}`,borderLeft:`3px solid ${st.color}`,borderRadius:10,padding:'16px 18px',boxShadow:active?`0 4px 16px rgba(0,0,0,0.08)`:'0 1px 3px rgba(0,0,0,0.04)'}}>
+            return(<div key={st.key} className="stat-card" onClick={()=>setFilterEstado(filterEstado===st.key?'':st.key)} style={{background:active?'#f8faff':'#fff',border:`1.5px solid ${active?st.border:st.border}`,borderLeft:`3px solid ${st.color}`,borderRadius:10,padding:'16px 18px',boxShadow:active?`0 4px 16px rgba(15,23,42,0.10)`:'0 1px 3px rgba(15,23,42,0.05)'}}>
               <div style={{fontSize:9,fontWeight:600,letterSpacing:1.5,textTransform:'uppercase',color:'#94a3b8',marginBottom:8,...f}}>{st.label}</div>
               <div style={{fontSize:32,fontWeight:800,color:st.color,lineHeight:1,letterSpacing:'-1px',...f}}>{st.num}</div>
             </div>)
@@ -1628,7 +1628,7 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
 
         {showStats&&(
           <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:16,padding:28,marginBottom:24}}>
-            <div style={{fontSize:17,fontWeight:800,color:'#0f172a',marginBottom:24,...f}}>Estadísticas del portfolio</div>
+            <div style={{fontSize:17,fontWeight:800,color:'#1E293B',marginBottom:24,...f}}>Estadísticas del portfolio</div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:32}}>
               <div className="hide-mobile"><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:16,fontWeight:700,...f}}>Top Delitos</div><ResponsiveContainer width="100%" height={320}><PieChart><Pie data={chartDelitos} cx="50%" cy="50%" outerRadius={110} dataKey="value" label={({percent})=>`${(percent*100).toFixed(0)}%`} labelLine={false} fontSize={10}>{chartDelitos.map((_,i)=><Cell key={i} fill={COLORS[i%COLORS.length]}/>)}</Pie><Tooltip contentStyle={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,fontSize:12}} formatter={(v,n)=>[v+' causas',n]}/><Legend iconType="circle" iconSize={8} formatter={v=>v.substring(0,24)} wrapperStyle={{fontSize:11,color:'#64748b'}}/></PieChart></ResponsiveContainer></div>
               <div><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:16,fontWeight:700,...f}}>Causas por Tribunal</div><ResponsiveContainer width="100%" height={320}><BarChart data={chartTribunales} layout="vertical" margin={{left:8,right:24,top:4,bottom:4}}><XAxis type="number" tick={{fontSize:10,fill:'#94a3b8'}} axisLine={false} tickLine={false}/><YAxis type="category" dataKey="name" tick={{fontSize:9,fill:'#64748b'}} width={110} axisLine={false} tickLine={false}/><Tooltip contentStyle={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,fontSize:12}}/><Bar dataKey="value" radius={[0,6,6,0]}>{chartTribunales.map((_,i)=><Cell key={i} fill={COLORS[i%COLORS.length]}/>)}</Bar></BarChart></ResponsiveContainer></div>
@@ -1651,7 +1651,7 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
         {loading?(
           <div style={{textAlign:'center',padding:60,color:'#94a3b8',fontSize:14,...f}}>Cargando causas...</div>
         ):(
-          <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:16,boxShadow:'0 2px 12px rgba(0,0,0,0.05)',overflowX:'auto'}}>
+          <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:16,boxShadow:'0 2px 12px rgba(15,23,42,0.06)',overflowX:'auto'}}>
             <table style={{width:'100%',borderCollapse:'collapse'}}>
               <thead>
                 <tr style={{borderBottom:'2px solid #f1f5f9',background:'#fafbff'}}>
@@ -1662,8 +1662,8 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
               </thead>
               <tbody>
                 {filtered.map((c)=>(
-                  <tr key={c.id} className="row-hover" onClick={()=>openCausa(c)} style={{borderBottom:'1px solid #f8fafc',background:'#fff'}}>
-                    <td style={{padding:'12px 16px',fontSize:12,fontWeight:700,color:'#1e3a5f',...f}}>{c.ruc}</td>
+                  <tr key={c.id} className="row-hover" onClick={()=>openCausa(c)} style={{borderBottom:'1px solid #F8F9FC',background:'#fff'}}>
+                    <td style={{padding:'12px 16px',fontSize:12,fontWeight:700,color:'#1E293B',...f}}>{c.ruc}</td>
                     <td style={{padding:'12px 16px',fontSize:12,color:'#94a3b8',fontWeight:500,...f}}>
                       {/* ✅ Semáforo como tag visible en la lista — solo causas vigentes */}
                       <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
@@ -1672,7 +1672,7 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
                       </div>
                     </td>
                     <td style={{padding:'12px 16px',fontSize:12,color:'#475569',fontWeight:500,...f}}>{c.tribunal}</td>
-                    <td style={{padding:'12px 16px',...f}}><div style={{maxWidth:210,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:13,color:'#0f172a',fontWeight:500}}>{c.imputado}</div></td>
+                    <td style={{padding:'12px 16px',...f}}><div style={{maxWidth:210,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:13,color:'#1E293B',fontWeight:500}}>{c.imputado}</div></td>
                     <td style={{padding:'12px 16px',...f}}><div style={{maxWidth:180,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:12,color:'#64748b'}}>{c.delito||'—'}</div></td>
                     <td style={{padding:'12px 16px',fontSize:12,color:c.fiscal?'#374151':'#e2e8f0',fontStyle:c.fiscal?'normal':'italic',...f}}>{c.fiscal||'Sin asignar'}</td>
                     <td style={{padding:'12px 16px',...f}}><div style={{maxWidth:130,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:11,color:'#94a3b8'}}>{c.plazo||'—'}</div></td>
@@ -1688,8 +1688,8 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
 
       {showNuevaCausa&&(
         <div style={{position:'fixed',top:0,left:0,width:'100%',height:'100%',background:'rgba(15,23,42,0.5)',display:'flex',alignItems:'flex-start',justifyContent:'center',paddingTop:'5vh',zIndex:200,backdropFilter:'blur(4px)'}} onClick={e=>e.target===e.currentTarget&&setShowNuevaCausa(false)}>
-          <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:16,padding:32,width:540,maxWidth:'90vw',boxShadow:'0 24px 80px rgba(0,0,0,0.2)',maxHeight:'90vh',overflowY:'auto'}}>
-            <div style={{fontSize:20,fontWeight:800,color:'#0f172a',marginBottom:24,...f}}>Nueva Causa</div>
+          <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:16,padding:32,width:540,maxWidth:'90vw',boxShadow:'0 24px 80px rgba(15,23,42,0.22)',maxHeight:'90vh',overflowY:'auto'}}>
+            <div style={{fontSize:20,fontWeight:800,color:'#1E293B',marginBottom:24,...f}}>Nueva Causa</div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
               {/* RUC y RIT */}
               {[{key:'ruc',label:'RUC *',ph:'Ej: 2600123456-7',full:true},{key:'rit',label:'RIT',ph:'Ej: 1234-2026'}].map(field=>(
