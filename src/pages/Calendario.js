@@ -7,15 +7,15 @@ const CSS = `
   .cal-day { transition: background 0.2s ease, outline 0.2s ease; cursor: pointer; }
   .cal-day:hover { background: #f8faff !important; }
   .aud-card { transition: box-shadow 0.25s ease, transform 0.25s ease; }
-  .aud-card:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,0,0,0.07) !important; }
+  .aud-card:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(15,23,42,0.08) !important; }
   .nav-btn { transition: background 0.2s ease; }
   .nav-btn:hover { background: #f1f5f9 !important; }
   .tag-pill { transition: background 0.2s ease, border-color 0.2s ease; cursor: pointer; }
   .tag-pill:hover { opacity: 0.85; }
-  .btn-blue { font-family:'Inter',sans-serif; background:#1e3a5f; color:#fff; border:none; border-radius:10px; padding:9px 20px; font-size:13px; font-weight:600; cursor:pointer; transition:background 0.25s ease, box-shadow 0.25s ease; box-shadow:0 2px 8px rgba(30,58,95,0.2); }
+  .btn-blue { font-family:'Inter',sans-serif; background:#1E293B; color:#fff; border:none; border-radius:10px; padding:9px 20px; font-size:13px; font-weight:600; cursor:pointer; transition:background 0.25s ease, box-shadow 0.25s ease; box-shadow:0 2px 8px rgba(30,58,95,0.2); }
   .btn-blue:hover { background:#1e40af; box-shadow:0 4px 16px rgba(30,58,95,0.3); }
   .btn-out { font-family:'Inter',sans-serif; background:#fff; color:#374151; border:1.5px solid #e5e7eb; border-radius:10px; padding:8px 18px; font-size:13px; font-weight:500; cursor:pointer; transition:border-color 0.25s ease, color 0.25s ease, background 0.25s ease; }
-  .btn-out:hover { border-color:#93c5fd; color:#1e3a5f; background:#f8faff; }
+  .btn-out:hover { border-color:#93c5fd; color:#1E293B; background:#f8faff; }
   input,select,textarea { font-family:'Inter',sans-serif !important; text-transform:uppercase; }
   input:focus,select:focus,textarea:focus { outline:none; border-color:#93c5fd !important; box-shadow:0 0 0 3px rgba(37,99,235,0.08); }
 `
@@ -29,7 +29,7 @@ function tipoColor(tipo) {
   if (t.includes("AUMENTO") || t.includes("CIERRE")) return { bg:"#ecfdf5", border:"#a7f3d0", dot:"#065f46", text:"#065f46" }
   if (t.includes("ENTREVISTA") || t.includes("DECLARACION")) return { bg:"#fefce8", border:"#fef08a", dot:"#854d0e", text:"#854d0e" }
   if (t.includes("CAUTELA") || t.includes("APELACION") || t.includes("APELACIÓN")) return { bg:"#fdf4ff", border:"#e9d5ff", dot:"#701a75", text:"#701a75" }
-  return { bg:"#f8fafc", border:"#e2e8f0", dot:"#475569", text:"#334155" }
+  return { bg:"#F8F9FC", border:"#e2e8f0", dot:"#475569", text:"#334155" }
 }
 
 const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"]
@@ -55,7 +55,7 @@ function AudienciaEditCard({ a, onDelete, onUpdate, f }) {
   const [form, setForm] = useState({ fecha:a.fecha||'', hora:a.hora||'', tipo:a.tipo||'', tribunal:a.tribunal||'', sala:a.sala||'', imputado:a.imputado||'' })
   const [saving, setSaving] = useState(false)
   const c = tipoColor(a.tipo)
-  const inp = { width:'100%', padding:'7px 10px', border:'1.5px solid #e2e8f0', borderRadius:7, fontSize:12, color:'#0f172a', background:'#fff', ...f }
+  const inp = { width:'100%', padding:'7px 10px', border:'1.5px solid #e2e8f0', borderRadius:7, fontSize:12, color:'#1E293B', background:'#fff', ...f }
   const historial = (a.notas||'').split('\n').filter(l=>l.startsWith('['))
 
   const handleSave = async () => {
@@ -90,7 +90,7 @@ function AudienciaEditCard({ a, onDelete, onUpdate, f }) {
   )
 
   return (
-    <div className="aud-card" style={{background:'#fff',border:`1.5px solid ${c.border}`,borderRadius:12,padding:'14px 16px',boxShadow:'0 1px 4px rgba(0,0,0,0.04)',marginBottom:8}}>
+    <div className="aud-card" style={{background:'#fff',border:`1.5px solid ${c.border}`,borderRadius:12,padding:'14px 16px',boxShadow:'0 1px 4px rgba(15,23,42,0.05)',marginBottom:8}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
         <span style={{fontSize:11,fontWeight:700,color:c.text,background:c.bg,padding:'3px 8px',borderRadius:20,border:`1px solid ${c.border}`,...f}}>{a.tipo}</span>
         <div style={{display:'flex',gap:6,alignItems:'center'}}>
@@ -226,28 +226,28 @@ export default function Calendario({ onVerCausa }) {
   const inp = { width:"100%", padding:"9px 12px", border:"1.5px solid #e5e7eb", borderRadius:7, fontSize:13, color:"#1a1a2e", background:"#fff", ...f }
 
   return (
-    <div style={{background:"#f8fafc",minHeight:"100vh",...f}}>
+    <div style={{background:"#F8F9FC",minHeight:"100vh",...f}}>
       <style>{CSS}</style>
       <div style={{maxWidth:1200,margin:"0 auto",padding:"28px"}}>
 
         {/* Header */}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:24,flexWrap:"wrap",gap:12}}>
           <div>
-            <h1 style={{fontSize:26,fontWeight:800,color:"#1e3a5f",margin:0,letterSpacing:"-0.5px"}}>Calendario de audiencias</h1>
-            <p style={{fontSize:14,color:"#64748b",marginTop:4}}><span style={{fontWeight:700,color:"#1e3a5f"}}>{audDelMes.length}</span> audiencias en {MESES[mes]} {anio}</p>
+            <h1 style={{fontSize:26,fontWeight:800,color:"#1E293B",margin:0,letterSpacing:"-0.5px"}}>Calendario de audiencias</h1>
+            <p style={{fontSize:14,color:"#64748b",marginTop:4}}><span style={{fontWeight:700,color:"#1E293B"}}>{audDelMes.length}</span> audiencias en {MESES[mes]} {anio}</p>
           </div>
           <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
             <button className="btn-blue" onClick={()=>setShowForm(true)}>+ Nueva audiencia</button>
-            <button onClick={handleGmailToggle} style={{background:showGmail?'#0f172a':'#fff',color:showGmail?'#fff':'#475569',border:'1.5px solid #e2e8f0',borderRadius:8,padding:'8px 16px',fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:"'Inter',sans-serif",transition:'all 0.2s'}}>
+            <button onClick={handleGmailToggle} style={{background:showGmail?'#1E293B':'#fff',color:showGmail?'#fff':'#475569',border:'1.5px solid #e2e8f0',borderRadius:8,padding:'8px 16px',fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:"'Inter',sans-serif",transition:'all 0.2s'}}>
               📧 Gmail
             </button>
             <button onClick={()=>setVistaLista(!vistaLista)} className="btn-out"
-              style={{background:vistaLista?"#0f172a":"#fff",color:vistaLista?"#fff":"#475569",borderColor:vistaLista?"#0f172a":"#e2e8f0"}}>
+              style={{background:vistaLista?"#1E293B":"#fff",color:vistaLista?"#fff":"#475569",borderColor:vistaLista?"#1E293B":"#e2e8f0"}}>
               {vistaLista?"📅 Calendario":"☰ Lista"}
             </button>
             <div style={{display:"flex",alignItems:"center",gap:4,background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"4px"}}>
               <button onClick={()=>navMes(-1)} className="nav-btn" style={{background:"transparent",border:"none",borderRadius:7,width:36,height:36,cursor:"pointer",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center",color:"#475569"}}>‹</button>
-              <span style={{fontWeight:700,fontSize:15,minWidth:170,textAlign:"center",color:"#0f172a",...f}}>{MESES[mes]} {anio}</span>
+              <span style={{fontWeight:700,fontSize:15,minWidth:170,textAlign:"center",color:"#1E293B",...f}}>{MESES[mes]} {anio}</span>
               <button onClick={()=>navMes(1)} className="nav-btn" style={{background:"transparent",border:"none",borderRadius:7,width:36,height:36,cursor:"pointer",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center",color:"#475569"}}>›</button>
             </div>
           </div>
@@ -276,8 +276,8 @@ export default function Calendario({ onVerCausa }) {
         ) : !vistaLista ? (
           <div style={{display:"grid",gridTemplateColumns:"1fr",gap:20,overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
             {/* Calendario */}
-            <div style={{background:"#fff",borderRadius:16,border:"1px solid #e2e8f0",overflowX:"auto",WebkitOverflowScrolling:"touch",boxShadow:"0 1px 8px rgba(0,0,0,0.05)"}}>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",background:"#1e3a5f",minWidth:500}}>
+            <div style={{background:"#fff",borderRadius:16,border:"1px solid #e2e8f0",overflowX:"auto",WebkitOverflowScrolling:"touch",boxShadow:"0 1px 8px rgba(15,23,42,0.06)"}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",background:"#1E293B",minWidth:500}}>
                 {DIAS.map((d,i)=>(
                   <div key={d} style={{padding:"14px 0",textAlign:"center",fontSize:12,fontWeight:700,color:i===0||i===6?"#f87171":"#94a3b8",letterSpacing:0.8,...f}}>{d}</div>
                 ))}
@@ -295,7 +295,7 @@ export default function Calendario({ onVerCausa }) {
                     <div key={dia} className="cal-day" onClick={()=>setSelDia(dia===selDia?null:dia)}
                       style={{minHeight:96,padding:"8px 6px",background:seleccionado?"#eff6ff":esFind?"#fafafa":"#fff",borderRight:"1px solid #f1f5f9",borderBottom:"1px solid #f1f5f9",outline:seleccionado?"2px solid #93c5fd":"none",outlineOffset:-2}}>
                       <div style={{display:"flex",justifyContent:"flex-end",marginBottom:5}}>
-                        <div style={{width:30,height:30,borderRadius:"50%",background:esHoy?"#1e3a5f":"transparent",color:esHoy?"#fff":esFind?"#94a3b8":"#1e293b",fontSize:14,fontWeight:esHoy?700:600,display:"flex",alignItems:"center",justifyContent:"center",...f}}>{dia}</div>
+                        <div style={{width:30,height:30,borderRadius:"50%",background:esHoy?"#1E293B":"transparent",color:esHoy?"#fff":esFind?"#94a3b8":"#1e293b",fontSize:14,fontWeight:esHoy?700:600,display:"flex",alignItems:"center",justifyContent:"center",...f}}>{dia}</div>
                       </div>
                       {auds.slice(0,3).map((a,idx)=>{
                         const c=tipoColor(a.tipo)
@@ -317,7 +317,7 @@ export default function Calendario({ onVerCausa }) {
             <div>
               {selDia&&audDelDia.length>0?(
                 <div>
-                  <div style={{fontSize:15,fontWeight:700,color:"#0f172a",marginBottom:12,...f}}>{selDia} de {MESES[mes]} — <span style={{color:"#2563eb"}}>{audDelDia.length} audiencia{audDelDia.length>1?"s":""}</span></div>
+                  <div style={{fontSize:15,fontWeight:700,color:"#1E293B",marginBottom:12,...f}}>{selDia} de {MESES[mes]} — <span style={{color:"#2563eb"}}>{audDelDia.length} audiencia{audDelDia.length>1?"s":""}</span></div>
                   <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:580,overflowY:"auto"}}>
                     {audDelDia.map((a,i)=>{
                       const c=tipoColor(a.tipo)
@@ -341,20 +341,20 @@ export default function Calendario({ onVerCausa }) {
                   </div>
                 </div>
               ):selDia?(
-                <div style={{background:"#f8fafc",borderRadius:14,padding:24,textAlign:"center",border:"1.5px dashed #e2e8f0"}}>
+                <div style={{background:"#F8F9FC",borderRadius:14,padding:24,textAlign:"center",border:"1.5px dashed #e2e8f0"}}>
                   <div style={{fontSize:32,marginBottom:8}}>📅</div>
                   <div style={{fontSize:13,color:"#94a3b8",...f}}>Sin audiencias el {selDia} de {MESES[mes]}</div>
                   <button className="btn-blue" style={{marginTop:12,fontSize:12,padding:"7px 16px"}} onClick={()=>{setNueva(p=>({...p,fecha:`${anio}-${String(mes+1).padStart(2,"0")}-${String(selDia).padStart(2,"0")}`}));setShowForm(true)}}>+ Agregar audiencia</button>
                 </div>
               ):(
                 <div>
-                  <div style={{fontSize:15,fontWeight:700,color:"#0f172a",marginBottom:12,...f}}>Próximas — {MESES[mes]}</div>
+                  <div style={{fontSize:15,fontWeight:700,color:"#1E293B",marginBottom:12,...f}}>Próximas — {MESES[mes]}</div>
                   <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:580,overflowY:"auto"}}>
                     {audDelMes.slice(0,10).map((a,i)=>{
                       const c=tipoColor(a.tipo)
                       const dia=(a.fecha||"").split("-")[2]
                       return(
-                        <div key={i} className="aud-card" style={{display:"flex",gap:10,alignItems:"flex-start",background:"#fff",border:"1px solid #f1f5f9",borderRadius:12,padding:"12px 14px",boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
+                        <div key={i} className="aud-card" style={{display:"flex",gap:10,alignItems:"flex-start",background:"#fff",border:"1px solid #f1f5f9",borderRadius:12,padding:"12px 14px",boxShadow:"0 1px 3px rgba(15,23,42,0.05)"}}>
                           <div style={{minWidth:42,height:42,background:c.dot,borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:15,fontWeight:700,flexShrink:0,...f}}>{dia}</div>
                           <div style={{flex:1,minWidth:0}}>
                             <div style={{fontSize:12,fontWeight:700,color:c.text,marginBottom:2,...f}}>{a.tipo}</div>
@@ -371,10 +371,10 @@ export default function Calendario({ onVerCausa }) {
             </div>
           </div>
         ):(
-          <div style={{background:"#fff",borderRadius:16,border:"1px solid #e2e8f0",overflowX:"auto",WebkitOverflowScrolling:"touch",boxShadow:"0 1px 8px rgba(0,0,0,0.05)"}}>
+          <div style={{background:"#fff",borderRadius:16,border:"1px solid #e2e8f0",overflowX:"auto",WebkitOverflowScrolling:"touch",boxShadow:"0 1px 8px rgba(15,23,42,0.06)"}}>
             <table style={{width:"100%",borderCollapse:"collapse"}}>
               <thead>
-                <tr style={{background:"#1e3a5f"}}>
+                <tr style={{background:"#1E293B"}}>
                   {["Fecha","Hora","Tipo","Imputado","Tribunal","Sala","RIT",""].map(h=>(
                     <th key={h} style={{padding:"13px 16px",textAlign:"left",fontSize:11,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:1,...f}}>{h}</th>
                   ))}
@@ -387,7 +387,7 @@ export default function Calendario({ onVerCausa }) {
                     <tr key={i} style={{borderBottom:"1px solid #f1f5f9",background:i%2===0?"#fff":"#fafafa"}}>
                       <td style={{padding:"11px 16px",...f}}>
                         {a.ruc && onVerCausa ? (
-                          <span onClick={()=>irACausa(a.ruc)} style={{fontSize:12,fontWeight:700,color:'#1e3a5f',cursor:'pointer',textDecoration:'underline',...f}}>{a.ruc}</span>
+                          <span onClick={()=>irACausa(a.ruc)} style={{fontSize:12,fontWeight:700,color:'#1E293B',cursor:'pointer',textDecoration:'underline',...f}}>{a.ruc}</span>
                         ) : (
                           <span style={{fontSize:12,color:'#94a3b8',...f}}>{a.ruc||'—'}</span>
                         )}
@@ -414,8 +414,8 @@ export default function Calendario({ onVerCausa }) {
       {showForm&&(
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.4)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:200,backdropFilter:"blur(3px)"}}
           onClick={e=>e.target===e.currentTarget&&setShowForm(false)}>
-          <div style={{background:"#fff",border:"1px solid #eaecf4",borderRadius:14,padding:32,width:520,maxWidth:"90vw",boxShadow:"0 20px 60px rgba(0,0,0,0.15)",maxHeight:"90vh",overflowY:"auto"}}>
-            <div style={{fontFamily:"'Plus Jakarta Sans',serif",fontSize:20,fontWeight:700,color:"#0f172a",marginBottom:22}}>Nueva Audiencia</div>
+          <div style={{background:"#fff",border:"1px solid #eaecf4",borderRadius:14,padding:32,width:520,maxWidth:"90vw",boxShadow:"0 20px 60px rgba(15,23,42,0.18)",maxHeight:"90vh",overflowY:"auto"}}>
+            <div style={{fontFamily:"'Plus Jakarta Sans',serif",fontSize:20,fontWeight:700,color:"#1E293B",marginBottom:22}}>Nueva Audiencia</div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
               <div><div style={{fontSize:10,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1.2,marginBottom:5,...f}}>Fecha *</div><input type="date" style={inp} value={nueva.fecha} onChange={e=>setNueva(p=>({...p,fecha:e.target.value}))}/></div>
               <div><div style={{fontSize:10,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1.2,marginBottom:5,...f}}>Hora</div><input type="time" style={inp} value={nueva.hora} onChange={e=>setNueva(p=>({...p,hora:e.target.value}))}/></div>
