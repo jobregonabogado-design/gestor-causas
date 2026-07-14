@@ -643,10 +643,53 @@ function ImputadoCard({ imp, idx, onUpdate, onDelete }) {
         <Field2 label="Nombre completo" field="nombre"/>
         <Field2 label="RUT" field="rut"/>
         <Field2 label="Nacionalidad" field="nacionalidad"/>
-        <Field2 label="Fecha de nacimiento" field="fecha_nacimiento"/>
+        <div>
+          <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:5,fontWeight:600,...f}}>Fecha de nacimiento</div>
+          {editField==='fecha_nacimiento'?(
+            <div style={{display:'flex',gap:6}}>
+              <input type="date" style={inp} value={editValue} onChange={e=>setEditValue(e.target.value)}
+                onKeyDown={e=>{if(e.key==='Enter'){onUpdate('fecha_nacimiento',editValue);setEditField(null)}if(e.key==='Escape')setEditField(null)}} autoFocus/>
+              <button style={{background:'#1e3a5f',color:'#fff',border:'none',borderRadius:7,padding:'7px 12px',fontSize:12,cursor:'pointer',...f}} onClick={()=>{onUpdate('fecha_nacimiento',editValue);setEditField(null)}}>✓</button>
+              <button style={{background:'#fff',border:'1.5px solid #e2e8f0',borderRadius:7,padding:'7px 10px',fontSize:12,cursor:'pointer',...f}} onClick={()=>setEditField(null)}>✗</button>
+            </div>
+          ):(
+            <div onClick={()=>{setEditField('fecha_nacimiento');setEditValue(imp.fecha_nacimiento||'')}}
+              style={{padding:'8px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:imp.fecha_nacimiento?'#0f172a':'#cbd5e1',minHeight:36,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
+              <span>
+                {imp.fecha_nacimiento || 'Clic para agregar...'}
+                {imp.fecha_nacimiento && (() => {
+                  const edad = calcularEdadActual(imp.fecha_nacimiento)
+                  return edad !== null ? <span style={{marginLeft:8,fontSize:11,color:'#1e3a5f',fontWeight:600,background:'#eff6ff',padding:'1px 7px',borderRadius:10}}>
+                    {edad} AÑOS HOY
+                  </span> : null
+                })()}
+              </span>
+              <span style={{fontSize:11,color:'#cbd5e1'}}>✏</span>
+            </div>
+          )}
+        </div>
         <Field2 label="Domicilio" field="domicilio" />
         <Field2 label="Otros antecedentes" field="otros_antecedentes"/>
       </div>
+      {/* Régimen RPA / ADULTO */}
+      {imp.regimen && (
+        <div style={{marginTop:10,display:'flex',alignItems:'center',gap:10}}>
+          <div style={{
+            display:'inline-flex',alignItems:'center',gap:6,
+            padding:'5px 14px',borderRadius:20,fontWeight:700,fontSize:12,
+            background: imp.regimen==='RPA' ? '#faf5ff' : '#eff6ff',
+            border: `1.5px solid ${imp.regimen==='RPA' ? '#ddd6fe' : '#bfdbfe'}`,
+            color: imp.regimen==='RPA' ? '#5b21b6' : '#1e3a5f',
+            ...f
+          }}>
+            {imp.regimen==='RPA' ? '👶 RPA — LEY PENAL ADOLESCENTE' : '👤 ADULTO — CÓDIGO PROCESAL PENAL'}
+          </div>
+          <button onClick={()=>onUpdate('regimen', imp.regimen==='RPA'?'ADULTO':'RPA')}
+            style={{fontSize:11,color:'#94a3b8',background:'transparent',border:'1px solid #e2e8f0',borderRadius:6,padding:'3px 8px',cursor:'pointer',...f}}>
+            Cambiar
+          </button>
+        </div>
+      )}
       <div style={{marginTop:14,background:imp.esta_detenido?'#fef2f2':'#f0fdf4',border:`1.5px solid ${imp.esta_detenido?'#fecaca':'#a7f3d0'}`,borderRadius:10,padding:14}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:imp.esta_detenido?12:0}}>
           <div style={{fontSize:13,fontWeight:600,color:imp.esta_detenido?'#dc2626':'#059669',...f}}>{imp.esta_detenido?'🔒 Privado de libertad':'🔓 En libertad'}</div>
@@ -895,6 +938,29 @@ function TeoriaDelCaso({ causaId, ruc, session, registrarActividad, onAccion }) 
   )
 }
 
+// ─── EDAD Y RÉGIMEN RPA/ADULTO ───────────────────────────────────────────────
+function calcularEdadActual(fechaNac) {
+  if (!fechaNac) return null
+  const nac = new Date(fechaNac + 'T12:00:00')
+  if (isNaN(nac)) return null
+  const hoy = new Date()
+  let edad = hoy.getFullYear() - nac.getFullYear()
+  const m = hoy.getMonth() - nac.getMonth()
+  if (m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) edad--
+  return edad
+}
+
+function calcularRegimenAlMomento(fechaNac, fechaHechos) {
+  if (!fechaNac || !fechaHechos) return null
+  const nac = new Date(fechaNac + 'T12:00:00')
+  const hechos = new Date(fechaHechos + 'T12:00:00')
+  if (isNaN(nac) || isNaN(hechos)) return null
+  let edad = hechos.getFullYear() - nac.getFullYear()
+  const m = hechos.getMonth() - nac.getMonth()
+  if (m < 0 || (m === 0 && hechos.getDate() < nac.getDate())) edad--
+  return edad < 18 ? 'RPA' : 'ADULTO'
+}
+
 function calcularVencimiento(fechaInicio, diasPlazo) {
   if (!fechaInicio || !diasPlazo) return ''
   const inicio = new Date(fechaInicio + 'T12:00:00')
@@ -1036,7 +1102,7 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
   const [saving,setSaving]=useState(false)
   const [showNuevaCausa,setShowNuevaCausa]=useState(false)
   const [showStats,setShowStats]=useState(false)
-  const [nuevaCausa,setNuevaCausa]=useState({ruc:'',rit:'',tribunal:'',delito:'',imputado:'',fiscal:'',cautelar:'',centro_penal:'',plazo:'',fecha_inicio:'',dias_plazo:'',estado:'vigente'})
+  const [nuevaCausa,setNuevaCausa]=useState({ruc:'',rit:'',tribunal:'',delito:'',imputado:'',imputado_rut:'',fiscal:'',cautelar:'',centro_penal:'',plazo:'',fecha_inicio:'',dias_plazo:'',fecha_hechos:'',estado:'vigente'})
 
   useEffect(()=>{ loadCausas() },[])
 
@@ -1095,6 +1161,19 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
       const u={...selectedCausa,[field]:value,updated_at:new Date().toISOString()}
       setSelectedCausa(u);setCausas(prev=>prev.map(c=>c.id===u.id?u:c))
       if (registrarActividad) registrarActividad('accion', `Editó campo "${field}" en RUC ${selectedCausa.ruc}`)
+      // Al guardar fecha_hechos → recalcular régimen de cada imputado
+      if (field === 'fecha_hechos') {
+        const nuevosImputados = await Promise.all(imputados.map(async imp => {
+          if (!imp.fecha_nacimiento || imp.regimen) return imp // No sobreescribir si ya tiene régimen
+          const regAuto = calcularRegimenAlMomento(imp.fecha_nacimiento, value)
+          if (regAuto) {
+            await supabase.from('imputados').update({ regimen: regAuto }).eq('id', imp.id)
+            return { ...imp, regimen: regAuto }
+          }
+          return imp
+        }))
+        setImputados(nuevosImputados)
+      }
     }
     setEditField(null);setSaving(false)
   }
@@ -1120,13 +1199,13 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
     if (nuevaCausa.fecha_inicio && nuevaCausa.dias_plazo) plazoFinal = 'VENCE ' + calcularVencimiento(nuevaCausa.fecha_inicio, nuevaCausa.dias_plazo)
     const subestadoAuto = calcularSubestado(plazoFinal)
     const up = (v) => typeof v === 'string' ? corregirOrtografia(v.toUpperCase()) : v
-    const causaData = { ruc:up(nuevaCausa.ruc), rit:up(nuevaCausa.rit), tribunal:up(nuevaCausa.tribunal), delito:up(nuevaCausa.delito), imputado:up(nuevaCausa.imputado), fiscal:up(nuevaCausa.fiscal), cautelar:up(nuevaCausa.cautelar), centro_penal:up(nuevaCausa.centro_penal), plazo:up(plazoFinal), estado:nuevaCausa.estado, subestado:subestadoAuto }
+    const causaData = { ruc:up(nuevaCausa.ruc), rit:up(nuevaCausa.rit), tribunal:up(nuevaCausa.tribunal), delito:up(nuevaCausa.delito), imputado:up(nuevaCausa.imputado), fiscal:up(nuevaCausa.fiscal), cautelar:up(nuevaCausa.cautelar), centro_penal:up(nuevaCausa.centro_penal), plazo:up(plazoFinal), estado:nuevaCausa.estado, subestado:subestadoAuto, fecha_hechos: nuevaCausa.fecha_hechos || null }
     const { data, error } = await supabase.from('causas').insert(causaData).select().single()
     if (!error) {
       setCausas(prev => [data, ...prev])
       setShowNuevaCausa(false)
       if (registrarActividad) registrarActividad('accion', `Nueva causa: RUC ${causaData.ruc}`)
-      setNuevaCausa({ruc:'',rit:'',tribunal:'',delito:'',imputado:'',fiscal:'',cautelar:'',centro_penal:'',plazo:'',fecha_inicio:'',dias_plazo:'',estado:'vigente'})
+      setNuevaCausa({ruc:'',rit:'',tribunal:'',delito:'',imputado:'',imputado_rut:'',fiscal:'',cautelar:'',centro_penal:'',plazo:'',fecha_inicio:'',dias_plazo:'',fecha_hechos:'',estado:'vigente'})
     }
     setSaving(false)
   }
@@ -1193,6 +1272,43 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
                 {[{key:'imputado',label:'Imputado(s)',full:true,editable:true},{key:'delito',label:'Delito',full:true,editable:true},{key:'tribunal',label:'Tribunal',editable:true},{key:'rit',label:'RIT JG',editable:true},{key:'fiscal',label:'Fiscal a cargo',editable:true},{key:'cautelar',label:'Cautelar procesal',editable:true},{key:'centro_penal',label:'Centro Penal',editable:true},{key:'plazo',label:'Plazo / Vencimiento',editable:true,full:true}].map(field=>(
                   <Field key={field.key} label={field.label} value={c[field.key]} editable={field.editable} full={field.full} editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField(field.key,editValue)}/>
                 ))}
+                {/* Fecha de los hechos */}
+                <div style={{gridColumn:'1/-1',marginTop:4}}>
+                  <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Fecha de los hechos</div>
+                  {editField==='fecha_hechos'?(
+                    <div style={{display:'flex',gap:6}}>
+                      <input type="date" style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#0f172a',background:'#fff',...f}}
+                        value={editValue} onChange={e=>setEditValue(e.target.value)}
+                        onKeyDown={e=>{if(e.key==='Enter')updateField('fecha_hechos',editValue);if(e.key==='Escape')setEditField(null)}} autoFocus/>
+                      <button className="btn-primary" style={{padding:'8px 14px',fontSize:12}} onClick={()=>updateField('fecha_hechos',editValue)}>✓</button>
+                      <button className="btn-secondary" style={{padding:'8px 12px',fontSize:12}} onClick={()=>setEditField(null)}>✗</button>
+                    </div>
+                  ):(
+                    <div className="fld" onClick={()=>{setEditField('fecha_hechos');setEditValue(c.fecha_hechos||'')}}
+                      style={{padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:c.fecha_hechos?'#0f172a':'#cbd5e1',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
+                      <div style={{display:'flex',alignItems:'center',gap:10}}>
+                        <span>{c.fecha_hechos || 'Clic para agregar...'}</span>
+                        {c.fecha_hechos && imputados.map(imp => {
+                          if (!imp.fecha_nacimiento) return null
+                          const regimen = imp.regimen || calcularRegimenAlMomento(imp.fecha_nacimiento, c.fecha_hechos)
+                          if (!regimen) return null
+                          return (
+                            <span key={imp.id} style={{
+                              fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:10,
+                              background: regimen==='RPA'?'#faf5ff':'#eff6ff',
+                              color: regimen==='RPA'?'#5b21b6':'#1e3a5f',
+                              border: `1px solid ${regimen==='RPA'?'#ddd6fe':'#bfdbfe'}`,
+                              ...f
+                            }}>
+                              {imp.nombre?.split(' ')[0]}: {regimen}
+                            </span>
+                          )
+                        })}
+                      </div>
+                      <span style={{fontSize:11,color:'#cbd5e1'}}>✏</span>
+                    </div>
+                  )}
+                </div>
                 <div style={{gridColumn:'1/-1',marginTop:8}}>
                   <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:8,fontWeight:600,...f}}>Imputados adicionales</div>
                   {(c.imputado||'').split('|').filter((_,i)=>i>0).map((imp,i)=>(
@@ -1240,8 +1356,14 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
                     // Campos que NO deben convertirse a mayúsculas
                     const camposSinUpper = ['fecha_nacimiento','fecha_detencion','rut']
                     if (typeof value === 'string' && !camposSinUpper.includes(field)) value = value.toUpperCase()
-                    await supabase.from('imputados').update({[field]:value}).eq('id',imp.id)
-                    setImputados(prev=>prev.map(x=>x.id===imp.id?{...x,[field]:value}:x))
+                    // Calcular régimen automático al guardar fecha_nacimiento
+                    let updateData = {[field]:value}
+                    if (field === 'fecha_nacimiento' && value && c.fecha_hechos) {
+                      const regAuto = calcularRegimenAlMomento(value, c.fecha_hechos)
+                      if (regAuto && !imp.regimen) updateData.regimen = regAuto
+                    }
+                    await supabase.from('imputados').update(updateData).eq('id',imp.id)
+                    setImputados(prev=>prev.map(x=>x.id===imp.id?{...x,...updateData}:x))
                     // Sincronizar datos personales en TODAS las causas con el mismo RUT
                     const camposPersonales = ['nombre','nacionalidad','domicilio','fecha_nacimiento','otros_antecedentes']
                     if (camposPersonales.includes(field) && imp.rut) {
@@ -1456,6 +1578,10 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
                   placeholder="Buscar delito..."
                   isDelito={true}
                 />
+              </div>
+              <div style={{gridColumn:'1/-1'}}>
+                <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Fecha de los hechos</div>
+                <input type="date" style={inp} value={nuevaCausa.fecha_hechos} onChange={e=>setNuevaCausa(p=>({...p,fecha_hechos:e.target.value}))}/>
               </div>
               <div style={{gridColumn:'1/-1',background:'#f0fdf4',border:'1.5px solid #a7f3d0',borderRadius:12,padding:16}}>
                 <div style={{fontSize:11,fontWeight:700,color:'#059669',marginBottom:14,...f}}>⏱ Cálculo de plazo ACD</div>
