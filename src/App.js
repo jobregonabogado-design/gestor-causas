@@ -7,15 +7,15 @@ import Calendario from './pages/Calendario'
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Inter', system-ui, sans-serif; background: #f8fafc; color: #0f172a; -webkit-font-smoothing: antialiased; }
-  ::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-track { background: #f1f5f9; } ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-  .nav-link { font-family:'Inter',sans-serif; font-size:13px; font-weight:500; padding:7px 16px; border-radius:8px; border:none; cursor:pointer; transition:all 0.2s cubic-bezier(0.4,0,0.2,1); background:transparent; color:#64748b; }
-  .nav-link:hover { background:#f0f4ff; color:#2563eb; }
-  .nav-link.active { background:linear-gradient(135deg,#2563eb,#1d4ed8); color:#fff; font-weight:600; box-shadow:0 4px 12px rgba(37,99,235,0.3); }
-  .page-in { animation:pageIn 0.3s cubic-bezier(0.4,0,0.2,1) forwards; }
+  body { font-family: 'Inter', system-ui, sans-serif; background: #F8F9FC; color: #1E293B; -webkit-font-smoothing: antialiased; }
+  ::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-track { background: #F8F9FC; } ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+  .nav-link { font-family:'Inter',sans-serif; font-size:13px; font-weight:500; padding:8px 18px; border-radius:10px; border:none; cursor:pointer; transition:all 0.25s cubic-bezier(0.4,0,0.2,1); background:transparent; color:#64748b; }
+  .nav-link:hover { background:#F1F5F9; color:#1E293B; }
+  .nav-link.active { background:#1E293B; color:#fff; font-weight:600; box-shadow:0 8px 20px rgba(30,41,59,0.22); }
+  .page-in { animation:pageIn 0.35s cubic-bezier(0.4,0,0.2,1) forwards; }
   @keyframes pageIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
-  .salir-btn { background:transparent; border:1.5px solid #e2e8f0; color:#64748b; border-radius:7px; padding:5px 14px; font-size:12px; font-family:'Inter',sans-serif; cursor:pointer; transition:all 0.2s; font-weight:500; }
-  .salir-btn:hover { border-color:#2563eb; color:#2563eb; }
+  .salir-btn { background:transparent; border:1.5px solid #E2E8F0; color:#64748b; border-radius:10px; padding:6px 16px; font-size:12px; font-family:'Inter',sans-serif; cursor:pointer; transition:all 0.25s; font-weight:500; }
+  .salir-btn:hover { border-color:#1E293B; color:#1E293B; background:#F8F9FC; }
   @keyframes slideIn { from{transform:translateX(100%);opacity:0} to{transform:translateX(0);opacity:1} }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.7} }
   @media (max-width: 640px) {
@@ -69,24 +69,24 @@ function PanelActividad({ onClose }) {
     return acc
   }, {})
 
-  const tipoColor = (tipo) => tipo === 'ingreso' ? '#059669' : tipo === 'salida' ? '#dc2626' : '#2563eb'
+  const tipoColor = (tipo) => tipo === 'ingreso' ? '#059669' : tipo === 'salida' ? '#dc2626' : '#1E293B'
   const tipoIcon = (tipo) => tipo === 'ingreso' ? '🟢' : tipo === 'salida' ? '🔴' : '📝'
 
   return (
     <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', justifyContent:'flex-end' }}>
-      <div style={{ position:'absolute', inset:0, background:'rgba(15,23,42,0.4)' }} onClick={onClose}/>
-      <div style={{ position:'relative', width:520, background:'#fff', height:'100vh', overflowY:'auto', boxShadow:'-8px 0 40px rgba(0,0,0,0.15)', animation:'slideIn 0.3s ease', fontFamily:"'Inter',sans-serif" }}>
-        <div style={{ background:'linear-gradient(135deg,#1e293b,#0f172a)', padding:'24px 24px 20px', position:'sticky', top:0, zIndex:10 }}>
+      <div style={{ position:'absolute', inset:0, background:'rgba(15,23,42,0.35)', backdropFilter:'blur(2px)' }} onClick={onClose}/>
+      <div style={{ position:'relative', width:520, background:'#fff', height:'100vh', overflowY:'auto', boxShadow:'-16px 0 48px rgba(15,23,42,0.12)', animation:'slideIn 0.3s ease', fontFamily:"'Inter',sans-serif" }}>
+        <div style={{ background:'#1E293B', padding:'24px 24px 20px', position:'sticky', top:0, zIndex:10 }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
             <div>
               <div style={{ fontSize:18, fontWeight:800, color:'#fff', letterSpacing:'-0.5px' }}>👁 Panel de Control</div>
               <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, textTransform:'uppercase', letterSpacing:1 }}>Solo visible para el titular</div>
             </div>
-            <button onClick={onClose} style={{ background:'rgba(255,255,255,0.1)', border:'none', borderRadius:8, padding:'6px 12px', color:'#fff', cursor:'pointer', fontSize:13 }}>✕ Cerrar</button>
+            <button onClick={onClose} style={{ background:'rgba(255,255,255,0.1)', border:'none', borderRadius:10, padding:'6px 12px', color:'#fff', cursor:'pointer', fontSize:13 }}>✕ Cerrar</button>
           </div>
           <div style={{ display:'flex', gap:6 }}>
             {['hoy','semana','mes'].map(opcion => (
-              <button key={opcion} onClick={() => setFiltro(opcion)} style={{ padding:'5px 14px', borderRadius:20, fontSize:11, fontWeight:600, border:'none', cursor:'pointer', textTransform:'uppercase', letterSpacing:0.5, background: filtro===opcion ? '#2563eb' : 'rgba(255,255,255,0.1)', color: filtro===opcion ? '#fff' : '#94a3b8', fontFamily:"'Inter',sans-serif" }}>
+              <button key={opcion} onClick={() => setFiltro(opcion)} style={{ padding:'6px 16px', borderRadius:20, fontSize:11, fontWeight:600, border:'none', cursor:'pointer', textTransform:'uppercase', letterSpacing:0.5, background: filtro===opcion ? '#fff' : 'rgba(255,255,255,0.1)', color: filtro===opcion ? '#1E293B' : '#94a3b8', fontFamily:"'Inter',sans-serif", transition:'all 0.2s' }}>
                 {opcion === 'hoy' ? 'Hoy' : opcion === 'semana' ? '7 días' : '30 días'}
               </button>
             ))}
@@ -94,15 +94,15 @@ function PanelActividad({ onClose }) {
         </div>
         <div style={{ padding:20 }}>
           {solicitudes.length > 0 && (
-            <div style={{ background:'#fef2f2', border:'1.5px solid #fecaca', borderRadius:12, padding:16, marginBottom:20 }}>
+            <div style={{ background:'#fff', border:'1.5px solid #fecaca', borderRadius:16, padding:16, marginBottom:20, boxShadow:'0 8px 24px rgba(220,38,38,0.06)' }}>
               <div style={{ fontSize:13, fontWeight:700, color:'#dc2626', marginBottom:12 }}>🚨 {solicitudes.length} solicitud{solicitudes.length>1?'es':''} de eliminación pendiente{solicitudes.length>1?'s':''}</div>
               {solicitudes.map(s => (
-                <div key={s.id} style={{ background:'#fff', border:'1px solid #fecaca', borderRadius:8, padding:'10px 14px', marginBottom:8 }}>
-                  <div style={{ fontSize:12, fontWeight:600, color:'#0f172a', marginBottom:4 }}>{s.descripcion}</div>
+                <div key={s.id} style={{ background:'#fff', border:'1px solid #E2E8F0', borderRadius:12, padding:'10px 14px', marginBottom:8 }}>
+                  <div style={{ fontSize:12, fontWeight:600, color:'#1E293B', marginBottom:4 }}>{s.descripcion}</div>
                   <div style={{ fontSize:11, color:'#94a3b8', marginBottom:8 }}>Solicitado por: {s.solicitante_email} · {new Date(s.created_at).toLocaleString('es-CL')}</div>
                   <div style={{ display:'flex', gap:8 }}>
-                    <button onClick={() => responderSolicitud(s.id, 'aprobada', s.tabla, s.registro_id)} style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:6, padding:'5px 14px', fontSize:11, color:'#dc2626', cursor:'pointer', fontWeight:600 }}>✓ Aprobar eliminación</button>
-                    <button onClick={() => responderSolicitud(s.id, 'rechazada', null, null)} style={{ background:'#f0fdf4', border:'1px solid #a7f3d0', borderRadius:6, padding:'5px 14px', fontSize:11, color:'#059669', cursor:'pointer', fontWeight:600 }}>✕ Rechazar</button>
+                    <button onClick={() => responderSolicitud(s.id, 'aprobada', s.tabla, s.registro_id)} style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:8, padding:'5px 14px', fontSize:11, color:'#dc2626', cursor:'pointer', fontWeight:600 }}>✓ Aprobar eliminación</button>
+                    <button onClick={() => responderSolicitud(s.id, 'rechazada', null, null)} style={{ background:'#f0fdf4', border:'1px solid #a7f3d0', borderRadius:8, padding:'5px 14px', fontSize:11, color:'#059669', cursor:'pointer', fontWeight:600 }}>✕ Rechazar</button>
                   </div>
                 </div>
               ))}
@@ -114,34 +114,34 @@ function PanelActividad({ onClose }) {
             const acciones = actividadUsuario.filter(a => a.tipo === 'accion').length
             const ingresos = actividadUsuario.filter(a => a.tipo === 'ingreso').length
             return (
-              <div key={email} style={{ background:'#f8fafc', border:'1.5px solid #e2e8f0', borderRadius:12, marginBottom:12, overflow:'hidden' }}>
-                <div onClick={() => setUsuarioExpandido(prev => prev === email ? null : email)} style={{ padding:'14px 16px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'space-between', background: usuarioExpandido===email ? '#f0f7ff' : '#f8fafc' }}>
+              <div key={email} style={{ background:'#fff', border:'1.5px solid #E2E8F0', borderRadius:14, marginBottom:12, overflow:'hidden', boxShadow:'0 4px 16px rgba(15,23,42,0.04)' }}>
+                <div onClick={() => setUsuarioExpandido(prev => prev === email ? null : email)} style={{ padding:'14px 16px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'space-between', background: usuarioExpandido===email ? '#F8F9FC' : '#fff', transition:'background 0.2s' }}>
                   <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                    <div style={{ width:36, height:36, borderRadius:'50%', background:'linear-gradient(135deg,#7c3aed,#2563eb)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:14, fontWeight:700 }}>{email[0]?.toUpperCase()}</div>
+                    <div style={{ width:36, height:36, borderRadius:'50%', background:'#1E293B', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:14, fontWeight:700 }}>{email[0]?.toUpperCase()}</div>
                     <div>
-                      <div style={{ fontSize:13, fontWeight:700, color:'#0f172a' }}>{email}</div>
+                      <div style={{ fontSize:13, fontWeight:700, color:'#1E293B' }}>{email}</div>
                       {s.ultimoIngreso && <div style={{ fontSize:11, color:'#94a3b8' }}>Último ingreso: {new Date(s.ultimoIngreso).toLocaleString('es-CL')}</div>}
                     </div>
                   </div>
                   <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                     <span style={{ fontSize:11, fontWeight:700, color:'#059669', background:'#f0fdf4', padding:'2px 8px', borderRadius:20 }}>🟢 {ingresos}</span>
-                    <span style={{ fontSize:11, fontWeight:700, color:'#2563eb', background:'#eff6ff', padding:'2px 8px', borderRadius:20 }}>📝 {acciones}</span>
+                    <span style={{ fontSize:11, fontWeight:700, color:'#1E293B', background:'#F1F5F9', padding:'2px 8px', borderRadius:20 }}>📝 {acciones}</span>
                     <span style={{ fontSize:11, fontWeight:700, color:'#dc2626', background:'#fef2f2', padding:'2px 8px', borderRadius:20 }}>🔴 {salidas}</span>
                     <span style={{ fontSize:12, color:'#94a3b8' }}>{usuarioExpandido===email ? '▲' : '▼'}</span>
                   </div>
                 </div>
                 {usuarioExpandido === email && (
-                  <div style={{ borderTop:'1px solid #e2e8f0', padding:'12px 16px' }}>
+                  <div style={{ borderTop:'1px solid #E2E8F0', padding:'12px 16px' }}>
                     {actividadUsuario.length === 0 ? (
                       <div style={{ fontSize:12, color:'#cbd5e1', textAlign:'center', padding:12 }}>Sin actividad en este período</div>
                     ) : actividadUsuario.map(a => (
-                      <div key={a.id} style={{ display:'flex', gap:10, padding:'8px 0', borderBottom:'1px solid #f1f5f9', alignItems:'center' }}>
+                      <div key={a.id} style={{ display:'flex', gap:10, padding:'8px 0', borderBottom:'1px solid #F1F5F9', alignItems:'center' }}>
                         <span style={{ fontSize:13, flexShrink:0 }}>{tipoIcon(a.tipo)}</span>
                         <div style={{ flex:1 }}>
-                          <div style={{ fontSize:12, fontWeight:500, color:'#0f172a' }}>{a.descripcion}</div>
+                          <div style={{ fontSize:12, fontWeight:500, color:'#1E293B' }}>{a.descripcion}</div>
                           <div style={{ fontSize:11, color:'#94a3b8', marginTop:1 }}>{new Date(a.created_at).toLocaleString('es-CL')}</div>
                         </div>
-                        <span style={{ fontSize:10, fontWeight:700, color: tipoColor(a.tipo), textTransform:'uppercase', padding:'2px 6px', borderRadius:4, background: a.tipo==='ingreso'?'#f0fdf4':a.tipo==='salida'?'#fef2f2':'#eff6ff', flexShrink:0 }}>{a.tipo}</span>
+                        <span style={{ fontSize:10, fontWeight:700, color: tipoColor(a.tipo), textTransform:'uppercase', padding:'2px 6px', borderRadius:6, background: a.tipo==='ingreso'?'#f0fdf4':a.tipo==='salida'?'#fef2f2':'#F1F5F9', flexShrink:0 }}>{a.tipo}</span>
                       </div>
                     ))}
                   </div>
@@ -155,10 +155,10 @@ function PanelActividad({ onClose }) {
           ) : actividad.length === 0 ? (
             <div style={{ textAlign:'center', padding:20, color:'#cbd5e1', fontSize:13 }}>Sin actividad en este período</div>
           ) : actividad.map(a => (
-            <div key={a.id} style={{ display:'flex', gap:10, padding:'10px 12px', borderBottom:'1px solid #f1f5f9', alignItems:'flex-start' }}>
+            <div key={a.id} style={{ display:'flex', gap:10, padding:'10px 12px', borderBottom:'1px solid #F1F5F9', alignItems:'flex-start' }}>
               <span style={{ fontSize:14, flexShrink:0, marginTop:1 }}>{tipoIcon(a.tipo)}</span>
               <div style={{ flex:1 }}>
-                <div style={{ fontSize:12, fontWeight:500, color:'#0f172a' }}>{a.descripcion}</div>
+                <div style={{ fontSize:12, fontWeight:500, color:'#1E293B' }}>{a.descripcion}</div>
                 <div style={{ fontSize:11, color:'#94a3b8', marginTop:2 }}>{a.email} · {new Date(a.created_at).toLocaleString('es-CL')}</div>
               </div>
               <span style={{ fontSize:10, fontWeight:700, color: tipoColor(a.tipo), textTransform:'uppercase', flexShrink:0 }}>{a.tipo}</span>
@@ -177,7 +177,7 @@ function NotifToast({ notif, onClose }) {
   }, [])
   const esIngreso = notif.tipo === 'ingreso'
   return (
-    <div style={{ position:'fixed', bottom:24, right:24, zIndex:2000, background: esIngreso ? 'linear-gradient(135deg,#f0fdf4,#dcfce7)' : 'linear-gradient(135deg,#fef2f2,#fee2e2)', border: `1.5px solid ${esIngreso?'#a7f3d0':'#fecaca'}`, borderRadius:12, padding:'14px 18px', minWidth:300, maxWidth:380, boxShadow:'0 8px 32px rgba(0,0,0,0.12)', animation:'slideIn 0.3s ease', fontFamily:"'Inter',sans-serif" }}>
+    <div style={{ position:'fixed', bottom:24, right:24, zIndex:2000, background:'#fff', border: `1.5px solid ${esIngreso?'#a7f3d0':'#fecaca'}`, borderRadius:14, padding:'14px 18px', minWidth:300, maxWidth:380, boxShadow:'0 16px 40px rgba(15,23,42,0.14)', animation:'slideIn 0.3s ease', fontFamily:"'Inter',sans-serif" }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12 }}>
         <div style={{ display:'flex', gap:10, alignItems:'center' }}>
           <span style={{ fontSize:22 }}>{esIngreso ? '🟢' : '🔴'}</span>
@@ -258,9 +258,9 @@ export default function App() {
   }, [userRol, session])
 
   if (loading) return (
-    <div style={{ minHeight:'100vh', background:'#f8fafc', display:'flex', alignItems:'center', justifyContent:'center' }}>
-      <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:12 }}>
-        <div style={{ width:40, height:40, borderRadius:10, background:'linear-gradient(135deg,#2563eb,#1d4ed8)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, boxShadow:'0 8px 24px rgba(37,99,235,0.3)' }}>⚖</div>
+    <div style={{ minHeight:'100vh', background:'#F8F9FC', display:'flex', alignItems:'center', justifyContent:'center' }}>
+      <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:14 }}>
+        <div style={{ width:44, height:44, borderRadius:14, background:'#1E293B', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, boxShadow:'0 12px 32px rgba(30,41,59,0.18)' }}>⚖</div>
         <div style={{ fontFamily:'Inter,sans-serif', color:'#94a3b8', fontSize:13, letterSpacing:1.5, textTransform:'uppercase', fontWeight:500 }}>Cargando...</div>
       </div>
     </div>
@@ -278,30 +278,30 @@ export default function App() {
   }
 
   return (
-    <div style={{ background:'#f8fafc', minHeight:'100vh' }}>
+    <div style={{ background:'#F8F9FC', minHeight:'100vh' }}>
       <style>{css}</style>
       {notif && <NotifToast notif={notif} onClose={() => setNotif(null)} />}
       {showPanel && <PanelActividad onClose={() => { setShowPanel(false); setSolicitudesPendientes(0) }} />}
 
-      <nav style={{ background:'rgba(255,255,255,0.9)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)', borderBottom:'1px solid rgba(226,232,240,0.8)', padding:'0 32px', height:58, display:'flex', alignItems:'center', justifyContent:'space-between', position:'sticky', top:0, zIndex:100, boxShadow:'0 1px 3px rgba(0,0,0,0.04)' }}>
+      <nav style={{ background:'rgba(255,255,255,0.92)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)', borderBottom:'1px solid #E2E8F0', padding:'0 32px', height:60, display:'flex', alignItems:'center', justifyContent:'space-between', position:'sticky', top:0, zIndex:100, boxShadow:'0 1px 2px rgba(15,23,42,0.03)' }}>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-          <div style={{ width:34, height:34, background:'linear-gradient(135deg,#2563eb,#1d4ed8)', borderRadius:9, display:'flex', alignItems:'center', justifyContent:'center', fontSize:17, boxShadow:'0 4px 10px rgba(37,99,235,0.25)' }}>⚖</div>
+          <div style={{ width:36, height:36, background:'#1E293B', borderRadius:11, display:'flex', alignItems:'center', justifyContent:'center', fontSize:17, boxShadow:'0 6px 16px rgba(30,41,59,0.2)' }}>⚖</div>
           <div>
-            <div style={{ fontFamily:'Inter,sans-serif', fontSize:15, fontWeight:800, color:'#0f172a', letterSpacing:'-0.5px' }}>LexOffice</div>
+            <div style={{ fontFamily:'Inter,sans-serif', fontSize:15, fontWeight:800, color:'#1E293B', letterSpacing:'-0.5px' }}>LexOffice</div>
             <div style={{ fontSize:9, color:'#94a3b8', letterSpacing:2, textTransform:'uppercase', fontWeight:500, marginTop:-1 }}>Gestión Penal</div>
           </div>
         </div>
-        <div style={{ display:'flex', gap:4, background:'#f8fafc', padding:'4px', borderRadius:10, border:'1px solid #e2e8f0' }}>
+        <div style={{ display:'flex', gap:4, background:'#F8F9FC', padding:'4px', borderRadius:12, border:'1px solid #E2E8F0' }}>
           {[{id:'causas',label:'Causas'},{id:'calendario',label:'Calendario'}].map(item => (
             <button key={item.id} className={`nav-link${pagina===item.id?' active':''}`} onClick={() => setPagina(item.id)}>{item.label}</button>
           ))}
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-          <span style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:0.5, padding:'3px 10px', borderRadius:20, background: esTitular ? 'linear-gradient(135deg,#2563eb,#1d4ed8)' : '#f1f5f9', color: esTitular ? '#fff' : '#64748b', border: esTitular ? 'none' : '1px solid #e2e8f0', fontFamily:"'Inter',sans-serif" }}>
+          <span style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:0.5, padding:'4px 12px', borderRadius:20, background: esTitular ? '#1E293B' : '#F1F5F9', color: esTitular ? '#fff' : '#64748b', border: esTitular ? 'none' : '1px solid #E2E8F0', fontFamily:"'Inter',sans-serif" }}>
             {esTitular ? '⚖ Titular' : '👤 Asistente'}
           </span>
           {esTitular && (
-            <button onClick={() => setShowPanel(true)} style={{ position:'relative', background: solicitudesPendientes > 0 ? '#fef2f2' : '#f8fafc', border: `1.5px solid ${solicitudesPendientes > 0 ? '#fecaca' : '#e2e8f0'}`, borderRadius:8, padding:'5px 12px', fontSize:12, cursor:'pointer', fontWeight:600, color: solicitudesPendientes > 0 ? '#dc2626' : '#64748b', display:'flex', alignItems:'center', gap:6, fontFamily:"'Inter',sans-serif" }}>
+            <button onClick={() => setShowPanel(true)} style={{ position:'relative', background: solicitudesPendientes > 0 ? '#fef2f2' : '#fff', border: `1.5px solid ${solicitudesPendientes > 0 ? '#fecaca' : '#E2E8F0'}`, borderRadius:10, padding:'6px 14px', fontSize:12, cursor:'pointer', fontWeight:600, color: solicitudesPendientes > 0 ? '#dc2626' : '#64748b', display:'flex', alignItems:'center', gap:6, fontFamily:"'Inter',sans-serif", transition:'all 0.2s' }}>
               👁 Control
               {solicitudesPendientes > 0 && (
                 <span style={{ background:'#dc2626', color:'#fff', borderRadius:'50%', width:16, height:16, fontSize:9, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', animation:'pulse 1.5s infinite' }}>{solicitudesPendientes}</span>
@@ -309,7 +309,7 @@ export default function App() {
             </button>
           )}
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <div style={{ width:28, height:28, borderRadius:'50%', background: esTitular ? 'linear-gradient(135deg,#2563eb,#1d4ed8)' : 'linear-gradient(135deg,#7c3aed,#6d28d9)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:11, fontWeight:700 }}>{session.user.email?.[0]?.toUpperCase()}</div>
+            <div style={{ width:29, height:29, borderRadius:'50%', background: esTitular ? '#1E293B' : '#7c3aed', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:11, fontWeight:700 }}>{session.user.email?.[0]?.toUpperCase()}</div>
             <span className='nav-nombre' style={{ fontSize:12, color:'#64748b', fontFamily:'Inter,sans-serif' }}>{userRol?.nombre || session.user.email}</span>
           </div>
           <button className="salir-btn" onClick={handleSignOut}>Salir</button>
