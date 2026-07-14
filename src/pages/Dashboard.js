@@ -682,7 +682,7 @@ function ImputadoCard({ imp, idx, onUpdate, onDelete }) {
             color: imp.regimen==='RPA' ? '#5b21b6' : '#1e3a5f',
             ...f
           }}>
-            {imp.regimen==='RPA' ? '👶 RPA — LEY PENAL ADOLESCENTE' : '👤 ADULTO — CÓDIGO PROCESAL PENAL'}
+            {imp.regimen==='RPA' ? 'RPA — LEY PENAL ADOLESCENTE' : 'ADULTO — CÓDIGO PROCESAL PENAL'}
           </div>
           <button onClick={()=>onUpdate('regimen', imp.regimen==='RPA'?'ADULTO':'RPA')}
             style={{fontSize:11,color:'#94a3b8',background:'transparent',border:'1px solid #e2e8f0',borderRadius:6,padding:'3px 8px',cursor:'pointer',...f}}>
@@ -1250,8 +1250,15 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
                   <span style={{color:'#475569',fontWeight:500}}>{c.tribunal}</span>
                   <span style={{color:'#e2e8f0'}}>|</span>
                   <span style={{color:'#475569',fontWeight:500}}>{c.imputado}</span>
-                  {/* ✅ Semáforo visible en el header de la causa */}
                   <SemaforoTag updated_at={c.updated_at} estado={c.estado} />
+                  {imputados.filter(i=>i.regimen).map(i=>(
+                    <span key={i.id} style={{
+                      fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:10,
+                      background:i.regimen==='RPA'?'#faf5ff':'#eff6ff',
+                      color:i.regimen==='RPA'?'#5b21b6':'#1e3a5f',
+                      border:`1px solid ${i.regimen==='RPA'?'#ddd6fe':'#bfdbfe'}`,...f
+                    }}>{i.regimen}</span>
+                  ))}
                 </div>
               </div>
               <div style={{display:'flex',gap:8,alignItems:'center'}}>
@@ -1289,18 +1296,18 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
                       <div style={{display:'flex',alignItems:'center',gap:10}}>
                         <span>{c.fecha_hechos || 'Clic para agregar...'}</span>
                         {c.fecha_hechos && imputados.map(imp => {
-                          if (!imp.fecha_nacimiento) return null
+                          if (!imp.fecha_nacimiento && !imp.regimen) return null
                           const regimen = imp.regimen || calcularRegimenAlMomento(imp.fecha_nacimiento, c.fecha_hechos)
                           if (!regimen) return null
                           return (
                             <span key={imp.id} style={{
-                              fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:10,
+                              fontSize:10,fontWeight:700,padding:'3px 10px',borderRadius:10,
                               background: regimen==='RPA'?'#faf5ff':'#eff6ff',
                               color: regimen==='RPA'?'#5b21b6':'#1e3a5f',
-                              border: `1px solid ${regimen==='RPA'?'#ddd6fe':'#bfdbfe'}`,
+                              border: `1.5px solid ${regimen==='RPA'?'#ddd6fe':'#bfdbfe'}`,
                               ...f
                             }}>
-                              {imp.nombre?.split(' ')[0]}: {regimen}
+                              ✓ {imp.nombre?.split(' ')[0]}: {regimen}
                             </span>
                           )
                         })}
@@ -1358,9 +1365,12 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
                     if (typeof value === 'string' && !camposSinUpper.includes(field)) value = value.toUpperCase()
                     // Calcular régimen automático al guardar fecha_nacimiento
                     let updateData = {[field]:value}
-                    if (field === 'fecha_nacimiento' && value && c.fecha_hechos) {
-                      const regAuto = calcularRegimenAlMomento(value, c.fecha_hechos)
-                      if (regAuto && !imp.regimen) updateData.regimen = regAuto
+                    if (field === 'fecha_nacimiento' && value) {
+                      const fechaHechos = c.fecha_hechos || selectedCausa?.fecha_hechos
+                      if (fechaHechos) {
+                        const regAuto = calcularRegimenAlMomento(value, fechaHechos)
+                        if (regAuto) updateData.regimen = regAuto
+                      }
                     }
                     await supabase.from('imputados').update(updateData).eq('id',imp.id)
                     setImputados(prev=>prev.map(x=>x.id===imp.id?{...x,...updateData}:x))
