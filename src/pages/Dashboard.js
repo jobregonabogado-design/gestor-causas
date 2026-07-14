@@ -110,6 +110,285 @@ function corregirOrtografia(texto) {
   return resultado
 }
 
+
+// ─── LISTA COMPLETA DE TRIBUNALES CHILE ──────────────────────────────────────
+const TRIBUNALES_CHILE = [
+  // ── Juzgados de Garantia — Region Metropolitana ──
+  '1 JG STGO','2 JG STGO','3 JG STGO','4 JG STGO','5 JG STGO',
+  '6 JG STGO','7 JG STGO','8 JG STGO','9 JG STGO','10 JG STGO',
+  '11 JG STGO','12 JG STGO','13 JG STGO','14 JG STGO','15 JG STGO',
+  'JG COLINA','JG PUENTE ALTO','JG SAN BERNARDO','JG MELIPILLA',
+  'JG TALAGANTE','JG CURACAVI',
+  // ── Juzgados de Garantia — Regiones ──
+  'JG ARICA','JG IQUIQUE','JG TOCOPILLA','JG CALAMA','JG ANTOFAGASTA',
+  'JG DIEGO DE ALMAGRO','JG COPIAPO','JG VALLENAR',
+  'JG LA SERENA','JG VICUNA','JG COQUIMBO','JG OVALLE','JG ILLAPEL',
+  'JG LA LIGUA','JG CALERA','JG SAN FELIPE','JG LOS ANDES','JG QUILLOTA',
+  'JG LIMACHE','JG VINA DEL MAR','JG VALPARAISO','JG QUILPUE',
+  'JG VILLA ALEMANA','JG CASABLANCA','JG SAN ANTONIO',
+  'JG GRANEROS','JG RANCAGUA','JG SAN VICENTE','JG RENGO',
+  'JG SAN FERNANDO','JG SANTA CRUZ',
+  'JG CURICO','JG MOLINA','JG CONSTITUCION','JG TALCA','JG SAN JAVIER',
+  'JG CAUQUENES','JG LINARES','JG PARRAL',
+  'JG TOME','JG TALCAHUANO','JG CONCEPCION','JG SAN PEDRO DE LA PAZ',
+  'JG CHIGUAYANTE','JG CORONEL','JG LOS ANGELES','JG ARAUCO','JG CANETE',
+  'JG ANGOL','JG VICTORIA','JG NUEVA IMPERIAL','JG TEMUCO','JG LAUTARO',
+  'JG PITRUFQUEN','JG LONCOCHE','JG VILLARRICA',
+  'JG OSORNO','JG RIO NEGRO','JG PUERTO VARAS','JG PUERTO MONTT',
+  'JG ANCUD','JG CASTRO','JG COIHAIQUE','JG PUNTA ARENAS',
+  'JG MARIQUINA','JG VALDIVIA','JG LOS LAGOS',
+  'JG SAN CARLOS','JG CHILLAN','JG YUNGAY',
+  // ── Tribunales de Juicio Oral ──
+  '1 TOP STGO','2 TOP STGO','3 TOP STGO','4 TOP STGO',
+  '5 TOP STGO','6 TOP STGO','7 TOP STGO',
+  'TOP COLINA','TOP PUENTE ALTO','TOP SAN BERNARDO','TOP MELIPILLA','TOP TALAGANTE',
+  'TOP ARICA','TOP IQUIQUE','TOP CALAMA','TOP ANTOFAGASTA','TOP COPIAPO',
+  'TOP LA SERENA','TOP OVALLE','TOP SAN FELIPE','TOP LOS ANDES','TOP QUILLOTA',
+  'TOP VINA DEL MAR','TOP VALPARAISO','TOP SAN ANTONIO',
+  'TOP RANCAGUA','TOP SAN FERNANDO','TOP SANTA CRUZ',
+  'TOP CURICO','TOP TALCA','TOP LINARES','TOP CAUQUENES',
+  'TOP CONCEPCION','TOP LOS ANGELES','TOP CANETE',
+  'TOP ANGOL','TOP TEMUCO','TOP VILLARRICA',
+  'TOP OSORNO','TOP PUERTO MONTT','TOP CASTRO',
+  'TOP COIHAIQUE','TOP PUNTA ARENAS','TOP VALDIVIA','TOP CHILLAN',
+]
+
+// ─── CATÁLOGO DE DELITOS FISCALÍA (con artículo) ─────────────────────────────
+const DELITOS_CATALOGO = [
+  // ROBOS
+  {c:802, n:'ROBO CON INTIMIDACIÓN. ART. 433, 436 INC. 1'},
+  {c:803, n:'ROBO CON VIOLENCIA. ART. 436 INC. 1, 433, 439'},
+  {c:804, n:'ROBO POR SORPRESA. ART. 436 INC. 2'},
+  {c:807, n:'ROBO CON FUERZA EN LAS COSAS'},
+  {c:808, n:'ROBO EN BIENES NACIONALES DE USO PUBLICO'},
+  {c:809, n:'ROBO EN LUGAR HABITADO O DESTINADO A LA HABITACIÓN. ART. 440'},
+  {c:810, n:'ROBO EN LUGAR NO HABITADO. ART. 442'},
+  {c:827, n:'ROBO CON HOMICIDIO'},
+  {c:828, n:'ROBO CON VIOLACIÓN. ART. 433 N°1'},
+  {c:829, n:'ROBO CON CASTRACIÓN, MUTILACIÓN O LESIONES GRAVES GRAVÍSIMAS'},
+  {c:831, n:'ROBO DE VEHÍCULO MOTORIZADO. ART. 443 INC. 2'},
+  {c:861, n:'ROBO CON LESIONES GRAVES GRAVÍSIMAS. ART. 433 N°2'},
+  {c:862, n:'ROBO CON RETENCIÓN DE VÍCTIMAS O LESIONES GRAVES. ART. 433 N°3'},
+  {c:867, n:'ROBO VEHÍCULO MOTORIZADO POR SORPRESA, VIOLENCIA O INTIMIDACIÓN'},
+  {c:868, n:'ROBO DE VEHÍCULO UTILIZANDO ELEMENTOS DISTRACTIVOS'},
+  {c:870, n:'ROBO CON OCASIÓN DE CALAMIDAD O ALTERACIÓN AL ORDEN PUBLICO'},
+  {c:872, n:'SAQUEO'},
+  // HURTOS
+  {c:801, n:'HURTO SIMPLE'},
+  {c:821, n:'HURTO DE HALLAZGO'},
+  {c:826, n:'HURTO AGRAVADO. ART. 447 CODIGO PENAL'},
+  {c:846, n:'HURTO SIMPLE POR UN VALOR SOBRE 40 UTM'},
+  {c:847, n:'HURTO SIMPLE POR UN VALOR DE 4 A 40 UTM'},
+  {c:848, n:'HURTO SIMPLE POR UN VALOR DE MEDIA A 4 UTM'},
+  {c:13028, n:'HURTO FALTA. ART. 494 BIS CODIGO PENAL'},
+  // HOMICIDIOS
+  {c:701, n:'PARRICIDIO. ART. 390 INC. 1°'},
+  {c:702, n:'HOMICIDIO. ART. 391'},
+  {c:703, n:'HOMICIDIO CALIFICADO. ART. 391 N°1'},
+  {c:705, n:'HOMICIDIO EN RIÑA O PELEA'},
+  {c:707, n:'INFANTICIDIO'},
+  {c:720, n:'FEMICIDIO ÍNTIMO. ART. 390 BIS'},
+  {c:766, n:'FEMICIDIO NO ÍNTIMO. ART. 390 TER'},
+  {c:769, n:'CONSPIRACIÓN HOMICIDIO CALIFICADO POR PREMIO. ART. 391 BIS INC. 1°'},
+  // LESIONES
+  {c:709, n:'LESIONES GRAVES'},
+  {c:710, n:'LESIONES MENOS GRAVES'},
+  {c:717, n:'LESIONES GRAVES GRAVÍSIMAS. ART. 397 N°1'},
+  {c:718, n:'CASTRACIÓN Y MUTILACIÓN'},
+  {c:13001, n:'LESIONES LEVES. ART. 494 N°5'},
+  {c:763, n:'MALTRATO CORPORAL A PERSONAS VULNERABLES. ART. 403 BIS INC. 1°'},
+  {c:764, n:'MALTRATO COMETIDO POR GARANTE. ART. 403 BIS INC. FINAL'},
+  {c:765, n:'TRATOS DEGRADANTES A PERSONAS VULNERABLES. ART. 403 TER'},
+  // DROGAS
+  {c:7007, n:'TRÁFICO ILÍCITO DE DROGAS. ART. 3 LEY 20.000'},
+  {c:7037, n:'MICROTRÁFICO. ART. 4 LEY 20.000'},
+  {c:7001, n:'ELABORACIÓN ILEGAL DE DROGAS. ART. 1 LEY 20.000'},
+  {c:7014, n:'ASOCIACIONES ILÍCITAS LEY DE DROGAS. ART. 16 LEY 20.000'},
+  {c:7032, n:'SUMINISTRO INDEBIDO DE DROGAS. ART. 7 LEY 20.000'},
+  // DELITOS SEXUALES
+  {c:621, n:'VIOLACIÓN DE MENOR DE 14 AÑOS. ART. 362'},
+  {c:637, n:'VIOLACIÓN DE MAYOR DE 14 AÑOS. ART. 361'},
+  {c:620, n:'ABUSO SEXUAL SIN CONTACTO MENOR 14 AÑOS. ART. 366 QUÁTER INC. 1, 2 Y 3'},
+  {c:619, n:'ABUSO SEXUAL SIN CONTACTO MAYOR 14 MENOR 18 AÑOS. ART. 366 QUÁTER INC. 4'},
+  {c:623, n:'ABUSO SEXUAL CON CONTACTO CORPORAL MENOR 14 AÑOS. ART. 366 BIS'},
+  {c:633, n:'ABUSO SEXUAL CALIFICADO. ART. 365 BIS'},
+  {c:635, n:'ABUSO SEXUAL DE MAYOR DE 14 CON CIRCUNSTANCIAS DE VIOLACIÓN. ART. 366'},
+  {c:634, n:'ABUSO SEXUAL MAYOR 14 MENOR 18 CON CIRCUNSTANCIAS ESTUPRO. ART. 366 INC. 2'},
+  {c:639, n:'ABUSO SEXUAL MAYOR DE 14 AÑOS POR SORPRESA. ART. 366 QUÁTER'},
+  {c:628, n:'VIOLACIÓN CON HOMICIDIO O FEMICIDIO. ART. 372 BIS'},
+  {c:650, n:'ALMACENAMIENTO MATERIAL PORNOGRÁFICO INFANTIL. ART. 367 QUÁTER INC. 3°'},
+  {c:649, n:'PRODUCCIÓN MATERIAL PORNOGRÁFICO UTILIZANDO MENOR 18. ART. 367 QUÁTER INC. 2°'},
+  {c:648, n:'COMERCIALIZACIÓN MATERIAL PORNOGRÁFICO MENOR 18. ART. 367 QUÁTER INC. 1°'},
+  {c:638, n:'CAPTACIÓN, GRABACIÓN Y DIFUSIÓN DE REGISTROS AUDIOVISUALES ÍNTIMOS'},
+  {c:608, n:'ESTUPRO. ART. 363'},
+  {c:609, n:'INCESTO. ART. 375'},
+  // ARMAS
+  {c:10008, n:'PORTE DE ARMA PROHIBIDA. ART. 14 INC. 1° LEY 17.798'},
+  {c:10009, n:'TENENCIA DE ARMAS PROHIBIDAS. ART. 13 LEY 17.798'},
+  {c:10016, n:'DISPAROS INJUSTIFICADOS EN VÍA PÚBLICA. ART. 14 D INC. FINAL LEY 17.798'},
+  {c:10015, n:'COLOCACIÓN DE BOMBA O ARTEFACTO. ART. 14 D LEY 17.798'},
+  {c:518, n:'PORTE DE ARMA CORTANTE O PUNZANTE. ART. 288 BIS'},
+  // RECEPTACIÓN
+  {c:812, n:'RECEPTACIÓN. ART. 456 BIS A'},
+  {c:869, n:'RECEPTACIÓN DE VEHÍCULOS MOTORIZADOS'},
+  {c:864, n:'RECEPTACIÓN COMETIDA POR PERSONA JURÍDICA. ART. 456 BIS A'},
+  // AMENAZAS
+  {c:524, n:'AMENAZAS SIMPLES CONTRA PERSONAS Y PROPIEDADES. ART. 296 N°3'},
+  {c:525, n:'AMENAZAS CONDICIONALES CONTRA PERSONAS Y PROPIEDADES. ART. 296 1 Y 2, 297'},
+  {c:515, n:'ATENTADOS Y AMENAZAS CONTRA LA AUTORIDAD. ART. 261 N°1 Y 264'},
+  // TRÁNSITO
+  {c:14006, n:'CONDUCCIÓN EN ESTADO DE EBRIEDAD CON RESULTADO MUERTE. ART. 196 INC. 3 LEY TRÁNSITO'},
+  {c:14007, n:'CONDUCCIÓN EN ESTADO DE EBRIEDAD CON LESIONES GRAVÍSIMAS. ART. 196 INC. 3 LEY TRÁNSITO'},
+  {c:14008, n:'CONDUCCIÓN EN ESTADO DE EBRIEDAD CON LESIONES GRAVES. ART. 196 INC. 2 LEY TRÁNSITO'},
+  {c:14004, n:'CONDUCCIÓN EN ESTADO DE EBRIEDAD CON SUSPENSIÓN LICENCIA. ART. 196, 209 LEY TRÁNSITO'},
+  {c:12079, n:'CONDUCCIÓN BAJO INFLUENCIA DEL ALCOHOL CAUSANDO LESIONES MENOS GRAVES'},
+  {c:12080, n:'CONDUCCIÓN BAJO INFLUENCIA DEL ALCOHOL CAUSANDO LESIONES GRAVES'},
+  {c:14022, n:'OCULTAMIENTO DE PLACA PATENTE. ART. 192 LETRA E'},
+  {c:14020, n:'CUASIDELITO VEHÍCULO MOTORIZADO LEY TRÁNSITO'},
+  // VIF
+  {c:22100, n:'MALTRATO HABITUAL VIF. ART. 14 LEY 20.066'},
+  {c:22101, n:'INCUMPLIMIENTO REITERADO PAGO PENSIÓN ALIMENTOS. ART. 14 BIS LEY 20.066'},
+  // OTROS FRECUENTES
+  {c:101, n:'QUEBRANTAMIENTO. ART. 90'},
+  {c:512, n:'CONNIVENCIA FUGA Y EVASIÓN CULPABLE DETENIDO. ART. 299 A 304'},
+  {c:816, n:'ESTAFAS Y OTRAS DEFRAUDACIONES CONTRA PARTICULARES'},
+  {c:806, n:'EXTORSIÓN. ART. 438'},
+  {c:840, n:'DAÑOS SIMPLES. ART. 487'},
+  {c:841, n:'DAÑOS CALIFICADOS. ART. 485 Y 486'},
+  {c:12149, n:'DESACATO. ART. 240 CÓDIGO DE PROCEDIMIENTO CIVIL'},
+  {c:501, n:'DESÓRDENES PÚBLICOS. ART. 269'},
+  {c:552, n:'ASOCIACIÓN ILÍCITA PARA SIMPLES DELITOS. ART. 293'},
+  {c:553, n:'ASOCIACIÓN ILÍCITA PARA CRÍMENES. ART. 293'},
+  {c:16403, n:'ASOCIACIÓN ILÍCITA PARA COMERCIO ILEGAL. ART. 2 LEY 21.426'},
+  {c:716, n:'INJURIA ACCIÓN PRIVADA. ART. 416 AL 420'},
+  {c:715, n:'CALUMNIA ACCIÓN PRIVADA. ART. 412 AL 415'},
+  {c:706, n:'AUXILIO AL SUICIDIO'},
+  {c:604, n:'USURPACIÓN DE ESTADO CIVIL. ART. 354'},
+  {c:509, n:'ABANDONO O MALTRATO ANIMAL. ART. 291 BIS'},
+  {c:410, n:'COHECHO COMETIDO POR EMPLEADO PÚBLICO. ART. 248, 248 BIS Y 249'},
+  {c:411, n:'COHECHO O SOBORNO COMETIDO POR PARTICULAR. ART. 250'},
+  {c:406, n:'MALVERSACIÓN DE CAUDALES PÚBLICOS. ART. 233, 234, 235 Y 236'},
+  {c:202, n:'SECUESTRO. ART. 141 INC. 1 Y 2'},
+  {c:203, n:'SUSTRACCIÓN DE MENORES. ART. 142'},
+]
+
+// ─── COMPONENTE DROPDOWN CON BUSQUEDA ────────────────────────────────────────
+function SearchableSelect({ value, onChange, options, placeholder, isDelito }) {
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const ref = useRef(null)
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const filtered = useMemo(() => {
+    if (!query.trim()) return options.slice(0, 40)
+    const q = query.toUpperCase()
+    return options.filter(o => {
+      const text = isDelito ? o.n : o
+      return text.toUpperCase().includes(q)
+    }).slice(0, 40)
+  }, [query, options, isDelito])
+
+  const displayValue = value
+    ? (isDelito
+        ? (options.find(o => o.n === value)?.n || value)
+        : value)
+    : ''
+
+  return (
+    <div ref={ref} style={{ position: 'relative', width: '100%' }}>
+      <div
+        onClick={() => { setOpen(!open); setQuery('') }}
+        style={{
+          padding: '9px 12px', border: '1.5px solid #e2e8f0', borderRadius: 8,
+          fontSize: 13, color: value ? '#0f172a' : '#94a3b8', background: '#fff',
+          cursor: 'pointer', display: 'flex', justifyContent: 'space-between',
+          alignItems: 'center', minHeight: 38, fontFamily: "'Inter',sans-serif",
+          transition: 'border-color 0.2s ease',
+        }}
+      >
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+          {displayValue || placeholder}
+        </span>
+        <span style={{ color: '#94a3b8', fontSize: 11, marginLeft: 8, flexShrink: 0 }}>
+          {open ? '▲' : '▼'}
+        </span>
+      </div>
+      {open && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000,
+          background: '#fff', border: '1.5px solid #bfdbfe', borderRadius: 10,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.12)', marginTop: 4, overflow: 'hidden',
+        }}>
+          <div style={{ padding: '8px 10px', borderBottom: '1px solid #f1f5f9' }}>
+            <input
+              autoFocus
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Buscar..."
+              style={{
+                width: '100%', padding: '6px 10px', border: '1.5px solid #e2e8f0',
+                borderRadius: 7, fontSize: 12, outline: 'none',
+                fontFamily: "'Inter',sans-serif",
+              }}
+              onClick={e => e.stopPropagation()}
+            />
+          </div>
+          <div style={{ maxHeight: 220, overflowY: 'auto' }}>
+            {value && (
+              <div
+                onClick={() => { onChange(''); setOpen(false); setQuery('') }}
+                style={{ padding: '8px 12px', fontSize: 12, color: '#94a3b8', cursor: 'pointer', borderBottom: '1px solid #f8fafc', fontFamily: "'Inter',sans-serif" }}
+              >
+                — Limpiar selección
+              </div>
+            )}
+            {filtered.length === 0 && (
+              <div style={{ padding: '12px', fontSize: 12, color: '#94a3b8', textAlign: 'center', fontFamily: "'Inter',sans-serif" }}>
+                Sin resultados para "{query}"
+              </div>
+            )}
+            {filtered.map((opt, i) => {
+              const label = isDelito ? opt.n : opt
+              const isSelected = isDelito ? value === opt.n : value === opt
+              return (
+                <div
+                  key={i}
+                  onClick={() => { onChange(isDelito ? opt.n : opt); setOpen(false); setQuery('') }}
+                  style={{
+                    padding: '9px 12px', fontSize: 12, cursor: 'pointer',
+                    background: isSelected ? '#eff6ff' : 'transparent',
+                    color: isSelected ? '#1e3a5f' : '#374151',
+                    fontWeight: isSelected ? 600 : 400,
+                    borderBottom: '1px solid #f8fafc',
+                    fontFamily: "'Inter',sans-serif",
+                    display: 'flex', gap: 8, alignItems: 'flex-start',
+                  }}
+                  onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#f8faff' }}
+                  onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent' }}
+                >
+                  {isDelito && <span style={{ color: '#94a3b8', fontSize: 10, flexShrink: 0, marginTop: 1 }}>#{opt.c}</span>}
+                  <span>{label}</span>
+                </div>
+              )
+            })}
+            {filtered.length === 40 && (
+              <div style={{ padding: '6px 12px', fontSize: 11, color: '#94a3b8', textAlign: 'center', fontFamily: "'Inter',sans-serif" }}>
+                Escribe para filtrar más resultados...
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+
 const TMAP = {'JG VINA DEL MAR':'JG VIÑA DEL MAR','JG CONCEPCION':'JG CONCEPCIÓN','JG VALPARAISO':'JG VALPARAÍSO','JG QUILPUE':'JG QUILPUÉ','JG CHILLAN':'JG CHILLÁN','JG AYSEN':'JG AYSÉN','JG CANETE':'JG CAÑETE','TOP CANETE':'TOP CAÑETE','13 JG DE STGO':'13 JG STGO','TOP SERENA':'TOP LA SERENA'}
 const normT = t => t ? (TMAP[t.trim()] || t.trim()) : t
 const f = { fontFamily:"'Inter',sans-serif" }
@@ -989,7 +1268,8 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
             )}
             {activeTab==='plazo'&&(
               <PlazoCalculador causaId={c.id} plazoActual={c.plazo} aumentos={aumentos} onGuardarAudiencia={async(form)=>{
-                const{data,error}=await supabase.from('aumentos_plazo').insert({causa_id:c.id,fecha_audiencia:form.fecha_audiencia,tipo_audiencia:form.tipo_audiencia,dias_plazo:parseInt(form.dias_plazo),dias_aumento:parseInt(form.dias_plazo),observacion:form.observacion}).select().single()
+                const diasNum = parseInt(form.dias_plazo) || 0
+                const{data,error}=await supabase.from('aumentos_plazo').insert({causa_id:c.id,fecha_audiencia:form.fecha_audiencia,tipo_audiencia:form.tipo_audiencia,dias_plazo:diasNum,dias_aumento:diasNum,observacion:form.observacion||''}).select().single()
                 if(!error){
                   const nuevosAumentos=[...aumentos,data].sort((a,b)=>a.fecha_audiencia.localeCompare(b.fecha_audiencia))
                   setAumentos(nuevosAumentos)
@@ -1151,12 +1431,32 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
           <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:16,padding:32,width:540,maxWidth:'90vw',boxShadow:'0 24px 80px rgba(0,0,0,0.2)',maxHeight:'90vh',overflowY:'auto'}}>
             <div style={{fontSize:20,fontWeight:800,color:'#0f172a',marginBottom:24,...f}}>Nueva Causa</div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
-              {[{key:'ruc',label:'RUC *',ph:'Ej: 2600123456-7',full:true},{key:'rit',label:'RIT',ph:'Ej: 1234-2026'},{key:'tribunal',label:'Tribunal',ph:'Ej: 7 JG STGO'},{key:'imputado',label:'Imputado',ph:'Nombre completo',full:true},{key:'delito',label:'Delito',ph:'Tipo de delito',full:true},{key:'fiscal',label:'Fiscal',ph:'Nombre del fiscal'},{key:'cautelar',label:'Cautelar',ph:'Prisión preventiva...'}].map(field=>(
+              {[{key:'ruc',label:'RUC *',ph:'Ej: 2600123456-7',full:true},{key:'rit',label:'RIT',ph:'Ej: 1234-2026'},{key:'imputado',label:'Imputado',ph:'Nombre completo',full:true},{key:'fiscal',label:'Fiscal',ph:'Nombre del fiscal'},{key:'cautelar',label:'Cautelar',ph:'Prisión preventiva...'}].map(field=>(
                 <div key={field.key} style={{gridColumn:field.full?'1/-1':'auto'}}>
                   <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>{field.label}</div>
                   <input style={inp} placeholder={field.ph} value={nuevaCausa[field.key]} onChange={e=>setNuevaCausa(p=>({...p,[field.key]:e.target.value}))}/>
                 </div>
               ))}
+              <div style={{gridColumn:'1/-1'}}>
+                <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Tribunal *</div>
+                <SearchableSelect
+                  value={nuevaCausa.tribunal}
+                  onChange={v=>setNuevaCausa(p=>({...p,tribunal:v}))}
+                  options={TRIBUNALES_CHILE}
+                  placeholder="Seleccionar tribunal..."
+                  isDelito={false}
+                />
+              </div>
+              <div style={{gridColumn:'1/-1'}}>
+                <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Delito *</div>
+                <SearchableSelect
+                  value={nuevaCausa.delito}
+                  onChange={v=>setNuevaCausa(p=>({...p,delito:v}))}
+                  options={DELITOS_CATALOGO}
+                  placeholder="Buscar delito..."
+                  isDelito={true}
+                />
+              </div>
               <div style={{gridColumn:'1/-1',background:'#f0fdf4',border:'1.5px solid #a7f3d0',borderRadius:12,padding:16}}>
                 <div style={{fontSize:11,fontWeight:700,color:'#059669',marginBottom:14,...f}}>⏱ Cálculo de plazo ACD</div>
                 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
