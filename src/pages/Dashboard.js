@@ -1198,7 +1198,9 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
   const [saving,setSaving]=useState(false)
   const [showNuevaCausa,setShowNuevaCausa]=useState(false)
   const [showStats,setShowStats]=useState(false)
-  const [nuevaCausa,setNuevaCausa]=useState({ruc:'',rit:'',tribunal:'',delito:'',imputado:'',imputado_rut:'',fiscal:'',cautelar:'',centro_penal:'',plazo:'',fecha_inicio:'',dias_plazo:'',fecha_hechos:'',estado:'vigente'})
+  const [nuevaCausa,setNuevaCausa]=useState({ruc:'',rit:'',tribunal:'',delito:'',imputado:'',imputado_rut:'',imputado_fecha_nac:'',imputado_domicilio:'',imputado_nacionalidad:'',fiscal:'',cautelar:'',centro_penal:'',plazo:'',fecha_inicio:'',dias_plazo:'',fecha_hechos:'',estado:'vigente'})
+  const [rutBuscando,setRutBuscando]=useState(false)
+  const [rutEncontrado,setRutEncontrado]=useState(null)
 
   useEffect(()=>{ loadCausas() },[])
 
@@ -1287,6 +1289,34 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
     setNuevaAud({fecha:'',hora:'',tipo:'',tribunal:selectedCausa?.tribunal||'',sala:'',resultado:'',notas:''});setShowAudForm(false);setSaving(false)
   }
 
+  const buscarRutNuevaCausa = async (rut) => {
+    if (!rut || rut.length < 6) return
+    setRutBuscando(true)
+    const rutNorm = rut.replace(/[.\-\s]/g,'').toUpperCase()
+    const { data } = await supabase.from('imputados').select('*').limit(500)
+    setRutBuscando(false)
+    if (!data) return
+    const coincidencias = data.filter(d => d.rut && d.rut.replace(/[.\-\s]/g,'').toUpperCase() === rutNorm)
+    if (coincidencias.length === 0) { setRutEncontrado(null); return }
+    // Tomar el más completo
+    const campos = ['nombre','nacionalidad','domicilio','fecha_nacimiento']
+    const masCompleto = coincidencias.reduce((mejor, actual) => {
+      const pMejor = campos.filter(c => mejor[c] && mejor[c].trim()).length
+      const pActual = campos.filter(c => actual[c] && actual[c].trim()).length
+      return pActual > pMejor ? actual : mejor
+    })
+    setRutEncontrado(masCompleto)
+    // Autorrellenar campos
+    setNuevaCausa(p => ({
+      ...p,
+      imputado: masCompleto.nombre || p.imputado,
+      imputado_rut: rut,
+      imputado_fecha_nac: masCompleto.fecha_nacimiento || p.imputado_fecha_nac,
+      imputado_domicilio: masCompleto.domicilio || p.imputado_domicilio,
+      imputado_nacionalidad: masCompleto.nacionalidad || p.imputado_nacionalidad,
+    }))
+  }
+
   const saveCausa = async () => {
     if (!nuevaCausa.ruc) return
     // Autocorrección ortográfica antes de guardar
@@ -1298,10 +1328,26 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
     const causaData = { ruc:up(nuevaCausa.ruc), rit:up(nuevaCausa.rit), tribunal:up(nuevaCausa.tribunal), delito:up(nuevaCausa.delito), imputado:up(nuevaCausa.imputado), fiscal:up(nuevaCausa.fiscal), cautelar:up(nuevaCausa.cautelar), centro_penal:up(nuevaCausa.centro_penal), plazo:up(plazoFinal), estado:nuevaCausa.estado, subestado:subestadoAuto, fecha_hechos: nuevaCausa.fecha_hechos || null }
     const { data, error } = await supabase.from('causas').insert(causaData).select().single()
     if (!error) {
+      // Crear imputado automáticamente con los datos del RUT
+      if (nuevaCausa.imputado_rut || nuevaCausa.imputado) {
+        const regAuto = (nuevaCausa.imputado_fecha_nac && nuevaCausa.fecha_hechos)
+          ? calcularRegimenAlMomento(nuevaCausa.imputado_fecha_nac, nuevaCausa.fecha_hechos)
+          : null
+        await supabase.from('imputados').insert({
+          causa_id: data.id,
+          nombre: up(nuevaCausa.imputado) || '',
+          rut: nuevaCausa.imputado_rut || '',
+          fecha_nacimiento: nuevaCausa.imputado_fecha_nac || null,
+          domicilio: up(nuevaCausa.imputado_domicilio) || '',
+          nacionalidad: up(nuevaCausa.imputado_nacionalidad) || '',
+          regimen: regAuto || 'ADULTO',
+        })
+      }
       setCausas(prev => [data, ...prev])
       setShowNuevaCausa(false)
+      setRutEncontrado(null)
       if (registrarActividad) registrarActividad('accion', `Nueva causa: RUC ${causaData.ruc}`)
-      setNuevaCausa({ruc:'',rit:'',tribunal:'',delito:'',imputado:'',imputado_rut:'',fiscal:'',cautelar:'',centro_penal:'',plazo:'',fecha_inicio:'',dias_plazo:'',fecha_hechos:'',estado:'vigente'})
+      setNuevaCausa({ruc:'',rit:'',tribunal:'',delito:'',imputado:'',imputado_rut:'',imputado_fecha_nac:'',imputado_domicilio:'',imputado_nacionalidad:'',fiscal:'',cautelar:'',centro_penal:'',plazo:'',fecha_inicio:'',dias_plazo:'',fecha_hechos:'',estado:'vigente'})
     }
     setSaving(false)
   }
@@ -1645,8 +1691,55 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
           <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:16,padding:32,width:540,maxWidth:'90vw',boxShadow:'0 24px 80px rgba(0,0,0,0.2)',maxHeight:'90vh',overflowY:'auto'}}>
             <div style={{fontSize:20,fontWeight:800,color:'#0f172a',marginBottom:24,...f}}>Nueva Causa</div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
-              {[{key:'ruc',label:'RUC *',ph:'Ej: 2600123456-7',full:true},{key:'rit',label:'RIT',ph:'Ej: 1234-2026'},{key:'imputado',label:'Imputado',ph:'Nombre completo',full:true},{key:'fiscal',label:'Fiscal',ph:'Nombre del fiscal'},{key:'cautelar',label:'Cautelar',ph:'Prisión preventiva...'}].map(field=>(
+              {/* RUC y RIT */}
+              {[{key:'ruc',label:'RUC *',ph:'Ej: 2600123456-7',full:true},{key:'rit',label:'RIT',ph:'Ej: 1234-2026'}].map(field=>(
                 <div key={field.key} style={{gridColumn:field.full?'1/-1':'auto'}}>
+                  <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>{field.label}</div>
+                  <input style={inp} placeholder={field.ph} value={nuevaCausa[field.key]} onChange={e=>setNuevaCausa(p=>({...p,[field.key]:e.target.value}))}/>
+                </div>
+              ))}
+              {/* RUT del imputado con autorelleno */}
+              <div style={{gridColumn:'1/-1'}}>
+                <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>RUT del imputado</div>
+                <div style={{display:'flex',gap:8}}>
+                  <input style={{...inp,flex:1}} placeholder="Ej: 12345678-9"
+                    value={nuevaCausa.imputado_rut}
+                    onChange={e=>setNuevaCausa(p=>({...p,imputado_rut:e.target.value}))}
+                    onBlur={e=>buscarRutNuevaCausa(e.target.value)}
+                    onKeyDown={e=>e.key==='Enter'&&buscarRutNuevaCausa(nuevaCausa.imputado_rut)}
+                  />
+                  {rutBuscando && <span style={{fontSize:12,color:'#94a3b8',alignSelf:'center',...f}}>Buscando...</span>}
+                  {rutEncontrado && <span style={{fontSize:12,color:'#065f46',alignSelf:'center',fontWeight:600,...f}}>✓ Datos encontrados</span>}
+                </div>
+              </div>
+              {/* Datos del imputado */}
+              <div style={{gridColumn:'1/-1'}}>
+                <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Nombre completo *</div>
+                <input style={inp} placeholder="Nombre completo del imputado"
+                  value={nuevaCausa.imputado}
+                  onChange={e=>setNuevaCausa(p=>({...p,imputado:e.target.value}))}/>
+              </div>
+              <div>
+                <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Fecha de nacimiento</div>
+                <input type="date" style={inp}
+                  value={nuevaCausa.imputado_fecha_nac}
+                  onChange={e=>setNuevaCausa(p=>({...p,imputado_fecha_nac:e.target.value}))}/>
+              </div>
+              <div>
+                <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Nacionalidad</div>
+                <input style={inp} placeholder="Ej: CHILENO"
+                  value={nuevaCausa.imputado_nacionalidad}
+                  onChange={e=>setNuevaCausa(p=>({...p,imputado_nacionalidad:e.target.value}))}/>
+              </div>
+              <div style={{gridColumn:'1/-1'}}>
+                <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Domicilio</div>
+                <input style={inp} placeholder="Domicilio del imputado"
+                  value={nuevaCausa.imputado_domicilio}
+                  onChange={e=>setNuevaCausa(p=>({...p,imputado_domicilio:e.target.value}))}/>
+              </div>
+              {/* Fiscal y Cautelar */}
+              {[{key:'fiscal',label:'Fiscal',ph:'Nombre del fiscal'},{key:'cautelar',label:'Cautelar',ph:'Prisión preventiva...'}].map(field=>(
+                <div key={field.key}>
                   <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>{field.label}</div>
                   <input style={inp} placeholder={field.ph} value={nuevaCausa[field.key]} onChange={e=>setNuevaCausa(p=>({...p,[field.key]:e.target.value}))}/>
                 </div>
