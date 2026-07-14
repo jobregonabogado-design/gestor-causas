@@ -541,22 +541,38 @@ function BadgeEditor({ estado, subestado, onChangeEstado, onChangeSubestado }) {
   )
 }
 
-function Field({ label, value, editable, editField, setEditField, editValue, setEditValue, onSave, full }) {
+function Field({ label, value, editable, editField, setEditField, editValue, setEditValue, onSave, full, fieldKey }) {
   const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:'#0f172a', background:'#fff', ...f }
+  const isTribunal = fieldKey === 'tribunal'
+  const isDelito = fieldKey === 'delito'
+  const useDropdown = isTribunal || isDelito
+
   return (
     <div style={{ gridColumn:full?'1/-1':'auto', marginBottom:2 }}>
       <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, marginBottom:6, fontWeight:600, ...f }}>{label}</div>
       {editField===label ? (
-        <div style={{ display:'flex', gap:6 }}>
-          <input style={inp} value={editValue} onChange={e=>setEditValue(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')onSave();if(e.key==='Escape')setEditField(null)}} autoFocus/>
-          <button className="btn-primary" style={{padding:'8px 14px',fontSize:12}} onClick={onSave}>✓</button>
-          <button className="btn-secondary" style={{padding:'8px 12px',fontSize:12}} onClick={()=>setEditField(null)}>✗</button>
+        <div style={{ display:'flex', gap:6, alignItems:'flex-start' }}>
+          {useDropdown ? (
+            <div style={{ flex:1 }}>
+              <SearchableSelect
+                value={editValue}
+                onChange={v => { setEditValue(v); }}
+                options={isTribunal ? TRIBUNALES_CHILE : DELITOS_CATALOGO}
+                placeholder={isTribunal ? 'Seleccionar tribunal...' : 'Buscar delito...'}
+                isDelito={isDelito}
+              />
+            </div>
+          ) : (
+            <input style={inp} value={editValue} onChange={e=>setEditValue(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')onSave();if(e.key==='Escape')setEditField(null)}} autoFocus/>
+          )}
+          <button className="btn-primary" style={{padding:'8px 14px',fontSize:12,flexShrink:0}} onClick={onSave}>✓</button>
+          <button className="btn-secondary" style={{padding:'8px 12px',fontSize:12,flexShrink:0}} onClick={()=>setEditField(null)}>✗</button>
         </div>
       ) : (
         <div className={editable?'fld':''} onClick={()=>{if(editable){setEditField(label);setEditValue(value||'')}}}
           style={{ padding:'9px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:value?'#0f172a':'#cbd5e1', minHeight:38, display:'flex', alignItems:'center', justifyContent:'space-between', cursor:editable?'pointer':'default', background:'#fff', ...f }}>
-          <span>{value||(editable?'Clic para agregar...':'—')}</span>
-          {editable && <span style={{fontSize:11,color:'#cbd5e1'}}>✏</span>}
+          <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1}}>{value||(editable?'Clic para agregar...':'—')}</span>
+          {editable && <span style={{fontSize:11,color:'#cbd5e1',flexShrink:0,marginLeft:8}}>✏</span>}
         </div>
       )}
     </div>
@@ -1362,7 +1378,7 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
             {activeTab==='datos'&&(
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
                 {[{key:'imputado',label:'Imputado(s)',full:true,editable:true},{key:'delito',label:'Delito',full:true,editable:true},{key:'tribunal',label:'Tribunal',editable:true},{key:'rit',label:'RIT JG',editable:true},{key:'fiscal',label:'Fiscal a cargo',editable:true},{key:'cautelar',label:'Cautelar procesal',editable:true},{key:'centro_penal',label:'Centro Penal',editable:true},{key:'plazo',label:'Plazo / Vencimiento',editable:true,full:true}].map(field=>(
-                  <Field key={field.key} label={field.label} value={c[field.key]} editable={field.editable} full={field.full} editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField(field.key,editValue)}/>
+                  <Field key={field.key} label={field.label} value={c[field.key]} editable={field.editable} full={field.full} fieldKey={field.key} editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField(field.key,editValue)}/>
                 ))}
                 {/* Fecha de los hechos */}
                 <div style={{gridColumn:'1/-1',marginTop:4}}>
@@ -1520,7 +1536,7 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
                 {c.tiene_top&&(
                   <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
                     {[{key:'tribunal_top',label:'Tribunal TOP'},{key:'rit_top',label:'RIT Juicio Oral'}].map(field=>(
-                      <Field key={field.key} label={field.label} value={c[field.key]} editable editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField(field.key,editValue)}/>
+                      <Field key={field.key} label={field.label} value={c[field.key]} editable fieldKey={field.key} editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField(field.key,editValue)}/>
                     ))}
                   </div>
                 )}
