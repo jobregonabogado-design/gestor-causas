@@ -2027,34 +2027,34 @@ function TeoriaDelCaso({ causaId, ruc, session, registrarActividad, onAccion }) 
   if (loading) return <div style={{ textAlign:'center', padding:40, color:'#94a3b8', fontSize:13, ...f }}>Cargando teoría del caso...</div>
 
   return (
-    <div style={{ display:'grid', gridTemplateColumns:'200px 1fr', gap:0, minHeight:500, border:'1px solid #e2e8f0', borderRadius:12, overflow:'hidden' }}>
-      <div style={{ background:'#1E293B', padding:'20px 0' }}>
-        <div style={{ fontSize:9, color:'#93c5fd', textTransform:'uppercase', letterSpacing:2, fontWeight:700, padding:'0 16px 12px', ...f }}>Secciones</div>
+    <div style={{ display:'grid', gridTemplateColumns:'200px 1fr', gap:0, minHeight:500, border:'1px solid #E2E8F0', borderRadius:14, overflow:'hidden' }}>
+      <div style={{ background:'#F8F9FC', borderRight:'1px solid #E2E8F0', padding:'20px 0' }}>
+        <div style={{ fontSize:9, color:'#94a3b8', textTransform:'uppercase', letterSpacing:2, fontWeight:700, padding:'0 16px 12px', ...f }}>Secciones</div>
         {TC_SECCIONES.map(s => {
           const tieneContenido = (form[s.key]||'').trim().length > 0
           return (
             <button key={s.key} onClick={() => setSeccionActiva(s.key)}
-              style={{ width:'100%', textAlign:'left', padding:'10px 16px', background: seccionActiva===s.key ? 'rgba(147,197,253,0.15)' : 'transparent', border:'none', borderLeft: seccionActiva===s.key ? '3px solid #93c5fd' : '3px solid transparent', cursor:'pointer', display:'flex', alignItems:'center', gap:8, transition:'all 0.2s ease' }}>
+              style={{ width:'100%', textAlign:'left', padding:'10px 16px', background: seccionActiva===s.key ? '#1E293B' : 'transparent', border:'none', borderLeft: seccionActiva===s.key ? '3px solid #1E293B' : '3px solid transparent', cursor:'pointer', display:'flex', alignItems:'center', gap:8, transition:'all 0.2s ease' }}>
               <span style={{ fontSize:13, opacity: seccionActiva===s.key ? 1 : 0.6 }}>{s.icon}</span>
               <div style={{ flex:1 }}>
-                <div style={{ fontSize:11, fontWeight: seccionActiva===s.key ? 600 : 400, color: seccionActiva===s.key ? '#fff' : '#93c5fd', ...f, lineHeight:1.3, textTransform:'uppercase', letterSpacing:0.5 }}>{s.label}</div>
-                {tieneContenido && <div style={{ width:5, height:5, borderRadius:'50%', background:'#93c5fd', marginTop:3 }}/>}
+                <div style={{ fontSize:11, fontWeight: seccionActiva===s.key ? 600 : 400, color: seccionActiva===s.key ? '#fff' : '#64748b', ...f, lineHeight:1.3, textTransform:'uppercase', letterSpacing:0.5 }}>{s.label}</div>
+                {tieneContenido && <div style={{ width:5, height:5, borderRadius:'50%', background: seccionActiva===s.key ? '#fff' : '#1E293B', marginTop:3 }}/>}
               </div>
             </button>
           )
         })}
-        <div style={{ padding:'16px', marginTop:8, borderTop:'1px solid rgba(255,255,255,0.1)' }}>
-          <div style={{ fontSize:9, color:'#93c5fd', textTransform:'uppercase', letterSpacing:1.5, fontWeight:700, marginBottom:8, ...f }}>Progreso</div>
+        <div style={{ padding:'16px', marginTop:8, borderTop:'1px solid #E2E8F0' }}>
+          <div style={{ fontSize:9, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, fontWeight:700, marginBottom:8, ...f }}>Progreso</div>
           {TC_SECCIONES.map(s => {
             const pct = Math.min(100, Math.round(((form[s.key]||'').length / 200) * 100))
             return (
               <div key={s.key} style={{ marginBottom:6 }}>
                 <div style={{ display:'flex', justifyContent:'space-between', marginBottom:2 }}>
-                  <span style={{ fontSize:9, color:'#475569', ...f }}>{s.icon}</span>
-                  <span style={{ fontSize:9, color:'#93c5fd', ...f }}>{pct}%</span>
+                  <span style={{ fontSize:9, color:'#94a3b8', ...f }}>{s.icon}</span>
+                  <span style={{ fontSize:9, color:'#64748b', ...f }}>{pct}%</span>
                 </div>
-                <div style={{ height:3, background:'rgba(255,255,255,0.1)', borderRadius:2 }}>
-                  <div style={{ height:3, width:`${pct}%`, background: pct>0?'#2563eb':'transparent', borderRadius:2, transition:'width 0.3s' }}/>
+                <div style={{ height:3, background:'#E2E8F0', borderRadius:2 }}>
+                  <div style={{ height:3, width:`${pct}%`, background: pct>0?'#1E293B':'transparent', borderRadius:2, transition:'width 0.3s' }}/>
                 </div>
               </div>
             )
@@ -2062,25 +2062,25 @@ function TeoriaDelCaso({ causaId, ruc, session, registrarActividad, onAccion }) 
         </div>
       </div>
       <div style={{ display:'flex', flexDirection:'column', background:'#fff' }}>
-        <div style={{ padding:'16px 20px', borderBottom:'1px solid #f1f5f9', display:'flex', justifyContent:'space-between', alignItems:'center', background:'#fafbff' }}>
+        <div style={{ padding:'16px 20px', borderBottom:'1px solid #E2E8F0', display:'flex', justifyContent:'space-between', alignItems:'center', background:'#F8F9FC' }}>
           <div>
             <div style={{ fontSize:15, fontWeight:700, color:'#1E293B', ...f }}>{seccionActual?.icon} {seccionActual?.label}</div>
             <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>
               {totalCaracteres > 0 ? `${totalCaracteres.toLocaleString()} caracteres` : 'Sin contenido aún'}
-              {savedAt && <span style={{ marginLeft:8, color:'#a7f3d0' }}>✓ Guardado {savedAt.toLocaleTimeString('es-CL', { hour:'2-digit', minute:'2-digit' })}</span>}
+              {savedAt && <span style={{ marginLeft:8, color:'#059669' }}>✓ Guardado {savedAt.toLocaleTimeString('es-CL', { hour:'2-digit', minute:'2-digit' })}</span>}
             </div>
           </div>
           <div style={{ display:'flex', gap:8 }}>
-            <button onClick={() => setShowHistorial(!showHistorial)} style={{ background: showHistorial?'#1E293B':'#fff', color: showHistorial?'#fff':'#64748b', border:'1.5px solid #e2e8f0', borderRadius:8, padding:'6px 14px', fontSize:12, cursor:'pointer', fontWeight:500, ...f }}>
+            <button onClick={() => setShowHistorial(!showHistorial)} className="btn-secondary" style={{ fontSize:12, borderColor: showHistorial?'#1E293B':'#E2E8F0', color: showHistorial?'#1E293B':'#64748b' }}>
               🕐 Historial {historial.length > 0 && `(${historial.length})`}
             </button>
-            <button onClick={() => guardar(form, false)} disabled={saving} style={{ background:'linear-gradient(135deg,#2563eb,#1d4ed8)', color:'#fff', border:'none', borderRadius:8, padding:'6px 16px', fontSize:12, cursor:'pointer', fontWeight:600, ...f }}>
+            <button onClick={() => guardar(form, false)} disabled={saving} className="btn-primary" style={{ fontSize:12 }}>
               {saving ? '⏳ Guardando...' : '💾 Guardar'}
             </button>
           </div>
         </div>
         {showHistorial && (
-          <div style={{ background:'#F8F9FC', borderBottom:'1px solid #e2e8f0', padding:'16px 20px', maxHeight:200, overflowY:'auto' }}>
+          <div style={{ background:'#F8F9FC', borderBottom:'1px solid #E2E8F0', padding:'16px 20px', maxHeight:200, overflowY:'auto' }}>
             <div style={{ fontSize:11, fontWeight:700, color:'#475569', textTransform:'uppercase', letterSpacing:1, marginBottom:10, ...f }}>Historial de modificaciones</div>
             {historial.length === 0 ? (
               <div style={{ fontSize:12, color:'#cbd5e1', ...f }}>Sin modificaciones registradas aún.</div>
@@ -2088,13 +2088,13 @@ function TeoriaDelCaso({ causaId, ruc, session, registrarActividad, onAccion }) 
               let info = {}
               try { info = JSON.parse(h.contenido) } catch {}
               return (
-                <div key={i} style={{ display:'flex', gap:10, alignItems:'center', padding:'8px 0', borderBottom:'1px solid #f1f5f9' }}>
-                  <div style={{ width:28, height:28, borderRadius:'50%', background:'linear-gradient(135deg,#2563eb,#7c3aed)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:10, fontWeight:700, flexShrink:0 }}>{(info.editor||'?')[0]?.toUpperCase()}</div>
+                <div key={i} style={{ display:'flex', gap:10, alignItems:'center', padding:'8px 0', borderBottom:'1px solid #E2E8F0' }}>
+                  <div style={{ width:28, height:28, borderRadius:'50%', background:'#1E293B', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:10, fontWeight:700, flexShrink:0 }}>{(info.editor||'?')[0]?.toUpperCase()}</div>
                   <div style={{ flex:1 }}>
                     <div style={{ fontSize:12, fontWeight:500, color:'#1E293B', ...f }}>{info.editor || 'Usuario'}</div>
                     <div style={{ fontSize:11, color:'#94a3b8', ...f }}>{info.fecha} {info.hora}</div>
                   </div>
-                  <span style={{ fontSize:10, color:'#94a3b8', background:'#f1f5f9', padding:'2px 8px', borderRadius:20, ...f }}>modificó</span>
+                  <span style={{ fontSize:10, color:'#94a3b8', background:'#F1F5F9', padding:'2px 8px', borderRadius:20, ...f }}>modificó</span>
                 </div>
               )
             })}
@@ -2105,13 +2105,13 @@ function TeoriaDelCaso({ causaId, ruc, session, registrarActividad, onAccion }) 
             <FallosReferencia causaId={causaId} ruc={ruc} email={session?.user?.email || ''} onAccion={onAccion} />
           ) : (
             <textarea value={form[seccionActiva] || ''} onChange={e => handleChange(seccionActiva, e.target.value)} placeholder={seccionActual?.placeholder}
-              style={{ width:'100%', height:'100%', minHeight:360, border:'none', outline:'none', resize:'none', fontSize:14, lineHeight:1.8, color:'#1e293b', background:'transparent', fontFamily:"'Inter',sans-serif", padding:0 }}/>
+              style={{ width:'100%', height:'100%', minHeight:360, border:'none', outline:'none', resize:'none', fontSize:14, lineHeight:1.8, color:'#1E293B', background:'transparent', fontFamily:"'Inter',sans-serif", padding:0 }}/>
           )}
         </div>
-        <div style={{ padding:'10px 20px', borderTop:'1px solid #f1f5f9', display:'flex', gap:8, overflowX:'auto' }}>
+        <div style={{ padding:'10px 20px', borderTop:'1px solid #E2E8F0', display:'flex', gap:8, overflowX:'auto' }}>
           {TC_SECCIONES.map(s => (
             <button key={s.key} onClick={() => setSeccionActiva(s.key)}
-              style={{ padding:'4px 12px', borderRadius:20, fontSize:11, border:`1.5px solid ${seccionActiva===s.key?'#2563eb':'#e2e8f0'}`, background: seccionActiva===s.key?'#eff6ff':'#fff', color: seccionActiva===s.key?'#2563eb':'#94a3b8', cursor:'pointer', fontWeight:500, whiteSpace:'nowrap', ...f }}>
+              style={{ padding:'4px 12px', borderRadius:20, fontSize:11, border:`1.5px solid ${seccionActiva===s.key?'#1E293B':'#E2E8F0'}`, background: seccionActiva===s.key?'#1E293B':'#fff', color: seccionActiva===s.key?'#fff':'#94a3b8', cursor:'pointer', fontWeight:500, whiteSpace:'nowrap', ...f }}>
               {s.icon} {s.label.split(' ')[0]}
             </button>
           ))}
