@@ -492,6 +492,14 @@ function esFechaFuturaOReciente(fechaISO) {
 function extraerAudienciaFiscalia(cuerpo, asunto) {
   const meses = {enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,julio:7,agosto:8,septiembre:9,octubre:10,noviembre:11,diciembre:12}
 
+  // ✅ FIX: antes se tomaba CUALQUIER fecha futura mencionada en el documento,
+  // aunque el correo no citara a nada (ej. un plazo, una fecha de otro trámite).
+  // Ahora solo se agenda algo si el texto realmente menciona una cita, entrevista,
+  // audiencia o comparecencia — si no, se descarta (queda para revisión manual).
+  const textoCompleto = `${asunto}\n${cuerpo}`
+  const hayCitacionReal = /cita(?:ci[oó]n|r)?|entrevista|declarac|audiencia|comparec/i.test(textoCompleto)
+  if (!hayCitacionReal) return { fecha: null, hora: null, tipo: null, tribunal: 'FISCALÍA', sala: null }
+
   let fecha = null, hora = null, tipo = 'ENTREVISTA'
 
   // Buscar todas las fechas escritas y tomar la más futura
@@ -517,7 +525,7 @@ function extraerAudienciaFiscalia(cuerpo, asunto) {
   }
 
   const matchHora =
-    cuerpo.match(/(?:a\s+las|hora[:\s]+|inicio[:\s]+)\s*(\d{1,2}:\d{2})/i) ||
+    cuerpo.match(/(?:a\s+las|hora[:\s]+)\s*(\d{1,2}:\d{2})/i) ||
     cuerpo.match(/(\d{1,2}:\d{2})\s*(?:horas?|hrs?)\b/i)
   if (matchHora) hora = matchHora[1]
 
