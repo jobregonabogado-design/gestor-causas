@@ -18,6 +18,10 @@ const css = `
   .salir-btn:hover { border-color:#1E293B; color:#1E293B; background:#F8F9FC; }
   @keyframes slideIn { from{transform:translateX(100%);opacity:0} to{transform:translateX(0);opacity:1} }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.7} }
+  .alerta-btn { background:#fff; border:1.5px solid #E2E8F0; color:#64748b; border-radius:10px; padding:6px 14px; font-size:12px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:all 0.2s; font-family:'Inter',sans-serif; }
+  .alerta-btn:hover { border-color:#dc2626; color:#dc2626; background:#fef2f2; }
+  .alerta-btn-active { background:#dc2626; border:1.5px solid #dc2626; color:#fff; border-radius:10px; padding:6px 14px; font-size:12px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:6px; font-family:'Inter',sans-serif; animation:alertaPulse 1.4s infinite; }
+  @keyframes alertaPulse { 0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,0.45)} 50%{box-shadow:0 0 0 7px rgba(220,38,38,0)} }
   @media (max-width: 640px) {
     .nav-email { display: none !important; }
     .nav-badge { display: none !important; }
@@ -26,6 +30,23 @@ const css = `
 `
 
 const f = { fontFamily:"'Inter',sans-serif" }
+
+// ─── Helpers de plazo (mismo criterio que Dashboard) ─────────────────────────
+function parseFechaCL(str) {
+  if (!str) return null
+  const limpio = str.replace(/VENCE\s*/i, '').trim()
+  const partes = limpio.split(/[\/\-\.]/)
+  if (partes.length < 3) return null
+  const [d, m, a] = partes
+  const fecha = new Date(`${a.length===2?'20'+a:a}-${m.padStart(2,'0')}-${d.padStart(2,'0')}T12:00:00`)
+  return isNaN(fecha) ? null : fecha
+}
+function diasRestantes(plazoStr) {
+  const fecha = parseFechaCL(plazoStr)
+  if (!fecha) return null
+  const hoy = new Date(); hoy.setHours(0,0,0,0)
+  return Math.ceil((fecha - hoy) / (1000*60*60*24))
+}
 
 function PanelActividad({ onClose }) {
   const [actividad, setActividad] = useState([])
@@ -193,6 +214,126 @@ function NotifToast({ notif, onClose }) {
   )
 }
 
+function PanelAlertas({ onClose, esTitular, alertaCounts, tareas, onAgregarTarea, onCompletarTarea }) {
+  const [nuevaTarea, setNuevaTarea] = useState('')
+  const [guardando, setGuardando] = useState(false)
+
+  const pendientes = tareas.filter(t => !t.completada)
+  const completadas = tareas.filter(t => t.completada)
+
+  const handleAgregar = async () => {
+    if (!nuevaTarea.trim()) return
+    setGuardando(true)
+    await onAgregarTarea(nuevaTarea.trim())
+    setNuevaTarea('')
+    setGuardando(false)
+  }
+
+  return (
+    <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', justifyContent:'flex-end' }}>
+      <div style={{ position:'absolute', inset:0, background:'rgba(15,23,42,0.35)', backdropFilter:'blur(2px)' }} onClick={onClose}/>
+      <div style={{ position:'relative', width:480, background:'#fff', height:'100vh', overflowY:'auto', boxShadow:'-16px 0 48px rgba(15,23,42,0.12)', animation:'slideIn 0.3s ease', fontFamily:"'Inter',sans-serif" }}>
+        <div style={{ background:'#dc2626', padding:'24px 24px 20px', position:'sticky', top:0, zIndex:10 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+            <div>
+              <div style={{ fontSize:18, fontWeight:800, color:'#fff', letterSpacing:'-0.5px' }}>🔔 Centro de Alertas</div>
+              <div style={{ fontSize:11, color:'#fecaca', marginTop:2, textTransform:'uppercase', letterSpacing:1 }}>Advertencias y tareas del equipo</div>
+            </div>
+            <button onClick={onClose} style={{ background:'rgba(255,255,255,0.15)', border:'none', borderRadius:10, padding:'6px 12px', color:'#fff', cursor:'pointer', fontSize:13 }}>✕ Cerrar</button>
+          </div>
+        </div>
+        <div style={{ padding:20 }}>
+          {/* Advertencias del sistema */}
+          <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, fontWeight:700, marginBottom:10, ...f }}>Advertencias del sistema</div>
+          {alertaCounts.vencido === 0 && alertaCounts.proximo === 0 ? (
+            <div style={{ background:'#ecfdf5', border:'1.5px solid #a7f3d0', borderRadius:12, padding:'14px 16px', marginBottom:24, fontSize:13, color:'#065f46', fontWeight:600, ...f }}>✓ Todas las causas vigentes están al día</div>
+          ) : (
+            <div style={{ marginBottom:24 }}>
+              {alertaCounts.vencido > 0 && (
+                <div style={{ background:'#fef2f2', border:'1px solid #fecaca', borderLeft:'4px solid #991b1b', borderRadius:10, padding:'12px 16px', marginBottom:8, display:'flex', alignItems:'center', gap:10 }}>
+                  <span style={{fontSize:16, flexShrink:0}}>⚠</span>
+                  <span style={{fontSize:13, color:'#991b1b', fontWeight:600, ...f}}>{alertaCounts.vencido} causa{alertaCounts.vencido>1?'s':''} con plazo vencido — revisión urgente</span>
+                </div>
+              )}
+              {alertaCounts.proximo > 0 && (
+                <div style={{ background:'#fff7ed', border:'1px solid #fed7aa', borderLeft:'4px solid #92400e', borderRadius:10, padding:'12px 16px', display:'flex', alignItems:'center', gap:10 }}>
+                  <span style={{fontSize:16, flexShrink:0}}>⏱</span>
+                  <span style={{fontSize:13, color:'#92400e', fontWeight:600, ...f}}>{alertaCounts.proximo} causa{alertaCounts.proximo>1?'s':''} por vencer en los próximos 3 días</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tareas pendientes */}
+          <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, fontWeight:700, marginBottom:10, ...f }}>Tareas pendientes ({pendientes.length})</div>
+
+          {esTitular && (
+            <div style={{ display:'flex', gap:8, marginBottom:16 }}>
+              <input
+                value={nuevaTarea}
+                onChange={e=>setNuevaTarea(e.target.value)}
+                placeholder="Encargar algo al equipo..."
+                onKeyDown={e=>{ if(e.key==='Enter') handleAgregar() }}
+                style={{ flex:1, padding:'9px 12px', border:'1.5px solid #E2E8F0', borderRadius:8, fontSize:13, fontFamily:"'Inter',sans-serif", color:'#1E293B' }}/>
+              <button onClick={handleAgregar} disabled={guardando||!nuevaTarea.trim()} style={{ background:'#dc2626', color:'#fff', border:'none', borderRadius:8, padding:'9px 16px', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif", flexShrink:0 }}>{guardando?'...':'+ Agregar'}</button>
+            </div>
+          )}
+
+          {pendientes.length === 0 ? (
+            <div style={{ fontSize:12, color:'#cbd5e1', textAlign:'center', padding:'16px 0', ...f }}>Sin tareas pendientes.</div>
+          ) : pendientes.map(t => (
+            <div key={t.id} style={{ display:'flex', gap:10, alignItems:'flex-start', background:'#fff7ed', border:'1px solid #fed7aa', borderRadius:10, padding:'12px 14px', marginBottom:8 }}>
+              <button onClick={()=>onCompletarTarea(t.id)} title="Marcar como realizada"
+                style={{ width:20, height:20, borderRadius:6, border:'1.5px solid #d97706', background:'#fff', cursor:'pointer', flexShrink:0, marginTop:1, padding:0 }}/>
+              <div style={{ flex:1 }}>
+                <div style={{ fontSize:13, fontWeight:600, color:'#1E293B', ...f }}>{t.texto}</div>
+                <div style={{ fontSize:11, color:'#94a3b8', marginTop:3, ...f }}>Encargado por {t.creado_por} · {new Date(t.created_at).toLocaleString('es-CL')}</div>
+              </div>
+            </div>
+          ))}
+
+          {completadas.length > 0 && (
+            <div style={{ marginTop:24 }}>
+              <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, fontWeight:700, marginBottom:10, ...f }}>Completadas ({completadas.length})</div>
+              {completadas.map(t => (
+                <div key={t.id} style={{ display:'flex', gap:10, alignItems:'flex-start', background:'#F8F9FC', border:'1px solid #E2E8F0', borderRadius:10, padding:'10px 14px', marginBottom:6 }}>
+                  <span style={{ fontSize:14, color:'#059669', marginTop:1, flexShrink:0 }}>✓</span>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontSize:13, color:'#94a3b8', textDecoration:'line-through', ...f }}>{t.texto}</div>
+                    <div style={{ fontSize:11, color:'#cbd5e1', marginTop:3, ...f }}>Realizada por {t.completada_por || '—'} · {t.completada_en ? new Date(t.completada_en).toLocaleString('es-CL') : ''}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function TareaToast({ tarea, onClose }) {
+  useEffect(() => {
+    const t = setTimeout(onClose, 7000)
+    return () => clearTimeout(t)
+  }, [])
+  return (
+    <div style={{ position:'fixed', bottom:24, right:24, zIndex:2000, background:'#fff', border:'1.5px solid #fecaca', borderRadius:14, padding:'14px 18px', minWidth:300, maxWidth:380, boxShadow:'0 16px 40px rgba(15,23,42,0.14)', animation:'slideIn 0.3s ease', fontFamily:"'Inter',sans-serif" }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12 }}>
+        <div style={{ display:'flex', gap:10, alignItems:'flex-start' }}>
+          <span style={{ fontSize:22 }}>🔔</span>
+          <div>
+            <div style={{ fontSize:13, fontWeight:700, color:'#991b1b' }}>Nueva tarea encargada</div>
+            <div style={{ fontSize:12, color:'#1E293B', marginTop:2, fontWeight:500 }}>{tarea.texto}</div>
+            <div style={{ fontSize:11, color:'#94a3b8', marginTop:3 }}>Por {tarea.creado_por}</div>
+          </div>
+        </div>
+        <button onClick={onClose} style={{ background:'transparent', border:'none', cursor:'pointer', color:'#94a3b8', fontSize:16, padding:2 }}>✕</button>
+      </div>
+    </div>
+  )
+}
+
 export default function App() {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -203,6 +344,11 @@ export default function App() {
   const [solicitudesPendientes, setSolicitudesPendientes] = useState(0)
   // ✅ Estado para causa seleccionada desde el calendario
   const [causaDesdeCalendario, setCausaDesdeCalendario] = useState(null)
+  // 🔔 Estado del Centro de Alertas (advertencias + tareas del equipo)
+  const [showAlerta, setShowAlerta] = useState(false)
+  const [tareas, setTareas] = useState([])
+  const [alertaCounts, setAlertaCounts] = useState({ vencido: 0, proximo: 0 })
+  const [notifTarea, setNotifTarea] = useState(null)
 
   const cargarRol = useCallback(async (userId) => {
     const { data } = await supabase.from('user_roles').select('*').eq('user_id', userId).single()
@@ -215,6 +361,37 @@ export default function App() {
     if (!user) return
     await supabase.from('actividad_usuario').insert({ user_id: user.id, email: user.email, tipo, descripcion, metadata })
   }, [])
+
+  // 🔔 Cargar advertencias de plazo (mismo criterio que la lista de Causas)
+  const cargarAlertaData = useCallback(async () => {
+    const { data } = await supabase.from('causas').select('plazo').eq('estado', 'vigente')
+    let vencido = 0, proximo = 0
+    ;(data || []).forEach(c => {
+      const diff = diasRestantes(c.plazo)
+      if (diff === null) return
+      if (diff < 0) vencido++
+      else if (diff <= 3) proximo++
+    })
+    setAlertaCounts({ vencido, proximo })
+  }, [])
+
+  const cargarTareas = useCallback(async () => {
+    const { data } = await supabase.from('tareas').select('*').order('created_at', { ascending: false }).limit(100)
+    setTareas(data || [])
+  }, [])
+
+  const agregarTarea = useCallback(async (texto) => {
+    const email = (await supabase.auth.getUser()).data.user?.email || 'usuario'
+    await supabase.from('tareas').insert({ texto, creado_por: email })
+    await cargarTareas()
+    if (registrarActividad) registrarActividad('accion', `Encargó tarea: ${texto}`)
+  }, [cargarTareas, registrarActividad])
+
+  const completarTarea = useCallback(async (id) => {
+    const email = (await supabase.auth.getUser()).data.user?.email || 'usuario'
+    await supabase.from('tareas').update({ completada: true, completada_por: email, completada_en: new Date() }).eq('id', id)
+    await cargarTareas()
+  }, [cargarTareas])
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -257,6 +434,27 @@ export default function App() {
     return () => supabase.removeChannel(channel)
   }, [userRol, session])
 
+  useEffect(() => {
+    if (!session) return
+    cargarAlertaData()
+    cargarTareas()
+    const channel = supabase.channel('tareas-realtime')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tareas' }, (payload) => {
+        cargarTareas()
+        if (payload.new.creado_por !== session?.user?.email) {
+          setNotifTarea({ texto: payload.new.texto, creado_por: payload.new.creado_por })
+        }
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tareas' }, () => {
+        cargarTareas()
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'causas' }, () => {
+        cargarAlertaData()
+      })
+      .subscribe()
+    return () => supabase.removeChannel(channel)
+  }, [session, cargarAlertaData, cargarTareas])
+
   if (loading) return (
     <div style={{ minHeight:'100vh', background:'#F8F9FC', display:'flex', alignItems:'center', justifyContent:'center' }}>
       <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:14 }}>
@@ -269,6 +467,8 @@ export default function App() {
   if (!session) return <Login />
 
   const esTitular = userRol?.rol === 'titular'
+  const tareasPendientesCount = tareas.filter(t => !t.completada).length
+  const alertaTotal = alertaCounts.vencido + alertaCounts.proximo + tareasPendientesCount
   const handleSignOut = async () => { await registrarActividad('salida', 'Cerró sesión'); await supabase.auth.signOut() }
 
   // ✅ Handler: desde calendario → abrir causa en Dashboard
@@ -281,7 +481,18 @@ export default function App() {
     <div style={{ background:'#F8F9FC', minHeight:'100vh' }}>
       <style>{css}</style>
       {notif && <NotifToast notif={notif} onClose={() => setNotif(null)} />}
+      {notifTarea && <TareaToast tarea={notifTarea} onClose={() => setNotifTarea(null)} />}
       {showPanel && <PanelActividad onClose={() => { setShowPanel(false); setSolicitudesPendientes(0) }} />}
+      {showAlerta && (
+        <PanelAlertas
+          onClose={() => setShowAlerta(false)}
+          esTitular={esTitular}
+          alertaCounts={alertaCounts}
+          tareas={tareas}
+          onAgregarTarea={agregarTarea}
+          onCompletarTarea={completarTarea}
+        />
+      )}
 
       <nav style={{ background:'rgba(255,255,255,0.92)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)', borderBottom:'1px solid #E2E8F0', padding:'0 32px', height:60, display:'flex', alignItems:'center', justifyContent:'space-between', position:'sticky', top:0, zIndex:100, boxShadow:'0 1px 2px rgba(15,23,42,0.03)' }}>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
@@ -300,6 +511,12 @@ export default function App() {
           <span style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:0.5, padding:'4px 12px', borderRadius:20, background: esTitular ? '#1E293B' : '#F1F5F9', color: esTitular ? '#fff' : '#64748b', border: esTitular ? 'none' : '1px solid #E2E8F0', fontFamily:"'Inter',sans-serif" }}>
             {esTitular ? '⚖ Titular' : '👤 Asistente'}
           </span>
+          <button onClick={() => setShowAlerta(true)} className={alertaTotal > 0 ? 'alerta-btn-active' : 'alerta-btn'}>
+            🔔 Alerta
+            {alertaTotal > 0 && (
+              <span style={{ background:'#fff', color:'#dc2626', borderRadius:'50%', width:16, height:16, fontSize:9, fontWeight:800, display:'flex', alignItems:'center', justifyContent:'center' }}>{alertaTotal}</span>
+            )}
+          </button>
           {esTitular && (
             <button onClick={() => setShowPanel(true)} style={{ position:'relative', background: solicitudesPendientes > 0 ? '#fef2f2' : '#fff', border: `1.5px solid ${solicitudesPendientes > 0 ? '#fecaca' : '#E2E8F0'}`, borderRadius:10, padding:'6px 14px', fontSize:12, cursor:'pointer', fontWeight:600, color: solicitudesPendientes > 0 ? '#dc2626' : '#64748b', display:'flex', alignItems:'center', gap:6, fontFamily:"'Inter',sans-serif", transition:'all 0.2s' }}>
               👁 Control
