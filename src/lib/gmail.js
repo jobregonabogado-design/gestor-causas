@@ -224,6 +224,7 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
   const meses = {enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,julio:7,agosto:8,septiembre:9,octubre:10,noviembre:11,diciembre:12}
 
   let fecha = null, hora = null, tipo = null, tribunal = null, sala = null
+  let posFecha = -1 // posición en el texto donde se encontró la fecha — para buscar hora/sala CERCA de ahí
 
   // ═══════════════════════════════════════════════════════
   // PASO 1: Buscar fecha en sección de FIJACIÓN (al final)
@@ -242,7 +243,7 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
       const d = String(matchFijacion[1]).padStart(2,'0')
       const m = String(mes).padStart(2,'0')
       const posibleFecha = `${matchFijacion[3]}-${m}-${d}`
-      if (esFechaFuturaOReciente(posibleFecha)) fecha = posibleFecha
+      if (esFechaFuturaOReciente(posibleFecha)) { fecha = posibleFecha; posFecha = matchFijacion.index }
     }
   }
 
@@ -261,7 +262,7 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
         const d = String(m[1]).padStart(2,'0')
         const mm = String(mes).padStart(2,'0')
         const posible = `${anio}-${mm}-${d}`
-        if (esFechaFuturaOReciente(posible)) { fecha = posible; break }
+        if (esFechaFuturaOReciente(posible)) { fecha = posible; posFecha = m.index; break }
       }
     }
   }
@@ -271,6 +272,7 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
     const matchTablaFecha = cuerpo.match(/Fecha\s+(\d{4})\/(\d{2})\/(\d{2})/i)
     if (matchTablaFecha) {
       fecha = `${matchTablaFecha[1]}-${matchTablaFecha[2]}-${matchTablaFecha[3]}`
+      posFecha = matchTablaFecha.index
     }
   }
 
@@ -290,7 +292,7 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
         const d = String(matchTablaAP[1]).padStart(2,'0')
         const m = String(mes).padStart(2,'0')
         const posible = `${anio}-${m}-${d}`
-        if (esFechaFuturaOReciente(posible)) fecha = posible
+        if (esFechaFuturaOReciente(posible)) { fecha = posible; posFecha = matchTablaAP.index }
       }
     }
   }
@@ -304,6 +306,7 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
         const d = String(matchFijada[1]).padStart(2,'0')
         const m = String(mes).padStart(2,'0')
         fecha = `${matchFijada[3]}-${m}-${d}`
+        posFecha = matchFijada.index
       }
     }
   }
@@ -317,11 +320,14 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
         const d = String(matchReprog[1]).padStart(2,'0')
         const m = String(mes).padStart(2,'0')
         fecha = `${matchReprog[3]}-${m}-${d}`
+        posFecha = matchReprog.index
       }
     }
   }
 
-  // Patrón 5: cualquier fecha escrita futura en el cuerpo (fallback)
+  const fechaEsFuerte = fecha !== null // patrones 1-4: viene de una sección específica (fijación/tabla/reprogramación)
+
+  // Patrón 5: cualquier fecha escrita futura en el cuerpo (fallback — menos confiable)
   if (!fecha) {
     const matches = [...cuerpo.matchAll(/(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/gi)]
     for (const m of matches) {
@@ -330,26 +336,41 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
         const d = String(m[1]).padStart(2,'0')
         const mm = String(mes).padStart(2,'0')
         const posible = `${m[3]}-${mm}-${d}`
-        if (esFechaFuturaOReciente(posible)) { fecha = posible; break }
+        if (esFechaFuturaOReciente(posible)) { fecha = posible; posFecha = m.index; break }
       }
     }
   }
 
-  // Patrón 6: fecha numérica PDF YYYY/MM/DD (solo si es futura)
+  // Patrón 6: fecha numérica PDF YYYY/MM/DD (solo si es futura — fallback menos confiable)
   if (!fecha) {
     const matchesPDF = [...cuerpo.matchAll(/(\d{4})\/(\d{2})\/(\d{2})/g)]
     for (const m of matchesPDF) {
       const posible = `${m[1]}-${m[2]}-${m[3]}`
-      if (esFechaFuturaOReciente(posible)) { fecha = posible; break }
+      if (esFechaFuturaOReciente(posible)) { fecha = posible; posFecha = m.index; break }
     }
   }
 
+  // ✅ NUEVO: si el correo dice que se deja SIN EFECTO una audiencia y no hay
+  // ninguna reprogramación / nueva fecha mencionada en el mismo documento,
+  // no hay que agregar nada — la fecha detectada sería la de la audiencia
+  // anulada, no una nueva. Se descarta para que quede para revisión manual.
+  const hayCancelacion = /dejar[aá]?\s+sin\s+efecto|deja\s+sin\s+efecto|queda\s+sin\s+efecto|se\s+suspende\s+la\s+audiencia|se\s+revoca\s+la\s+audiencia/i.test(cuerpo)
+  const hayReprogramacion = /reprogramaci[oó]n|nueva\s+fecha|se\s+fija\s+nueva/i.test(cuerpo)
+  if (hayCancelacion && !hayReprogramacion) {
+    fecha = null
+  }
+
   // ═══════════════════════════════════════════════════════
-  // PASO 2: Hora — solo con contexto real de audiencia
+  // PASO 2: Hora — se busca PRIMERO cerca de donde se encontró la fecha nueva
+  // (para no confundirla con la "Hora inicio"/"Hora término" de la audiencia
+  // ANTERIOR, que suele aparecer más arriba en el mismo documento).
   // Patrones: "a las 11:00 horas", "11:00AM", "Hora  11:00AM"
   // ═══════════════════════════════════════════════════════
+  const bloqueCercaFecha = posFecha >= 0 ? cuerpo.substring(posFecha, posFecha + 600) : ''
   const matchHora =
-    cuerpo.match(/(?:a\s+las|Hora[:\s]+|inicio[:\s]+)\s*(\d{1,2}:\d{2})\s*(?:AM|PM|horas?|hrs?)?/i) ||
+    (bloqueCercaFecha && bloqueCercaFecha.match(/Hora\s*(\d{1,2}:\d{2})\s*(?:AM|PM|horas?|hrs?)?/i)) ||
+    (bloqueCercaFecha && bloqueCercaFecha.match(/a\s+las\s*(\d{1,2}:\d{2})\s*(?:AM|PM|horas?|hrs?)?/i)) ||
+    cuerpo.match(/(?:a\s+las|Hora[:\s]+)\s*(\d{1,2}:\d{2})\s*(?:AM|PM|horas?|hrs?)?/i) ||
     cuerpo.match(/(\d{1,2}:\d{2})\s*(?:AM|PM)\b/i) ||
     cuerpo.match(/(\d{1,2}:\d{2})\s*(?:horas?|hrs?)\b/i)
   if (matchHora) {
@@ -409,9 +430,12 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
   }
 
   // ═══════════════════════════════════════════════════════
-  // PASO 5: Sala
+  // PASO 5: Sala — igual que la hora, se busca primero cerca de la fecha
+  // nueva para no tomar la sala de la audiencia ANTERIOR (que aparece más
+  // arriba en el mismo documento con su propio campo "Sala").
   // ═══════════════════════════════════════════════════════
-  const matchSala = cuerpo.match(/Sala\s+([A-Z0-9\s,]{1,30}?)(?:\n|$)/i)
+  const matchSalaCerca = bloqueCercaFecha && bloqueCercaFecha.match(/Sala\s+([A-Z0-9\s,]{1,30}?)(?:\n|$)/i)
+  const matchSala = matchSalaCerca || cuerpo.match(/Sala\s+([A-Z0-9\s,]{1,30}?)(?:\n|$)/i)
   if (matchSala) sala = matchSala[1].trim()
 
   return { fecha, hora, tipo, tribunal, sala }
