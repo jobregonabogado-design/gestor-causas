@@ -180,6 +180,12 @@ async function parsearCorreo(msg) {
   }
   const cuerpo = `${cuerpoEmail}\n${textoPdf}`
 
+  // 🔍 DEBUG TEMPORAL: para diagnosticar el caso de Jonnier (RUC 2300866793-4).
+  // Se puede borrar esta línea después de resolver el problema.
+  if (cuerpo.includes('2300866793')) {
+    console.log('🔍 TEXTO EXTRAÍDO (RUC 2300866793-4):', cuerpo)
+  }
+
   // ✅ FIX: antes el RUC/RIT solo se buscaba en el asunto con un formato exacto
   // ("RUC: XXXXXX-X, RIT: XXXX-XXXX"). Si el tribunal escribía el asunto distinto
   // (otro orden, "RUC N°", sin coma, etc.) el correo se perdía por completo, sin
