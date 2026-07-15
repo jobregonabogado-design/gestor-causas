@@ -1,3 +1,6 @@
+import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf'
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
+
 const CLIENT_ID = process.env.REACT_APP_GMAIL_CLIENT_ID
 const REDIRECT_URI = window.location.origin + '/gmail-callback.html'
 const SCOPES = 'https://www.googleapis.com/auth/gmail.readonly'
@@ -87,7 +90,7 @@ export async function fetchNotificacionesPJUD() {
     for (const msg of data.messages.slice(0, 150)) {
       try {
         const detalle = await gmailFetch(`/gmail/v1/users/me/messages/${msg.id}?format=full`)
-        const parsed = parsearCorreo(detalle)
+        const parsed = await parsearCorreo(detalle)
         if (parsed) mensajes.push(parsed)
       } catch(e) {}
     }
@@ -122,17 +125,66 @@ function getBody(payload) {
   return ''
 }
 
-function parsearCorreo(msg) {
+// ✅ NUEVO: las resoluciones del PJUD casi siempre traen la fecha REAL de la
+// audiencia (tabla "Reprogramación") dentro del PDF adjunto — el texto del
+// correo en sí solo dice "se emitió una resolución", sin la fecha. Por eso
+// antes nunca se detectaba: había que abrir el PDF, no solo leer el correo.
+
+function encontrarAdjuntosPDF(payload, adjuntos = []) {
+  if (payload.filename && payload.filename.toLowerCase().endsWith('.pdf') && payload.body?.attachmentId) {
+    adjuntos.push({ filename: payload.filename, attachmentId: payload.body.attachmentId })
+  }
+  if (payload.parts) {
+    for (const part of payload.parts) encontrarAdjuntosPDF(part, adjuntos)
+  }
+  return adjuntos
+}
+
+async function descargarAdjunto(messageId, attachmentId) {
+  const data = await gmailFetch(`/gmail/v1/users/me/messages/${messageId}/attachments/${attachmentId}`)
+  return data.data // base64url
+}
+
+async function extraerTextoPDF(base64urlData) {
+  try {
+    const binary = atob(base64urlData.replace(/-/g, '+').replace(/_/g, '/'))
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+    const pdf = await pdfjsLib.getDocument({ data: bytes }).promise
+    let texto = ''
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i)
+      const contenido = await page.getTextContent()
+      texto += contenido.items.map(it => it.str).join(' ') + '\n'
+    }
+    return texto
+  } catch (e) {
+    console.error('No se pudo leer el PDF adjunto:', e)
+    return ''
+  }
+}
+
+async function parsearCorreo(msg) {
   const headers = msg.payload?.headers || []
   const asunto = getHeader(headers, 'subject')
   const de = getHeader(headers, 'from')
-  const cuerpo = getBody(msg.payload)
+  const cuerpoEmail = getBody(msg.payload)
+
+  // Leer el/los PDF adjuntos (máximo 2 por correo, para no demorar demasiado)
+  // y sumar su texto al del correo antes de buscar RUC/RIT/fecha/tribunal/sala.
+  let textoPdf = ''
+  const adjuntosPDF = encontrarAdjuntosPDF(msg.payload)
+  for (const adj of adjuntosPDF.slice(0, 2)) {
+    const base64 = await descargarAdjunto(msg.id, adj.attachmentId)
+    textoPdf += '\n' + await extraerTextoPDF(base64)
+  }
+  const cuerpo = `${cuerpoEmail}\n${textoPdf}`
 
   // ✅ FIX: antes el RUC/RIT solo se buscaba en el asunto con un formato exacto
   // ("RUC: XXXXXX-X, RIT: XXXX-XXXX"). Si el tribunal escribía el asunto distinto
   // (otro orden, "RUC N°", sin coma, etc.) el correo se perdía por completo, sin
-  // ningún aviso. Ahora se busca en asunto + cuerpo, con formato flexible.
-  const textoCompleto = `${asunto}\n${cuerpo.substring(0, 3000)}`
+  // ningún aviso. Ahora se busca en asunto + cuerpo + PDF, con formato flexible.
+  const textoCompleto = `${asunto}\n${cuerpo.substring(0, 6000)}`
 
   const matchRuc = textoCompleto.match(/RUC[°:\s]*N?[°:\s]*([0-9]{6,10}[\s-][0-9Kk])/i)
   const matchRit = textoCompleto.match(/RIT[°:\s]*N?[°:\s]*([0-9]{1,6}[\s-][0-9]{4})/i)
@@ -316,7 +368,7 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
   // PASO 3: Tipo de audiencia
   // Prioriza la sección "Tipo de Audiencia" de la tabla
   // ═══════════════════════════════════════════════════════
-  const matchTipoTabla = cuerpo.match(/Tipo\s+de\s+Audiencia\s+([^\n]{5,80})/i)
+  const matchTipoTabla = cuerpo.match(/Tipo\s+(?:de\s+)?Audiencia\s+([^\n]{5,80})/i)
   if (matchTipoTabla) {
     const t = matchTipoTabla[1].trim()
     if (t.match(/preparaci[oó]n.*juicio|APJO/i)) tipo = 'APJO'
@@ -359,7 +411,7 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
   // ═══════════════════════════════════════════════════════
   // PASO 5: Sala
   // ═══════════════════════════════════════════════════════
-  const matchSala = cuerpo.match(/Sala\s+([A-Z0-9\s]{1,20}?)(?:\n|$)/i)
+  const matchSala = cuerpo.match(/Sala\s+([A-Z0-9\s,]{1,30}?)(?:\n|$)/i)
   if (matchSala) sala = matchSala[1].trim()
 
   return { fecha, hora, tipo, tribunal, sala }
