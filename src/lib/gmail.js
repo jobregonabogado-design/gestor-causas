@@ -206,14 +206,6 @@ async function parsearCorreo(msg) {
     audiencia = extraerAudienciaFiscalia(cuerpo, asunto)
   }
 
-  // 🔍 DEBUG TEMPORAL #2: para el caso de Jonnier (RUC 2300866793-4).
-  if (cuerpo.includes('2300866793')) {
-    console.log('🔍 [Jonnier] Asunto:', asunto)
-    console.log('🔍 [Jonnier] Resultado parser:', JSON.stringify(audiencia))
-    console.log('🔍 [Jonnier] Texto completo:', cuerpo)
-    console.log('🔍 [Jonnier] ---------------------------------')
-  }
-
   return {
     tipo: esFiscalia ? 'FISCALIA' : 'PJUD',
     ruc,
