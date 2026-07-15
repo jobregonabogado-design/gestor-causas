@@ -44,6 +44,7 @@ const estadoConfig = {
   revocacion:        { label:'REVOCACIÓN',              color:'#475569', bg:'#F8F9FC', border:'#e2e8f0' },
   condena_preso:     { label:'CONDENA — PRESO',         color:'#991b1b', bg:'#fef2f2', border:'#fecaca' },
   condena_libertad:  { label:'CONDENA — LIBERTAD',      color:'#92400e', bg:'#fff7ed', border:'#fed7aa' },
+  absuelto:          { label:'ABSUELTO',                color:'#065f46', bg:'#ecfdf5', border:'#a7f3d0' },
   scp:               { label:'SALIDA ALTERNATIVA SCP',  color:'#065f46', bg:'#ecfdf5', border:'#a7f3d0' },
   salida_ar:         { label:'SALIDA ALTERNATIVA AR',   color:'#065f46', bg:'#ecfdf5', border:'#a7f3d0' },
   // Estados principales
@@ -52,7 +53,7 @@ const estadoConfig = {
 }
 
 const SUBESTADOS_VIGENTE = ['plazo_vigente','proximo','vencido','apjo','juicio_oral']
-const SUBESTADOS_TERMINADA = ['renuncia','revocacion','condena_preso','condena_libertad','scp','salida_ar']
+const SUBESTADOS_TERMINADA = ['renuncia','revocacion','condena_preso','condena_libertad','absuelto','scp','salida_ar']
 
 function getBadgeConfig(estado, subestado) {
   if (subestado && estadoConfig[subestado]) return estadoConfig[subestado]
@@ -2176,12 +2177,32 @@ function calcularSubestado(plazoStr) {
   return null
 }
 
-function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudiencia }) {
+function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudiencia, onEditarAudiencia, onEliminarAudiencia }) {
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ fecha_audiencia:'', tipo_audiencia:'Formalización', dias_plazo:'', observacion:'' })
+  const [form, setForm] = useState({ fecha_audiencia:'', tipo_audiencia:'Formalización', dias_plazo:'', observacion:'', fecha_proxima_audiencia:'' })
   const [guardando, setGuardando] = useState(false)
+  const [editandoId, setEditandoId] = useState(null)
+  const [formEdit, setFormEdit] = useState({ fecha_audiencia:'', tipo_audiencia:'', dias_plazo:'', observacion:'', fecha_proxima_audiencia:'' })
+  const [motivoEdit, setMotivoEdit] = useState('')
+  const [guardandoEdit, setGuardandoEdit] = useState(false)
+  const [eliminandoId, setEliminandoId] = useState(null)
+  const [motivoEliminar, setMotivoEliminar] = useState('')
   const f = { fontFamily:"'Inter',sans-serif" }
   const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:'#1E293B', background:'#fff', ...f }
+  const TIPO_PROXIMA = 'Aumento próxima audiencia'
+  const TIPOS_AUDIENCIA_PLAZO = ['Formalización','Control de detención + Formalización','Ampliación de plazo',TIPO_PROXIMA,'Reapertura de investigación']
+
+  // Días corridos entre dos fechas (para "Aumento próxima audiencia")
+  const diasEntreFechas = (fechaA, fechaB) => {
+    if (!fechaA || !fechaB) return null
+    const a = new Date(fechaA + 'T12:00:00')
+    const b = new Date(fechaB + 'T12:00:00')
+    if (isNaN(a) || isNaN(b)) return null
+    return Math.round((b - a) / (1000*60*60*24))
+  }
+
+  // Solo las audiencias NO eliminadas cuentan para el cálculo del vencimiento total
+  const activos = (aumentos || []).filter(a => !a.eliminado)
 
   const calcularVencimientoTotal = (auds) => {
     if (!auds || auds.length === 0) return null
@@ -2190,19 +2211,48 @@ function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudiencia })
     return calcularVencimiento(sorted[0].fecha_audiencia, diasTotal)
   }
 
-  const vencimientoPreview = form.fecha_audiencia && form.dias_plazo ? calcularVencimiento(form.fecha_audiencia, form.dias_plazo) : ''
+  // Días calculados automáticamente cuando el tipo es "Aumento próxima audiencia"
+  const diasCalculadosNuevo = form.tipo_audiencia === TIPO_PROXIMA ? diasEntreFechas(form.fecha_audiencia, form.fecha_proxima_audiencia) : null
+  const diasFormNuevo = form.tipo_audiencia === TIPO_PROXIMA ? diasCalculadosNuevo : form.dias_plazo
+  const vencimientoPreview = form.fecha_audiencia && diasFormNuevo ? calcularVencimiento(form.fecha_audiencia, diasFormNuevo) : ''
+
+  const diasCalculadosEdit = formEdit.tipo_audiencia === TIPO_PROXIMA ? diasEntreFechas(formEdit.fecha_audiencia, formEdit.fecha_proxima_audiencia) : null
 
   const handleGuardar = async () => {
-    if (!form.fecha_audiencia || !form.dias_plazo) return
+    const diasFinal = form.tipo_audiencia === TIPO_PROXIMA ? diasCalculadosNuevo : parseInt(form.dias_plazo)
+    if (!form.fecha_audiencia || !diasFinal || diasFinal <= 0) return
     setGuardando(true)
-    await onGuardarAudiencia(form)
-    setForm({ fecha_audiencia:'', tipo_audiencia:'Formalización', dias_plazo:'', observacion:'' })
+    await onGuardarAudiencia({ ...form, dias_plazo: diasFinal })
+    setForm({ fecha_audiencia:'', tipo_audiencia:'Formalización', dias_plazo:'', observacion:'', fecha_proxima_audiencia:'' })
     setShowForm(false)
     setGuardando(false)
   }
 
-  const diasTotal = aumentos ? aumentos.reduce((s,a) => s + (parseInt(a.dias_plazo)||0), 0) : 0
-  const vencFinal = calcularVencimientoTotal(aumentos)
+  const empezarEdicion = (a) => {
+    setEditandoId(a.id)
+    setMotivoEdit('')
+    setFormEdit({ fecha_audiencia:a.fecha_audiencia||'', tipo_audiencia:a.tipo_audiencia||'Formalización', dias_plazo:String(a.dias_plazo||''), observacion:a.observacion||'', fecha_proxima_audiencia:a.fecha_proxima_audiencia||'' })
+  }
+
+  const guardarEdicion = async () => {
+    const diasFinal = formEdit.tipo_audiencia === TIPO_PROXIMA ? diasCalculadosEdit : parseInt(formEdit.dias_plazo)
+    if (!formEdit.fecha_audiencia || !diasFinal || diasFinal <= 0) return
+    if (!motivoEdit.trim()) { alert('Ingresa el motivo de la corrección — queda registrado para tener trazabilidad.'); return }
+    setGuardandoEdit(true)
+    await onEditarAudiencia(editandoId, { ...formEdit, dias_plazo: diasFinal }, motivoEdit.trim())
+    setEditandoId(null)
+    setGuardandoEdit(false)
+  }
+
+  const confirmarEliminar = async (id) => {
+    if (!motivoEliminar.trim()) { alert('Ingresa el motivo de la eliminación — queda registrado, visible y tachado en el historial.'); return }
+    await onEliminarAudiencia(id, motivoEliminar.trim())
+    setEliminandoId(null)
+    setMotivoEliminar('')
+  }
+
+  const diasTotal = activos.reduce((s,a) => s + (parseInt(a.dias_plazo)||0), 0)
+  const vencFinal = calcularVencimientoTotal(activos)
   const subestado = calcularSubestado(vencFinal)
   const diff = diasRestantes(vencFinal)
 
@@ -2210,8 +2260,8 @@ function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudiencia })
     <div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,marginBottom:20}}>
         <div style={{background:'#eff6ff',border:'1.5px solid #bfdbfe',borderRadius:12,padding:'14px 16px',textAlign:'center'}}>
-          <div style={{fontSize:28,fontWeight:900,color:'#2563eb',letterSpacing:'-1px',...f}}>{aumentos?aumentos.length:0}</div>
-          <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1,marginTop:4,fontWeight:600,...f}}>Audiencias registradas</div>
+          <div style={{fontSize:28,fontWeight:900,color:'#2563eb',letterSpacing:'-1px',...f}}>{activos.length}</div>
+          <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1,marginTop:4,fontWeight:600,...f}}>Audiencias vigentes</div>
         </div>
         <div style={{background:'#fffbeb',border:'1.5px solid #fde68a',borderRadius:12,padding:'14px 16px',textAlign:'center'}}>
           <div style={{fontSize:28,fontWeight:900,color:'#d97706',letterSpacing:'-1px',...f}}>{diasTotal}</div>
@@ -2226,39 +2276,120 @@ function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudiencia })
       <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:10,fontWeight:600,...f}}>Historial de audiencias de plazo</div>
       {(!aumentos||aumentos.length===0) && <p style={{color:'#cbd5e1',fontSize:13,marginBottom:14,...f}}>Sin audiencias registradas.</p>}
       {aumentos && aumentos.map((a,i) => {
-        const audsHasta = [...aumentos].sort((x,y)=>x.fecha_audiencia.localeCompare(y.fecha_audiencia)).slice(0,i+1)
+        // El acumulado se calcula solo sobre las audiencias vigentes (no eliminadas), en orden de fecha
+        const posEnActivos = activos.findIndex(x=>x.id===a.id)
+        const audsHasta = posEnActivos >= 0 ? activos.slice(0,posEnActivos+1) : []
         const diasAcum = audsHasta.reduce((s,x)=>s+(parseInt(x.dias_plazo)||0),0)
-        const vencAcum = calcularVencimiento(audsHasta[0].fecha_audiencia, diasAcum)
+        const vencAcum = audsHasta.length ? calcularVencimiento(audsHasta[0].fecha_audiencia, diasAcum) : null
+
+        // ─── Fila ELIMINADA: tachada, con el motivo visible (transparencia, no se oculta) ───
+        if (a.eliminado) return (
+          <div key={a.id} style={{display:'flex',gap:12,alignItems:'flex-start',padding:'12px 16px',background:'#F8F9FC',border:'1px solid #e2e8f0',borderRadius:10,marginBottom:8,opacity:0.75}}>
+            <div style={{width:30,height:30,background:'#cbd5e1',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:14,flexShrink:0}}>✕</div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:13,fontWeight:600,color:'#94a3b8',textDecoration:'line-through',...f}}>{a.tipo_audiencia||'Audiencia'} · {a.fecha_audiencia} · +{a.dias_plazo}d</div>
+              <div style={{fontSize:11,color:'#dc2626',marginTop:4,...f}}>🗑 Eliminada por {a.eliminado_por||'—'} el {a.eliminado_en ? new Date(a.eliminado_en).toLocaleDateString('es-CL') : '—'} · Motivo: {a.motivo_eliminacion||'—'}</div>
+            </div>
+          </div>
+        )
+
+        if (editandoId === a.id) return (
+          <div key={a.id} style={{background:'#faf5ff',border:'1.5px solid #ddd6fe',borderRadius:12,padding:16,marginBottom:8}}>
+            <div style={{fontSize:12,fontWeight:700,color:'#5b21b6',marginBottom:12,...f}}>✏ Corregir audiencia de plazo</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
+              <div style={{gridColumn:'1/-1'}}>
+                <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Tipo de audiencia</div>
+                <select style={inp} value={formEdit.tipo_audiencia} onChange={e=>setFormEdit(p=>({...p,tipo_audiencia:e.target.value}))}>
+                  {TIPOS_AUDIENCIA_PLAZO.map(t=><option key={t}>{t}</option>)}
+                </select>
+              </div>
+              <div><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Fecha de audiencia</div><input type="date" style={inp} value={formEdit.fecha_audiencia} onChange={e=>setFormEdit(p=>({...p,fecha_audiencia:e.target.value}))}/></div>
+              {formEdit.tipo_audiencia === TIPO_PROXIMA ? (
+                <div>
+                  <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Fecha de la próxima audiencia</div>
+                  <input type="date" style={inp} value={formEdit.fecha_proxima_audiencia} onChange={e=>setFormEdit(p=>({...p,fecha_proxima_audiencia:e.target.value}))}/>
+                </div>
+              ) : (
+                <div><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Días de plazo otorgados</div><input type="number" style={inp} value={formEdit.dias_plazo} onChange={e=>setFormEdit(p=>({...p,dias_plazo:e.target.value}))}/></div>
+              )}
+              {formEdit.tipo_audiencia === TIPO_PROXIMA && diasCalculadosEdit !== null && (
+                <div style={{gridColumn:'1/-1',fontSize:12,color:'#5b21b6',background:'#f5f3ff',border:'1px solid #ddd6fe',borderRadius:8,padding:'8px 12px',...f}}>📐 Se calculó automáticamente: <strong>{diasCalculadosEdit} días corridos</strong></div>
+              )}
+              <div style={{gridColumn:'1/-1'}}><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>{formEdit.tipo_audiencia === TIPO_PROXIMA ? 'Motivo / tipo de la próxima audiencia' : 'Observación'}</div><input style={inp} placeholder={formEdit.tipo_audiencia === TIPO_PROXIMA ? 'Ej: Procedimiento Abreviado' : ''} value={formEdit.observacion} onChange={e=>setFormEdit(p=>({...p,observacion:e.target.value}))}/></div>
+              <div style={{gridColumn:'1/-1'}}>
+                <div style={{fontSize:10,color:'#dc2626',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Motivo de la corrección *</div>
+                <input style={{...inp,borderColor:'#fecaca'}} placeholder="Ej: Error de tipeo en los días, fecha mal ingresada..." value={motivoEdit} onChange={e=>setMotivoEdit(e.target.value)}/>
+              </div>
+            </div>
+            <div style={{display:'flex',gap:8}}>
+              <button className="btn-primary" style={{fontSize:12}} onClick={guardarEdicion} disabled={guardandoEdit}>{guardandoEdit?'Guardando...':'✓ Guardar corrección'}</button>
+              <button className="btn-secondary" style={{fontSize:12}} onClick={()=>setEditandoId(null)}>Cancelar</button>
+            </div>
+          </div>
+        )
+
+        if (eliminandoId === a.id) return (
+          <div key={a.id} style={{background:'#fef2f2',border:'1.5px solid #fecaca',borderRadius:12,padding:16,marginBottom:8}}>
+            <div style={{fontSize:12,fontWeight:700,color:'#991b1b',marginBottom:10,...f}}>🗑 Eliminar "{a.tipo_audiencia}" del {a.fecha_audiencia}</div>
+            <div style={{fontSize:10,color:'#dc2626',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Motivo de la eliminación *</div>
+            <input style={{...inp,borderColor:'#fecaca',marginBottom:10}} placeholder="Ej: Se ingresó dos veces por error..." value={motivoEliminar} onChange={e=>setMotivoEliminar(e.target.value)} autoFocus/>
+            <div style={{fontSize:11,color:'#94a3b8',marginBottom:10,...f}}>No se borra de verdad — queda tachada y visible en el historial con este motivo, para tener trazabilidad.</div>
+            <div style={{display:'flex',gap:8}}>
+              <button style={{background:'#dc2626',color:'#fff',border:'none',borderRadius:8,padding:'8px 16px',fontSize:12,fontWeight:600,cursor:'pointer',...f}} onClick={()=>confirmarEliminar(a.id)}>✓ Confirmar eliminación</button>
+              <button className="btn-secondary" style={{fontSize:12}} onClick={()=>{setEliminandoId(null);setMotivoEliminar('')}}>Cancelar</button>
+            </div>
+          </div>
+        )
+
         return (
           <div key={a.id} style={{display:'flex',gap:12,alignItems:'center',padding:'14px 16px',background:'#F8F9FC',border:'1px solid #e2e8f0',borderRadius:10,marginBottom:8}}>
-            <div style={{width:30,height:30,background:'linear-gradient(135deg,#2563eb,#1d4ed8)',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:12,fontWeight:700,flexShrink:0}}>{i+1}</div>
+            <div style={{width:30,height:30,background:'#1E293B',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:12,fontWeight:700,flexShrink:0}}>{posEnActivos+1}</div>
             <div style={{flex:1}}>
               <div style={{fontSize:13,fontWeight:600,color:'#1E293B',...f}}>{a.tipo_audiencia||'Audiencia'}</div>
-              <div style={{fontSize:12,color:'#94a3b8',marginTop:2,...f}}>📅 {a.fecha_audiencia}</div>
+              <div style={{fontSize:12,color:'#94a3b8',marginTop:2,...f}}>📅 {a.fecha_audiencia}{a.fecha_proxima_audiencia?` → próxima audiencia: ${a.fecha_proxima_audiencia}`:''}</div>
               {a.observacion&&<div style={{fontSize:12,color:'#64748b',marginTop:2,...f}}>{a.observacion}</div>}
+              {a.historial && (
+                <div style={{marginTop:6,paddingTop:6,borderTop:'1px solid #e2e8f0'}}>
+                  {a.historial.split('\n').map((h,idx)=><div key={idx} style={{fontSize:10,color:'#94a3b8',...f}}>📝 {h}</div>)}
+                </div>
+              )}
             </div>
-            <div style={{textAlign:'right'}}>
+            <div style={{textAlign:'right',marginRight:4}}>
               <div style={{fontSize:16,fontWeight:800,color:'#2563eb',...f}}>+{a.dias_plazo}d</div>
-              <div style={{fontSize:11,color:'#94a3b8',marginTop:2,...f}}>Vence: {vencAcum}</div>
+              <div style={{fontSize:11,color:'#94a3b8',marginTop:2,...f}}>Vence: {vencAcum||'—'}</div>
               <div style={{fontSize:10,color:'#cbd5e1',...f}}>Acum. {diasAcum}d</div>
+            </div>
+            <div style={{display:'flex',flexDirection:'column',gap:4,flexShrink:0}}>
+              <button onClick={()=>empezarEdicion(a)} style={{background:'#faf5ff',border:'1px solid #ddd6fe',borderRadius:6,padding:'4px 8px',fontSize:11,color:'#5b21b6',cursor:'pointer',fontWeight:600,...f}}>✏ Corregir</button>
+              <button onClick={()=>{setEliminandoId(a.id);setMotivoEliminar('')}} style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:6,padding:'4px 8px',fontSize:11,color:'#dc2626',cursor:'pointer',fontWeight:600,...f}}>✕ Eliminar</button>
             </div>
           </div>
         )
       })}
       {showForm ? (
         <div style={{background:'#f0f7ff',border:'1.5px solid #bfdbfe',borderRadius:12,padding:16,marginTop:12}}>
-          <div style={{fontSize:12,fontWeight:700,color:'#2563eb',marginBottom:12,...f}}>{aumentos && aumentos.length === 0 ? '📋 Registrar audiencia de formalización' : '📋 Registrar nueva audiencia de plazo'}</div>
+          <div style={{fontSize:12,fontWeight:700,color:'#2563eb',marginBottom:12,...f}}>{activos.length === 0 ? '📋 Registrar audiencia de formalización' : '📋 Registrar nueva audiencia de plazo'}</div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
-            <div><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Tipo de audiencia</div><select style={inp} value={form.tipo_audiencia} onChange={e=>setForm(p=>({...p,tipo_audiencia:e.target.value}))}><option>Formalización</option><option>Control de detención + Formalización</option><option>Ampliación de plazo</option><option>Reapertura de investigación</option></select></div>
+            <div style={{gridColumn:'1/-1'}}><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Tipo de audiencia</div><select style={inp} value={form.tipo_audiencia} onChange={e=>setForm(p=>({...p,tipo_audiencia:e.target.value}))}>{TIPOS_AUDIENCIA_PLAZO.map(t=><option key={t}>{t}</option>)}</select></div>
             <div><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Fecha de audiencia</div><input type="date" style={inp} value={form.fecha_audiencia} onChange={e=>setForm(p=>({...p,fecha_audiencia:e.target.value}))}/></div>
-            <div><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Días de plazo otorgados</div><input type="number" style={inp} placeholder="Ej: 30, 90, 210" value={form.dias_plazo} onChange={e=>setForm(p=>({...p,dias_plazo:e.target.value}))}/></div>
-            <div><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Observación</div><input style={inp} placeholder="Ej: Diligencias pendientes" value={form.observacion} onChange={e=>setForm(p=>({...p,observacion:e.target.value}))}/></div>
+            {form.tipo_audiencia === TIPO_PROXIMA ? (
+              <div>
+                <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Fecha de la próxima audiencia</div>
+                <input type="date" style={inp} value={form.fecha_proxima_audiencia} onChange={e=>setForm(p=>({...p,fecha_proxima_audiencia:e.target.value}))}/>
+              </div>
+            ) : (
+              <div><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Días de plazo otorgados</div><input type="number" style={inp} placeholder="Ej: 30, 90, 210" value={form.dias_plazo} onChange={e=>setForm(p=>({...p,dias_plazo:e.target.value}))}/></div>
+            )}
+            {form.tipo_audiencia === TIPO_PROXIMA && diasCalculadosNuevo !== null && (
+              <div style={{gridColumn:'1/-1',fontSize:12,color:'#5b21b6',background:'#f5f3ff',border:'1px solid #ddd6fe',borderRadius:8,padding:'8px 12px',...f}}>📐 Se calculó automáticamente: <strong>{diasCalculadosNuevo} días corridos</strong></div>
+            )}
+            <div style={{gridColumn:'1/-1'}}><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>{form.tipo_audiencia === TIPO_PROXIMA ? 'Motivo / tipo de la próxima audiencia' : 'Observación'}</div><input style={inp} placeholder={form.tipo_audiencia === TIPO_PROXIMA ? 'Ej: Procedimiento Abreviado' : 'Ej: Diligencias pendientes'} value={form.observacion} onChange={e=>setForm(p=>({...p,observacion:e.target.value}))}/></div>
           </div>
           {vencimientoPreview && <div style={{marginBottom:12,padding:'10px 14px',background:'#fff',borderRadius:8,border:'1px solid #bfdbfe',display:'flex',alignItems:'center',gap:8}}><span style={{fontSize:16}}>📅</span><div><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1,fontWeight:700,...f}}>Vencimiento de este plazo</div><div style={{fontSize:15,fontWeight:800,color:'#2563eb',...f}}>{vencimientoPreview}</div></div></div>}
-          <div style={{display:'flex',gap:8}}><button className="btn-primary" style={{fontSize:12}} onClick={handleGuardar} disabled={guardando||!form.fecha_audiencia||!form.dias_plazo}>{guardando?'Guardando...':'💾 Guardar audiencia'}</button><button className="btn-secondary" style={{fontSize:12}} onClick={()=>setShowForm(false)}>Cancelar</button></div>
+          <div style={{display:'flex',gap:8}}><button className="btn-primary" style={{fontSize:12}} onClick={handleGuardar} disabled={guardando||!form.fecha_audiencia}>{guardando?'Guardando...':'💾 Guardar audiencia'}</button><button className="btn-secondary" style={{fontSize:12}} onClick={()=>setShowForm(false)}>Cancelar</button></div>
         </div>
       ) : (
-        <button className="btn-secondary" style={{marginTop:12}} onClick={()=>setShowForm(true)}>+ {aumentos && aumentos.length === 0 ? 'Registrar formalización' : 'Registrar nueva audiencia de plazo'}</button>
+        <button className="btn-secondary" style={{marginTop:12}} onClick={()=>setShowForm(true)}>+ {activos.length === 0 ? 'Registrar formalización' : 'Registrar nueva audiencia de plazo'}</button>
       )}
     </div>
   )
@@ -2778,19 +2909,60 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
               </div>
             )}
             {activeTab==='plazo'&&(
-              <PlazoCalculador causaId={c.id} plazoActual={c.plazo} aumentos={aumentos} onGuardarAudiencia={async(form)=>{
+              <PlazoCalculador causaId={c.id} plazoActual={c.plazo} aumentos={aumentos}
+                onGuardarAudiencia={async(form)=>{
                 const diasNum = parseInt(form.dias_plazo) || 0
-                const{data,error}=await supabase.from('aumentos_plazo').insert({causa_id:c.id,fecha_audiencia:form.fecha_audiencia,tipo_audiencia:form.tipo_audiencia,dias_plazo:diasNum,dias_aumento:diasNum,observacion:form.observacion||''}).select().single()
+                const{data,error}=await supabase.from('aumentos_plazo').insert({causa_id:c.id,fecha_audiencia:form.fecha_audiencia,tipo_audiencia:form.tipo_audiencia,dias_plazo:diasNum,dias_aumento:diasNum,observacion:form.observacion||'',fecha_proxima_audiencia:form.fecha_proxima_audiencia||null}).select().single()
                 if(!error){
                   const nuevosAumentos=[...aumentos,data].sort((a,b)=>a.fecha_audiencia.localeCompare(b.fecha_audiencia))
                   setAumentos(nuevosAumentos)
-                  const diasTotal=nuevosAumentos.reduce((s,a)=>s+(parseInt(a.dias_plazo)||0),0)
-                  const primera=nuevosAumentos[0]
-                  const nuevoVenc='VENCE '+calcularVencimiento(primera.fecha_audiencia,diasTotal)
+                  const activos=nuevosAumentos.filter(a=>!a.eliminado)
+                  const diasTotal=activos.reduce((s,a)=>s+(parseInt(a.dias_plazo)||0),0)
+                  const primera=activos[0]
+                  const nuevoVenc= primera ? 'VENCE '+calcularVencimiento(primera.fecha_audiencia,diasTotal) : ''
                   const nuevoSub=calcularSubestado(nuevoVenc)
                   await supabase.from('causas').update({plazo:nuevoVenc,subestado:nuevoSub,updated_at:new Date()}).eq('id',c.id)
                   const u={...selectedCausa,plazo:nuevoVenc,subestado:nuevoSub,updated_at:new Date().toISOString()}
                   setSelectedCausa(u);setCausas(prev=>prev.map(x=>x.id===u.id?u:x))
+                  if (registrarActividad) registrarActividad('accion', `Registró audiencia de plazo (+${diasNum}d, ${form.tipo_audiencia}) en RUC ${c.ruc}`)
+                }
+              }}
+                onEditarAudiencia={async(id, form, motivo)=>{
+                const diasNum = parseInt(form.dias_plazo) || 0
+                const anterior = aumentos.find(a=>a.id===id)
+                const lineaHistorial = `[${new Date().toLocaleString('es-CL')}] Corregido por ${session?.user?.email||'usuario'}. Motivo: ${motivo}. Antes era: ${anterior?.tipo_audiencia||'—'}, ${anterior?.fecha_audiencia||'—'}, ${anterior?.dias_plazo||0} días.`
+                const nuevoHistorial = anterior?.historial ? anterior.historial + '\n' + lineaHistorial : lineaHistorial
+                const{error}=await supabase.from('aumentos_plazo').update({fecha_audiencia:form.fecha_audiencia,tipo_audiencia:form.tipo_audiencia,dias_plazo:diasNum,dias_aumento:diasNum,observacion:form.observacion||'',fecha_proxima_audiencia:form.fecha_proxima_audiencia||null,historial:nuevoHistorial}).eq('id',id)
+                if(!error){
+                  const nuevosAumentos=aumentos.map(a=>a.id===id?{...a,fecha_audiencia:form.fecha_audiencia,tipo_audiencia:form.tipo_audiencia,dias_plazo:diasNum,dias_aumento:diasNum,observacion:form.observacion||'',fecha_proxima_audiencia:form.fecha_proxima_audiencia||null,historial:nuevoHistorial}:a).sort((a,b)=>a.fecha_audiencia.localeCompare(b.fecha_audiencia))
+                  setAumentos(nuevosAumentos)
+                  const activos=nuevosAumentos.filter(a=>!a.eliminado)
+                  const diasTotal=activos.reduce((s,a)=>s+(parseInt(a.dias_plazo)||0),0)
+                  const primera=activos[0]
+                  const nuevoVenc = primera ? 'VENCE '+calcularVencimiento(primera.fecha_audiencia,diasTotal) : ''
+                  const nuevoSub=calcularSubestado(nuevoVenc)
+                  await supabase.from('causas').update({plazo:nuevoVenc,subestado:nuevoSub,updated_at:new Date()}).eq('id',c.id)
+                  const u={...selectedCausa,plazo:nuevoVenc,subestado:nuevoSub,updated_at:new Date().toISOString()}
+                  setSelectedCausa(u);setCausas(prev=>prev.map(x=>x.id===u.id?u:x))
+                  if (registrarActividad) registrarActividad('accion', `Corrigió una audiencia de plazo en RUC ${c.ruc}: ${motivo}`)
+                }
+              }}
+                onEliminarAudiencia={async(id, motivo)=>{
+                // ✅ Eliminación lógica: no se borra de la base, se marca "eliminado" con el
+                // motivo, y queda visible tachada en el historial para tener trazabilidad.
+                const{error}=await supabase.from('aumentos_plazo').update({eliminado:true,motivo_eliminacion:motivo,eliminado_por:session?.user?.email||'usuario',eliminado_en:new Date()}).eq('id',id)
+                if(!error){
+                  const nuevosAumentos=aumentos.map(a=>a.id===id?{...a,eliminado:true,motivo_eliminacion:motivo,eliminado_por:session?.user?.email||'usuario',eliminado_en:new Date().toISOString()}:a)
+                  setAumentos(nuevosAumentos)
+                  const activos=nuevosAumentos.filter(a=>!a.eliminado)
+                  const diasTotal=activos.reduce((s,a)=>s+(parseInt(a.dias_plazo)||0),0)
+                  const primera=activos[0]
+                  const nuevoVenc = primera ? 'VENCE '+calcularVencimiento(primera.fecha_audiencia,diasTotal) : ''
+                  const nuevoSub = primera ? calcularSubestado(nuevoVenc) : null
+                  await supabase.from('causas').update({plazo:nuevoVenc,subestado:nuevoSub,updated_at:new Date()}).eq('id',c.id)
+                  const u={...selectedCausa,plazo:nuevoVenc,subestado:nuevoSub,updated_at:new Date().toISOString()}
+                  setSelectedCausa(u);setCausas(prev=>prev.map(x=>x.id===u.id?u:x))
+                  if (registrarActividad) registrarActividad('accion', `Eliminó una audiencia de plazo en RUC ${c.ruc}: ${motivo}`)
                 }
               }}/>
             )}
