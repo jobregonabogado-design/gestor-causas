@@ -73,20 +73,24 @@ export default function GmailIntegracion({ onImportComplete }) {
         .select('id, ruc, fecha, tipo, hora, sala')
 
       const normalizarParaClave = (v) => (v || '').toString().trim().toLowerCase()
+      const normalizarRuc = (ruc) => ruc?.replace(/[\s\-]/g, '').toLowerCase() || ''
+
+      // ✅ FIX: antes esto usaba `a.ruc` tal cual (con guión, ej "1801167745-9")
+      // mientras que el RUC de los correos se normaliza sin guión. Como nunca
+      // calzaban, el sistema nunca reconocía nada como "ya existente" y volvía
+      // a insertar todo de nuevo cada vez que se revisaban los correos.
       const claveExistente = new Set(
-        (audienciasExistentes || []).map(a => `${a.ruc}-${a.fecha}-${normalizarParaClave(a.tipo)}-${normalizarParaClave(a.hora)}`)
+        (audienciasExistentes || []).map(a => `${normalizarRuc(a.ruc)}-${a.fecha}-${normalizarParaClave(a.tipo)}-${normalizarParaClave(a.hora)}`)
       )
       // Agrupadas solo por RUC+fecha+tipo (sin hora), para detectar inconsistencias
       const clavesBaseExistentes = new Map()
       ;(audienciasExistentes || []).forEach(a => {
-        const claveBase = `${a.ruc}-${a.fecha}-${normalizarParaClave(a.tipo)}`
+        const claveBase = `${normalizarRuc(a.ruc)}-${a.fecha}-${normalizarParaClave(a.tipo)}`
         if (!clavesBaseExistentes.has(claveBase)) clavesBaseExistentes.set(claveBase, [])
         clavesBaseExistentes.get(claveBase).push(a)
       })
 
       const clavesProcesadas = new Set()
-
-      const normalizarRuc = (ruc) => ruc?.replace(/[\s\-]/g, '') || ''
 
       // Mapa con RUC normalizado
       const causasPorRucNorm = {}
