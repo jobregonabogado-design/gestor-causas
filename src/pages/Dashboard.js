@@ -1554,6 +1554,29 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
     setSelectedCausa(prev => prev ? { ...prev, updated_at: ahora.toISOString() } : prev)
   }, [])
 
+  // ✅ Actualiza los delitos de UN imputado específico y recalcula el agregado
+  // en causas.delito (unión sin duplicados de los delitos de todos los imputados),
+  // para que la búsqueda, la tabla y el gráfico de estadísticas sigan funcionando.
+  const actualizarDelitosImputado = async (impId, nuevoValor) => {
+    await supabase.from('imputados').update({ delitos: nuevoValor }).eq('id', impId)
+    const nuevosImputados = imputados.map(x => x.id === impId ? { ...x, delitos: nuevoValor } : x)
+    setImputados(nuevosImputados)
+    const acumulados = []
+    nuevosImputados.forEach(imp => {
+      (imp.delitos || '').split('|').map(d => d.trim()).filter(Boolean).forEach(d => {
+        if (!acumulados.includes(d)) acumulados.push(d)
+      })
+    })
+    const agregado = acumulados.join('|')
+    const ahora = new Date()
+    await supabase.from('causas').update({ delito: agregado, updated_at: ahora }).eq('id', selectedCausa.id)
+    const u = { ...selectedCausa, delito: agregado, updated_at: ahora.toISOString() }
+    setSelectedCausa(u)
+    setCausas(prev => prev.map(c => c.id === u.id ? u : c))
+    const imp = nuevosImputados.find(x => x.id === impId)
+    if (registrarActividad) registrarActividad('accion', `Actualizó delitos de ${imp?.nombre || 'imputado'} en RUC ${selectedCausa.ruc}`)
+  }
+
   const updateField=async(field,value)=>{
     const camposSinMayusculas = ['estado','subestado','tiene_top']
     if (typeof value === 'string' && !camposSinMayusculas.includes(field)) value = value.toUpperCase()
@@ -1650,6 +1673,7 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
           domicilio: up(nuevaCausa.imputado_domicilio) || '',
           nacionalidad: up(nuevaCausa.imputado_nacionalidad) || '',
           regimen: regAuto || 'ADULTO',
+          delitos: up(nuevaCausa.delito) || '',
         })
       }
       setCausas(prev => [data, ...prev])
@@ -1735,10 +1759,23 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
                 {[{key:'imputado',label:'Imputado(s)',full:true,editable:true},{key:'tribunal',label:'Tribunal',editable:true},{key:'rit',label:'RIT JG',editable:true},{key:'fiscal',label:'Fiscal a cargo',editable:true},{key:'cautelar',label:'Cautelar procesal',editable:true},{key:'centro_penal',label:'Centro Penal',editable:true},{key:'plazo',label:'Plazo / Vencimiento',editable:true,full:true}].map(field=>(
                   <Field key={field.key} label={field.label} value={c[field.key]} editable={field.editable} full={field.full} fieldKey={field.key} editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField(field.key,editValue)}/>
                 ))}
-                {/* Delito(s) — puede haber más de uno */}
+                {/* Delito(s) — sincronizado con los imputados. 1 imputado = mismo dato; varios = uno por cada uno */}
                 <div style={{gridColumn:'1/-1',marginBottom:2}}>
                   <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Delito(s)</div>
-                  <DelitosChips value={c.delito} onChange={(v)=>updateField('delito', v)} options={DELITOS_CATALOGO} />
+                  {imputados.length === 0 ? (
+                    <DelitosChips value={c.delito} onChange={(v)=>updateField('delito', v)} options={DELITOS_CATALOGO} />
+                  ) : imputados.length === 1 ? (
+                    <DelitosChips value={imputados[0].delitos} onChange={(v)=>actualizarDelitosImputado(imputados[0].id, v)} options={DELITOS_CATALOGO} />
+                  ) : (
+                    <div style={{display:'flex',flexDirection:'column',gap:12}}>
+                      {imputados.map(imp=>(
+                        <div key={imp.id} style={{border:'1px solid #e2e8f0',borderRadius:10,padding:'12px 14px',background:'#F8F9FC'}}>
+                          <div style={{fontSize:12,fontWeight:700,color:'#1E293B',marginBottom:8,...f}}>👤 {imp.nombre||'Sin nombre'}</div>
+                          <DelitosChips value={imp.delitos} onChange={(v)=>actualizarDelitosImputado(imp.id, v)} options={DELITOS_CATALOGO} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 {/* Fecha de los hechos */}
                 <div style={{gridColumn:'1/-1',marginTop:4}}>
@@ -1839,6 +1876,8 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
               <div>
                 {imputados.map((imp,idx)=>(
                   <ImputadoCard key={imp.id} imp={imp} idx={idx} onUpdate={async(field,value)=>{
+                    // Los delitos van sincronizados con el agregado de la causa
+                    if (field === 'delitos') { await actualizarDelitosImputado(imp.id, value); return }
                     // Campos que NO deben convertirse a mayúsculas
                     const camposSinUpper = ['fecha_nacimiento','fecha_detencion','rut']
                     if (typeof value === 'string' && !camposSinUpper.includes(field)) value = value.toUpperCase()
@@ -1867,7 +1906,16 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
                   }} onDelete={async()=>{
                     if(!window.confirm('¿Eliminar este imputado?'))return
                     await supabase.from('imputados').delete().eq('id',imp.id)
-                    setImputados(prev=>prev.filter(x=>x.id!==imp.id))
+                    const restantes = imputados.filter(x=>x.id!==imp.id)
+                    setImputados(restantes)
+                    // Recalcular agregado de delitos sin este imputado
+                    const acumulados = []
+                    restantes.forEach(r => { (r.delitos||'').split('|').map(d=>d.trim()).filter(Boolean).forEach(d=>{ if(!acumulados.includes(d)) acumulados.push(d) }) })
+                    const agregado = acumulados.join('|')
+                    await supabase.from('causas').update({ delito: agregado }).eq('id', c.id)
+                    const u = { ...selectedCausa, delito: agregado }
+                    setSelectedCausa(u)
+                    setCausas(prev=>prev.map(x=>x.id===u.id?u:x))
                     await marcarAccion(c.id) // ✅ actualiza semáforo
                   }}/>
                 ))}
