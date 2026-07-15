@@ -60,20 +60,23 @@ export default function GmailIntegracion({ onImportComplete }) {
         return rucsVigentes.has(rucNorm)
       })
 
-      // 3. Corroborar contra lo que ya existe: si TODOS los datos coinciden
-      // (fecha, hora, tipo, sala) se considera "sin cambios" y no se toca.
-      // Si algo no coincide (p. ej. la hora venía mal antes y ahora se lee
-      // bien), se agrega como una entrada nueva para que la revises tú y
-      // borres la que quedó mal — así el sistema nunca sobreescribe nada solo.
+      // 3. Corroborar contra lo que ya existe (RUC+fecha+tipo+HORA — la sala
+      // se deja fuera de la comparación porque a veces se lee con espacios o
+      // formato levemente distinto entre una revisión y otra, y generaba
+      // duplicados de sobra aunque la hora fuera exactamente la misma).
+      // - Si ya existe exactamente lo mismo → no se toca.
+      // - Si existe algo para ese RUC+fecha+tipo pero con OTRA hora → es una
+      //   inconsistencia real (alguien la agregó manual o el correo cambió
+      //   de opinión) y queda marcada para que la revises tú.
       const { data: audienciasExistentes } = await supabase
         .from('audiencias')
         .select('id, ruc, fecha, tipo, hora, sala')
 
       const normalizarParaClave = (v) => (v || '').toString().trim().toLowerCase()
       const claveExistente = new Set(
-        (audienciasExistentes || []).map(a => `${a.ruc}-${a.fecha}-${normalizarParaClave(a.tipo)}-${normalizarParaClave(a.hora)}-${normalizarParaClave(a.sala)}`)
+        (audienciasExistentes || []).map(a => `${a.ruc}-${a.fecha}-${normalizarParaClave(a.tipo)}-${normalizarParaClave(a.hora)}`)
       )
-      // Para detectar "posibles correcciones": misma fecha+tipo+ruc pero hora/sala distinta
+      // Agrupadas solo por RUC+fecha+tipo (sin hora), para detectar inconsistencias
       const clavesBaseExistentes = new Map()
       ;(audienciasExistentes || []).forEach(a => {
         const claveBase = `${a.ruc}-${a.fecha}-${normalizarParaClave(a.tipo)}`
@@ -125,19 +128,20 @@ export default function GmailIntegracion({ onImportComplete }) {
           continue
         }
 
-        // Corroborar: clave completa con fecha+hora+tipo+sala.
-        // Si algo cambió respecto a lo ya guardado, se agrega como nueva
-        // entrada (no se pisa la anterior) para revisión manual.
-        const clave = `${rucNorm}-${n.audiencia.fecha}-${normalizarParaClave(n.audiencia.tipo)}-${normalizarParaClave(n.audiencia.hora)}-${normalizarParaClave(n.audiencia.sala)}`
+        // Corroborar: clave con fecha+tipo+HORA (sin sala, por el motivo de arriba).
+        // Si ya existe exactamente esto, no se toca. Si no, se agrega — y si
+        // había algo distinto para el mismo RUC/fecha/tipo, se marca como
+        // inconsistencia para que la revises tú.
+        const clave = `${rucNorm}-${n.audiencia.fecha}-${normalizarParaClave(n.audiencia.tipo)}-${normalizarParaClave(n.audiencia.hora)}`
         if (claveExistente.has(clave) || clavesProcesadas.has(clave)) continue
         clavesProcesadas.add(clave)
 
-        // ¿Ya existía algo con este mismo RUC+fecha+tipo, pero hora/sala distinta?
-        // Si es así, probablemente esto sea una corrección de un dato mal leído antes.
+        // ¿Ya existía algo con este mismo RUC+fecha+tipo, pero otra hora?
+        // Si es así, es una inconsistencia real que hay que revisar a mano.
         const claveBase = `${rucNorm}-${n.audiencia.fecha}-${normalizarParaClave(n.audiencia.tipo)}`
         const posiblesAnteriores = clavesBaseExistentes.get(claveBase) || []
         const notaCorreccion = posiblesAnteriores.length > 0
-          ? `⚠ Posible corrección: ya existía(n) ${posiblesAnteriores.length} audiencia(s) para este RUC/fecha/tipo con hora "${posiblesAnteriores.map(a=>a.hora||'—').join(', ')}" y sala "${posiblesAnteriores.map(a=>a.sala||'—').join(', ')}". Revisa cuál es la correcta y elimina la que sobre.\n`
+          ? `⚠ INCONSISTENCIA: ya existía(n) ${posiblesAnteriores.length} audiencia(s) para este RUC/fecha/tipo con hora "${posiblesAnteriores.map(a=>a.hora||'—').join(', ')}". Esta se agregó con hora "${n.audiencia.hora||'—'}". Revisa cuál es la correcta y elimina la que sobre.\n`
           : ''
 
         // ✅ FIX: incluye imputado y tribunal con fallback desde la causa
@@ -282,8 +286,8 @@ export default function GmailIntegracion({ onImportComplete }) {
                     📅 {item.fecha}{item.hora ? ` · 🕐 ${item.hora}` : ''}{item.tribunal ? ` · 🏛 ${item.tribunal?.substring(0,30)}` : ''}
                   </div>
                   {item.esPosibleCorreccion && (
-                    <div style={{ fontSize:11, color:'#92400e', background:'#fff7ed', border:'1px solid #fed7aa', borderRadius:7, padding:'4px 8px', marginTop:6, ...f }}>
-                      ⚠ Ya existía una audiencia para este mismo RUC/fecha/tipo con otra hora o sala — revisa cuál es la correcta y elimina la que sobre.
+                    <div style={{ fontSize:11, color:'#92400e', background:'#fff7ed', border:'1px solid #fed7aa', borderRadius:7, padding:'4px 8px', marginTop:6, fontWeight:600, ...f }}>
+                      ⚠ INCONSISTENCIA: ya existía otra audiencia para este mismo RUC/fecha/tipo con otra hora — revisa cuál es la correcta y elimina la que sobre.
                     </div>
                   )}
                 </div>
