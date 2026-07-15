@@ -2789,42 +2789,59 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                     </div>
                   )}
                 </div>
-                {/* Fecha de los hechos */}
-                <div style={{gridColumn:'1/-1',marginTop:4}}>
-                  <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Fecha de los hechos</div>
-                  {editField==='fecha_hechos'?(
-                    <div style={{display:'flex',gap:6}}>
-                      <input type="date" style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}}
-                        value={editValue} onChange={e=>setEditValue(e.target.value)}
-                        onKeyDown={e=>{if(e.key==='Enter')updateField('fecha_hechos',editValue);if(e.key==='Escape')setEditField(null)}} autoFocus/>
-                      <button className="btn-primary" style={{padding:'8px 14px',fontSize:12}} onClick={()=>updateField('fecha_hechos',editValue)}>✓</button>
-                      <button className="btn-secondary" style={{padding:'8px 12px',fontSize:12}} onClick={()=>setEditField(null)}>✗</button>
-                    </div>
-                  ):(
-                    <div className="fld" onClick={()=>{setEditField('fecha_hechos');setEditValue(c.fecha_hechos||'')}}
-                      style={{padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:c.fecha_hechos?'#1E293B':'#cbd5e1',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
-                      <div style={{display:'flex',alignItems:'center',gap:10}}>
-                        <span>{c.fecha_hechos || 'Clic para agregar...'}</span>
-                        {c.fecha_hechos && imputados.map(imp => {
-                          if (!imp.fecha_nacimiento && !imp.regimen) return null
-                          const regimen = imp.regimen || calcularRegimenAlMomento(imp.fecha_nacimiento, c.fecha_hechos)
-                          if (!regimen) return null
-                          return (
-                            <span key={imp.id} style={{
-                              fontSize:10,fontWeight:700,padding:'3px 10px',borderRadius:10,
-                              background: regimen==='RPA'?'#faf5ff':'#eff6ff',
-                              color: regimen==='RPA'?'#5b21b6':'#1E293B',
-                              border: `1.5px solid ${regimen==='RPA'?'#ddd6fe':'#bfdbfe'}`,
-                              ...f
-                            }}>
-                              ✓ {imp.nombre?.split(' ')[0]}: {regimen}
-                            </span>
-                          )
-                        })}
+                {/* Fecha de los hechos + Fecha ACD (Control Detención) */}
+                <div style={{gridColumn:'1/-1',marginTop:4,display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+                  <div>
+                    <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Fecha de los hechos</div>
+                    {editField==='fecha_hechos'?(
+                      <div style={{display:'flex',gap:6}}>
+                        <input type="date" style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}}
+                          value={editValue} onChange={e=>setEditValue(e.target.value)}
+                          onKeyDown={e=>{if(e.key==='Enter')updateField('fecha_hechos',editValue);if(e.key==='Escape')setEditField(null)}} autoFocus/>
+                        <button className="btn-primary" style={{padding:'8px 14px',fontSize:12}} onClick={()=>updateField('fecha_hechos',editValue)}>✓</button>
+                        <button className="btn-secondary" style={{padding:'8px 12px',fontSize:12}} onClick={()=>setEditField(null)}>✗</button>
                       </div>
-                      <span style={{fontSize:11,color:'#cbd5e1'}}>✏</span>
-                    </div>
-                  )}
+                    ):(
+                      <div className="fld" onClick={()=>{setEditField('fecha_hechos');setEditValue(c.fecha_hechos||'')}}
+                        style={{padding:'9px 12px',border:'1.5px solid #fecaca',borderRadius:8,fontSize:13,fontWeight:700,color:c.fecha_hechos?'#991b1b':'#cbd5e1',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:c.fecha_hechos?'#fef2f2':'#fff',...f}}>
+                        <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+                          <span>{c.fecha_hechos || 'Clic para agregar...'}</span>
+                          {c.fecha_hechos && imputados.map(imp => {
+                            if (!imp.fecha_nacimiento && !imp.regimen) return null
+                            const regimen = imp.regimen || calcularRegimenAlMomento(imp.fecha_nacimiento, c.fecha_hechos)
+                            if (!regimen) return null
+                            return (
+                              <span key={imp.id} style={{
+                                fontSize:10,fontWeight:700,padding:'3px 10px',borderRadius:10,
+                                background: regimen==='RPA'?'#faf5ff':'#eff6ff',
+                                color: regimen==='RPA'?'#5b21b6':'#1E293B',
+                                border: `1.5px solid ${regimen==='RPA'?'#ddd6fe':'#bfdbfe'}`,
+                                ...f
+                              }}>
+                                ✓ {imp.nombre?.split(' ')[0]}: {regimen}
+                              </span>
+                            )
+                          })}
+                        </div>
+                        <span style={{fontSize:11,color:'#f87171'}}>✏</span>
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Fecha ACD (Control Detención)</div>
+                    {(() => {
+                      const activosPlazo = (aumentos||[]).filter(a=>!a.eliminado).sort((x,y)=>x.fecha_audiencia.localeCompare(y.fecha_audiencia))
+                      const fechaAcd = activosPlazo[0]?.fecha_audiencia
+                      return (
+                        <div onClick={()=>setActiveTab('plazo')}
+                          style={{padding:'9px 12px',border:'1.5px solid #bfdbfe',borderRadius:8,fontSize:13,fontWeight:700,color:fechaAcd?'#1e40af':'#cbd5e1',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:fechaAcd?'#eff6ff':'#fff',...f}}
+                          title="Se toma automáticamente de la primera audiencia registrada en la pestaña Plazo">
+                          <span>{fechaAcd || 'Sin audiencias en Plazo aún'}</span>
+                          <span style={{fontSize:11,color:'#93c5fd'}}>↗</span>
+                        </div>
+                      )
+                    })()}
+                  </div>
                 </div>
                 {/* Delegación de Poder */}
                 <div style={{gridColumn:'1/-1',marginTop:8}}>
