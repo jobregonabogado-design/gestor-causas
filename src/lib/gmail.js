@@ -385,11 +385,13 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
   // PASO 2: Hora — se busca PRIMERO cerca de donde se encontró la fecha nueva
   // (para no confundirla con la "Hora inicio"/"Hora término" de la audiencia
   // ANTERIOR, que suele aparecer más arriba en el mismo documento).
-  // Patrones: "a las 11:00 horas", "11:00AM", "Hora  11:00AM"
+  // Patrones: "a las 11:00 horas", "11:00AM", "Hora  11:00AM", "12:00 Horas"
+  // (este último con el número ANTES de la palabra, como en las actas en prosa)
   // ═══════════════════════════════════════════════════════
   const bloqueCercaFecha = posFecha >= 0 ? cuerpo.substring(posFecha, posFecha + 600) : ''
   const matchHora =
     (bloqueCercaFecha && bloqueCercaFecha.match(/Hora\s*(\d{1,2}:\d{2})\s*(?:AM|PM|horas?|hrs?)?/i)) ||
+    (bloqueCercaFecha && bloqueCercaFecha.match(/(\d{1,2}:\d{2})\s*[Hh]oras?\b/)) ||
     (bloqueCercaFecha && bloqueCercaFecha.match(/a\s+las\s*(\d{1,2}:\d{2})\s*(?:AM|PM|horas?|hrs?)?/i)) ||
     cuerpo.match(/(?:a\s+las|Hora[:\s]+)\s*(\d{1,2}:\d{2})\s*(?:AM|PM|horas?|hrs?)?/i) ||
     cuerpo.match(/(\d{1,2}:\d{2})\s*(?:AM|PM)\b/i) ||
@@ -413,24 +415,32 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
   const matchTipoTabla = cuerpo.match(/Tipo\s+(?:de\s+)?Audiencia\s+([^\n]{5,80})/i)
   if (matchTipoTabla) {
     const t = matchTipoTabla[1].trim()
-    if (t.match(/preparaci[oó]n.*juicio|APJO/i)) tipo = 'APJO'
+    if (t.match(/preparaci[oó]n.*juicio|prep\.?\s*juicio|\bAPJO\b/i)) tipo = 'APJO'
     else if (t.match(/abreviado/i)) tipo = 'ABREVIADO'
     else if (t.match(/juicio oral/i)) tipo = 'JUICIO ORAL'
     else if (t.match(/formalizaci[oó]n/i)) tipo = 'FORMALIZACION'
   }
 
   if (!tipo) {
-    if (cuerpo.match(/juicio oral/i)) tipo = 'JUICIO ORAL'
-    else if (cuerpo.match(/preparaci[oó]n.*juicio|APJO/i)) tipo = 'APJO'
-    else if (cuerpo.match(/abreviado/i)) tipo = 'ABREVIADO'
-    else if (cuerpo.match(/formalizaci[oó]n/i)) tipo = 'FORMALIZACION'
-    else if (cuerpo.match(/cautelar/i)) tipo = 'CAUTELA DE GARANTIAS'
-    else if (cuerpo.match(/reprogramac/i)) tipo = 'REPROGRAMACION'
-    else if (cuerpo.match(/coordinaci[oó]n/i)) tipo = 'COORDINACION JO'
-    else if (cuerpo.match(/control.*detenci[oó]n/i)) tipo = 'CONTROL DETENCION'
-    else if (cuerpo.match(/revisi[oó]n.*PP|rev.*pp/i)) tipo = 'REVISION PP'
-    else if (cuerpo.match(/cierre/i)) tipo = 'CIERRE'
-    else if (cuerpo.match(/apelaci[oó]n/i)) tipo = 'APELACION'
+    // ✅ FIX: "juicio oral" es una frase muy genérica que también aparece en el
+    // NOMBRE del tribunal (ej. "Tribunal de Juicio Oral en lo Penal"), así que
+    // buscarla primero hacía clasificar como JUICIO ORAL audiencias que en
+    // realidad eran APJO u otra cosa. Se revisan primero los tipos más
+    // específicos, y "juicio oral" se deja como penúltima opción.
+    // Además se busca primero cerca de la fecha encontrada (mismo criterio que
+    // hora/sala), para no confundirse con menciones de otras secciones.
+    const texto = bloqueCercaFecha || cuerpo
+    if (texto.match(/preparaci[oó]n.*juicio|prep\.?\s*juicio|\bAPJO\b/i)) tipo = 'APJO'
+    else if (texto.match(/abreviado/i)) tipo = 'ABREVIADO'
+    else if (texto.match(/formalizaci[oó]n/i)) tipo = 'FORMALIZACION'
+    else if (texto.match(/cautelar/i)) tipo = 'CAUTELA DE GARANTIAS'
+    else if (texto.match(/reprogramac/i)) tipo = 'REPROGRAMACION'
+    else if (texto.match(/coordinaci[oó]n/i)) tipo = 'COORDINACION JO'
+    else if (texto.match(/control.*detenci[oó]n/i)) tipo = 'CONTROL DETENCION'
+    else if (texto.match(/revisi[oó]n.*PP|rev.*pp/i)) tipo = 'REVISION PP'
+    else if (texto.match(/cierre/i)) tipo = 'CIERRE'
+    else if (texto.match(/apelaci[oó]n/i)) tipo = 'APELACION'
+    else if (texto.match(/juicio oral/i)) tipo = 'JUICIO ORAL'
     else tipo = 'AUDIENCIA'
   }
 
