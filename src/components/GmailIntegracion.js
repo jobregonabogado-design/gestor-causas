@@ -82,10 +82,14 @@ export default function GmailIntegracion({ onImportComplete }) {
       const claveExistente = new Set(
         (audienciasExistentes || []).map(a => `${normalizarRuc(a.ruc)}-${a.fecha}-${normalizarParaClave(a.tipo)}-${normalizarParaClave(a.hora)}`)
       )
-      // Agrupadas solo por RUC+fecha+tipo (sin hora), para detectar inconsistencias
+      // ✅ FIX: antes se agrupaba por RUC+fecha+TIPO — si el tipo también
+      // cambiaba entre una lectura y otra (ej. "CIERRE" vs "AUDIENCIA" para la
+      // misma fecha), nunca se comparaban entre sí y por eso no avisaba de
+      // ninguna inconsistencia. Ahora se agrupa solo por RUC+fecha, así
+      // cualquier diferencia (en hora O en tipo) queda marcada para revisar.
       const clavesBaseExistentes = new Map()
       ;(audienciasExistentes || []).forEach(a => {
-        const claveBase = `${normalizarRuc(a.ruc)}-${a.fecha}-${normalizarParaClave(a.tipo)}`
+        const claveBase = `${normalizarRuc(a.ruc)}-${a.fecha}`
         if (!clavesBaseExistentes.has(claveBase)) clavesBaseExistentes.set(claveBase, [])
         clavesBaseExistentes.get(claveBase).push(a)
       })
@@ -140,12 +144,13 @@ export default function GmailIntegracion({ onImportComplete }) {
         if (claveExistente.has(clave) || clavesProcesadas.has(clave)) continue
         clavesProcesadas.add(clave)
 
-        // ¿Ya existía algo con este mismo RUC+fecha+tipo, pero otra hora?
-        // Si es así, es una inconsistencia real que hay que revisar a mano.
-        const claveBase = `${rucNorm}-${n.audiencia.fecha}-${normalizarParaClave(n.audiencia.tipo)}`
+        // ¿Ya existía algo con este mismo RUC+fecha (sin importar tipo/hora)?
+        // Si es así, es una inconsistencia real que hay que revisar a mano
+        // (puede ser que cambió la hora, o que cambió el tipo, o ambos).
+        const claveBase = `${rucNorm}-${n.audiencia.fecha}`
         const posiblesAnteriores = clavesBaseExistentes.get(claveBase) || []
         const notaCorreccion = posiblesAnteriores.length > 0
-          ? `⚠ INCONSISTENCIA: ya existía(n) ${posiblesAnteriores.length} audiencia(s) para este RUC/fecha/tipo con hora "${posiblesAnteriores.map(a=>a.hora||'—').join(', ')}". Esta se agregó con hora "${n.audiencia.hora||'—'}". Revisa cuál es la correcta y elimina la que sobre.\n`
+          ? `⚠ INCONSISTENCIA: ya existía(n) ${posiblesAnteriores.length} audiencia(s) para este RUC/fecha con tipo "${posiblesAnteriores.map(a=>a.tipo||'—').join(', ')}" y hora "${posiblesAnteriores.map(a=>a.hora||'—').join(', ')}". Esta se agregó como tipo "${n.audiencia.tipo||'—'}" y hora "${n.audiencia.hora||'—'}". Revisa cuál es la correcta y elimina la que sobre.\n`
           : ''
 
         // ✅ FIX: incluye imputado y tribunal con fallback desde la causa
@@ -291,7 +296,7 @@ export default function GmailIntegracion({ onImportComplete }) {
                   </div>
                   {item.esPosibleCorreccion && (
                     <div style={{ fontSize:11, color:'#92400e', background:'#fff7ed', border:'1px solid #fed7aa', borderRadius:7, padding:'4px 8px', marginTop:6, fontWeight:600, ...f }}>
-                      ⚠ INCONSISTENCIA: ya existía otra audiencia para este mismo RUC/fecha/tipo con otra hora — revisa cuál es la correcta y elimina la que sobre.
+                      ⚠ INCONSISTENCIA: ya existía otra audiencia para este mismo RUC/fecha con otro tipo o hora — revisa cuál es la correcta y elimina la que sobre.
                     </div>
                   )}
                 </div>
