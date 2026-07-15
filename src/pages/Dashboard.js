@@ -1763,6 +1763,209 @@ function FallosReferencia({ causaId, ruc, email, onAccion }) {
   )
 }
 
+// ─── DOCUMENTOS GUARDADOS EN LA APP (independiente de OneDrive) ──────────────
+// A diferencia de OneDrive (que solo se enlaza, sin ocupar espacio acá), estos
+// documentos SÍ se suben y quedan guardados en la app — para lo puntual que
+// quieras tener siempre a mano sin depender de que el Drive esté disponible.
+const ICONO_POR_EXT = { pdf:'📄', doc:'📝', docx:'📝', xls:'📊', xlsx:'📊', jpg:'🖼️', jpeg:'🖼️', png:'🖼️', zip:'🗜️' }
+function iconoDocumento(nombre) {
+  const ext = (nombre.split('.').pop() || '').toLowerCase()
+  return ICONO_POR_EXT[ext] || '📎'
+}
+
+function DocumentosGuardados({ causaId, email, onAccion }) {
+  const [docs, setDocs] = useState([])
+  const [subiendo, setSubiendo] = useState(false)
+  const [drag, setDrag] = useState(false)
+  const inputRef = useRef(null)
+
+  useEffect(() => { cargarDocs() }, [causaId])
+
+  const cargarDocs = async () => {
+    const { data } = await supabase.from('documentos_causa').select('*').eq('causa_id', causaId).order('created_at', { ascending: false })
+    setDocs(data || [])
+  }
+
+  const subirArchivo = async (file) => {
+    if (!file) return
+    setSubiendo(true)
+    try {
+      const path = `${causaId}/${Date.now()}_${file.name}`
+      const { error: uploadError } = await supabase.storage.from('documentos').upload(path, file)
+      if (uploadError) throw uploadError
+      const { data: urlData } = supabase.storage.from('documentos').getPublicUrl(path)
+      const { error: insertError } = await supabase.from('documentos_causa').insert({ causa_id: causaId, nombre: file.name, storage_path: path, url: urlData.publicUrl, tipo_mime: file.type || '', subido_por: email })
+      if (insertError) throw insertError
+      await cargarDocs()
+      if (onAccion) onAccion()
+    } catch (err) {
+      console.error('Error al subir documento:', err)
+      alert('No se pudo subir el archivo: ' + (err?.message || 'Error desconocido. Revisa la consola del navegador (F12) para más detalle.'))
+    } finally {
+      setSubiendo(false)
+    }
+  }
+
+  const eliminar = async (doc) => {
+    if (!window.confirm(`¿Eliminar "${doc.nombre}"?`)) return
+    await supabase.storage.from('documentos').remove([doc.storage_path])
+    await supabase.from('documentos_causa').delete().eq('id', doc.id)
+    setDocs(prev => prev.filter(d => d.id !== doc.id))
+    if (onAccion) onAccion()
+  }
+
+  const onDrop = (e) => {
+    e.preventDefault(); setDrag(false)
+    Array.from(e.dataTransfer.files).forEach(f => subirArchivo(f))
+  }
+
+  return (
+    <div>
+      <div style={{ fontSize:13, fontWeight:700, color:'#1E293B', marginBottom:4, ...f }}>Documentos guardados en la app</div>
+      <div style={{ fontSize:11, color:'#94a3b8', marginBottom:14, ...f }}>Solo lo que subas acá explícitamente. El resto del Drive queda solo enlazado, sin ocupar espacio.</div>
+      <div onDragOver={e => { e.preventDefault(); setDrag(true) }} onDragLeave={() => setDrag(false)} onDrop={onDrop} onClick={() => inputRef.current?.click()}
+        style={{ border: `2px dashed ${drag ? '#2563eb' : '#e2e8f0'}`, borderRadius: 12, padding: '24px 20px', textAlign: 'center', background: drag ? '#eff6ff' : '#F8F9FC', cursor: 'pointer', transition: 'all 0.2s', marginBottom: 16 }}>
+        <input ref={inputRef} type="file" multiple style={{ display:'none' }} onChange={e => Array.from(e.target.files).forEach(f => subirArchivo(f))}/>
+        <div style={{ fontSize: 28, marginBottom: 6 }}>{subiendo ? '⏳' : '📎'}</div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: drag ? '#2563eb' : '#475569', ...f }}>{subiendo ? 'Subiendo...' : drag ? 'Suelta aquí el documento' : 'Arrastra un documento aquí'}</div>
+        <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, ...f }}>o haz clic para seleccionar — cualquier tipo de archivo</div>
+      </div>
+      {docs.length === 0 ? (
+        <div style={{ fontSize: 13, color: '#cbd5e1', textAlign: 'center', padding: '12px 0', ...f }}>Sin documentos guardados aún.</div>
+      ) : docs.map((doc, i) => (
+        <div key={i} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', background:'#fff', border:'1px solid #e2e8f0', borderRadius:10, marginBottom:8 }}>
+          <div style={{ width:36, height:36, background:'#F8F9FC', border:'1px solid #e2e8f0', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, flexShrink:0 }}>{iconoDocumento(doc.nombre)}</div>
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ fontSize:13, fontWeight:600, color:'#1E293B', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', ...f }}>{doc.nombre}</div>
+            <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>Subido por {doc.subido_por || 'usuario'} · {new Date(doc.created_at).toLocaleDateString('es-CL')}</div>
+          </div>
+          <a href={doc.url} target="_blank" rel="noreferrer" style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:7, padding:'5px 12px', fontSize:11, color:'#2563eb', cursor:'pointer', fontWeight:600, textDecoration:'none', ...f }}>Ver / Descargar</a>
+          <button onClick={() => eliminar(doc)} style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:7, padding:'5px 10px', fontSize:11, color:'#dc2626', cursor:'pointer', fontWeight:600, ...f }}>✕</button>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ─── HONORARIOS (solo Titular) — permite abonos parciales con saldo pendiente ─
+function HonorariosTab({ causaId, ruc, email, registrarActividad, onAccion }) {
+  const [honorario, setHonorario] = useState(null)
+  const [abonos, setAbonos] = useState([])
+  const [editandoMonto, setEditandoMonto] = useState(false)
+  const [montoTemp, setMontoTemp] = useState('')
+  const [showForm, setShowForm] = useState(false)
+  const [nuevoAbono, setNuevoAbono] = useState({ monto:'', fecha:new Date().toISOString().slice(0,10), forma_pago:'Transferencia', observacion:'' })
+  const [guardando, setGuardando] = useState(false)
+  const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #E2E8F0', borderRadius:8, fontSize:13, color:'#1E293B', background:'#fff', ...f }
+
+  useEffect(() => { cargar() }, [causaId])
+
+  const cargar = async () => {
+    const { data: h } = await supabase.from('honorarios').select('*').eq('causa_id', causaId).maybeSingle()
+    setHonorario(h)
+    const { data: a } = await supabase.from('abonos_honorarios').select('*').eq('causa_id', causaId).order('fecha', { ascending: false })
+    setAbonos(a || [])
+  }
+
+  const guardarMontoTotal = async () => {
+    const monto = parseFloat(montoTemp) || 0
+    if (honorario) {
+      await supabase.from('honorarios').update({ monto_total: monto, updated_at: new Date() }).eq('id', honorario.id)
+    } else {
+      await supabase.from('honorarios').insert({ causa_id: causaId, monto_total: monto })
+    }
+    setEditandoMonto(false)
+    await cargar()
+    if (registrarActividad) registrarActividad('accion', `Actualizó honorario pactado en RUC ${ruc}`)
+  }
+
+  const agregarAbono = async () => {
+    const monto = parseFloat(nuevoAbono.monto)
+    if (!monto || monto <= 0) { alert('Ingresa un monto válido'); return }
+    setGuardando(true)
+    await supabase.from('abonos_honorarios').insert({ causa_id: causaId, monto, fecha: nuevoAbono.fecha, forma_pago: nuevoAbono.forma_pago, observacion: nuevoAbono.observacion, registrado_por: email })
+    setNuevoAbono({ monto:'', fecha:new Date().toISOString().slice(0,10), forma_pago:'Transferencia', observacion:'' })
+    setShowForm(false)
+    setGuardando(false)
+    await cargar()
+    if (onAccion) onAccion()
+    if (registrarActividad) registrarActividad('accion', `Registró abono de $${monto.toLocaleString('es-CL')} en RUC ${ruc}`)
+  }
+
+  const eliminarAbono = async (abono) => {
+    if (!window.confirm('¿Eliminar este abono?')) return
+    await supabase.from('abonos_honorarios').delete().eq('id', abono.id)
+    await cargar()
+    if (onAccion) onAccion()
+  }
+
+  const montoTotal = honorario?.monto_total || 0
+  const totalAbonado = abonos.reduce((s, a) => s + (parseFloat(a.monto) || 0), 0)
+  const saldoPendiente = montoTotal - totalAbonado
+  const fmt = (n) => '$' + (n || 0).toLocaleString('es-CL')
+
+  return (
+    <div>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:24 }}>
+        <div style={{ background:'#eff6ff', border:'1.5px solid #bfdbfe', borderRadius:12, padding:'14px 16px' }}>
+          <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1, marginBottom:6, fontWeight:600, ...f }}>Honorario pactado</div>
+          {editandoMonto ? (
+            <div style={{ display:'flex', gap:6 }}>
+              <input type="number" style={{...inp, fontSize:16, fontWeight:700}} value={montoTemp} onChange={e=>setMontoTemp(e.target.value)} autoFocus/>
+              <button className="btn-primary" style={{padding:'6px 10px',fontSize:11}} onClick={guardarMontoTotal}>✓</button>
+              <button className="btn-secondary" style={{padding:'6px 10px',fontSize:11}} onClick={()=>setEditandoMonto(false)}>✗</button>
+            </div>
+          ) : (
+            <div onClick={()=>{setEditandoMonto(true);setMontoTemp(String(montoTotal||''))}} style={{ fontSize:22, fontWeight:800, color:'#1e40af', cursor:'pointer', ...f }}>{fmt(montoTotal)} <span style={{fontSize:11,color:'#93c5fd'}}>✏</span></div>
+          )}
+        </div>
+        <div style={{ background:'#ecfdf5', border:'1.5px solid #a7f3d0', borderRadius:12, padding:'14px 16px' }}>
+          <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1, marginBottom:6, fontWeight:600, ...f }}>Total abonado</div>
+          <div style={{ fontSize:22, fontWeight:800, color:'#059669', ...f }}>{fmt(totalAbonado)}</div>
+        </div>
+        <div style={{ background: saldoPendiente>0?'#fef2f2':'#F8F9FC', border:`1.5px solid ${saldoPendiente>0?'#fecaca':'#e2e8f0'}`, borderRadius:12, padding:'14px 16px' }}>
+          <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1, marginBottom:6, fontWeight:600, ...f }}>Saldo pendiente</div>
+          <div style={{ fontSize:22, fontWeight:800, color: saldoPendiente>0?'#dc2626':'#64748b', ...f }}>{fmt(saldoPendiente)}</div>
+        </div>
+      </div>
+
+      <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, marginBottom:10, fontWeight:600, ...f }}>Historial de abonos</div>
+      {abonos.length === 0 && <p style={{ color:'#cbd5e1', fontSize:13, marginBottom:14, ...f }}>Sin abonos registrados.</p>}
+      {abonos.map(a => (
+        <div key={a.id} style={{ display:'flex', gap:12, alignItems:'center', padding:'12px 16px', background:'#F8F9FC', border:'1px solid #e2e8f0', borderRadius:10, marginBottom:8 }}>
+          <div style={{ width:36, height:36, background:'#ecfdf5', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', color:'#059669', fontSize:15, fontWeight:700, flexShrink:0 }}>$</div>
+          <div style={{ flex:1 }}>
+            <div style={{ fontSize:13, fontWeight:700, color:'#1E293B', ...f }}>{fmt(a.monto)} <span style={{fontWeight:400,color:'#94a3b8',fontSize:12}}>· {a.forma_pago}</span></div>
+            <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>{a.fecha}{a.observacion?' · '+a.observacion:''} · registrado por {a.registrado_por}</div>
+          </div>
+          <button onClick={()=>eliminarAbono(a)} style={{ background:'transparent', border:'none', cursor:'pointer', fontSize:14, color:'#fca5a5' }}>✕</button>
+        </div>
+      ))}
+
+      {showForm ? (
+        <div style={{ background:'#F8F9FC', border:'1.5px solid #e2e8f0', borderRadius:12, padding:16, marginTop:8 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
+            <div><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4,fontWeight:600,...f}}>Monto</div><input type="number" style={inp} placeholder="Ej: 300000" value={nuevoAbono.monto} onChange={e=>setNuevoAbono(p=>({...p,monto:e.target.value}))}/></div>
+            <div><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4,fontWeight:600,...f}}>Fecha</div><input type="date" style={inp} value={nuevoAbono.fecha} onChange={e=>setNuevoAbono(p=>({...p,fecha:e.target.value}))}/></div>
+            <div><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4,fontWeight:600,...f}}>Forma de pago</div>
+              <select style={inp} value={nuevoAbono.forma_pago} onChange={e=>setNuevoAbono(p=>({...p,forma_pago:e.target.value}))}>
+                <option>Transferencia</option><option>Efectivo</option><option>Cheque</option><option>Tarjeta</option><option>Otro</option>
+              </select>
+            </div>
+            <div><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4,fontWeight:600,...f}}>Observación</div><input style={inp} placeholder="Opcional" value={nuevoAbono.observacion} onChange={e=>setNuevoAbono(p=>({...p,observacion:e.target.value}))}/></div>
+          </div>
+          <div style={{ display:'flex', gap:8 }}>
+            <button className="btn-primary" onClick={agregarAbono} disabled={guardando}>{guardando?'Guardando...':'Guardar abono'}</button>
+            <button className="btn-secondary" onClick={()=>setShowForm(false)}>Cancelar</button>
+          </div>
+        </div>
+      ) : (
+        <button className="btn-secondary" style={{ marginTop:8 }} onClick={()=>setShowForm(true)}>+ Registrar abono</button>
+      )}
+    </div>
+  )
+}
+
 function TeoriaDelCaso({ causaId, ruc, session, registrarActividad, onAccion }) {
   const [teoria, setTeoria] = useState(null)
   const [form, setForm] = useState({ hechos:'', teoria_defensa:'', prueba:'', observaciones:'' })
@@ -2061,7 +2264,8 @@ function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudiencia })
   )
 }
 
-export default function Dashboard({ session, registrarActividad, causaInicial, onCausaInicialUsada }) {
+export default function Dashboard({ session, userRol, registrarActividad, causaInicial, onCausaInicialUsada }) {
+  const esTitular = userRol?.rol === 'titular'
   const [causas,setCausas]=useState([])
   const [loading,setLoading]=useState(true)
   const [search,setSearch]=useState('')
@@ -2342,7 +2546,7 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
             </div>
           </div>
           <div style={{background:'#fff',borderLeft:'1px solid #e2e8f0',borderRight:'1px solid #e2e8f0',display:'flex',overflowX:'auto',borderBottom:'2px solid #f1f5f9'}}>
-            {[['datos','Datos'],['imputado','Imputado'],['plazo','Plazo'],['audiencias','Audiencias'],['top','Juicio Oral'],['teoria','⚖️ Teoría del Caso'],['carpeta','Carpeta']].map(([k,l])=>(
+            {[['datos','Datos'],['imputado','Imputado'],['plazo','Plazo'],['audiencias','Audiencias'],['top','Juicio Oral'],['teoria','⚖️ Teoría del Caso'],['carpeta','Carpeta'],...(esTitular?[['honorarios','💰 Honorarios']]:[])].map(([k,l])=>(
               <button key={k} className="tab-btn" onClick={()=>setActiveTab(k)} style={{padding:'13px 20px',fontSize:13,fontWeight:activeTab===k?600:400,color:activeTab===k?'#2563eb':'#94a3b8',borderBottom:`2px solid ${activeTab===k?'#2563eb':'transparent'}`,whiteSpace:'nowrap',marginBottom:-2}}>{l}</button>
             ))}
           </div>
@@ -2645,7 +2849,13 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
               <div>
                 <Field label="Referencia carpeta física" value={c.carpeta_ref} editable editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField('carpeta_ref',editValue)}/>
                 <div style={{marginTop:16}}><CarpetaOneDrive ruc={c.ruc}/></div>
+                <div style={{marginTop:28,paddingTop:24,borderTop:'1px solid #f1f5f9'}}>
+                  <DocumentosGuardados causaId={c.id} email={session?.user?.email||''} onAccion={()=>marcarAccion(c.id)}/>
+                </div>
               </div>
+            )}
+            {esTitular && activeTab==='honorarios'&&(
+              <HonorariosTab causaId={c.id} ruc={c.ruc} email={session?.user?.email||''} registrarActividad={registrarActividad} onAccion={()=>marcarAccion(c.id)}/>
             )}
           </div>
         </div>
