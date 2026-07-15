@@ -82,7 +82,9 @@ export async function fetchNotificacionesPJUD() {
     // y se perdía cualquier correo que llegara de otra dirección. Como más abajo
     // (en GmailIntegracion.jsx) ya se filtra por RUC de causas vigentes, acá basta
     // con buscar correos que mencionen RUC o RIT — más amplio, pero igual de seguro.
-    const query = 'newer_than:60d (RUC OR RIT OR "rol único" OR audiencia OR resolución OR resolucion OR notificación OR notificacion)'
+    // ✅ FIX: 60 días se quedaba corto para audiencias/actas más antiguas
+    // (ej. una del 28 de mayo, revisada bastante después). Se amplía a 150 días.
+    const query = 'newer_than:150d (RUC OR RIT OR "rol único" OR audiencia OR resolución OR resolucion OR notificación OR notificacion)'
     const data = await gmailFetch(`/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=150`)
     if (!data.messages) return []
 
@@ -180,12 +182,6 @@ async function parsearCorreo(msg) {
   }
   const cuerpo = `${cuerpoEmail}\n${textoPdf}`
 
-  // 🔍 DEBUG TEMPORAL: para diagnosticar el caso de Jonnier (RUC 2300866793-4).
-  // Se puede borrar esta línea después de resolver el problema.
-  if (cuerpo.includes('2300866793')) {
-    console.log('🔍 TEXTO EXTRAÍDO (RUC 2300866793-4):', cuerpo)
-  }
-
   // ✅ FIX: antes el RUC/RIT solo se buscaba en el asunto con un formato exacto
   // ("RUC: XXXXXX-X, RIT: XXXX-XXXX"). Si el tribunal escribía el asunto distinto
   // (otro orden, "RUC N°", sin coma, etc.) el correo se perdía por completo, sin
@@ -208,6 +204,14 @@ async function parsearCorreo(msg) {
   let audiencia = extraerAudienciaPJUD(cuerpo, asunto)
   if (!audiencia?.fecha && esFiscalia) {
     audiencia = extraerAudienciaFiscalia(cuerpo, asunto)
+  }
+
+  // 🔍 DEBUG TEMPORAL #2: para el caso de Jonnier (RUC 2300866793-4).
+  if (cuerpo.includes('2300866793')) {
+    console.log('🔍 [Jonnier] Asunto:', asunto)
+    console.log('🔍 [Jonnier] Resultado parser:', JSON.stringify(audiencia))
+    console.log('🔍 [Jonnier] Texto completo:', cuerpo)
+    console.log('🔍 [Jonnier] ---------------------------------')
   }
 
   return {
@@ -394,7 +398,13 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
   // Patrones: "a las 11:00 horas", "11:00AM", "Hora  11:00AM", "12:00 Horas"
   // (este último con el número ANTES de la palabra, como en las actas en prosa)
   // ═══════════════════════════════════════════════════════
-  const bloqueCercaFecha = posFecha >= 0 ? cuerpo.substring(posFecha, posFecha + 600) : ''
+  // ✅ FIX: antes solo se miraba el texto DESPUÉS de la fecha encontrada. Pero en
+  // los documentos redactados en prosa (no en tabla), la descripción del tipo de
+  // audiencia suele venir ANTES de la fecha: "habilítese la audiencia de
+  // preparación juicio oral... para el día 5 de agosto de 2026" — el tipo se
+  // perdía porque estaba "más atrás" del punto donde se encontró la fecha.
+  // Ahora se mira un poco antes y bastante después.
+  const bloqueCercaFecha = posFecha >= 0 ? cuerpo.substring(Math.max(0, posFecha - 300), posFecha + 600) : ''
   const matchHora =
     (bloqueCercaFecha && bloqueCercaFecha.match(/Hora\s*(\d{1,2}:\d{2})\s*(?:AM|PM|horas?|hrs?)?/i)) ||
     (bloqueCercaFecha && bloqueCercaFecha.match(/(\d{1,2}:\d{2})\s*[Hh]oras?\b/)) ||
