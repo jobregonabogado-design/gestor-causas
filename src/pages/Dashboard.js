@@ -1765,15 +1765,33 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
                   {imputados.length === 0 ? (
                     <DelitosChips value={c.delito} onChange={(v)=>updateField('delito', v)} options={DELITOS_CATALOGO} />
                   ) : imputados.length === 1 ? (
-                    <DelitosChips value={imputados[0].delitos} onChange={(v)=>actualizarDelitosImputado(imputados[0].id, v)} options={DELITOS_CATALOGO} />
-                  ) : (
-                    <div style={{display:'flex',flexDirection:'column',gap:12}}>
-                      {imputados.map(imp=>(
-                        <div key={imp.id} style={{border:'1px solid #e2e8f0',borderRadius:10,padding:'12px 14px',background:'#F8F9FC'}}>
-                          <div style={{fontSize:12,fontWeight:700,color:'#1E293B',marginBottom:8,...f}}>👤 {imp.nombre||'Sin nombre'}</div>
-                          <DelitosChips value={imp.delitos} onChange={(v)=>actualizarDelitosImputado(imp.id, v)} options={DELITOS_CATALOGO} />
+                    imputados[0].delitos ? (
+                      <DelitosChips value={imputados[0].delitos} onChange={(v)=>actualizarDelitosImputado(imputados[0].id, v)} options={DELITOS_CATALOGO} />
+                    ) : c.delito ? (
+                      <div>
+                        <div style={{fontSize:12,color:'#92400e',background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:8,padding:'10px 12px',marginBottom:8,...f}}>
+                          📋 Ya tenías guardado: <strong>{c.delito.replace(/\|/g,', ')}</strong> — aún no vinculado al imputado.
                         </div>
-                      ))}
+                        <button className="btn-secondary" style={{fontSize:12}} onClick={()=>actualizarDelitosImputado(imputados[0].id, c.delito)}>✓ Vincular a {imputados[0].nombre||'este imputado'}</button>
+                      </div>
+                    ) : (
+                      <DelitosChips value="" onChange={(v)=>actualizarDelitosImputado(imputados[0].id, v)} options={DELITOS_CATALOGO} />
+                    )
+                  ) : (
+                    <div>
+                      {c.delito && imputados.every(i=>!i.delitos) && (
+                        <div style={{fontSize:12,color:'#92400e',background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:8,padding:'10px 12px',marginBottom:12,...f}}>
+                          📋 Ya tenías guardado: <strong>{c.delito.replace(/\|/g,', ')}</strong> — aún no vinculado a ningún imputado. Asígnalo manualmente abajo con "+ Agregar delito" en el imputado que corresponda.
+                        </div>
+                      )}
+                      <div style={{display:'flex',flexDirection:'column',gap:12}}>
+                        {imputados.map(imp=>(
+                          <div key={imp.id} style={{border:'1px solid #e2e8f0',borderRadius:10,padding:'12px 14px',background:'#F8F9FC'}}>
+                            <div style={{fontSize:12,fontWeight:700,color:'#1E293B',marginBottom:8,...f}}>👤 {imp.nombre||'Sin nombre'}</div>
+                            <DelitosChips value={imp.delitos} onChange={(v)=>actualizarDelitosImputado(imp.id, v)} options={DELITOS_CATALOGO} />
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
