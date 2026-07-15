@@ -75,12 +75,16 @@ async function gmailFetch(path, options = {}) {
 
 export async function fetchNotificacionesPJUD() {
   try {
-    const query = 'from:(notificacion_judicial OR minpublico.cl OR fiscaliadechile.cl OR pjud.cl OR notificacion OR judicial) newer_than:60d'
-    const data = await gmailFetch(`/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=100`)
+    // ✅ FIX: antes solo buscaba por remitente exacto (pjud.cl, minpublico.cl, etc.)
+    // y se perdía cualquier correo que llegara de otra dirección. Como más abajo
+    // (en GmailIntegracion.jsx) ya se filtra por RUC de causas vigentes, acá basta
+    // con buscar correos que mencionen RUC o RIT — más amplio, pero igual de seguro.
+    const query = 'newer_than:60d (RUC OR RIT OR "rol único" OR audiencia OR resolución OR resolucion OR notificación OR notificacion)'
+    const data = await gmailFetch(`/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=150`)
     if (!data.messages) return []
 
     const mensajes = []
-    for (const msg of data.messages.slice(0, 100)) {
+    for (const msg of data.messages.slice(0, 150)) {
       try {
         const detalle = await gmailFetch(`/gmail/v1/users/me/messages/${msg.id}?format=full`)
         const parsed = parsearCorreo(detalle)
@@ -124,37 +128,39 @@ function parsearCorreo(msg) {
   const de = getHeader(headers, 'from')
   const cuerpo = getBody(msg.payload)
 
-  let resultado = null
+  // ✅ FIX: antes el RUC/RIT solo se buscaba en el asunto con un formato exacto
+  // ("RUC: XXXXXX-X, RIT: XXXX-XXXX"). Si el tribunal escribía el asunto distinto
+  // (otro orden, "RUC N°", sin coma, etc.) el correo se perdía por completo, sin
+  // ningún aviso. Ahora se busca en asunto + cuerpo, con formato flexible.
+  const textoCompleto = `${asunto}\n${cuerpo.substring(0, 3000)}`
 
-  // Tipo 1: PJUD — asunto con RUC y RIT
-  const matchPJUD = asunto.match(/RUC[:\s]+([0-9]+-[0-9A-Za-z]+)[,\s]+RIT[:\s]+([0-9]+-[0-9]+)/i)
-  if (matchPJUD) {
-    resultado = {
-      tipo: 'PJUD',
-      ruc: matchPJUD[1].replace(/\s/g, ''),
-      rit: matchPJUD[2],
-      asunto,
-      cuerpo: cuerpo.substring(0, 2000),
-      fecha_correo: new Date(parseInt(msg.internalDate)).toISOString(),
-      audiencia: extraerAudienciaPJUD(cuerpo, asunto),
-    }
+  const matchRuc = textoCompleto.match(/RUC[°:\s]*N?[°:\s]*([0-9]{6,10}[\s-][0-9Kk])/i)
+  const matchRit = textoCompleto.match(/RIT[°:\s]*N?[°:\s]*([0-9]{1,6}[\s-][0-9]{4})/i)
+
+  if (!matchRuc) return null // sin RUC detectable en ningún lado, no hay con qué vincular la causa
+
+  let ruc = matchRuc[1].trim()
+  if (!ruc.includes('-')) ruc = ruc.replace(/\s+/, '-') // "12345678 9" → "12345678-9"
+  ruc = ruc.replace(/\s/g, '')
+  const rit = matchRit ? matchRit[1].trim().replace(/\s+/, '-').replace(/\s/g, '') : ''
+  const esFiscalia = /minpublico|fiscalia/i.test(de)
+
+  // Se intenta primero con el parser PJUD (más completo); si no encuentra fecha
+  // y el correo parece ser de Fiscalía, se prueba también con ese parser.
+  let audiencia = extraerAudienciaPJUD(cuerpo, asunto)
+  if (!audiencia?.fecha && esFiscalia) {
+    audiencia = extraerAudienciaFiscalia(cuerpo, asunto)
   }
 
-  // Tipo 2: Fiscalía
-  const matchFiscalia = asunto.match(/RUC[:\s]+([0-9]+-[0-9A-Za-z]+)/i)
-  if (!resultado && matchFiscalia && (de.includes('minpublico') || de.includes('fiscalia') || de.includes('Fiscalia'))) {
-    resultado = {
-      tipo: 'FISCALIA',
-      ruc: matchFiscalia[1].replace(/\s/g, ''),
-      rit: '',
-      asunto,
-      cuerpo: cuerpo.substring(0, 2000),
-      fecha_correo: new Date(parseInt(msg.internalDate)).toISOString(),
-      audiencia: extraerAudienciaFiscalia(cuerpo, asunto),
-    }
+  return {
+    tipo: esFiscalia ? 'FISCALIA' : 'PJUD',
+    ruc,
+    rit,
+    asunto,
+    cuerpo: cuerpo.substring(0, 2000),
+    fecha_correo: new Date(parseInt(msg.internalDate)).toISOString(),
+    audiencia,
   }
-
-  return resultado
 }
 
 // ─── PARSER PRINCIPAL PJUD ────────────────────────────────────────────────────
