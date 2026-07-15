@@ -194,12 +194,13 @@ function PanelActividad({ onClose, onVerCausa }) {
   )
 }
 
-function PanelAlertas({ onClose, esTitular, alertaCounts, tareas, onAgregarTarea, onCompletarTarea }) {
+function PanelAlertas({ onClose, esTitular, alertaCounts, tareas, audienciasProximas, onVerCausa, onAgregarTarea, onCompletarTarea }) {
   const [nuevaTarea, setNuevaTarea] = useState('')
   const [guardando, setGuardando] = useState(false)
 
   const pendientes = tareas.filter(t => !t.completada)
   const completadas = tareas.filter(t => t.completada)
+  const hoyStr = new Date().toISOString().slice(0,10)
 
   const handleAgregar = async () => {
     if (!nuevaTarea.trim()) return
@@ -223,6 +224,28 @@ function PanelAlertas({ onClose, esTitular, alertaCounts, tareas, onAgregarTarea
           </div>
         </div>
         <div style={{ padding:20 }}>
+          {/* Audiencias próximas (hoy / mañana) */}
+          {audienciasProximas.length > 0 && (
+            <div style={{ marginBottom:24 }}>
+              <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, fontWeight:700, marginBottom:10, ...f }}>Audiencias próximas</div>
+              {audienciasProximas.map(a => {
+                const esHoy = a.fecha === hoyStr
+                return (
+                  <div key={a.id} style={{ display:'flex', gap:10, alignItems:'center', background: esHoy?'#eff6ff':'#F8F9FC', border:`1px solid ${esHoy?'#bfdbfe':'#e2e8f0'}`, borderRadius:10, padding:'12px 14px', marginBottom:8 }}>
+                    <span style={{ fontSize:10, fontWeight:800, color: esHoy?'#1e40af':'#64748b', background: esHoy?'#dbeafe':'#F1F5F9', borderRadius:8, padding:'4px 8px', flexShrink:0, whiteSpace:'nowrap', ...f }}>{esHoy?'HOY':'MAÑANA'}{a.hora?' · '+a.hora:''}</span>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:13, fontWeight:600, color:'#1E293B', ...f }}>{a.tipo || 'Audiencia'}{a.imputado?' · '+a.imputado:''}</div>
+                      <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>{a.tribunal || '—'}{a.sala?' · Sala '+a.sala:''}</div>
+                    </div>
+                    {a.ruc && onVerCausa && (
+                      <button onClick={()=>onVerCausa(a.ruc)} style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:7, padding:'5px 10px', fontSize:11, color:'#1e40af', cursor:'pointer', fontWeight:600, flexShrink:0, fontFamily:"'Inter',sans-serif" }}>→ Ver causa</button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
           {/* Advertencias del sistema */}
           <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, fontWeight:700, marginBottom:10, ...f }}>Advertencias del sistema</div>
           {alertaCounts.vencido === 0 && alertaCounts.proximo === 0 ? (
@@ -327,6 +350,7 @@ export default function App() {
   const [showAlerta, setShowAlerta] = useState(false)
   const [tareas, setTareas] = useState([])
   const [alertaCounts, setAlertaCounts] = useState({ vencido: 0, proximo: 0 })
+  const [audienciasProximas, setAudienciasProximas] = useState([])
   const [notifTarea, setNotifTarea] = useState(null)
 
   const cargarRol = useCallback(async (userId) => {
@@ -357,6 +381,15 @@ export default function App() {
   const cargarTareas = useCallback(async () => {
     const { data } = await supabase.from('tareas').select('*').order('created_at', { ascending: false }).limit(100)
     setTareas(data || [])
+  }, [])
+
+  // 📅 Recordatorio de audiencias — hoy y mañana, para el Centro de Alertas
+  const cargarAudienciasProximas = useCallback(async () => {
+    const hoy = new Date(); hoy.setHours(0,0,0,0)
+    const manana = new Date(hoy); manana.setDate(manana.getDate() + 1)
+    const fmt = (d) => d.toISOString().slice(0,10)
+    const { data } = await supabase.from('audiencias').select('*').gte('fecha', fmt(hoy)).lte('fecha', fmt(manana)).order('fecha', { ascending: true }).order('hora', { ascending: true })
+    setAudienciasProximas(data || [])
   }, [])
 
   const agregarTarea = useCallback(async (texto) => {
@@ -405,6 +438,7 @@ export default function App() {
     if (!session) return
     cargarAlertaData()
     cargarTareas()
+    cargarAudienciasProximas()
     const channel = supabase.channel('tareas-realtime')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tareas' }, (payload) => {
         cargarTareas()
@@ -418,9 +452,12 @@ export default function App() {
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'causas' }, () => {
         cargarAlertaData()
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'audiencias' }, () => {
+        cargarAudienciasProximas()
+      })
       .subscribe()
     return () => supabase.removeChannel(channel)
-  }, [session, cargarAlertaData, cargarTareas])
+  }, [session, cargarAlertaData, cargarTareas, cargarAudienciasProximas])
 
   if (loading) return (
     <div style={{ minHeight:'100vh', background:'#F8F9FC', display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -435,7 +472,7 @@ export default function App() {
 
   const esTitular = userRol?.rol === 'titular'
   const tareasPendientesCount = tareas.filter(t => !t.completada).length
-  const alertaTotal = alertaCounts.vencido + alertaCounts.proximo + tareasPendientesCount
+  const alertaTotal = alertaCounts.vencido + alertaCounts.proximo + tareasPendientesCount + audienciasProximas.length
   const handleSignOut = async () => { await supabase.auth.signOut() }
 
   // ✅ Handler: desde calendario → abrir causa en Dashboard
@@ -452,6 +489,7 @@ export default function App() {
       setCausaDesdeCalendario(data)
       setPagina('causas')
       setShowPanel(false)
+      setShowAlerta(false)
     }
   }
 
@@ -466,6 +504,8 @@ export default function App() {
           esTitular={esTitular}
           alertaCounts={alertaCounts}
           tareas={tareas}
+          audienciasProximas={audienciasProximas}
+          onVerCausa={irACausaPorRuc}
           onAgregarTarea={agregarTarea}
           onCompletarTarea={completarTarea}
         />
