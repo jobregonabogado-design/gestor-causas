@@ -60,14 +60,26 @@ export default function GmailIntegracion({ onImportComplete }) {
         return rucsVigentes.has(rucNorm)
       })
 
-      // 3. Deduplicar por RUC+fecha para no agregar dos veces
+      // 3. Corroborar contra lo que ya existe: si TODOS los datos coinciden
+      // (fecha, hora, tipo, sala) se considera "sin cambios" y no se toca.
+      // Si algo no coincide (p. ej. la hora venía mal antes y ahora se lee
+      // bien), se agrega como una entrada nueva para que la revises tú y
+      // borres la que quedó mal — así el sistema nunca sobreescribe nada solo.
       const { data: audienciasExistentes } = await supabase
         .from('audiencias')
-        .select('ruc, fecha, tipo')
+        .select('id, ruc, fecha, tipo, hora, sala')
 
+      const normalizarParaClave = (v) => (v || '').toString().trim().toLowerCase()
       const claveExistente = new Set(
-        (audienciasExistentes || []).map(a => `${a.ruc}-${a.fecha}-${a.tipo}`)
+        (audienciasExistentes || []).map(a => `${a.ruc}-${a.fecha}-${normalizarParaClave(a.tipo)}-${normalizarParaClave(a.hora)}-${normalizarParaClave(a.sala)}`)
       )
+      // Para detectar "posibles correcciones": misma fecha+tipo+ruc pero hora/sala distinta
+      const clavesBaseExistentes = new Map()
+      ;(audienciasExistentes || []).forEach(a => {
+        const claveBase = `${a.ruc}-${a.fecha}-${normalizarParaClave(a.tipo)}`
+        if (!clavesBaseExistentes.has(claveBase)) clavesBaseExistentes.set(claveBase, [])
+        clavesBaseExistentes.get(claveBase).push(a)
+      })
 
       const clavesProcesadas = new Set()
 
@@ -113,10 +125,20 @@ export default function GmailIntegracion({ onImportComplete }) {
           continue
         }
 
-        // Deduplicar
-        const clave = `${rucNorm}-${n.audiencia.fecha}-${n.audiencia.tipo}`
+        // Corroborar: clave completa con fecha+hora+tipo+sala.
+        // Si algo cambió respecto a lo ya guardado, se agrega como nueva
+        // entrada (no se pisa la anterior) para revisión manual.
+        const clave = `${rucNorm}-${n.audiencia.fecha}-${normalizarParaClave(n.audiencia.tipo)}-${normalizarParaClave(n.audiencia.hora)}-${normalizarParaClave(n.audiencia.sala)}`
         if (claveExistente.has(clave) || clavesProcesadas.has(clave)) continue
         clavesProcesadas.add(clave)
+
+        // ¿Ya existía algo con este mismo RUC+fecha+tipo, pero hora/sala distinta?
+        // Si es así, probablemente esto sea una corrección de un dato mal leído antes.
+        const claveBase = `${rucNorm}-${n.audiencia.fecha}-${normalizarParaClave(n.audiencia.tipo)}`
+        const posiblesAnteriores = clavesBaseExistentes.get(claveBase) || []
+        const notaCorreccion = posiblesAnteriores.length > 0
+          ? `⚠ Posible corrección: ya existía(n) ${posiblesAnteriores.length} audiencia(s) para este RUC/fecha/tipo con hora "${posiblesAnteriores.map(a=>a.hora||'—').join(', ')}" y sala "${posiblesAnteriores.map(a=>a.sala||'—').join(', ')}". Revisa cuál es la correcta y elimina la que sobre.\n`
+          : ''
 
         // ✅ FIX: incluye imputado y tribunal con fallback desde la causa
         const { data, error } = await supabase.from('audiencias').insert({
@@ -130,7 +152,7 @@ export default function GmailIntegracion({ onImportComplete }) {
           sala: n.audiencia.sala || '',
           imputado: causa.imputado || '',
           resultado: '',
-          notas: `Importado automáticamente desde correo ${n.tipo}\nAsunto: ${n.asunto}\nFecha correo: ${new Date(n.fecha_correo).toLocaleDateString('es-CL')}`,
+          notas: `${notaCorreccion}Importado automáticamente desde correo ${n.tipo}\nAsunto: ${n.asunto}\nFecha correo: ${new Date(n.fecha_correo).toLocaleDateString('es-CL')}`,
         }).select().single()
 
         if (!error && data) {
@@ -145,6 +167,7 @@ export default function GmailIntegracion({ onImportComplete }) {
             tribunal: n.audiencia.tribunal || causa.tribunal,
             asunto: n.asunto,
             origen: n.tipo,
+            esPosibleCorreccion: posiblesAnteriores.length > 0,
           })
         } else if (error) {
           nuevosErrores.push({ ...n, motivo: error.message })
@@ -258,6 +281,11 @@ export default function GmailIntegracion({ onImportComplete }) {
                   <div style={{ fontSize:12, color:'#059669', fontWeight:500, marginTop:4, ...f }}>
                     📅 {item.fecha}{item.hora ? ` · 🕐 ${item.hora}` : ''}{item.tribunal ? ` · 🏛 ${item.tribunal?.substring(0,30)}` : ''}
                   </div>
+                  {item.esPosibleCorreccion && (
+                    <div style={{ fontSize:11, color:'#92400e', background:'#fff7ed', border:'1px solid #fed7aa', borderRadius:7, padding:'4px 8px', marginTop:6, ...f }}>
+                      ⚠ Ya existía una audiencia para este mismo RUC/fecha/tipo con otra hora o sala — revisa cuál es la correcta y elimina la que sobre.
+                    </div>
+                  )}
                 </div>
                 <button onClick={() => eliminarAudiencia(item)}
                   style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:7, padding:'5px 12px', fontSize:11, color:'#dc2626', cursor:'pointer', fontWeight:600, flexShrink:0, ...f }}>
