@@ -285,6 +285,250 @@ const DELITOS_CATALOGO = [
   {c:203, n:'SUSTRACCIÓN DE MENORES. ART. 142'},
 ]
 
+const CENTROS_PENALES = [
+  "DIRECCIÓN REGIONAL ARICA Y PARINACOTA - ARICA",
+  "COMPLEJO PENITENCIARIO DE ARICA - ARICA",
+  "CENTRO PENITENCIARIO FEMENINO ARICA - ARICA",
+  "CENTRO EDUCACIÓN Y TRABAJO SEMI ABIERTO ARICA - ARICA",
+  "CENTRO DE REINSERCIÓN SOCIAL ARICA - ARICA",
+  "CENTRO DE APOYO PARA LA INTEGRACIÓN SOCIAL ARICA - ARICA",
+  "ANEXO COLÓN C.A.I.S. - ARICA",
+  "UNIDAD DE SERVICIOS ESPECIALES PENITENCIARIOS DE ARICA - ARICA",
+  "DESTACAMENTO CIP-CRC ARICA - ARICA",
+  "EQUIPO DE CANES ADIESTRADOS ARICA - ARICA",
+  "CENTRO DE SALUD DEL PERSONAL ARICA - ARICA",
+  "DR IQUIQUE - IQUIQUE",
+  "CP IQUIQUE - IQUIQUE",
+  "CDP POZO ALMONTE - POZO ALMONTE",
+  "CP ALTO HOSPICIO - ALTO HOSPICIO",
+  "CCP IQUIQUE - IQUIQUE",
+  "CRS IQUIQUE - IQUIQUE",
+  "CIP CRC IQUIQUE - IQUIQUE",
+  "USEP IQUIQUE - IQUIQUE",
+  "CAIS IQUIQUE - IQUIQUE",
+  "DR ANTOFAGASTA - ANTOFAGASTA",
+  "CCP ANTOFAGASTA - ANTOFAGASTA",
+  "CDP TOCOPILLA - TOCOPILLA",
+  "CPF ANTOFAGASTA - ANTOFAGASTA",
+  "CRS ANTOFAGASTA - ANTOFAGASTA",
+  "ANEXO CRS ANTOFAGASTA - ANTOFAGASTA",
+  "CDP CALAMA - CALAMA",
+  "CRS CALAMA - CALAMA",
+  "CAIS ANTOFAGASTA - ANTOFAGASTA",
+  "CET ANTOFAGASTA - ANTOFAGASTA",
+  "CET CALAMA - CALAMA",
+  "USEP ANTOFAGASTA - ANTOFAGASTA",
+  "CCP NUDO URIBE ANTOFAGASTA - ANTOFAGASTA",
+  "DR COPIAPO - COPIAPO",
+  "CCP COPIAPO - COPIAPO",
+  "CCP CHAÑARAL - COPIAPO",
+  "CDP VALLENAR - VALLENAR",
+  "CRS COPIAPO - COPIAPO",
+  "CRS VALLENAR - VALLENAR",
+  "USEP COPIAPO - COPIAPO",
+  "CIP CRC COPIAPO - COPIAPO",
+  "CET COPIAPO - COPIAPO",
+  "CENTRO ABIERTO COPIAPO - COPIAPO",
+  "DR COQUIMBO - LA SERENA",
+  "CP SERENA - LA SERENA",
+  "CRS SERENA - LA SERENA",
+  "CAIS SERENA - LA SERENA",
+  "USEP SERENA - LA SERENA",
+  "CIP CRC SERENA - LA SERENA",
+  "CENTRO SEMICERRADO LA SERENA - LA SERENA",
+  "CDP VICUÑA - VICUÑA",
+  "CDP OVALLE - OVALLE",
+  "CRS OVALLE - OVALLE",
+  "CDP ILLAPEL - ILLAPEL",
+  "CDP COMBARBALA - COMBARBALA",
+  "DR VALPARAISO - VALPARAISO",
+  "CP VALPARAISO - VALPARAISO",
+  "CET VALPARAISO - VALPARAISO",
+  "CRS VALPARAISO - VALPARAISO",
+  "CAIS VALPARAISO - VALPARAISO",
+  "CET CAMINO LA POLVORA - VALPARAISO",
+  "CCP LOS ANDES - LOS ANDES",
+  "CRS LOS ANDES - LOS ANDES",
+  "CRS QUILLOTA - QUILLOTA",
+  "CDP QUILLOTA - QUILLOTA",
+  "CCP SAN ANTONIO - SAN ANTONIO",
+  "CRS SAN ANTONIO - SAN ANTONIO",
+  "CCP SAN FELIPE - SAN FELIPE",
+  "CDP LIMACHE - LIMACHE",
+  "CDP CASABLANCA - CASABLANCA",
+  "CDP LA LIGUA - LA LIGUA",
+  "CDP PETORCA - PETORCA",
+  "CET PUTAENDO - PUTAENDO",
+  "USEP VALPARAISO - VALPARAISO",
+  "CEAC VALPARAISO - VALPARAISO",
+  "CCP ISLA DE PASCUA - ISLA DE PASCUA",
+  "CRS QUILPUE - QUILPUE",
+  "ANEXO QUILPUE - QUILPUE",
+  "DR RANCAGUA - RANCAGUA",
+  "CP RANCAGUA - RANCAGUA",
+  "CRS RANCAGUA - RANCAGUA",
+  "CCP SANTA CRUZ - SANTA CRUZ",
+  "CDP PEUMO - PEUMO",
+  "CCP RENGO Y CET - RENGO",
+  "CRS Y CCP SAN FERNANDO - SAN FERNANDO",
+  "CIP CRC GRANEROS - GRANEROS",
+  "USEP RANCAGUA - RANCAGUA",
+  "CPF RANCAGUA - RANCAGUA",
+  "CAIS RANCAGUA - RANCAGUA",
+  "DR MAULE - TALCA",
+  "CP TALCA - TALCA",
+  "CCP TALCA - TALCA",
+  "CPF TALCA - TALCA",
+  "CET TALCA - TALCA",
+  "CCP LINARES - LINARES",
+  "CCP CURICO - CURICO",
+  "CCP CAUQUENES - CAUQUENES",
+  "CDP CHANCO - CHANCO",
+  "CCP MOLINA - MOLINA",
+  "CRS LINARES - LINARES",
+  "CRS CAUQUENES - CAUQUENES",
+  "CRS CURICO - CURICO",
+  "CRS TALCA - TALCA",
+  "CAIS TALCA - TALCA",
+  "CCP PARRAL - PARRAL",
+  "POLICLINICO INSTITUCIONAL 7° REGION - TALCA",
+  "USEP TALCA - TALCA",
+  "USEP CAUQUENES - CAUQUENES",
+  "ECA TALCA - TALCA",
+  "ECA CAUQUENES - CAUQUENES",
+  "CCP CHILLAN - CHILLAN",
+  "CCP BULNES - BULNES",
+  "ECA CHILLÁN - CHILLAN",
+  "CDP QUIRIHUE - QUIRIHUE",
+  "CDP DE SAN CARLOS - SAN CARLOS",
+  "CET YUNGAY - YUNGAY",
+  "CDP YUNGAY - YUNGAY",
+  "CRS CHILLAN - CHILLAN",
+  "CET SAN CARLOS - SAN CARLOS",
+  "USEP CHILLAN - CHILLAN",
+  "DR BIO - BIO - CONCEPCION",
+  "CP CONCEPCION - CONCEPCION",
+  "CCP BIO - BIO - CONCEPCION",
+  "CCP CORONEL - CORONEL",
+  "CDP ARAUCO - ARAUCO",
+  "CDP LEBU - LEBU",
+  "CDP LOS ANGELES - LOS ANGELES",
+  "CDP MULCHEN - MULCHEN",
+  "CDP YUMBEL - YUMBEL",
+  "CPF CHILLAN - CHILLAN",
+  "CET CONCEPCION - TOME",
+  "CET CAÑETE - CAÑETE",
+  "CRS CONCEPCION - CONCEPCION",
+  "CRS CAÑETE - CAÑETE",
+  "CRS LOS ANGELES - LOS ANGELES",
+  "CIPCRC CORONEL - CORONEL",
+  "CAIS CONCEPCION - CONCEPCION",
+  "USEP CONCEPCION - CONCEPCION",
+  "CPF CONCEPCION - CONCEPCION",
+  "DR ARAUCANIA - TEMUCO",
+  "CCP TEMUCO - TEMUCO",
+  "CPF TEMUCO - TEMUCO",
+  "CCP NUEVA IMPERIAL - NUEVA IMPERIAL",
+  "CCP LAUTARO - LAUTARO",
+  "CCP VICTORIA - VICTORIA",
+  "CDP VILLARRICA - VILLARRICA",
+  "CDP Y USEP ANGOL - ANGOL",
+  "CDP TRAIGUEN - TRAIGUEN",
+  "CDP CURACAUTIN - CURACAUTIN",
+  "CCP COLLIPULLI - COLLIPULLI",
+  "CRS TEMUCO - TEMUCO",
+  "CRS ANGOL - ANGOL",
+  "CRS VILLARRICA - VILLARRICA",
+  "CET VILCUN - VILCUN",
+  "CET ANGOL - ANGOL",
+  "CET VICTORIA - VICTORIA",
+  "CIP-CRC CHOL CHOL - CHOL CHOL",
+  "ECA TEMUCO - TEMUCO",
+  "USEP TEMUCO - TEMUCO",
+  "USEP VILLARRICA - VILLARRICA",
+  "CAIS TEMUCO - TEMUCO",
+  "CDP PITRUFQUÉN - PITRUFQUÉN",
+  "DR LOS RIOS - VALDIVIA",
+  "USEP VALDIVIA - VALDIVIA",
+  "CAIS DE VALDIVIA - VALDIVIA",
+  "CRS VALDIVIA - VALDIVIA",
+  "CP VALDIVIA - VALDIVIA",
+  "CIP CRC VALDIVIA - VALDIVIA",
+  "CCP RIO BUENO - RIO BUENO",
+  "CDP LA UNION - LA UNION",
+  "DR LOS LAGOS - PUERTO MONTT",
+  "CP PTO MONTT - PUERTO MONTT",
+  "USEP PTO MONTT - PUERTO MONTT",
+  "ECA PUERTO MONTT - PUERTO MONTT",
+  "CIP CRC PTO MONTT - PUERTO MONTT",
+  "CRS PTO MONTT - PUERTO MONTT",
+  "CAIS PTO MONTT - PUERTO MONTT",
+  "POLICLINICO PTO MONTT - PUERTO MONTT",
+  "CCP OSORNO - OSORNO",
+  "CET OSORNO - OSORNO",
+  "USEP OSORNO - OSORNO",
+  "ECA OSORNO - OSORNO",
+  "CRS OSORNO - OSORNO",
+  "CDP ANCUD - ANCUD",
+  "CDP CASTRO - CASTRO",
+  "CRS CASTRO - CASTRO",
+  "CDP RIO NEGRO - RIO NEGRO",
+  "CDP MAULLIN - MAULLIN",
+  "CDP CHAITEN - FUTALEUFU",
+  "DR AYSEN - COYHAIQUE",
+  "CCP COYHAIQUE - COYHAIQUE",
+  "CDP PTO AYSEN - PUERTO AYSEN",
+  "CDP CHILE CHICO - CHILE CHICO",
+  "CDP COCHRANE - COCHRANE",
+  "CRS COYHAIQUE - COYHAIQUE",
+  "USEP COYHAIQUE - COYHAIQUE",
+  "CET VALLE VERDE - COYHAIQUE",
+  "CET NUEVA VIDA - PUERTO CISNE",
+  "CIP CRC COYHAIQUE - COYHAIQUE",
+  "CAIS COYHAIQUE - COYHAIQUE",
+  "CAIS PTA ARENAS - PUNTA ARENAS",
+  "CDP PORVENIR - PORVENIR",
+  "CDP PTO NATALES - PUERTO NATALES",
+  "CET PTA ARENAS - PUNTA ARENAS",
+  "CP PTA ARENAS - PUNTA ARENAS",
+  "CRS PTA ARENAS - PUNTA ARENAS",
+  "DR MAGALLANES - PUNTA ARENAS",
+  "USEP PTA ARENAS - PUNTA ARENAS",
+  "CAIS SANTIAGO - SANTIAGO",
+  "CCP BUIN - BUIN",
+  "CCP COLINA I - COLINA",
+  "CCP COLINA II - COLINA",
+  "CCP PUNTA PEUCO - TIL-TIL",
+  "CDP MELIPILLA - MELIPILLA",
+  "CDP PUENTE ALTO - PUENTE ALTO",
+  "CPF SAN MIGUEL - SAN MIGUEL",
+  "CDP SANTIAGO I - SANTIAGO",
+  "CDP SANTIAGO SUR - SANTIAGO",
+  "CDP TALAGANTE - TALAGANTE",
+  "CEAC - SAN JOAQUIN",
+  "CET METROPOLITANO - SANTIAGO",
+  "CIP CRC SAN JOAQUIN - SAN JOAQUIN",
+  "CIP CRC SANTIAGO - SANTIAGO",
+  "CIP CRC TIL -TIL - TIL-TIL",
+  "CIPCRC TIEMPO JOVEN - SAN BERNARDO",
+  "CPF SANTIAGO - SANTIAGO",
+  "CRS SANTIAGO NORTE - RECOLETA",
+  "CRS SANTIAGO - SANTIAGO",
+  "CRS SANTIAGO ORIENTE - ÑUÑOA",
+  "CRS SANTIAGO SUR - SANTIAGO",
+  "CRS SANTIAGO SUR II - PUENTE ALTO",
+  "CRS SANTIAGO OCCIDENTE - MAIPÚ",
+  "CAPELLANIA NACIONAL CATOLICA - SANTIAGO",
+  "CAPELLANIA NACIONAL EVANGELICA - SANTIAGO",
+  "CENTRO ABIERTO MANUEL RODRIGUEZ - SANTIAGO",
+  "CENTRO METROPOLITANO NORTE TIL-TIL - TIL-TIL",
+  "DR METROPOLITANA - SAN JOAQUIN",
+  "ESFORPEN - SAN BERNARDO",
+  "UEAS - SANTIAGO",
+  "CENTRAL TELEFÓNICA - SANTIAGO",
+  "ATENCIÓN PUBLICO SUBDEPARTAMENTO DE BIENESTAR - SANTIAGO",
+]
+
 // ─── COMPONENTE DROPDOWN CON BUSQUEDA ────────────────────────────────────────
 function SearchableSelect({ value, onChange, options, placeholder, isDelito }) {
   const [open, setOpen] = useState(false)
@@ -545,7 +789,8 @@ function Field({ label, value, editable, editField, setEditField, editValue, set
   const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:'#1E293B', background:'#fff', ...f }
   const isTribunal = fieldKey === 'tribunal'
   const isDelito = fieldKey === 'delito'
-  const useDropdown = isTribunal || isDelito
+  const isCentroPenal = fieldKey === 'centro_penal'
+  const useDropdown = isTribunal || isDelito || isCentroPenal
 
   return (
     <div style={{ gridColumn:full?'1/-1':'auto', marginBottom:2 }}>
@@ -557,8 +802,8 @@ function Field({ label, value, editable, editField, setEditField, editValue, set
               <SearchableSelect
                 value={editValue}
                 onChange={v => { setEditValue(v); }}
-                options={isTribunal ? TRIBUNALES_CHILE : DELITOS_CATALOGO}
-                placeholder={isTribunal ? 'Seleccionar tribunal...' : 'Buscar delito...'}
+                options={isTribunal ? TRIBUNALES_CHILE : isDelito ? DELITOS_CATALOGO : CENTROS_PENALES}
+                placeholder={isTribunal ? 'Seleccionar tribunal...' : isDelito ? 'Buscar delito...' : 'Buscar centro penal...'}
                 isDelito={isDelito}
               />
             </div>
@@ -705,6 +950,21 @@ function ImputadoCard({ imp, idx, onUpdate, onDelete }) {
     <div>
       <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:5,fontWeight:600,...f}}>{label}</div>
       {editField===field?(
+        field==='lugar_detencion' ? (
+          <div style={{display:'flex',gap:6,alignItems:'flex-start'}}>
+            <div style={{flex:1}}>
+              <SearchableSelect
+                value={editValue}
+                onChange={v=>setEditValue(v)}
+                options={CENTROS_PENALES}
+                placeholder="Buscar centro penal..."
+                isDelito={false}
+              />
+            </div>
+            <button style={{background:'#1E293B',color:'#fff',border:'none',borderRadius:7,padding:'7px 12px',fontSize:12,cursor:'pointer',...f}} onClick={()=>{onUpdate(field,editValue);setEditField(null)}}>✓</button>
+            <button style={{background:'#fff',border:'1.5px solid #e2e8f0',borderRadius:7,padding:'7px 10px',fontSize:12,cursor:'pointer',...f}} onClick={()=>setEditField(null)}>✗</button>
+          </div>
+        ) : (
         <div style={{display:'flex',gap:6}}>
           <input
             style={inp}
@@ -716,6 +976,7 @@ function ImputadoCard({ imp, idx, onUpdate, onDelete }) {
           <button style={{background:'#1E293B',color:'#fff',border:'none',borderRadius:7,padding:'7px 12px',fontSize:12,cursor:'pointer',...f}} onClick={()=>{onUpdate(field,editValue);setEditField(null);if(field==='rut')buscarPorRut(editValue)}}>✓</button>
           <button style={{background:'#fff',border:'1.5px solid #e2e8f0',borderRadius:7,padding:'7px 10px',fontSize:12,cursor:'pointer',...f}} onClick={()=>setEditField(null)}>✗</button>
         </div>
+        )
       ):(
         <div onClick={()=>{setEditField(field);setEditValue(imp[field]||'')}}
           style={{padding:'8px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:imp[field]?'#1E293B':'#cbd5e1',minHeight:36,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
@@ -1463,6 +1724,43 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
                     </div>
                   )}
                 </div>
+                {/* Delegación de Poder */}
+                <div style={{gridColumn:'1/-1',marginTop:8}}>
+                  <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:8,fontWeight:600,...f}}>Delegación de Poder</div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+                    <Field label="Abogado delegado" value={c.delegacion_abogado} editable fieldKey="delegacion_abogado" editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField('delegacion_abogado',editValue)}/>
+                    <div>
+                      <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Fecha de delegación</div>
+                      {editField==='delegacion_fecha'?(
+                        <div style={{display:'flex',gap:6}}>
+                          <input type="date" style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}}
+                            value={editValue} onChange={e=>setEditValue(e.target.value)}
+                            onKeyDown={e=>{if(e.key==='Enter')updateField('delegacion_fecha',editValue);if(e.key==='Escape')setEditField(null)}} autoFocus/>
+                          <button className="btn-primary" style={{padding:'8px 14px',fontSize:12}} onClick={()=>updateField('delegacion_fecha',editValue)}>✓</button>
+                          <button className="btn-secondary" style={{padding:'8px 12px',fontSize:12}} onClick={()=>setEditField(null)}>✗</button>
+                        </div>
+                      ):(
+                        <div className="fld" onClick={()=>{setEditField('delegacion_fecha');setEditValue(c.delegacion_fecha||'')}}
+                          style={{padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:c.delegacion_fecha?'#1E293B':'#cbd5e1',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
+                          <span>{c.delegacion_fecha || 'Clic para agregar...'}</span>
+                          <span style={{fontSize:11,color:'#cbd5e1'}}>✏</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                {/* Correo de Notificación */}
+                <div style={{gridColumn:'1/-1',marginTop:4}}>
+                  <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Correo de notificación</div>
+                  <select
+                    style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:c.correo_notificacion?'#1E293B':'#94a3b8',background:'#fff',cursor:'pointer',...f}}
+                    value={c.correo_notificacion||''}
+                    onChange={e=>updateField('correo_notificacion', e.target.value)}>
+                    <option value="">Seleccionar correo...</option>
+                    <option value="JOBREGONABOGADO@GMAIL.COM">JOBREGONABOGADO@GMAIL.COM</option>
+                    <option value="NOTIFICACION.DEFENSAPENAL@GMAIL.COM">NOTIFICACION.DEFENSAPENAL@GMAIL.COM</option>
+                  </select>
+                </div>
                 <div style={{gridColumn:'1/-1',marginTop:8}}>
                   <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:8,fontWeight:600,...f}}>Imputados adicionales</div>
                   {(c.imputado||'').split('|').filter((_,i)=>i>0).map((imp,i)=>(
@@ -1744,6 +2042,16 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
                   <input style={inp} placeholder={field.ph} value={nuevaCausa[field.key]} onChange={e=>setNuevaCausa(p=>({...p,[field.key]:e.target.value}))}/>
                 </div>
               ))}
+              <div style={{gridColumn:'1/-1'}}>
+                <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Centro Penal</div>
+                <SearchableSelect
+                  value={nuevaCausa.centro_penal}
+                  onChange={v=>setNuevaCausa(p=>({...p,centro_penal:v}))}
+                  options={CENTROS_PENALES}
+                  placeholder="Buscar centro penal..."
+                  isDelito={false}
+                />
+              </div>
               <div style={{gridColumn:'1/-1'}}>
                 <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Tribunal *</div>
                 <SearchableSelect
