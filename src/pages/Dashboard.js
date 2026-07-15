@@ -1922,11 +1922,40 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
                 ))}
                 {/* Corte de Apelaciones — se calcula sola según el tribunal seleccionado */}
                 <div style={{gridColumn:'1/-1',marginBottom:2}}>
-                  <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Corte de Apelaciones</div>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+                    <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,fontWeight:600,...f}}>Corte de Apelaciones</div>
+                    <button onClick={()=>updateField('tiene_apelacion',!c.tiene_apelacion)} style={{fontSize:11,color:c.tiene_apelacion?'#7c3aed':'#94a3b8',background:c.tiene_apelacion?'#faf5ff':'transparent',border:`1px solid ${c.tiene_apelacion?'#ddd6fe':'#e2e8f0'}`,borderRadius:6,padding:'3px 10px',cursor:'pointer',fontWeight:600,...f}}>
+                      {c.tiene_apelacion?'✕ Quitar apelación':'+ Agregar Rol / Sala / Audiencia'}
+                    </button>
+                  </div>
                   <div style={{padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color: getCorteApelaciones(c.tribunal) ? '#1E293B' : '#cbd5e1',minHeight:38,display:'flex',alignItems:'center',gap:8,background:'#F8F9FC',...f}}>
                     <span>⚖</span>
                     <span>{getCorteApelaciones(c.tribunal) || 'Selecciona un tribunal para calcularla automáticamente'}</span>
                   </div>
+                  {c.tiene_apelacion && (
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginTop:10,background:'#faf5ff',border:'1.5px solid #ddd6fe',borderRadius:10,padding:14}}>
+                      <Field label="Rol Corte" value={c.rol_corte} editable fieldKey="rol_corte" editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField('rol_corte',editValue)}/>
+                      <Field label="Sala" value={c.sala_corte} editable fieldKey="sala_corte" editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField('sala_corte',editValue)}/>
+                      <div style={{gridColumn:'1/-1'}}>
+                        <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Fecha de audiencia en la Corte</div>
+                        {editField==='fecha_audiencia_corte'?(
+                          <div style={{display:'flex',gap:6}}>
+                            <input type="date" style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}}
+                              value={editValue} onChange={e=>setEditValue(e.target.value)}
+                              onKeyDown={e=>{if(e.key==='Enter')updateField('fecha_audiencia_corte',editValue);if(e.key==='Escape')setEditField(null)}} autoFocus/>
+                            <button className="btn-primary" style={{padding:'8px 14px',fontSize:12}} onClick={()=>updateField('fecha_audiencia_corte',editValue)}>✓</button>
+                            <button className="btn-secondary" style={{padding:'8px 12px',fontSize:12}} onClick={()=>setEditField(null)}>✗</button>
+                          </div>
+                        ):(
+                          <div className="fld" onClick={()=>{setEditField('fecha_audiencia_corte');setEditValue(c.fecha_audiencia_corte||'')}}
+                            style={{padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:c.fecha_audiencia_corte?'#1E293B':'#cbd5e1',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
+                            <span>{c.fecha_audiencia_corte || 'Clic para agregar...'}</span>
+                            <span style={{fontSize:11,color:'#cbd5e1'}}>✏</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 {/* Delito(s) — sincronizado con los imputados. 1 imputado = mismo dato; varios = uno por cada uno */}
                 <div style={{gridColumn:'1/-1',marginBottom:2}}>
