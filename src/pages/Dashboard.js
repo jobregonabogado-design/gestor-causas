@@ -1289,14 +1289,21 @@ function FallosReferencia({ causaId, ruc, email, onAccion }) {
   const subirArchivo = async (file) => {
     if (!file || file.type !== 'application/pdf') { alert('Solo se permiten archivos PDF'); return }
     setSubiendo(true)
-    const path = `${causaId}/${Date.now()}_${file.name}`
-    const { error: uploadError } = await supabase.storage.from('fallos').upload(path, file, { contentType: 'application/pdf' })
-    if (uploadError) { alert('Error al subir: ' + uploadError.message); setSubiendo(false); return }
-    const { data: urlData } = supabase.storage.from('fallos').getPublicUrl(path)
-    await supabase.from('fallos_referencia').insert({ causa_id: causaId, nombre: file.name, storage_path: path, url: urlData.publicUrl, subido_por: email })
-    await cargarFallos()
-    if (onAccion) onAccion() // ✅ actualiza semáforo
-    setSubiendo(false)
+    try {
+      const path = `${causaId}/${Date.now()}_${file.name}`
+      const { error: uploadError } = await supabase.storage.from('fallos').upload(path, file, { contentType: 'application/pdf' })
+      if (uploadError) throw uploadError
+      const { data: urlData } = supabase.storage.from('fallos').getPublicUrl(path)
+      const { error: insertError } = await supabase.from('fallos_referencia').insert({ causa_id: causaId, nombre: file.name, storage_path: path, url: urlData.publicUrl, subido_por: email })
+      if (insertError) throw insertError
+      await cargarFallos()
+      if (onAccion) onAccion() // ✅ actualiza semáforo
+    } catch (err) {
+      console.error('Error al subir fallo:', err)
+      alert('No se pudo subir el archivo: ' + (err?.message || 'Error desconocido. Revisa la consola del navegador (F12) para más detalle.'))
+    } finally {
+      setSubiendo(false)
+    }
   }
 
   const eliminar = async (fallo) => {
