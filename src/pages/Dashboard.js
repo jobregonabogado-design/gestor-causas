@@ -2441,6 +2441,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
   const [editValue,setEditValue]=useState('')
   const [audiencias,setAudiencias]=useState([])
   const [aumentos,setAumentos]=useState([])
+  const [apelaciones,setApelaciones]=useState([])
   const [imputados,setImputados]=useState([])
   const [showAudForm,setShowAudForm]=useState(false)
   const [nuevaAud,setNuevaAud]=useState({fecha:'',hora:'',tipo:'',tribunal:'',sala:'',resultado:'',notas:''})
@@ -2478,12 +2479,13 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
 
   const openCausa=async(c)=>{
     setSelectedCausa(c);setView('detail');setActiveTab('datos')
-    const[{data:a},{data:au},{data:imp}]=await Promise.all([
+    const[{data:a},{data:au},{data:imp},{data:apel}]=await Promise.all([
       supabase.from('audiencias').select('*').or(`causa_id.eq.${c.id},ruc.eq.${c.ruc}`).order('fecha',{ascending:false}),
       supabase.from('aumentos_plazo').select('*').eq('causa_id',c.id).order('fecha_audiencia',{ascending:true}),
       supabase.from('imputados').select('*').eq('causa_id',c.id).order('created_at',{ascending:true}),
+      supabase.from('apelaciones_corte').select('*').eq('causa_id',c.id).order('created_at',{ascending:true}),
     ])
-    setAudiencias(a||[]);setAumentos(au||[]);setImputados(imp||[])
+    setAudiencias(a||[]);setAumentos(au||[]);setImputados(imp||[]);setApelaciones(apel||[])
   }
 
   // ✅ Función central para marcar acción real — actualiza updated_at y semáforo
@@ -2716,40 +2718,56 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                 {[{key:'imputado',label:'Imputado(s)',full:true,editable:true},{key:'tribunal',label:'Tribunal',editable:true},{key:'rit',label:'RIT JG',editable:true},{key:'fiscal',label:'Fiscal a cargo',editable:true},{key:'cautelar',label:'Cautelar procesal',editable:true},{key:'centro_penal',label:'Centro Penal',editable:true},{key:'plazo',label:'Plazo / Vencimiento',editable:true,full:true}].map(field=>(
                   <Field key={field.key} label={field.label} value={c[field.key]} editable={field.editable} full={field.full} fieldKey={field.key} editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField(field.key,editValue)}/>
                 ))}
-                {/* Corte de Apelaciones — se calcula sola según el tribunal seleccionado */}
+                {/* Corte de Apelaciones — se calcula sola según el tribunal. Compacta arriba,
+                    y abajo la lista de apelaciones (pueden ser varias en la misma causa). */}
                 <div style={{gridColumn:'1/-1',marginBottom:2}}>
-                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
-                    <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,fontWeight:600,...f}}>Corte de Apelaciones</div>
-                    <button onClick={()=>updateField('tiene_apelacion',!c.tiene_apelacion)} style={{fontSize:11,color:c.tiene_apelacion?'#7c3aed':'#94a3b8',background:c.tiene_apelacion?'#faf5ff':'transparent',border:`1px solid ${c.tiene_apelacion?'#ddd6fe':'#e2e8f0'}`,borderRadius:6,padding:'3px 10px',cursor:'pointer',fontWeight:600,...f}}>
-                      {c.tiene_apelacion?'✕ Quitar apelación':'+ Agregar Rol / Sala / Audiencia'}
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6,gap:10}}>
+                    <div style={{display:'flex',alignItems:'center',gap:8,padding:'6px 12px',border:'1.5px solid #e2e8f0',borderRadius:20,fontSize:12,color: getCorteApelaciones(c.tribunal) ? '#1E293B' : '#cbd5e1',background:'#F8F9FC',fontWeight:600,...f}}>
+                      <span>⚖</span>
+                      <span>{getCorteApelaciones(c.tribunal) || 'Selecciona un tribunal'}</span>
+                    </div>
+                    <button onClick={async()=>{
+                      const{data,error}=await supabase.from('apelaciones_corte').insert({causa_id:c.id}).select().single()
+                      if(!error&&data){setApelaciones(prev=>[...prev,data]);if(registrarActividad)registrarActividad('accion',`Agregó una apelación en RUC ${c.ruc}`)}
+                    }} style={{fontSize:11,color:'#7c3aed',background:'#faf5ff',border:'1px solid #ddd6fe',borderRadius:6,padding:'5px 12px',cursor:'pointer',fontWeight:600,whiteSpace:'nowrap',...f}}>
+                      + Agregar apelación
                     </button>
                   </div>
-                  <div style={{padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color: getCorteApelaciones(c.tribunal) ? '#1E293B' : '#cbd5e1',minHeight:38,display:'flex',alignItems:'center',gap:8,background:'#F8F9FC',...f}}>
-                    <span>⚖</span>
-                    <span>{getCorteApelaciones(c.tribunal) || 'Selecciona un tribunal para calcularla automáticamente'}</span>
-                  </div>
-                  {c.tiene_apelacion && (
-                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginTop:10,background:'#faf5ff',border:'1.5px solid #ddd6fe',borderRadius:10,padding:14}}>
-                      <Field label="Rol Corte" value={c.rol_corte} editable fieldKey="rol_corte" editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField('rol_corte',editValue)}/>
-                      <Field label="Sala" value={c.sala_corte} editable fieldKey="sala_corte" editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField('sala_corte',editValue)}/>
-                      <div style={{gridColumn:'1/-1'}}>
-                        <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Fecha de audiencia en la Corte</div>
-                        {editField==='fecha_audiencia_corte'?(
-                          <div style={{display:'flex',gap:6}}>
-                            <input type="date" style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}}
-                              value={editValue} onChange={e=>setEditValue(e.target.value)}
-                              onKeyDown={e=>{if(e.key==='Enter')updateField('fecha_audiencia_corte',editValue);if(e.key==='Escape')setEditField(null)}} autoFocus/>
-                            <button className="btn-primary" style={{padding:'8px 14px',fontSize:12}} onClick={()=>updateField('fecha_audiencia_corte',editValue)}>✓</button>
-                            <button className="btn-secondary" style={{padding:'8px 12px',fontSize:12}} onClick={()=>setEditField(null)}>✗</button>
+                  {apelaciones.length > 0 && (
+                    <div style={{display:'flex',flexDirection:'column',gap:8,marginTop:8}}>
+                      {apelaciones.map((apel,i)=>(
+                        <div key={apel.id} style={{background:'#faf5ff',border:'1.5px solid #ddd6fe',borderRadius:10,padding:14}}>
+                          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+                            <div style={{fontSize:11,fontWeight:700,color:'#5b21b6',...f}}>⚖ Apelación {i+1}</div>
+                            <button onClick={async()=>{
+                              if(!window.confirm('¿Eliminar esta apelación?'))return
+                              await supabase.from('apelaciones_corte').delete().eq('id',apel.id)
+                              setApelaciones(prev=>prev.filter(x=>x.id!==apel.id))
+                            }} style={{background:'transparent',border:'none',cursor:'pointer',fontSize:12,color:'#dc2626',...f}}>✕ Eliminar</button>
                           </div>
-                        ):(
-                          <div className="fld" onClick={()=>{setEditField('fecha_audiencia_corte');setEditValue(c.fecha_audiencia_corte||'')}}
-                            style={{padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:c.fecha_audiencia_corte?'#1E293B':'#cbd5e1',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
-                            <span>{c.fecha_audiencia_corte || 'Clic para agregar...'}</span>
-                            <span style={{fontSize:11,color:'#cbd5e1'}}>✏</span>
+                          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+                            <Field label="Rol Corte" value={apel.rol_corte} editable fieldKey={`rol_corte_${apel.id}`} editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={async()=>{await supabase.from('apelaciones_corte').update({rol_corte:editValue}).eq('id',apel.id);setApelaciones(prev=>prev.map(x=>x.id===apel.id?{...x,rol_corte:editValue}:x));setEditField(null)}}/>
+                            <Field label="Sala" value={apel.sala_corte} editable fieldKey={`sala_corte_${apel.id}`} editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={async()=>{await supabase.from('apelaciones_corte').update({sala_corte:editValue}).eq('id',apel.id);setApelaciones(prev=>prev.map(x=>x.id===apel.id?{...x,sala_corte:editValue}:x));setEditField(null)}}/>
+                            <div style={{gridColumn:'1/-1'}}>
+                              <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Fecha de audiencia en la Corte</div>
+                              {editField===`fecha_audiencia_corte_${apel.id}`?(
+                                <div style={{display:'flex',gap:6}}>
+                                  <input type="date" style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}}
+                                    value={editValue} onChange={e=>setEditValue(e.target.value)} autoFocus/>
+                                  <button className="btn-primary" style={{padding:'8px 14px',fontSize:12}} onClick={async()=>{await supabase.from('apelaciones_corte').update({fecha_audiencia_corte:editValue}).eq('id',apel.id);setApelaciones(prev=>prev.map(x=>x.id===apel.id?{...x,fecha_audiencia_corte:editValue}:x));setEditField(null)}}>✓</button>
+                                  <button className="btn-secondary" style={{padding:'8px 12px',fontSize:12}} onClick={()=>setEditField(null)}>✗</button>
+                                </div>
+                              ):(
+                                <div className="fld" onClick={()=>{setEditField(`fecha_audiencia_corte_${apel.id}`);setEditValue(apel.fecha_audiencia_corte||'')}}
+                                  style={{padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:apel.fecha_audiencia_corte?'#1E293B':'#cbd5e1',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
+                                  <span>{apel.fecha_audiencia_corte || 'Clic para agregar...'}</span>
+                                  <span style={{fontSize:11,color:'#cbd5e1'}}>✏</span>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        )}
-                      </div>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
