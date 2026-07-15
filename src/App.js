@@ -48,7 +48,7 @@ function diasRestantes(plazoStr) {
   return Math.ceil((fecha - hoy) / (1000*60*60*24))
 }
 
-function PanelActividad({ onClose }) {
+function PanelActividad({ onClose, onVerCausa }) {
   const [actividad, setActividad] = useState([])
   const [loading, setLoading] = useState(true)
   const [filtro, setFiltro] = useState('hoy')
@@ -66,7 +66,8 @@ function PanelActividad({ onClose }) {
     if (filtro === 'hoy') desde.setHours(0,0,0,0)
     else if (filtro === 'semana') desde.setDate(desde.getDate() - 7)
     else if (filtro === 'mes') desde.setDate(desde.getDate() - 30)
-    const { data } = await supabase.from('actividad_usuario').select('*').gte('created_at', desde.toISOString()).order('created_at', { ascending: false }).limit(100)
+    // 🔎 Solo interesa qué se hizo (acción), no ingresos/salidas de sesión
+    const { data } = await supabase.from('actividad_usuario').select('*').eq('tipo', 'accion').gte('created_at', desde.toISOString()).order('created_at', { ascending: false }).limit(150)
     setActividad(data || [])
     setLoading(false)
   }
@@ -82,16 +83,17 @@ function PanelActividad({ onClose }) {
     cargarSolicitudes()
   }
 
+  // Extrae el RUC mencionado en la descripción de la acción, si lo hay
+  const extraerRuc = (descripcion) => {
+    const m = (descripcion || '').match(/RUC\s+([\w.\-]+)/i)
+    return m ? m[1] : null
+  }
+
   const stats = actividad.reduce((acc, a) => {
-    if (!acc[a.email]) acc[a.email] = { ingresos: 0, acciones: 0, ultimoIngreso: null, ultimaSalida: null }
-    if (a.tipo === 'ingreso') { acc[a.email].ingresos++; if (!acc[a.email].ultimoIngreso) acc[a.email].ultimoIngreso = a.created_at }
-    if (a.tipo === 'salida') { if (!acc[a.email].ultimaSalida) acc[a.email].ultimaSalida = a.created_at }
-    if (a.tipo === 'accion') acc[a.email].acciones++
+    if (!acc[a.email]) acc[a.email] = 0
+    acc[a.email]++
     return acc
   }, {})
-
-  const tipoColor = (tipo) => tipo === 'ingreso' ? '#059669' : tipo === 'salida' ? '#dc2626' : '#1E293B'
-  const tipoIcon = (tipo) => tipo === 'ingreso' ? '🟢' : tipo === 'salida' ? '🔴' : '📝'
 
   return (
     <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', justifyContent:'flex-end' }}>
@@ -101,7 +103,7 @@ function PanelActividad({ onClose }) {
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
             <div>
               <div style={{ fontSize:18, fontWeight:800, color:'#fff', letterSpacing:'-0.5px' }}>👁 Panel de Control</div>
-              <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, textTransform:'uppercase', letterSpacing:1 }}>Solo visible para el titular</div>
+              <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, textTransform:'uppercase', letterSpacing:1 }}>Qué hizo el equipo — solo visible para el titular</div>
             </div>
             <button onClick={onClose} style={{ background:'rgba(255,255,255,0.1)', border:'none', borderRadius:10, padding:'6px 12px', color:'#fff', cursor:'pointer', fontSize:13 }}>✕ Cerrar</button>
           </div>
@@ -129,86 +131,63 @@ function PanelActividad({ onClose }) {
               ))}
             </div>
           )}
-          {Object.entries(stats).map(([email, s]) => {
+          {Object.entries(stats).map(([email, cantidad]) => {
             const actividadUsuario = actividad.filter(a => a.email === email)
-            const salidas = actividadUsuario.filter(a => a.tipo === 'salida').length
-            const acciones = actividadUsuario.filter(a => a.tipo === 'accion').length
-            const ingresos = actividadUsuario.filter(a => a.tipo === 'ingreso').length
             return (
               <div key={email} style={{ background:'#fff', border:'1.5px solid #E2E8F0', borderRadius:14, marginBottom:12, overflow:'hidden', boxShadow:'0 4px 16px rgba(15,23,42,0.04)' }}>
                 <div onClick={() => setUsuarioExpandido(prev => prev === email ? null : email)} style={{ padding:'14px 16px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'space-between', background: usuarioExpandido===email ? '#F8F9FC' : '#fff', transition:'background 0.2s' }}>
                   <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                     <div style={{ width:36, height:36, borderRadius:'50%', background:'#1E293B', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:14, fontWeight:700 }}>{email[0]?.toUpperCase()}</div>
-                    <div>
-                      <div style={{ fontSize:13, fontWeight:700, color:'#1E293B' }}>{email}</div>
-                      {s.ultimoIngreso && <div style={{ fontSize:11, color:'#94a3b8' }}>Último ingreso: {new Date(s.ultimoIngreso).toLocaleString('es-CL')}</div>}
-                    </div>
+                    <div style={{ fontSize:13, fontWeight:700, color:'#1E293B' }}>{email}</div>
                   </div>
                   <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                    <span style={{ fontSize:11, fontWeight:700, color:'#059669', background:'#f0fdf4', padding:'2px 8px', borderRadius:20 }}>🟢 {ingresos}</span>
-                    <span style={{ fontSize:11, fontWeight:700, color:'#1E293B', background:'#F1F5F9', padding:'2px 8px', borderRadius:20 }}>📝 {acciones}</span>
-                    <span style={{ fontSize:11, fontWeight:700, color:'#dc2626', background:'#fef2f2', padding:'2px 8px', borderRadius:20 }}>🔴 {salidas}</span>
+                    <span style={{ fontSize:11, fontWeight:700, color:'#1E293B', background:'#F1F5F9', padding:'2px 10px', borderRadius:20 }}>📝 {cantidad} acción{cantidad>1?'es':''}</span>
                     <span style={{ fontSize:12, color:'#94a3b8' }}>{usuarioExpandido===email ? '▲' : '▼'}</span>
                   </div>
                 </div>
                 {usuarioExpandido === email && (
                   <div style={{ borderTop:'1px solid #E2E8F0', padding:'12px 16px' }}>
-                    {actividadUsuario.length === 0 ? (
-                      <div style={{ fontSize:12, color:'#cbd5e1', textAlign:'center', padding:12 }}>Sin actividad en este período</div>
-                    ) : actividadUsuario.map(a => (
-                      <div key={a.id} style={{ display:'flex', gap:10, padding:'8px 0', borderBottom:'1px solid #F1F5F9', alignItems:'center' }}>
-                        <span style={{ fontSize:13, flexShrink:0 }}>{tipoIcon(a.tipo)}</span>
-                        <div style={{ flex:1 }}>
-                          <div style={{ fontSize:12, fontWeight:500, color:'#1E293B' }}>{a.descripcion}</div>
-                          <div style={{ fontSize:11, color:'#94a3b8', marginTop:1 }}>{new Date(a.created_at).toLocaleString('es-CL')}</div>
+                    {actividadUsuario.map(a => {
+                      const ruc = extraerRuc(a.descripcion)
+                      return (
+                        <div key={a.id} style={{ display:'flex', gap:10, padding:'8px 0', borderBottom:'1px solid #F1F5F9', alignItems:'center' }}>
+                          <span style={{ fontSize:13, flexShrink:0 }}>📝</span>
+                          <div style={{ flex:1 }}>
+                            <div style={{ fontSize:12, fontWeight:500, color:'#1E293B' }}>{a.descripcion}</div>
+                            <div style={{ fontSize:11, color:'#94a3b8', marginTop:1 }}>{new Date(a.created_at).toLocaleString('es-CL')}</div>
+                          </div>
+                          {ruc && onVerCausa && (
+                            <button onClick={() => onVerCausa(ruc)} style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:7, padding:'5px 10px', fontSize:11, color:'#1e40af', cursor:'pointer', fontWeight:600, flexShrink:0, fontFamily:"'Inter',sans-serif" }}>→ Ver causa</button>
+                          )}
                         </div>
-                        <span style={{ fontSize:10, fontWeight:700, color: tipoColor(a.tipo), textTransform:'uppercase', padding:'2px 6px', borderRadius:6, background: a.tipo==='ingreso'?'#f0fdf4':a.tipo==='salida'?'#fef2f2':'#F1F5F9', flexShrink:0 }}>{a.tipo}</span>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
               </div>
             )
           })}
-          <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, fontWeight:600, marginBottom:10 }}>Registro de actividad</div>
+          <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, fontWeight:600, marginBottom:10 }}>Registro de acciones</div>
           {loading ? (
             <div style={{ textAlign:'center', padding:20, color:'#94a3b8', fontSize:13 }}>Cargando...</div>
           ) : actividad.length === 0 ? (
-            <div style={{ textAlign:'center', padding:20, color:'#cbd5e1', fontSize:13 }}>Sin actividad en este período</div>
-          ) : actividad.map(a => (
-            <div key={a.id} style={{ display:'flex', gap:10, padding:'10px 12px', borderBottom:'1px solid #F1F5F9', alignItems:'flex-start' }}>
-              <span style={{ fontSize:14, flexShrink:0, marginTop:1 }}>{tipoIcon(a.tipo)}</span>
-              <div style={{ flex:1 }}>
-                <div style={{ fontSize:12, fontWeight:500, color:'#1E293B' }}>{a.descripcion}</div>
-                <div style={{ fontSize:11, color:'#94a3b8', marginTop:2 }}>{a.email} · {new Date(a.created_at).toLocaleString('es-CL')}</div>
+            <div style={{ textAlign:'center', padding:20, color:'#cbd5e1', fontSize:13 }}>Sin acciones registradas en este período</div>
+          ) : actividad.map(a => {
+            const ruc = extraerRuc(a.descripcion)
+            return (
+              <div key={a.id} style={{ display:'flex', gap:10, padding:'10px 12px', borderBottom:'1px solid #F1F5F9', alignItems:'center' }}>
+                <span style={{ fontSize:14, flexShrink:0 }}>📝</span>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontSize:12, fontWeight:500, color:'#1E293B' }}>{a.descripcion}</div>
+                  <div style={{ fontSize:11, color:'#94a3b8', marginTop:2 }}>{a.email} · {new Date(a.created_at).toLocaleString('es-CL')}</div>
+                </div>
+                {ruc && onVerCausa && (
+                  <button onClick={() => onVerCausa(ruc)} style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:7, padding:'5px 10px', fontSize:11, color:'#1e40af', cursor:'pointer', fontWeight:600, flexShrink:0, fontFamily:"'Inter',sans-serif" }}>→ Ver causa</button>
+                )}
               </div>
-              <span style={{ fontSize:10, fontWeight:700, color: tipoColor(a.tipo), textTransform:'uppercase', flexShrink:0 }}>{a.tipo}</span>
-            </div>
-          ))}
+            )
+          })}
         </div>
-      </div>
-    </div>
-  )
-}
-
-function NotifToast({ notif, onClose }) {
-  useEffect(() => {
-    const t = setTimeout(onClose, 6000)
-    return () => clearTimeout(t)
-  }, [])
-  const esIngreso = notif.tipo === 'ingreso'
-  return (
-    <div style={{ position:'fixed', bottom:24, right:24, zIndex:2000, background:'#fff', border: `1.5px solid ${esIngreso?'#a7f3d0':'#fecaca'}`, borderRadius:14, padding:'14px 18px', minWidth:300, maxWidth:380, boxShadow:'0 16px 40px rgba(15,23,42,0.14)', animation:'slideIn 0.3s ease', fontFamily:"'Inter',sans-serif" }}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12 }}>
-        <div style={{ display:'flex', gap:10, alignItems:'center' }}>
-          <span style={{ fontSize:22 }}>{esIngreso ? '🟢' : '🔴'}</span>
-          <div>
-            <div style={{ fontSize:13, fontWeight:700, color: esIngreso?'#065f46':'#991b1b' }}>{esIngreso ? 'Asistente conectado' : 'Asistente desconectado'}</div>
-            <div style={{ fontSize:12, color:'#64748b', marginTop:2 }}>{notif.email}</div>
-            <div style={{ fontSize:11, color:'#94a3b8', marginTop:1 }}>{new Date().toLocaleTimeString('es-CL')}</div>
-          </div>
-        </div>
-        <button onClick={onClose} style={{ background:'transparent', border:'none', cursor:'pointer', color:'#94a3b8', fontSize:16, padding:2 }}>✕</button>
       </div>
     </div>
   )
@@ -340,7 +319,6 @@ export default function App() {
   const [pagina, setPagina] = useState('causas')
   const [userRol, setUserRol] = useState(null)
   const [showPanel, setShowPanel] = useState(false)
-  const [notif, setNotif] = useState(null)
   const [solicitudesPendientes, setSolicitudesPendientes] = useState(0)
   // ✅ Estado para causa seleccionada desde el calendario
   const [causaDesdeCalendario, setCausaDesdeCalendario] = useState(null)
@@ -396,22 +374,14 @@ export default function App() {
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session)
-      if (session) {
-        const rol = await cargarRol(session.user.id)
-        if (rol) await registrarActividad('ingreso', `Ingresó a LexOffice`, { pagina: 'inicio' })
-      }
+      if (session) await cargarRol(session.user.id)
       setLoading(false)
     })
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_e, s) => {
       setSession(s)
-      if (s) {
-        const rol = await cargarRol(s.user.id)
-        if (rol && _e === 'SIGNED_IN') await registrarActividad('ingreso', `Ingresó a LexOffice`)
-      }
+      if (s) await cargarRol(s.user.id)
     })
-    const handleUnload = () => { navigator.sendBeacon && supabase.from('actividad_usuario').insert({ tipo: 'salida', descripcion: 'Cerró la aplicación' }) }
-    window.addEventListener('beforeunload', handleUnload)
-    return () => { subscription.unsubscribe(); window.removeEventListener('beforeunload', handleUnload) }
+    return () => { subscription.unsubscribe() }
   }, [])
 
   useEffect(() => {
@@ -421,11 +391,7 @@ export default function App() {
       setSolicitudesPendientes(count || 0)
     }
     cargarSolicitudes()
-    const channel = supabase.channel('actividad-realtime')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'actividad_usuario' }, (payload) => {
-        const nueva = payload.new
-        if (nueva.email !== session?.user?.email && (nueva.tipo === 'ingreso' || nueva.tipo === 'salida')) setNotif({ tipo: nueva.tipo, email: nueva.email })
-      })
+    const channel = supabase.channel('solicitudes-realtime')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'solicitudes_eliminacion' }, () => {
         cargarSolicitudes()
         setSolicitudesPendientes(prev => prev + 1)
@@ -469,7 +435,7 @@ export default function App() {
   const esTitular = userRol?.rol === 'titular'
   const tareasPendientesCount = tareas.filter(t => !t.completada).length
   const alertaTotal = alertaCounts.vencido + alertaCounts.proximo + tareasPendientesCount
-  const handleSignOut = async () => { await registrarActividad('salida', 'Cerró sesión'); await supabase.auth.signOut() }
+  const handleSignOut = async () => { await supabase.auth.signOut() }
 
   // ✅ Handler: desde calendario → abrir causa en Dashboard
   const handleVerCausa = (causa) => {
@@ -477,12 +443,22 @@ export default function App() {
     setPagina('causas')
   }
 
+  // 👁 Handler: desde Panel de Control → buscar causa por RUC y abrirla en Dashboard
+  const irACausaPorRuc = async (ruc) => {
+    if (!ruc) return
+    const { data } = await supabase.from('causas').select('*').ilike('ruc', `%${ruc.replace(/\s/g,'')}%`).limit(1).maybeSingle()
+    if (data) {
+      setCausaDesdeCalendario(data)
+      setPagina('causas')
+      setShowPanel(false)
+    }
+  }
+
   return (
     <div style={{ background:'#F8F9FC', minHeight:'100vh' }}>
       <style>{css}</style>
-      {notif && <NotifToast notif={notif} onClose={() => setNotif(null)} />}
       {notifTarea && <TareaToast tarea={notifTarea} onClose={() => setNotifTarea(null)} />}
-      {showPanel && <PanelActividad onClose={() => { setShowPanel(false); setSolicitudesPendientes(0) }} />}
+      {showPanel && <PanelActividad onClose={() => { setShowPanel(false); setSolicitudesPendientes(0) }} onVerCausa={irACausaPorRuc} />}
       {showAlerta && (
         <PanelAlertas
           onClose={() => setShowAlerta(false)}
