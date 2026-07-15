@@ -3,6 +3,7 @@ import { supabase } from './lib/supabase'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Calendario from './pages/Calendario'
+import Escritos from './pages/Escritos'
 
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
@@ -479,7 +480,7 @@ export default function App() {
           </div>
         </div>
         <div style={{ display:'flex', gap:4, background:'#F8F9FC', padding:'4px', borderRadius:12, border:'1px solid #E2E8F0' }}>
-          {[{id:'causas',label:'Causas'},{id:'calendario',label:'Calendario'}].map(item => (
+          {[{id:'causas',label:'Causas'},{id:'calendario',label:'Calendario'},{id:'escritos',label:'Escritos'}].map(item => (
             <button key={item.id} className={`nav-link${pagina===item.id?' active':''}`} onClick={() => setPagina(item.id)}>{item.label}</button>
           ))}
         </div>
@@ -523,6 +524,9 @@ export default function App() {
         {/* ✅ Calendario recibe onVerCausa para navegar */}
         {pagina === 'calendario' && (
           <Calendario onVerCausa={handleVerCausa} />
+        )}
+        {pagina === 'escritos' && (
+          <Escritos session={session} registrarActividad={registrarActividad} />
         )}
       </div>
     </div>
