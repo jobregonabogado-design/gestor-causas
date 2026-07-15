@@ -235,15 +235,36 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
   // - "8 de octubre de 2026" (en tabla Reprogramación)
   // ═══════════════════════════════════════════════════════
 
-  // Patrón 1a: "para el día DD de MES de YYYY" — año en dígitos
-  const matchFijacion = cuerpo.match(/para\s+el\s+d[ií]a\s+(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/i)
-  if (matchFijacion) {
-    const mes = meses[matchFijacion[2].toLowerCase()]
+  // ═══════════════════════════════════════════════════════
+  // PASO 0 (máxima prioridad): la palabra "definitiva" marca cuál es la
+  // fecha que realmente vale, cuando el documento menciona dos fechas en
+  // el mismo párrafo (la vieja que se reprograma, y la nueva y definitiva).
+  // Ejemplo real: "se procede a reprogramar la audiencia fijada para el
+  // día 21 de julio de 2026... quedando en definitiva para el día 10 de
+  // julio de 2026, a las 09:00 horas..." → debe tomar el 10 de julio, no el 21.
+  // ═══════════════════════════════════════════════════════
+  const matchDefinitiva = cuerpo.match(/definitiv[oa]?\s*(?:mente)?[^.]{0,60}?para\s+el\s+d[ií]a\s+(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/i)
+  if (matchDefinitiva) {
+    const mes = meses[matchDefinitiva[2].toLowerCase()]
     if (mes) {
-      const d = String(matchFijacion[1]).padStart(2,'0')
+      const d = String(matchDefinitiva[1]).padStart(2,'0')
       const m = String(mes).padStart(2,'0')
-      const posibleFecha = `${matchFijacion[3]}-${m}-${d}`
-      if (esFechaFuturaOReciente(posibleFecha)) { fecha = posibleFecha; posFecha = matchFijacion.index }
+      const posible = `${matchDefinitiva[3]}-${m}-${d}`
+      if (esFechaFuturaOReciente(posible)) { fecha = posible; posFecha = matchDefinitiva.index }
+    }
+  }
+
+  // Patrón 1a: "para el día DD de MES de YYYY" — año en dígitos
+  if (!fecha) {
+    const matchFijacion = cuerpo.match(/para\s+el\s+d[ií]a\s+(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/i)
+    if (matchFijacion) {
+      const mes = meses[matchFijacion[2].toLowerCase()]
+      if (mes) {
+        const d = String(matchFijacion[1]).padStart(2,'0')
+        const m = String(mes).padStart(2,'0')
+        const posibleFecha = `${matchFijacion[3]}-${m}-${d}`
+        if (esFechaFuturaOReciente(posibleFecha)) { fecha = posibleFecha; posFecha = matchFijacion.index }
+      }
     }
   }
 
@@ -355,7 +376,7 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
   // no hay que agregar nada — la fecha detectada sería la de la audiencia
   // anulada, no una nueva. Se descarta para que quede para revisión manual.
   const hayCancelacion = /dejar[aá]?\s+sin\s+efecto|deja\s+sin\s+efecto|queda\s+sin\s+efecto|se\s+suspende\s+la\s+audiencia|se\s+revoca\s+la\s+audiencia/i.test(cuerpo)
-  const hayReprogramacion = /reprogramaci[oó]n|nueva\s+fecha|se\s+fija\s+nueva/i.test(cuerpo)
+  const hayReprogramacion = /reprogramaci[oó]n|reprograma[r]?|nueva\s+fecha|se\s+fija\s+nueva|definitiv[oa]/i.test(cuerpo)
   if (hayCancelacion && !hayReprogramacion) {
     fecha = null
   }
