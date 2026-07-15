@@ -2067,6 +2067,7 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
   const [search,setSearch]=useState('')
   const [filterTribunal,setFilterTribunal]=useState('')
   const [filterEstado,setFilterEstado]=useState('')
+  const [filterDelito,setFilterDelito]=useState('')
   const [sortCol,setSortCol]=useState('created_at')
   const [sortDir,setSortDir]=useState('desc')
   const [view,setView]=useState('list')
@@ -2267,10 +2268,14 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
       const s=search.toLowerCase()
       const match=!s||[c.ruc,c.rit,c.imputado,c.delito,c.tribunal,c.fiscal].some(v=>v?.toLowerCase().includes(s))
       const estadoMatch=!filterEstado||(filterEstado==='vigente'?c.estado==='vigente':filterEstado==='terminada'?c.estado==='terminada':filterEstado==='top'?(c.subestado==='juicio_oral'||c.tiene_top===true):c.subestado===filterEstado)
-      return match&&(!filterTribunal||c.tribunal===filterTribunal)&&estadoMatch
+      const delitoMatch=!filterDelito||(c.delito||'').split('|').map(d=>d.trim()).includes(filterDelito)
+      return match&&(!filterTribunal||c.tribunal===filterTribunal)&&estadoMatch&&delitoMatch
     })
     return[...list].sort((a,b)=>{const av=a[sortCol]||'',bv=b[sortCol]||'';return sortDir==='asc'?av.localeCompare(bv):bv.localeCompare(av)})
-  },[causas,search,filterTribunal,filterEstado,sortCol,sortDir])
+  },[causas,search,filterTribunal,filterEstado,filterDelito,sortCol,sortDir])
+
+  const hayFiltrosActivos = !!(search||filterTribunal||filterEstado||filterDelito)
+  const limpiarFiltros = () => { setSearch(''); setFilterTribunal(''); setFilterEstado(''); setFilterDelito('') }
 
   const stats=useMemo(()=>({
     total:causas.length, vigente:causas.filter(c=>c.estado==='vigente').length, terminada:causas.filter(c=>c.estado==='terminada').length,
@@ -2278,8 +2283,18 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
     apjo:causas.filter(c=>c.subestado==='apjo').length, juicioOral:causas.filter(c=>c.subestado==='juicio_oral'||c.tiene_top===true).length,
   }),[causas])
 
-  const chartDelitos=useMemo(()=>{const map={};causas.forEach(c=>{(c.delito||'').split('|').map(d=>d.trim()).filter(Boolean).forEach(d=>{const k=d.substring(0,28);map[k]=(map[k]||0)+1})});return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,12).map(([name,value])=>({name,value}))},[causas])
-  const chartTribunales=useMemo(()=>{const map={};causas.forEach(c=>{if(c.tribunal){map[c.tribunal]=(map[c.tribunal]||0)+1}});return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,15).map(([name,value])=>({name,value}))},[causas])
+  // ✅ Los gráficos respetan TODOS los filtros activos (búsqueda, tribunal, estado, delito) —
+  // se guarda el nombre completo del delito (no truncado) para poder filtrar con precisión al hacer clic.
+  const chartDelitos=useMemo(()=>{
+    const map={}
+    filtered.forEach(c=>{(c.delito||'').split('|').map(d=>d.trim()).filter(Boolean).forEach(d=>{ if(!map[d]) map[d]=0; map[d]++ })})
+    return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,12).map(([nombreCompleto,value])=>({name:nombreCompleto.substring(0,28),nombreCompleto,value}))
+  },[filtered])
+  const chartTribunales=useMemo(()=>{
+    const map={}
+    filtered.forEach(c=>{if(c.tribunal){map[c.tribunal]=(map[c.tribunal]||0)+1}})
+    return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,15).map(([name,value])=>({name,value}))
+  },[filtered])
   const COLORS=['#2563eb','#7c3aed','#059669','#dc2626','#d97706','#0891b2','#db2777','#65a30d','#ea580c','#6366f1']
   const inp={width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}
 
@@ -2658,10 +2673,51 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
 
         {showStats&&(
           <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:16,padding:28,marginBottom:24}}>
-            <div style={{fontSize:17,fontWeight:800,color:'#1E293B',marginBottom:24,...f}}>Estadísticas del portfolio</div>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:10,marginBottom:8}}>
+              <div>
+                <div style={{fontSize:17,fontWeight:800,color:'#1E293B',...f}}>Estadísticas del portfolio</div>
+                <div style={{fontSize:12,color:'#94a3b8',marginTop:4,...f}}>
+                  {hayFiltrosActivos ? <>Mostrando <strong style={{color:'#1E293B'}}>{filtered.length}</strong> causa{filtered.length!==1?'s':''} con los filtros activos</> : <>Mostrando las {filtered.length} causas del portfolio (sin filtros)</>}
+                </div>
+              </div>
+              {hayFiltrosActivos && <button className="btn-secondary" style={{fontSize:12}} onClick={limpiarFiltros}>✕ Limpiar filtros</button>}
+            </div>
+            <div style={{fontSize:11,color:'#93c5fd',marginBottom:20,...f}}>💡 Haz clic en un delito o tribunal del gráfico para filtrar la lista por ese valor.</div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:32}}>
-              <div className="hide-mobile"><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:16,fontWeight:700,...f}}>Top Delitos</div><ResponsiveContainer width="100%" height={320}><PieChart><Pie data={chartDelitos} cx="50%" cy="50%" outerRadius={110} dataKey="value" label={({percent})=>`${(percent*100).toFixed(0)}%`} labelLine={false} fontSize={10}>{chartDelitos.map((_,i)=><Cell key={i} fill={COLORS[i%COLORS.length]}/>)}</Pie><Tooltip contentStyle={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,fontSize:12}} formatter={(v,n)=>[v+' causas',n]}/><Legend iconType="circle" iconSize={8} formatter={v=>v.substring(0,24)} wrapperStyle={{fontSize:11,color:'#64748b'}}/></PieChart></ResponsiveContainer></div>
-              <div><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:16,fontWeight:700,...f}}>Causas por Tribunal</div><ResponsiveContainer width="100%" height={320}><BarChart data={chartTribunales} layout="vertical" margin={{left:8,right:24,top:4,bottom:4}}><XAxis type="number" tick={{fontSize:10,fill:'#94a3b8'}} axisLine={false} tickLine={false}/><YAxis type="category" dataKey="name" tick={{fontSize:9,fill:'#64748b'}} width={110} axisLine={false} tickLine={false}/><Tooltip contentStyle={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,fontSize:12}}/><Bar dataKey="value" radius={[0,6,6,0]}>{chartTribunales.map((_,i)=><Cell key={i} fill={COLORS[i%COLORS.length]}/>)}</Bar></BarChart></ResponsiveContainer></div>
+              <div className="hide-mobile">
+                <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:16,fontWeight:700,...f}}>Top Delitos</div>
+                {chartDelitos.length===0 ? (
+                  <div style={{textAlign:'center',padding:'60px 0',color:'#cbd5e1',fontSize:13,...f}}>Sin datos para estos filtros.</div>
+                ) : (
+                <ResponsiveContainer width="100%" height={320}>
+                  <PieChart>
+                    <Pie data={chartDelitos} cx="50%" cy="50%" outerRadius={110} dataKey="value" label={({percent})=>`${(percent*100).toFixed(0)}%`} labelLine={false} fontSize={10} cursor="pointer"
+                      onClick={(data)=>setFilterDelito(prev=>prev===data.nombreCompleto?'':data.nombreCompleto)}>
+                      {chartDelitos.map((d,i)=><Cell key={i} fill={COLORS[i%COLORS.length]} stroke={filterDelito===d.nombreCompleto?'#1E293B':'none'} strokeWidth={filterDelito===d.nombreCompleto?3:0}/>)}
+                    </Pie>
+                    <Tooltip contentStyle={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,fontSize:12}} formatter={(v,n,entry)=>[v+' causas',entry.payload.nombreCompleto]}/>
+                    <Legend iconType="circle" iconSize={8} formatter={v=>v.substring(0,24)} wrapperStyle={{fontSize:11,color:'#64748b'}}/>
+                  </PieChart>
+                </ResponsiveContainer>
+                )}
+              </div>
+              <div>
+                <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:16,fontWeight:700,...f}}>Causas por Tribunal</div>
+                {chartTribunales.length===0 ? (
+                  <div style={{textAlign:'center',padding:'60px 0',color:'#cbd5e1',fontSize:13,...f}}>Sin datos para estos filtros.</div>
+                ) : (
+                <ResponsiveContainer width="100%" height={320}>
+                  <BarChart data={chartTribunales} layout="vertical" margin={{left:8,right:24,top:4,bottom:4}}>
+                    <XAxis type="number" tick={{fontSize:10,fill:'#94a3b8'}} axisLine={false} tickLine={false}/>
+                    <YAxis type="category" dataKey="name" tick={{fontSize:9,fill:'#64748b'}} width={110} axisLine={false} tickLine={false}/>
+                    <Tooltip contentStyle={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,fontSize:12}}/>
+                    <Bar dataKey="value" radius={[0,6,6,0]} cursor="pointer" onClick={(data)=>setFilterTribunal(prev=>prev===data.name?'':data.name)}>
+                      {chartTribunales.map((d,i)=><Cell key={i} fill={COLORS[i%COLORS.length]} stroke={filterTribunal===d.name?'#1E293B':'none'} strokeWidth={filterTribunal===d.name?2:0}/>)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -2673,6 +2729,10 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
           </div>
           <select style={{...inp,width:'auto',minWidth:180}} value={filterTribunal} onChange={e=>setFilterTribunal(e.target.value)}><option value="">Todos los tribunales</option>{tribunales.map(t=><option key={t} value={t}>{t}</option>)}</select>
           <select style={{...inp,width:'auto',minWidth:160}} value={filterEstado} onChange={e=>setFilterEstado(e.target.value)}><option value="">Todos los estados</option>{Object.entries(estadoConfig).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}</select>
+          <div style={{width:220}}>
+            <SearchableSelect value={filterDelito} onChange={v=>setFilterDelito(v)} options={DELITOS_CATALOGO} placeholder="Todos los delitos" isDelito={true}/>
+          </div>
+          {hayFiltrosActivos && <button className="btn-secondary" style={{fontSize:12,color:'#dc2626',borderColor:'#fecaca'}} onClick={limpiarFiltros}>✕ Limpiar</button>}
           <span style={{fontSize:12,color:'#94a3b8',fontWeight:500,...f}}>{filtered.length} resultado{filtered.length!==1?'s':''}</span>
           <button className="btn-primary" onClick={()=>setShowNuevaCausa(true)}>+ Nueva causa</button>
           <button className="btn-secondary" onClick={()=>setShowStats(!showStats)} style={{borderColor:showStats?'#2563eb':'#e2e8f0',color:showStats?'#2563eb':'#374151'}}>{showStats?'Ocultar':'📊 Estadísticas'}</button>
