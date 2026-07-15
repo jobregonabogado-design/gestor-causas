@@ -646,6 +646,49 @@ function SearchableSelect({ value, onChange, options, placeholder, isDelito }) {
 }
 
 
+// ─── COMPONENTE DELITOS MÚLTIPLES (chips + agregar más) ──────────────────────
+function DelitosChips({ value, onChange, options }) {
+  const [adding, setAdding] = useState(false)
+  const [temp, setTemp] = useState('')
+  const lista = (value || '').split('|').map(s => s.trim()).filter(Boolean)
+  const f = { fontFamily:"'Inter',sans-serif" }
+
+  const agregar = (nuevo) => {
+    if (!nuevo || lista.includes(nuevo)) { setAdding(false); setTemp(''); return }
+    onChange([...lista, nuevo].join('|'))
+    setAdding(false)
+    setTemp('')
+  }
+  const quitar = (idx) => {
+    onChange(lista.filter((_, i) => i !== idx).join('|'))
+  }
+
+  return (
+    <div>
+      {lista.length > 0 && (
+        <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginBottom:10 }}>
+          {lista.map((d, i) => (
+            <div key={i} style={{ display:'flex', alignItems:'center', gap:6, background:'#fef2f2', border:'1px solid #fecaca', borderRadius:8, padding:'6px 10px', maxWidth:'100%' }}>
+              <span style={{ fontSize:12, color:'#991b1b', fontWeight:600, ...f }}>{d}</span>
+              <button onClick={() => quitar(i)} style={{ background:'transparent', border:'none', cursor:'pointer', color:'#fca5a5', fontSize:13, padding:0, flexShrink:0 }}>✕</button>
+            </div>
+          ))}
+        </div>
+      )}
+      {adding ? (
+        <div style={{ display:'flex', gap:6, alignItems:'flex-start' }}>
+          <div style={{ flex:1 }}>
+            <SearchableSelect value={temp} onChange={v => agregar(v)} options={options} placeholder="Buscar delito..." isDelito={true} />
+          </div>
+          <button className="btn-secondary" style={{ padding:'8px 12px', fontSize:12, flexShrink:0 }} onClick={() => { setAdding(false); setTemp('') }}>✕</button>
+        </div>
+      ) : (
+        <button className="btn-secondary" style={{ fontSize:12 }} onClick={() => setAdding(true)}>+ Agregar delito</button>
+      )}
+    </div>
+  )
+}
+
 const TMAP = {'JG VINA DEL MAR':'JG VIÑA DEL MAR','JG CONCEPCION':'JG CONCEPCIÓN','JG VALPARAISO':'JG VALPARAÍSO','JG QUILPUE':'JG QUILPUÉ','JG CHILLAN':'JG CHILLÁN','JG AYSEN':'JG AYSÉN','JG CANETE':'JG CAÑETE','TOP CANETE':'TOP CAÑETE','13 JG DE STGO':'13 JG STGO','TOP SERENA':'TOP LA SERENA'}
 const normT = t => t ? (TMAP[t.trim()] || t.trim()) : t
 const f = { fontFamily:"'Inter',sans-serif" }
@@ -1027,6 +1070,11 @@ function ImputadoCard({ imp, idx, onUpdate, onDelete }) {
         </div>
         <Field2 label="Domicilio" field="domicilio" />
         <Field2 label="Otros antecedentes" field="otros_antecedentes"/>
+      </div>
+      {/* Delitos imputados a esta persona (puede diferir entre coimputados) */}
+      <div style={{marginTop:12}}>
+        <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Delitos imputados a esta persona</div>
+        <DelitosChips value={imp.delitos} onChange={(v)=>onUpdate('delitos', v)} options={DELITOS_CATALOGO} />
       </div>
       {/* Régimen RPA / ADULTO */}
       {imp.regimen && (
@@ -1631,7 +1679,7 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
     apjo:causas.filter(c=>c.subestado==='apjo').length, juicioOral:causas.filter(c=>c.subestado==='juicio_oral'||c.tiene_top===true).length,
   }),[causas])
 
-  const chartDelitos=useMemo(()=>{const map={};causas.forEach(c=>{if(c.delito){const k=c.delito.substring(0,28);map[k]=(map[k]||0)+1}});return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,12).map(([name,value])=>({name,value}))},[causas])
+  const chartDelitos=useMemo(()=>{const map={};causas.forEach(c=>{(c.delito||'').split('|').map(d=>d.trim()).filter(Boolean).forEach(d=>{const k=d.substring(0,28);map[k]=(map[k]||0)+1})});return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,12).map(([name,value])=>({name,value}))},[causas])
   const chartTribunales=useMemo(()=>{const map={};causas.forEach(c=>{if(c.tribunal){map[c.tribunal]=(map[c.tribunal]||0)+1}});return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,15).map(([name,value])=>({name,value}))},[causas])
   const COLORS=['#2563eb','#7c3aed','#059669','#dc2626','#d97706','#0891b2','#db2777','#65a30d','#ea580c','#6366f1']
   const inp={width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}
@@ -1684,9 +1732,14 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
           <div style={{background:'#fff',border:'1px solid #e2e8f0',borderTop:'none',borderRadius:'0 0 16px 16px',padding:28,boxShadow:'0 2px 8px rgba(15,23,42,0.05)'}}>
             {activeTab==='datos'&&(
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
-                {[{key:'imputado',label:'Imputado(s)',full:true,editable:true},{key:'delito',label:'Delito',full:true,editable:true},{key:'tribunal',label:'Tribunal',editable:true},{key:'rit',label:'RIT JG',editable:true},{key:'fiscal',label:'Fiscal a cargo',editable:true},{key:'cautelar',label:'Cautelar procesal',editable:true},{key:'centro_penal',label:'Centro Penal',editable:true},{key:'plazo',label:'Plazo / Vencimiento',editable:true,full:true}].map(field=>(
+                {[{key:'imputado',label:'Imputado(s)',full:true,editable:true},{key:'tribunal',label:'Tribunal',editable:true},{key:'rit',label:'RIT JG',editable:true},{key:'fiscal',label:'Fiscal a cargo',editable:true},{key:'cautelar',label:'Cautelar procesal',editable:true},{key:'centro_penal',label:'Centro Penal',editable:true},{key:'plazo',label:'Plazo / Vencimiento',editable:true,full:true}].map(field=>(
                   <Field key={field.key} label={field.label} value={c[field.key]} editable={field.editable} full={field.full} fieldKey={field.key} editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField(field.key,editValue)}/>
                 ))}
+                {/* Delito(s) — puede haber más de uno */}
+                <div style={{gridColumn:'1/-1',marginBottom:2}}>
+                  <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Delito(s)</div>
+                  <DelitosChips value={c.delito} onChange={(v)=>updateField('delito', v)} options={DELITOS_CATALOGO} />
+                </div>
                 {/* Fecha de los hechos */}
                 <div style={{gridColumn:'1/-1',marginTop:4}}>
                   <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Fecha de los hechos</div>
@@ -1969,7 +2022,7 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
                     </td>
                     <td style={{padding:'12px 16px',fontSize:12,color:'#475569',fontWeight:500,...f}}>{c.tribunal}</td>
                     <td style={{padding:'12px 16px',...f}}><div style={{maxWidth:210,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:13,color:'#1E293B',fontWeight:500}}>{c.imputado}</div></td>
-                    <td style={{padding:'12px 16px',...f}}><div style={{maxWidth:180,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:12,color:'#64748b'}}>{c.delito||'—'}</div></td>
+                    <td style={{padding:'12px 16px',...f}}><div style={{maxWidth:180,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:12,color:'#64748b'}}>{(c.delito||'').replace(/\|/g,', ')||'—'}</div></td>
                     <td style={{padding:'12px 16px',fontSize:12,color:c.fiscal?'#374151':'#e2e8f0',fontStyle:c.fiscal?'normal':'italic',...f}}>{c.fiscal||'Sin asignar'}</td>
                     <td style={{padding:'12px 16px',...f}}><div style={{maxWidth:130,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:11,color:'#94a3b8'}}>{c.plazo||'—'}</div></td>
                     <td style={{padding:'12px 16px'}}><Badge estado={c.estado} subestado={c.subestado}/></td>
@@ -2061,13 +2114,11 @@ export default function Dashboard({ session, registrarActividad, causaInicial, o
                 />
               </div>
               <div style={{gridColumn:'1/-1'}}>
-                <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Delito *</div>
-                <SearchableSelect
+                <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Delito(s) *</div>
+                <DelitosChips
                   value={nuevaCausa.delito}
                   onChange={v=>setNuevaCausa(p=>({...p,delito:v}))}
                   options={DELITOS_CATALOGO}
-                  placeholder="Buscar delito..."
-                  isDelito={true}
                 />
               </div>
               <div style={{gridColumn:'1/-1'}}>
