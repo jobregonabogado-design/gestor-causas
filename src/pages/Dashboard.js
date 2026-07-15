@@ -2201,8 +2201,16 @@ function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudiencia, o
     return Math.round((b - a) / (1000*60*60*24))
   }
 
+  // "DD-MM-YYYY" (formato de calcularVencimiento) → "YYYY-MM-DD" (para poder restar fechas)
+  const aISO = (fechaDDMMYYYY) => {
+    if (!fechaDDMMYYYY) return null
+    const [d,m,y] = fechaDDMMYYYY.split('-')
+    return `${y}-${m}-${d}`
+  }
+
   // Solo las audiencias NO eliminadas cuentan para el cálculo del vencimiento total
   const activos = (aumentos || []).filter(a => !a.eliminado)
+  const activosOrdenados = [...activos].sort((a,b) => a.fecha_audiencia.localeCompare(b.fecha_audiencia))
 
   const calcularVencimientoTotal = (auds) => {
     if (!auds || auds.length === 0) return null
@@ -2211,12 +2219,33 @@ function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudiencia, o
     return calcularVencimiento(sorted[0].fecha_audiencia, diasTotal)
   }
 
-  // Días calculados automáticamente cuando el tipo es "Aumento próxima audiencia"
-  const diasCalculadosNuevo = form.tipo_audiencia === TIPO_PROXIMA ? diasEntreFechas(form.fecha_audiencia, form.fecha_proxima_audiencia) : null
-  const diasFormNuevo = form.tipo_audiencia === TIPO_PROXIMA ? diasCalculadosNuevo : form.dias_plazo
-  const vencimientoPreview = form.fecha_audiencia && diasFormNuevo ? calcularVencimiento(form.fecha_audiencia, diasFormNuevo) : ''
+  // ✅ CALIBRACIÓN: para "Aumento próxima audiencia" los días NO se cuentan desde la
+  // fecha de ESA audiencia puntual — se cuentan desde el VENCIMIENTO ACUMULADO hasta
+  // ese momento (la fórmula general es: vencimiento = primera_fecha + suma de TODOS
+  // los días). Si se contara desde la fecha de la audiencia, el resultado final no
+  // cae en la fecha real de la próxima audiencia, porque arrastra el desfase de
+  // todo lo acumulado antes. Contando desde el vencimiento acumulado, si no hay
+  // ningún desfase previo, el resultado coincide exactamente con la fecha pedida.
+  const vencimientoAntesDeNueva = calcularVencimientoTotal(activos) // acumulado de TODO lo que ya existe
+  const baseParaNueva = vencimientoAntesDeNueva ? aISO(vencimientoAntesDeNueva) : form.fecha_audiencia
 
-  const diasCalculadosEdit = formEdit.tipo_audiencia === TIPO_PROXIMA ? diasEntreFechas(formEdit.fecha_audiencia, formEdit.fecha_proxima_audiencia) : null
+  // Vencimiento acumulado hasta (pero sin incluir) una audiencia dada — para corregir una ya existente
+  const obtenerVencimientoPrevio = (idActual) => {
+    const idx = activosOrdenados.findIndex(x => x.id === idActual)
+    if (idx <= 0) return null // es la primera (o no está en la lista): no hay "antes"
+    const anteriores = activosOrdenados.slice(0, idx)
+    const diasPrevios = anteriores.reduce((s,x) => s + (parseInt(x.dias_plazo)||0), 0)
+    return calcularVencimiento(anteriores[0].fecha_audiencia, diasPrevios)
+  }
+
+  // Días calculados automáticamente cuando el tipo es "Aumento próxima audiencia"
+  const diasCalculadosNuevo = form.tipo_audiencia === TIPO_PROXIMA ? diasEntreFechas(baseParaNueva, form.fecha_proxima_audiencia) : null
+  const diasFormNuevo = form.tipo_audiencia === TIPO_PROXIMA ? diasCalculadosNuevo : form.dias_plazo
+  const vencimientoPreview = form.tipo_audiencia === TIPO_PROXIMA ? form.fecha_proxima_audiencia : (form.fecha_audiencia && diasFormNuevo ? calcularVencimiento(form.fecha_audiencia, diasFormNuevo) : '')
+
+  const vencimientoPrevioEdit = editandoId ? (obtenerVencimientoPrevio(editandoId) || (activosOrdenados.find(x=>x.id===editandoId)?.fecha_audiencia)) : null
+  const baseParaEdit = vencimientoPrevioEdit ? (vencimientoPrevioEdit.includes('-') && vencimientoPrevioEdit.length===10 && vencimientoPrevioEdit[4]==='-' ? vencimientoPrevioEdit : aISO(vencimientoPrevioEdit)) : formEdit.fecha_audiencia
+  const diasCalculadosEdit = formEdit.tipo_audiencia === TIPO_PROXIMA ? diasEntreFechas(baseParaEdit, formEdit.fecha_proxima_audiencia) : null
 
   const handleGuardar = async () => {
     const diasFinal = form.tipo_audiencia === TIPO_PROXIMA ? diasCalculadosNuevo : parseInt(form.dias_plazo)
