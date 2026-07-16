@@ -1427,9 +1427,9 @@ function Field({ label, value, editable, editField, setEditField, editValue, set
         </div>
       ) : (
         <div className={editable?'fld':''} onClick={()=>{if(editable){setEditField(label);setEditValue(value||'')}}}
-          style={{ padding:'11px 14px', border:'none', borderRadius:14, fontSize:13, color:value?'#1E293B':'#cbd5e1', minHeight:38, display:'flex', alignItems:'center', justifyContent:'space-between', cursor:editable?'pointer':'default', background:'#fff', boxShadow:'0 1px 2px rgba(15,23,42,0.06)', ...f }}>
+          style={{ padding:'11px 14px', border:'none', borderRadius:14, fontSize:13, color:value?'#1E293B':'#94a3b8', minHeight:38, display:'flex', alignItems:'center', justifyContent:'space-between', cursor:editable?'pointer':'default', background:'#fff', boxShadow:'0 1px 2px rgba(15,23,42,0.06)', ...f }}>
           <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1}}>{value||(editable?'Clic para agregar...':'—')}</span>
-          {editable && <span style={{fontSize:11,color:'#cbd5e1',flexShrink:0,marginLeft:8}}>✏</span>}
+          {editable && <span style={{fontSize:11,color:'#94a3b8',flexShrink:0,marginLeft:8}}>✏</span>}
         </div>
       )}
     </div>
@@ -1473,7 +1473,7 @@ function AudienciaCard({ a, onUpdate }) {
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:10}}>
         {[{key:'fecha',label:'Fecha',type:'date'},{key:'hora',label:'Hora',type:'time'},{key:'tipo',label:'Tipo',type:'text'},{key:'resultado',label:'Resultado',type:'text'},{key:'tribunal',label:'Tribunal',type:'text'},{key:'sala',label:'Sala',type:'text'}].map(field=>(
           <div key={field.key}>
-            <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4,fontWeight:600,...f}}>{field.label}</div>
+            <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4,fontWeight:600,...f}}>{field.label}</div>
             <input type={field.type} style={inp} value={form[field.key]} onChange={e=>setForm(p=>({...p,[field.key]:e.target.value}))}/>
           </div>
         ))}
@@ -1504,7 +1504,7 @@ function AudienciaCard({ a, onUpdate }) {
       {a.tribunal&&<div style={{fontSize:12,color:'#64748b',marginBottom:2,...f}}>🏛 {a.tribunal}{a.sala?' · Sala '+a.sala:''}</div>}
       {a.resultado&&<div style={{fontSize:12,color:'#475569',marginTop:4,...f}}>Resultado: {a.resultado}</div>}
       {notasLimpias&&<div style={{fontSize:12,color:'#94a3b8',marginTop:3,...f}}>{notasLimpias}</div>}
-      {a.ruc&&<div style={{fontSize:10,color:'#cbd5e1',marginTop:4,fontFamily:'monospace'}}>RUC: {a.ruc}</div>}
+      {a.ruc&&<div style={{fontSize:10,color:'#94a3b8',marginTop:4,fontFamily:'monospace'}}>RUC: {a.ruc}</div>}
       {historial.length>0&&(
         <div style={{marginTop:8,paddingTop:8,borderTop:'1px solid #f1f5f9'}}>
           {historial.map((h,i)=><div key={i} style={{fontSize:10,color:'#94a3b8',marginBottom:2,...f}}>📝 {h}</div>)}
@@ -1560,7 +1560,7 @@ function ImputadoCard({ imp, idx, onUpdate, onDelete }) {
 
   const Field2 = ({ label, field }) => (
     <div>
-      <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:5,fontWeight:600,...f}}>{label}</div>
+      <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:5,fontWeight:600,...f}}>{label}</div>
       {editField===field?(
         field==='lugar_detencion' ? (
           <div style={{display:'flex',gap:6,alignItems:'flex-start'}}>
@@ -1591,9 +1591,9 @@ function ImputadoCard({ imp, idx, onUpdate, onDelete }) {
         )
       ):(
         <div onClick={()=>{setEditField(field);setEditValue(imp[field]||'')}}
-          style={{padding:'8px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:imp[field]?'#1E293B':'#cbd5e1',minHeight:36,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
+          style={{padding:'8px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:imp[field]?'#1E293B':'#94a3b8',minHeight:36,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
           <span>{imp[field]||'Clic para agregar...'}</span>
-          <span style={{fontSize:11,color:'#cbd5e1'}}>✏</span>
+          <span style={{fontSize:11,color:'#94a3b8'}}>✏</span>
         </div>
       )}
     </div>
@@ -1613,7 +1613,7 @@ function ImputadoCard({ imp, idx, onUpdate, onDelete }) {
         <Field2 label="RUT" field="rut"/>
         <Field2 label="Nacionalidad" field="nacionalidad"/>
         <div>
-          <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:5,fontWeight:600,...f}}>Fecha de nacimiento</div>
+          <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:5,fontWeight:600,...f}}>Fecha de nacimiento</div>
           {editField==='fecha_nacimiento'?(
             <div style={{display:'flex',gap:6}}>
               <input type="date" style={inp} value={editValue} onChange={e=>setEditValue(e.target.value)}
@@ -1623,7 +1623,7 @@ function ImputadoCard({ imp, idx, onUpdate, onDelete }) {
             </div>
           ):(
             <div onClick={()=>{setEditField('fecha_nacimiento');setEditValue(imp.fecha_nacimiento||'')}}
-              style={{padding:'8px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:imp.fecha_nacimiento?'#1E293B':'#cbd5e1',minHeight:36,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
+              style={{padding:'8px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:imp.fecha_nacimiento?'#1E293B':'#94a3b8',minHeight:36,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
               <span>
                 {imp.fecha_nacimiento || 'Clic para agregar...'}
                 {imp.fecha_nacimiento && (() => {
@@ -1633,7 +1633,7 @@ function ImputadoCard({ imp, idx, onUpdate, onDelete }) {
                   </span> : null
                 })()}
               </span>
-              <span style={{fontSize:11,color:'#cbd5e1'}}>✏</span>
+              <span style={{fontSize:11,color:'#94a3b8'}}>✏</span>
             </div>
           )}
         </div>
@@ -1642,7 +1642,7 @@ function ImputadoCard({ imp, idx, onUpdate, onDelete }) {
       </div>
       {/* Delitos imputados a esta persona (puede diferir entre coimputados) */}
       <div style={{marginTop:12}}>
-        <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Delitos imputados a esta persona</div>
+        <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Delitos imputados a esta persona</div>
         <DelitosChips value={imp.delitos} onChange={(v)=>onUpdate('delitos', v)} options={DELITOS_CATALOGO} />
       </div>
       {/* Régimen RPA / ADULTO */}
@@ -1748,7 +1748,7 @@ function FallosReferencia({ causaId, ruc, email, onAccion }) {
         <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, ...f }}>o haz clic para seleccionar desde tu carpeta de descargas</div>
       </div>
       {fallos.length === 0 ? (
-        <div style={{ fontSize: 13, color: '#cbd5e1', textAlign: 'center', padding: '12px 0', ...f }}>Sin fallos de referencia aún.</div>
+        <div style={{ fontSize: 13, color: '#94a3b8', textAlign: 'center', padding: '12px 0', ...f }}>Sin fallos de referencia aún.</div>
       ) : fallos.map((fallo, i) => (
         <div key={i} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', background:'#fff', border:'1px solid #e2e8f0', borderRadius:10, marginBottom:8 }}>
           <div style={{ width:36, height:36, background:'#fef2f2', border:'1px solid #fecaca', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, flexShrink:0 }}>📄</div>
@@ -1832,7 +1832,7 @@ function DocumentosGuardados({ causaId, email, onAccion }) {
         <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, ...f }}>o haz clic para seleccionar — cualquier tipo de archivo</div>
       </div>
       {docs.length === 0 ? (
-        <div style={{ fontSize: 13, color: '#cbd5e1', textAlign: 'center', padding: '12px 0', ...f }}>Sin documentos guardados aún.</div>
+        <div style={{ fontSize: 13, color: '#94a3b8', textAlign: 'center', padding: '12px 0', ...f }}>Sin documentos guardados aún.</div>
       ) : docs.map((doc, i) => (
         <div key={i} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', background:'#fff', border:'1px solid #e2e8f0', borderRadius:10, marginBottom:8 }}>
           <div style={{ width:36, height:36, background:'#F8F9FC', border:'1px solid #e2e8f0', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, flexShrink:0 }}>{iconoDocumento(doc.nombre)}</div>
@@ -1931,7 +1931,7 @@ function HonorariosTab({ causaId, ruc, email, registrarActividad, onAccion }) {
       </div>
 
       <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, marginBottom:10, fontWeight:600, ...f }}>Historial de abonos</div>
-      {abonos.length === 0 && <p style={{ color:'#cbd5e1', fontSize:13, marginBottom:14, ...f }}>Sin abonos registrados.</p>}
+      {abonos.length === 0 && <p style={{ color:'#94a3b8', fontSize:13, marginBottom:14, ...f }}>Sin abonos registrados.</p>}
       {abonos.map(a => (
         <div key={a.id} style={{ display:'flex', gap:12, alignItems:'center', padding:'12px 16px', background:'#F8F9FC', border:'1px solid #e2e8f0', borderRadius:10, marginBottom:8 }}>
           <div style={{ width:36, height:36, background:'#ecfdf5', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', color:'#059669', fontSize:15, fontWeight:700, flexShrink:0 }}>$</div>
@@ -1946,14 +1946,14 @@ function HonorariosTab({ causaId, ruc, email, registrarActividad, onAccion }) {
       {showForm ? (
         <div style={{ background:'#F8F9FC', border:'1.5px solid #e2e8f0', borderRadius:12, padding:16, marginTop:8 }}>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
-            <div><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4,fontWeight:600,...f}}>Monto</div><input type="number" style={inp} placeholder="Ej: 300000" value={nuevoAbono.monto} onChange={e=>setNuevoAbono(p=>({...p,monto:e.target.value}))}/></div>
-            <div><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4,fontWeight:600,...f}}>Fecha</div><input type="date" style={inp} value={nuevoAbono.fecha} onChange={e=>setNuevoAbono(p=>({...p,fecha:e.target.value}))}/></div>
-            <div><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4,fontWeight:600,...f}}>Forma de pago</div>
+            <div><div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4,fontWeight:600,...f}}>Monto</div><input type="number" style={inp} placeholder="Ej: 300000" value={nuevoAbono.monto} onChange={e=>setNuevoAbono(p=>({...p,monto:e.target.value}))}/></div>
+            <div><div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4,fontWeight:600,...f}}>Fecha</div><input type="date" style={inp} value={nuevoAbono.fecha} onChange={e=>setNuevoAbono(p=>({...p,fecha:e.target.value}))}/></div>
+            <div><div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4,fontWeight:600,...f}}>Forma de pago</div>
               <select style={inp} value={nuevoAbono.forma_pago} onChange={e=>setNuevoAbono(p=>({...p,forma_pago:e.target.value}))}>
                 <option>Transferencia</option><option>Efectivo</option><option>Cheque</option><option>Tarjeta</option><option>Otro</option>
               </select>
             </div>
-            <div><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4,fontWeight:600,...f}}>Observación</div><input style={inp} placeholder="Opcional" value={nuevoAbono.observacion} onChange={e=>setNuevoAbono(p=>({...p,observacion:e.target.value}))}/></div>
+            <div><div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4,fontWeight:600,...f}}>Observación</div><input style={inp} placeholder="Opcional" value={nuevoAbono.observacion} onChange={e=>setNuevoAbono(p=>({...p,observacion:e.target.value}))}/></div>
           </div>
           <div style={{ display:'flex', gap:8 }}>
             <button className="btn-primary" onClick={agregarAbono} disabled={guardando}>{guardando?'Guardando...':'Guardar abono'}</button>
@@ -2084,7 +2084,7 @@ function TeoriaDelCaso({ causaId, ruc, session, registrarActividad, onAccion }) 
           <div style={{ background:'#F8F9FC', borderBottom:'1px solid #E2E8F0', padding:'16px 20px', maxHeight:200, overflowY:'auto' }}>
             <div style={{ fontSize:11, fontWeight:700, color:'#475569', textTransform:'uppercase', letterSpacing:1, marginBottom:10, ...f }}>Historial de modificaciones</div>
             {historial.length === 0 ? (
-              <div style={{ fontSize:12, color:'#cbd5e1', ...f }}>Sin modificaciones registradas aún.</div>
+              <div style={{ fontSize:12, color:'#94a3b8', ...f }}>Sin modificaciones registradas aún.</div>
             ) : historial.map((h, i) => {
               let info = {}
               try { info = JSON.parse(h.contenido) } catch {}
@@ -2290,20 +2290,20 @@ function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudiencia, o
       <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,marginBottom:20}}>
         <div style={{background:'#eff6ff',border:'1.5px solid #bfdbfe',borderRadius:12,padding:'14px 16px',textAlign:'center'}}>
           <div style={{fontSize:28,fontWeight:900,color:'#2563eb',letterSpacing:'-1px',...f}}>{activos.length}</div>
-          <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1,marginTop:4,fontWeight:600,...f}}>Audiencias vigentes</div>
+          <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1,marginTop:4,fontWeight:600,...f}}>Audiencias vigentes</div>
         </div>
         <div style={{background:'#fffbeb',border:'1.5px solid #fde68a',borderRadius:12,padding:'14px 16px',textAlign:'center'}}>
           <div style={{fontSize:28,fontWeight:900,color:'#d97706',letterSpacing:'-1px',...f}}>{diasTotal}</div>
-          <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1,marginTop:4,fontWeight:600,...f}}>Días corridos totales</div>
+          <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1,marginTop:4,fontWeight:600,...f}}>Días corridos totales</div>
         </div>
         <div style={{background:subestado==='vencido'?'#fef2f2':subestado==='proximo'?'#fffbeb':'#f0fdf4',border:`1.5px solid ${subestado==='vencido'?'#fecaca':subestado==='proximo'?'#fde68a':'#a7f3d0'}`,borderRadius:12,padding:'14px 16px',textAlign:'center'}}>
           <div style={{fontSize:13,fontWeight:800,color:subestado==='vencido'?'#dc2626':subestado==='proximo'?'#d97706':'#059669',...f}}>{vencFinal || '—'}</div>
           {diff !== null && <div style={{fontSize:11,fontWeight:600,marginTop:4,color:subestado==='vencido'?'#dc2626':subestado==='proximo'?'#d97706':'#64748b',...f}}>{subestado==='vencido' ? `Venció hace ${Math.abs(diff)} días` : subestado==='proximo' ? `⚠️ Vence en ${diff} días` : `Faltan ${diff} días`}</div>}
-          <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1,marginTop:2,fontWeight:600,...f}}>Vencimiento</div>
+          <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1,marginTop:2,fontWeight:600,...f}}>Vencimiento</div>
         </div>
       </div>
-      <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:10,fontWeight:600,...f}}>Historial de audiencias de plazo</div>
-      {(!aumentos||aumentos.length===0) && <p style={{color:'#cbd5e1',fontSize:13,marginBottom:14,...f}}>Sin audiencias registradas.</p>}
+      <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:10,fontWeight:600,...f}}>Historial de audiencias de plazo</div>
+      {(!aumentos||aumentos.length===0) && <p style={{color:'#94a3b8',fontSize:13,marginBottom:14,...f}}>Sin audiencias registradas.</p>}
       {aumentos && aumentos.map((a,i) => {
         // El acumulado se calcula solo sobre las audiencias vigentes (no eliminadas), en orden de fecha
         const posEnActivos = activos.findIndex(x=>x.id===a.id)
@@ -2314,7 +2314,7 @@ function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudiencia, o
         // ─── Fila ELIMINADA: tachada, con el motivo visible (transparencia, no se oculta) ───
         if (a.eliminado) return (
           <div key={a.id} style={{display:'flex',gap:12,alignItems:'flex-start',padding:'12px 16px',background:'#F8F9FC',border:'1px solid #e2e8f0',borderRadius:10,marginBottom:8,opacity:0.75}}>
-            <div style={{width:30,height:30,background:'#cbd5e1',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:14,flexShrink:0}}>✕</div>
+            <div style={{width:30,height:30,background:'#94a3b8',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:14,flexShrink:0}}>✕</div>
             <div style={{flex:1}}>
               <div style={{fontSize:13,fontWeight:600,color:'#94a3b8',textDecoration:'line-through',...f}}>{a.tipo_audiencia||'Audiencia'} · {a.fecha_audiencia} · +{a.dias_plazo}d</div>
               <div style={{fontSize:11,color:'#dc2626',marginTop:4,...f}}>🗑 Eliminada por {a.eliminado_por||'—'} el {a.eliminado_en ? new Date(a.eliminado_en).toLocaleDateString('es-CL') : '—'} · Motivo: {a.motivo_eliminacion||'—'}</div>
@@ -2327,24 +2327,24 @@ function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudiencia, o
             <div style={{fontSize:12,fontWeight:700,color:'#5b21b6',marginBottom:12,...f}}>✏ Corregir audiencia de plazo</div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
               <div style={{gridColumn:'1/-1'}}>
-                <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Tipo de audiencia</div>
+                <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Tipo de audiencia</div>
                 <select style={inp} value={formEdit.tipo_audiencia} onChange={e=>setFormEdit(p=>({...p,tipo_audiencia:e.target.value}))}>
                   {TIPOS_AUDIENCIA_PLAZO.map(t=><option key={t}>{t}</option>)}
                 </select>
               </div>
-              <div><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Fecha de audiencia</div><input type="date" style={inp} value={formEdit.fecha_audiencia} onChange={e=>setFormEdit(p=>({...p,fecha_audiencia:e.target.value}))}/></div>
+              <div><div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Fecha de audiencia</div><input type="date" style={inp} value={formEdit.fecha_audiencia} onChange={e=>setFormEdit(p=>({...p,fecha_audiencia:e.target.value}))}/></div>
               {formEdit.tipo_audiencia === TIPO_PROXIMA ? (
                 <div>
-                  <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Fecha de la próxima audiencia</div>
+                  <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Fecha de la próxima audiencia</div>
                   <input type="date" style={inp} value={formEdit.fecha_proxima_audiencia} onChange={e=>setFormEdit(p=>({...p,fecha_proxima_audiencia:e.target.value}))}/>
                 </div>
               ) : (
-                <div><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Días de plazo otorgados</div><input type="number" style={inp} value={formEdit.dias_plazo} onChange={e=>setFormEdit(p=>({...p,dias_plazo:e.target.value}))}/></div>
+                <div><div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Días de plazo otorgados</div><input type="number" style={inp} value={formEdit.dias_plazo} onChange={e=>setFormEdit(p=>({...p,dias_plazo:e.target.value}))}/></div>
               )}
               {formEdit.tipo_audiencia === TIPO_PROXIMA && diasCalculadosEdit !== null && (
                 <div style={{gridColumn:'1/-1',fontSize:12,color:'#5b21b6',background:'#f5f3ff',border:'1px solid #ddd6fe',borderRadius:8,padding:'8px 12px',...f}}>📐 Se calculó automáticamente: <strong>{diasCalculadosEdit} días corridos</strong></div>
               )}
-              <div style={{gridColumn:'1/-1'}}><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>{formEdit.tipo_audiencia === TIPO_PROXIMA ? 'Motivo / tipo de la próxima audiencia' : 'Observación'}</div><input style={inp} placeholder={formEdit.tipo_audiencia === TIPO_PROXIMA ? 'Ej: Procedimiento Abreviado' : ''} value={formEdit.observacion} onChange={e=>setFormEdit(p=>({...p,observacion:e.target.value}))}/></div>
+              <div style={{gridColumn:'1/-1'}}><div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>{formEdit.tipo_audiencia === TIPO_PROXIMA ? 'Motivo / tipo de la próxima audiencia' : 'Observación'}</div><input style={inp} placeholder={formEdit.tipo_audiencia === TIPO_PROXIMA ? 'Ej: Procedimiento Abreviado' : ''} value={formEdit.observacion} onChange={e=>setFormEdit(p=>({...p,observacion:e.target.value}))}/></div>
               <div style={{gridColumn:'1/-1'}}>
                 <div style={{fontSize:10,color:'#dc2626',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Motivo de la corrección *</div>
                 <input style={{...inp,borderColor:'#fecaca'}} placeholder="Ej: Error de tipeo en los días, fecha mal ingresada..." value={motivoEdit} onChange={e=>setMotivoEdit(e.target.value)}/>
@@ -2386,7 +2386,7 @@ function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudiencia, o
             <div style={{textAlign:'right',marginRight:4}}>
               <div style={{fontSize:16,fontWeight:800,color:'#2563eb',...f}}>+{a.dias_plazo}d</div>
               <div style={{fontSize:11,color:'#94a3b8',marginTop:2,...f}}>Vence: {vencAcum||'—'}</div>
-              <div style={{fontSize:10,color:'#cbd5e1',...f}}>Acum. {diasAcum}d</div>
+              <div style={{fontSize:10,color:'#94a3b8',...f}}>Acum. {diasAcum}d</div>
             </div>
             <div style={{display:'flex',flexDirection:'column',gap:4,flexShrink:0}}>
               <button onClick={()=>empezarEdicion(a)} style={{background:'#faf5ff',border:'1px solid #ddd6fe',borderRadius:6,padding:'4px 8px',fontSize:11,color:'#5b21b6',cursor:'pointer',fontWeight:600,...f}}>✏ Corregir</button>
@@ -2399,22 +2399,22 @@ function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudiencia, o
         <div style={{background:'#f0f7ff',border:'1.5px solid #bfdbfe',borderRadius:12,padding:16,marginTop:12}}>
           <div style={{fontSize:12,fontWeight:700,color:'#2563eb',marginBottom:12,...f}}>{activos.length === 0 ? '📋 Registrar audiencia de formalización' : '📋 Registrar nueva audiencia de plazo'}</div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
-            <div style={{gridColumn:'1/-1'}}><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Tipo de audiencia</div><select style={inp} value={form.tipo_audiencia} onChange={e=>setForm(p=>({...p,tipo_audiencia:e.target.value}))}>{TIPOS_AUDIENCIA_PLAZO.map(t=><option key={t}>{t}</option>)}</select></div>
-            <div><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Fecha de audiencia</div><input type="date" style={inp} value={form.fecha_audiencia} onChange={e=>setForm(p=>({...p,fecha_audiencia:e.target.value}))}/></div>
+            <div style={{gridColumn:'1/-1'}}><div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Tipo de audiencia</div><select style={inp} value={form.tipo_audiencia} onChange={e=>setForm(p=>({...p,tipo_audiencia:e.target.value}))}>{TIPOS_AUDIENCIA_PLAZO.map(t=><option key={t}>{t}</option>)}</select></div>
+            <div><div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Fecha de audiencia</div><input type="date" style={inp} value={form.fecha_audiencia} onChange={e=>setForm(p=>({...p,fecha_audiencia:e.target.value}))}/></div>
             {form.tipo_audiencia === TIPO_PROXIMA ? (
               <div>
-                <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Fecha de la próxima audiencia</div>
+                <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Fecha de la próxima audiencia</div>
                 <input type="date" style={inp} value={form.fecha_proxima_audiencia} onChange={e=>setForm(p=>({...p,fecha_proxima_audiencia:e.target.value}))}/>
               </div>
             ) : (
-              <div><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Días de plazo otorgados</div><input type="number" style={inp} placeholder="Ej: 30, 90, 210" value={form.dias_plazo} onChange={e=>setForm(p=>({...p,dias_plazo:e.target.value}))}/></div>
+              <div><div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Días de plazo otorgados</div><input type="number" style={inp} placeholder="Ej: 30, 90, 210" value={form.dias_plazo} onChange={e=>setForm(p=>({...p,dias_plazo:e.target.value}))}/></div>
             )}
             {form.tipo_audiencia === TIPO_PROXIMA && diasCalculadosNuevo !== null && (
               <div style={{gridColumn:'1/-1',fontSize:12,color:'#5b21b6',background:'#f5f3ff',border:'1px solid #ddd6fe',borderRadius:8,padding:'8px 12px',...f}}>📐 Se calculó automáticamente: <strong>{diasCalculadosNuevo} días corridos</strong></div>
             )}
-            <div style={{gridColumn:'1/-1'}}><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>{form.tipo_audiencia === TIPO_PROXIMA ? 'Motivo / tipo de la próxima audiencia' : 'Observación'}</div><input style={inp} placeholder={form.tipo_audiencia === TIPO_PROXIMA ? 'Ej: Procedimiento Abreviado' : 'Ej: Diligencias pendientes'} value={form.observacion} onChange={e=>setForm(p=>({...p,observacion:e.target.value}))}/></div>
+            <div style={{gridColumn:'1/-1'}}><div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>{form.tipo_audiencia === TIPO_PROXIMA ? 'Motivo / tipo de la próxima audiencia' : 'Observación'}</div><input style={inp} placeholder={form.tipo_audiencia === TIPO_PROXIMA ? 'Ej: Procedimiento Abreviado' : 'Ej: Diligencias pendientes'} value={form.observacion} onChange={e=>setForm(p=>({...p,observacion:e.target.value}))}/></div>
           </div>
-          {vencimientoPreview && <div style={{marginBottom:12,padding:'10px 14px',background:'#fff',borderRadius:8,border:'1px solid #bfdbfe',display:'flex',alignItems:'center',gap:8}}><span style={{fontSize:16}}>📅</span><div><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1,fontWeight:700,...f}}>Vencimiento de este plazo</div><div style={{fontSize:15,fontWeight:800,color:'#2563eb',...f}}>{vencimientoPreview}</div></div></div>}
+          {vencimientoPreview && <div style={{marginBottom:12,padding:'10px 14px',background:'#fff',borderRadius:8,border:'1px solid #bfdbfe',display:'flex',alignItems:'center',gap:8}}><span style={{fontSize:16}}>📅</span><div><div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1,fontWeight:700,...f}}>Vencimiento de este plazo</div><div style={{fontSize:15,fontWeight:800,color:'#2563eb',...f}}>{vencimientoPreview}</div></div></div>}
           <div style={{display:'flex',gap:8}}><button className="btn-primary" style={{fontSize:12}} onClick={handleGuardar} disabled={guardando||!form.fecha_audiencia}>{guardando?'Guardando...':'💾 Guardar audiencia'}</button><button className="btn-secondary" style={{fontSize:12}} onClick={()=>setShowForm(false)}>Cancelar</button></div>
         </div>
       ) : (
@@ -2787,7 +2787,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                     y abajo la lista de apelaciones (pueden ser varias en la misma causa). */}
                 <div style={{gridColumn:'1/-1',marginBottom:2}}>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6,gap:10}}>
-                    <div style={{display:'flex',alignItems:'center',gap:8,padding:'8px 14px',border:'none',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',borderRadius:20,fontSize:12,color: getCorteApelaciones(c.tribunal) ? '#1E293B' : '#cbd5e1',background:'#fff',fontWeight:600,...f}}>
+                    <div style={{display:'flex',alignItems:'center',gap:8,padding:'8px 14px',border:'none',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',borderRadius:20,fontSize:12,color: getCorteApelaciones(c.tribunal) ? '#1E293B' : '#94a3b8',background:'#fff',fontWeight:600,...f}}>
                       <span>⚖</span>
                       <span>{getCorteApelaciones(c.tribunal) || 'Selecciona un tribunal'}</span>
                     </div>
@@ -2814,7 +2814,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                             <Field label="Rol Corte" value={apel.rol_corte} editable fieldKey={`rol_corte_${apel.id}`} editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={async()=>{await supabase.from('apelaciones_corte').update({rol_corte:editValue}).eq('id',apel.id);setApelaciones(prev=>prev.map(x=>x.id===apel.id?{...x,rol_corte:editValue}:x));setEditField(null)}}/>
                             <Field label="Sala" value={apel.sala_corte} editable fieldKey={`sala_corte_${apel.id}`} editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={async()=>{await supabase.from('apelaciones_corte').update({sala_corte:editValue}).eq('id',apel.id);setApelaciones(prev=>prev.map(x=>x.id===apel.id?{...x,sala_corte:editValue}:x));setEditField(null)}}/>
                             <div style={{gridColumn:'1/-1'}}>
-                              <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Fecha de audiencia en la Corte</div>
+                              <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Fecha de audiencia en la Corte</div>
                               {editField===`fecha_audiencia_corte_${apel.id}`?(
                                 <div style={{display:'flex',gap:6}}>
                                   <input type="date" style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}}
@@ -2824,9 +2824,9 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                                 </div>
                               ):(
                                 <div className="fld" onClick={()=>{setEditField(`fecha_audiencia_corte_${apel.id}`);setEditValue(apel.fecha_audiencia_corte||'')}}
-                                  style={{padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:apel.fecha_audiencia_corte?'#1E293B':'#cbd5e1',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
+                                  style={{padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:apel.fecha_audiencia_corte?'#1E293B':'#94a3b8',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
                                   <span>{apel.fecha_audiencia_corte || 'Clic para agregar...'}</span>
-                                  <span style={{fontSize:11,color:'#cbd5e1'}}>✏</span>
+                                  <span style={{fontSize:11,color:'#94a3b8'}}>✏</span>
                                 </div>
                               )}
                             </div>
@@ -2838,7 +2838,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                 </div>
                 {/* Delito(s) — sincronizado con los imputados. 1 imputado = mismo dato; varios = uno por cada uno */}
                 <div style={{gridColumn:'1/-1',marginBottom:2}}>
-                  <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Delito(s)</div>
+                  <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Delito(s)</div>
                   {imputados.length === 0 ? (
                     <DelitosChips value={c.delito} onChange={(v)=>updateField('delito', v)} options={DELITOS_CATALOGO} />
                   ) : imputados.length === 1 ? (
@@ -2875,7 +2875,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                 {/* Fecha de los hechos + Fecha ACD (Control Detención) */}
                 <div style={{gridColumn:'1/-1',marginTop:4,display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
                   <div>
-                    <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Fecha de los hechos</div>
+                    <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Fecha de los hechos</div>
                     {editField==='fecha_hechos'?(
                       <div style={{display:'flex',gap:6}}>
                         <input type="date" style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}}
@@ -2886,7 +2886,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                       </div>
                     ):(
                       <div className="fld" onClick={()=>{setEditField('fecha_hechos');setEditValue(c.fecha_hechos||'')}}
-                        style={{padding:'9px 12px',border:'1.5px solid #fecaca',borderRadius:8,fontSize:13,fontWeight:700,color:c.fecha_hechos?'#991b1b':'#cbd5e1',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:c.fecha_hechos?'#fef2f2':'#fff',...f}}>
+                        style={{padding:'9px 12px',border:'1.5px solid #fecaca',borderRadius:8,fontSize:13,fontWeight:700,color:c.fecha_hechos?'#991b1b':'#94a3b8',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:c.fecha_hechos?'#fef2f2':'#fff',...f}}>
                         <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
                           <span>{c.fecha_hechos || 'Clic para agregar...'}</span>
                           {c.fecha_hechos && imputados.map(imp => {
@@ -2911,13 +2911,13 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                     )}
                   </div>
                   <div>
-                    <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Fecha ACD (Control Detención)</div>
+                    <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Fecha ACD (Control Detención)</div>
                     {(() => {
                       const activosPlazo = (aumentos||[]).filter(a=>!a.eliminado).sort((x,y)=>x.fecha_audiencia.localeCompare(y.fecha_audiencia))
                       const fechaAcd = activosPlazo[0]?.fecha_audiencia
                       return (
                         <div onClick={()=>setActiveTab('plazo')}
-                          style={{padding:'9px 12px',border:'1.5px solid #bfdbfe',borderRadius:8,fontSize:13,fontWeight:700,color:fechaAcd?'#1e40af':'#cbd5e1',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:fechaAcd?'#eff6ff':'#fff',...f}}
+                          style={{padding:'9px 12px',border:'1.5px solid #bfdbfe',borderRadius:8,fontSize:13,fontWeight:700,color:fechaAcd?'#1e40af':'#94a3b8',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:fechaAcd?'#eff6ff':'#fff',...f}}
                           title="Se toma automáticamente de la primera audiencia registrada en la pestaña Plazo">
                           <span>{fechaAcd || 'Sin audiencias en Plazo aún'}</span>
                           <span style={{fontSize:11,color:'#93c5fd'}}>↗</span>
@@ -2928,11 +2928,11 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                 </div>
                 {/* Delegación de Poder */}
                 <div style={{gridColumn:'1/-1',marginTop:8}}>
-                  <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:8,fontWeight:600,...f}}>Delegación de Poder</div>
+                  <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:8,fontWeight:600,...f}}>Delegación de Poder</div>
                   <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
                     <Field label="Abogado delegado" value={c.delegacion_abogado} editable fieldKey="delegacion_abogado" editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField('delegacion_abogado',editValue)}/>
                     <div>
-                      <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Fecha de delegación</div>
+                      <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Fecha de delegación</div>
                       {editField==='delegacion_fecha'?(
                         <div style={{display:'flex',gap:6}}>
                           <input type="date" style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}}
@@ -2943,9 +2943,9 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                         </div>
                       ):(
                         <div className="fld" onClick={()=>{setEditField('delegacion_fecha');setEditValue(c.delegacion_fecha||'')}}
-                          style={{padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:c.delegacion_fecha?'#1E293B':'#cbd5e1',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
+                          style={{padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:c.delegacion_fecha?'#1E293B':'#94a3b8',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
                           <span>{c.delegacion_fecha || 'Clic para agregar...'}</span>
-                          <span style={{fontSize:11,color:'#cbd5e1'}}>✏</span>
+                          <span style={{fontSize:11,color:'#94a3b8'}}>✏</span>
                         </div>
                       )}
                     </div>
@@ -2953,7 +2953,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                 </div>
                 {/* Correo de Notificación */}
                 <div style={{gridColumn:'1/-1',marginTop:4}}>
-                  <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Correo de notificación</div>
+                  <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Correo de notificación</div>
                   <select
                     style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:c.correo_notificacion?'#1E293B':'#94a3b8',background:'#fff',cursor:'pointer',...f}}
                     value={c.correo_notificacion||''}
@@ -2964,7 +2964,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                   </select>
                 </div>
                 <div style={{gridColumn:'1/-1',marginTop:8}}>
-                  <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:8,fontWeight:600,...f}}>Imputados adicionales</div>
+                  <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:8,fontWeight:600,...f}}>Imputados adicionales</div>
                   {(c.imputado||'').split('|').filter((_,i)=>i>0).map((imp,i)=>(
                     <div key={i} style={{display:'flex',gap:8,marginBottom:6,alignItems:'center'}}>
                       <div style={{flex:1,padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#F8F9FC',...f}}>{imp.trim()}</div>
@@ -3107,12 +3107,12 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                     }
                   }}/>
                 ))}
-                {audiencias.length===0&&<p style={{color:'#cbd5e1',fontSize:13,marginBottom:14,...f}}>Sin audiencias registradas.</p>}
+                {audiencias.length===0&&<p style={{color:'#94a3b8',fontSize:13,marginBottom:14,...f}}>Sin audiencias registradas.</p>}
                 {showAudForm&&(
                   <div style={{background:'#F8F9FC',border:'1.5px solid #e2e8f0',borderRadius:12,padding:16,marginBottom:14}}>
                     <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:12}}>
                       {[{key:'fecha',label:'Fecha',type:'date'},{key:'hora',label:'Hora',type:'time'},{key:'tipo',label:'Tipo',ph:'Formalización, APJO, JO...'},{key:'tribunal',label:'Tribunal',ph:'Ej: 4 JG STGO'},{key:'sala',label:'Sala',ph:'Ej: 903'},{key:'resultado',label:'Resultado',ph:'Resultado'},{key:'notas',label:'Observaciones',ph:'Notas'}].map(field=>(
-                        <div key={field.key}><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>{field.label}</div><input type={field.type||'text'} style={inp} placeholder={field.ph} value={nuevaAud[field.key]} onChange={e=>setNuevaAud(p=>({...p,[field.key]:e.target.value}))}/></div>
+                        <div key={field.key}><div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>{field.label}</div><input type={field.type||'text'} style={inp} placeholder={field.ph} value={nuevaAud[field.key]} onChange={e=>setNuevaAud(p=>({...p,[field.key]:e.target.value}))}/></div>
                       ))}
                     </div>
                     <div style={{display:'flex',gap:8}}><button className="btn-primary" onClick={saveAudiencia} disabled={saving}>{saving?'Guardando...':'Guardar'}</button><button className="btn-secondary" onClick={()=>setShowAudForm(false)}>Cancelar</button></div>
@@ -3237,9 +3237,9 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
             <div style={{fontSize:11,color:'#93c5fd',marginBottom:20,...f}}>💡 Haz clic en un delito o tribunal del gráfico para filtrar la lista por ese valor.</div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:32}}>
               <div className="hide-mobile">
-                <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:16,fontWeight:700,...f}}>Top Delitos</div>
+                <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:16,fontWeight:700,...f}}>Top Delitos</div>
                 {chartDelitos.length===0 ? (
-                  <div style={{textAlign:'center',padding:'60px 0',color:'#cbd5e1',fontSize:13,...f}}>Sin datos para estos filtros.</div>
+                  <div style={{textAlign:'center',padding:'60px 0',color:'#94a3b8',fontSize:13,...f}}>Sin datos para estos filtros.</div>
                 ) : (
                 <ResponsiveContainer width="100%" height={320}>
                   <PieChart>
@@ -3254,9 +3254,9 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                 )}
               </div>
               <div>
-                <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:16,fontWeight:700,...f}}>Causas por Tribunal</div>
+                <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:16,fontWeight:700,...f}}>Causas por Tribunal</div>
                 {chartTribunales.length===0 ? (
-                  <div style={{textAlign:'center',padding:'60px 0',color:'#cbd5e1',fontSize:13,...f}}>Sin datos para estos filtros.</div>
+                  <div style={{textAlign:'center',padding:'60px 0',color:'#94a3b8',fontSize:13,...f}}>Sin datos para estos filtros.</div>
                 ) : (
                 <ResponsiveContainer width="100%" height={320}>
                   <BarChart data={chartTribunales} layout="vertical" margin={{left:8,right:24,top:4,bottom:4}}>
@@ -3274,10 +3274,10 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
 
             {/* 📊 Resultados en causas terminadas — % de rendimiento (condena / absolución / salida alternativa) */}
             <div style={{marginTop:32,paddingTop:24,borderTop:'1px solid #f1f5f9'}}>
-              <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:4,fontWeight:700,...f}}>Resultados en causas terminadas</div>
-              <div style={{fontSize:11,color:'#cbd5e1',marginBottom:16,...f}}>Tu % de rendimiento, según los mismos filtros de arriba · {totalTerminadas} causa{totalTerminadas!==1?'s':''} terminada{totalTerminadas!==1?'s':''}</div>
+              <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:4,fontWeight:700,...f}}>Resultados en causas terminadas</div>
+              <div style={{fontSize:11,color:'#94a3b8',marginBottom:16,...f}}>Tu % de rendimiento, según los mismos filtros de arriba · {totalTerminadas} causa{totalTerminadas!==1?'s':''} terminada{totalTerminadas!==1?'s':''}</div>
               {totalTerminadas===0 ? (
-                <div style={{textAlign:'center',padding:'40px 0',color:'#cbd5e1',fontSize:13,...f}}>Sin causas terminadas para estos filtros.</div>
+                <div style={{textAlign:'center',padding:'40px 0',color:'#94a3b8',fontSize:13,...f}}>Sin causas terminadas para estos filtros.</div>
               ) : (
                 <>
                   <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,marginBottom:20}}>
@@ -3294,7 +3294,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                       <div style={{fontSize:11,color:'#991b1b',fontWeight:600,marginTop:4,...f}}>Condenas ({resumenRendimiento.condenas.n})</div>
                     </div>
                   </div>
-                  <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:10,fontWeight:600,...f}}>Detalle por subestado</div>
+                  <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:10,fontWeight:600,...f}}>Detalle por subestado</div>
                   {chartResultados.map(r=>(
                     <div key={r.subestado} style={{display:'flex',alignItems:'center',gap:12,marginBottom:8}}>
                       <div style={{width:150,fontSize:12,fontWeight:600,color:r.color,flexShrink:0,...f}}>{r.label}</div>
@@ -3369,13 +3369,13 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
               {/* RUC y RIT */}
               {[{key:'ruc',label:'RUC *',ph:'Ej: 2600123456-7',full:true},{key:'rit',label:'RIT',ph:'Ej: 1234-2026'}].map(field=>(
                 <div key={field.key} style={{gridColumn:field.full?'1/-1':'auto'}}>
-                  <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>{field.label}</div>
+                  <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>{field.label}</div>
                   <input style={inp} placeholder={field.ph} value={nuevaCausa[field.key]} onChange={e=>setNuevaCausa(p=>({...p,[field.key]:e.target.value}))}/>
                 </div>
               ))}
               {/* RUT del imputado con autorelleno */}
               <div style={{gridColumn:'1/-1'}}>
-                <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>RUT del imputado</div>
+                <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>RUT del imputado</div>
                 <div style={{display:'flex',gap:8}}>
                   <input style={{...inp,flex:1}} placeholder="Ej: 12345678-9"
                     value={nuevaCausa.imputado_rut}
@@ -3389,25 +3389,25 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
               </div>
               {/* Datos del imputado */}
               <div style={{gridColumn:'1/-1'}}>
-                <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Nombre completo *</div>
+                <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Nombre completo *</div>
                 <input style={inp} placeholder="Nombre completo del imputado"
                   value={nuevaCausa.imputado}
                   onChange={e=>setNuevaCausa(p=>({...p,imputado:e.target.value}))}/>
               </div>
               <div>
-                <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Fecha de nacimiento</div>
+                <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Fecha de nacimiento</div>
                 <input type="date" style={inp}
                   value={nuevaCausa.imputado_fecha_nac}
                   onChange={e=>setNuevaCausa(p=>({...p,imputado_fecha_nac:e.target.value}))}/>
               </div>
               <div>
-                <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Nacionalidad</div>
+                <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Nacionalidad</div>
                 <input style={inp} placeholder="Ej: CHILENO"
                   value={nuevaCausa.imputado_nacionalidad}
                   onChange={e=>setNuevaCausa(p=>({...p,imputado_nacionalidad:e.target.value}))}/>
               </div>
               <div style={{gridColumn:'1/-1'}}>
-                <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Domicilio</div>
+                <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Domicilio</div>
                 <input style={inp} placeholder="Domicilio del imputado"
                   value={nuevaCausa.imputado_domicilio}
                   onChange={e=>setNuevaCausa(p=>({...p,imputado_domicilio:e.target.value}))}/>
@@ -3415,12 +3415,12 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
               {/* Fiscal y Cautelar */}
               {[{key:'fiscal',label:'Fiscal',ph:'Nombre del fiscal'},{key:'cautelar',label:'Cautelar',ph:'Prisión preventiva...'}].map(field=>(
                 <div key={field.key}>
-                  <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>{field.label}</div>
+                  <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>{field.label}</div>
                   <input style={inp} placeholder={field.ph} value={nuevaCausa[field.key]} onChange={e=>setNuevaCausa(p=>({...p,[field.key]:e.target.value}))}/>
                 </div>
               ))}
               <div style={{gridColumn:'1/-1'}}>
-                <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Centro Penal</div>
+                <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Centro Penal</div>
                 <SearchableSelect
                   value={nuevaCausa.centro_penal}
                   onChange={v=>setNuevaCausa(p=>({...p,centro_penal:v}))}
@@ -3430,7 +3430,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                 />
               </div>
               <div style={{gridColumn:'1/-1'}}>
-                <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Tribunal *</div>
+                <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Tribunal *</div>
                 <SearchableSelect
                   value={nuevaCausa.tribunal}
                   onChange={v=>setNuevaCausa(p=>({...p,tribunal:v}))}
@@ -3440,7 +3440,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                 />
               </div>
               <div style={{gridColumn:'1/-1'}}>
-                <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Delito(s) *</div>
+                <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Delito(s) *</div>
                 <DelitosChips
                   value={nuevaCausa.delito}
                   onChange={v=>setNuevaCausa(p=>({...p,delito:v}))}
@@ -3448,19 +3448,19 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                 />
               </div>
               <div style={{gridColumn:'1/-1'}}>
-                <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Fecha de los hechos</div>
+                <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Fecha de los hechos</div>
                 <input type="date" style={inp} value={nuevaCausa.fecha_hechos} onChange={e=>setNuevaCausa(p=>({...p,fecha_hechos:e.target.value}))}/>
               </div>
               <div style={{gridColumn:'1/-1',background:'#f0fdf4',border:'1.5px solid #a7f3d0',borderRadius:12,padding:16}}>
                 <div style={{fontSize:11,fontWeight:700,color:'#059669',marginBottom:14,...f}}>⏱ Cálculo de plazo ACD</div>
                 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
-                  <div><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Fecha inicio</div><input type="date" style={inp} value={nuevaCausa.fecha_inicio} onChange={e=>setNuevaCausa(p=>({...p,fecha_inicio:e.target.value}))}/></div>
-                  <div><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Días plazo</div><input type="number" style={inp} placeholder="Ej: 210" value={nuevaCausa.dias_plazo} onChange={e=>setNuevaCausa(p=>({...p,dias_plazo:e.target.value}))}/></div>
+                  <div><div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Fecha inicio</div><input type="date" style={inp} value={nuevaCausa.fecha_inicio} onChange={e=>setNuevaCausa(p=>({...p,fecha_inicio:e.target.value}))}/></div>
+                  <div><div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Días plazo</div><input type="number" style={inp} placeholder="Ej: 210" value={nuevaCausa.dias_plazo} onChange={e=>setNuevaCausa(p=>({...p,dias_plazo:e.target.value}))}/></div>
                 </div>
-                {nuevaCausa.fecha_inicio && nuevaCausa.dias_plazo && (<div style={{marginTop:10,padding:'10px 14px',background:'#fff',borderRadius:8,border:'1px solid #a7f3d0',display:'flex',alignItems:'center',gap:8}}><span style={{fontSize:16}}>📅</span><div><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1,fontWeight:700,...f}}>Vencimiento calculado</div><div style={{fontSize:15,fontWeight:800,color:'#059669',...f}}>{calcularVencimiento(nuevaCausa.fecha_inicio, nuevaCausa.dias_plazo)}</div></div></div>)}
-                <div style={{marginTop:12}}><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>O ingresa plazo manualmente</div><input style={inp} placeholder="VENCE DD-MM-YYYY" value={nuevaCausa.plazo} onChange={e=>setNuevaCausa(p=>({...p,plazo:e.target.value}))}/></div>
+                {nuevaCausa.fecha_inicio && nuevaCausa.dias_plazo && (<div style={{marginTop:10,padding:'10px 14px',background:'#fff',borderRadius:8,border:'1px solid #a7f3d0',display:'flex',alignItems:'center',gap:8}}><span style={{fontSize:16}}>📅</span><div><div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1,fontWeight:700,...f}}>Vencimiento calculado</div><div style={{fontSize:15,fontWeight:800,color:'#059669',...f}}>{calcularVencimiento(nuevaCausa.fecha_inicio, nuevaCausa.dias_plazo)}</div></div></div>)}
+                <div style={{marginTop:12}}><div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>O ingresa plazo manualmente</div><input style={inp} placeholder="VENCE DD-MM-YYYY" value={nuevaCausa.plazo} onChange={e=>setNuevaCausa(p=>({...p,plazo:e.target.value}))}/></div>
               </div>
-              <div style={{gridColumn:'1/-1'}}><div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Estado</div><select style={inp} value={nuevaCausa.estado} onChange={e=>setNuevaCausa(p=>({...p,estado:e.target.value}))}>{Object.entries(estadoConfig).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}</select></div>
+              <div style={{gridColumn:'1/-1'}}><div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Estado</div><select style={inp} value={nuevaCausa.estado} onChange={e=>setNuevaCausa(p=>({...p,estado:e.target.value}))}>{Object.entries(estadoConfig).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}</select></div>
             </div>
             <div style={{display:'flex',gap:10,marginTop:24}}>
               <button className="btn-primary" onClick={saveCausa} disabled={saving||!nuevaCausa.ruc}>{saving?'Guardando...':'Guardar causa'}</button>
