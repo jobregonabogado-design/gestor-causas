@@ -343,6 +343,7 @@ export default function App() {
   const [pagina, setPagina] = useState('causas')
   const [userRol, setUserRol] = useState(null)
   const [showPanel, setShowPanel] = useState(false)
+  const [showUserMenu, setShowUserMenu] = useState(false)
   const [solicitudesPendientes, setSolicitudesPendientes] = useState(0)
   // ✅ Estado para causa seleccionada desde el calendario
   const [causaDesdeCalendario, setCausaDesdeCalendario] = useState(null)
@@ -525,28 +526,42 @@ export default function App() {
           ))}
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-          <span style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:0.5, padding:'4px 12px', borderRadius:20, background: esTitular ? '#1E293B' : '#F1F5F9', color: esTitular ? '#fff' : '#64748b', border: esTitular ? 'none' : '1px solid #E2E8F0', fontFamily:"'Inter',sans-serif" }}>
-            {esTitular ? '⚖ Titular' : '👤 Asistente'}
-          </span>
           <button onClick={() => setShowAlerta(true)} className={alertaTotal > 0 ? 'alerta-btn-active' : 'alerta-btn'}>
             🔔 Alerta
             {alertaTotal > 0 && (
               <span style={{ background:'#fff', color:'#dc2626', borderRadius:'50%', width:16, height:16, fontSize:9, fontWeight:800, display:'flex', alignItems:'center', justifyContent:'center' }}>{alertaTotal}</span>
             )}
           </button>
-          {esTitular && (
-            <button onClick={() => setShowPanel(true)} style={{ position:'relative', background: solicitudesPendientes > 0 ? '#fef2f2' : '#fff', border: `1.5px solid ${solicitudesPendientes > 0 ? '#fecaca' : '#E2E8F0'}`, borderRadius:10, padding:'6px 14px', fontSize:12, cursor:'pointer', fontWeight:600, color: solicitudesPendientes > 0 ? '#dc2626' : '#64748b', display:'flex', alignItems:'center', gap:6, fontFamily:"'Inter',sans-serif", transition:'all 0.2s' }}>
-              👁 Control
-              {solicitudesPendientes > 0 && (
-                <span style={{ background:'#dc2626', color:'#fff', borderRadius:'50%', width:16, height:16, fontSize:9, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', animation:'pulse 1.5s infinite' }}>{solicitudesPendientes}</span>
-              )}
-            </button>
-          )}
-          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <div style={{ width:29, height:29, borderRadius:'50%', background: esTitular ? '#1E293B' : '#7c3aed', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:11, fontWeight:700 }}>{session.user.email?.[0]?.toUpperCase()}</div>
-            <span className='nav-nombre' style={{ fontSize:12, color:'#64748b', fontFamily:'Inter,sans-serif' }}>{userRol?.nombre || session.user.email}</span>
+          <div style={{ position:'relative' }}>
+            <div onClick={() => setShowUserMenu(v => !v)} style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', padding:'4px 8px', borderRadius:10, background: showUserMenu ? '#F8F9FC' : 'transparent', transition:'background 0.15s' }}>
+              <div style={{ width:29, height:29, borderRadius:'50%', background: esTitular ? '#1E293B' : '#7c3aed', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:11, fontWeight:700, flexShrink:0 }}>{session.user.email?.[0]?.toUpperCase()}</div>
+              <span className='nav-nombre' style={{ fontSize:12, color:'#64748b', fontFamily:'Inter,sans-serif' }}>{userRol?.nombre || session.user.email}</span>
+              <span style={{ fontSize:10, color:'#94a3b8', transform: showUserMenu?'rotate(180deg)':'none', transition:'transform 0.15s' }}>▾</span>
+            </div>
+            {showUserMenu && (
+              <>
+                <div onClick={() => setShowUserMenu(false)} style={{ position:'fixed', inset:0, zIndex:150 }}/>
+                <div style={{ position:'absolute', top:'calc(100% + 8px)', right:0, background:'#fff', border:'1px solid #E2E8F0', borderRadius:12, boxShadow:'0 12px 32px rgba(15,23,42,0.14)', minWidth:200, zIndex:151, overflow:'hidden', fontFamily:"'Inter',sans-serif" }}>
+                  <div style={{ padding:'12px 16px', borderBottom:'1px solid #F1F5F9' }}>
+                    <span style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:0.5, padding:'4px 12px', borderRadius:20, background: esTitular ? '#1E293B' : '#F1F5F9', color: esTitular ? '#fff' : '#64748b', border: esTitular ? 'none' : '1px solid #E2E8F0' }}>
+                      {esTitular ? '⚖ Titular' : '👤 Asistente'}
+                    </span>
+                  </div>
+                  {esTitular && (
+                    <button onClick={() => { setShowUserMenu(false); setShowPanel(true) }} style={{ width:'100%', textAlign:'left', background:'none', border:'none', padding:'12px 16px', fontSize:13, cursor:'pointer', color: solicitudesPendientes > 0 ? '#dc2626' : '#374151', display:'flex', alignItems:'center', justifyContent:'space-between', fontFamily:"'Inter',sans-serif" }}>
+                      <span>👁 Control</span>
+                      {solicitudesPendientes > 0 && (
+                        <span style={{ background:'#dc2626', color:'#fff', borderRadius:'50%', width:16, height:16, fontSize:9, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center' }}>{solicitudesPendientes}</span>
+                      )}
+                    </button>
+                  )}
+                  <button onClick={handleSignOut} style={{ width:'100%', textAlign:'left', background:'none', border:'none', borderTop:'1px solid #F1F5F9', padding:'12px 16px', fontSize:13, cursor:'pointer', color:'#dc2626', fontWeight:600, fontFamily:"'Inter',sans-serif" }}>
+                    ⏻ Salir
+                  </button>
+                </div>
+              </>
+            )}
           </div>
-          <button className="salir-btn" onClick={handleSignOut}>Salir</button>
         </div>
       </nav>
 
