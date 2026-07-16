@@ -1398,7 +1398,7 @@ function BadgeEditor({ estado, subestado, onChangeEstado, onChangeSubestado }) {
 }
 
 function Field({ label, value, editable, editField, setEditField, editValue, setEditValue, onSave, full, fieldKey }) {
-  const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:'#1E293B', background:'#fff', ...f }
+  const inp = { width:'100%', padding:'11px 14px', border:'none', borderRadius:14, fontSize:13, color:'#1E293B', background:'#fff', boxShadow:'0 1px 2px rgba(15,23,42,0.06)', ...f }
   const isTribunal = fieldKey === 'tribunal'
   const isDelito = fieldKey === 'delito'
   const isCentroPenal = fieldKey === 'centro_penal'
@@ -1422,12 +1422,12 @@ function Field({ label, value, editable, editField, setEditField, editValue, set
           ) : (
             <input style={inp} value={editValue} onChange={e=>setEditValue(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')onSave();if(e.key==='Escape')setEditField(null)}} autoFocus/>
           )}
-          <button className="btn-primary" style={{padding:'8px 14px',fontSize:12,flexShrink:0}} onClick={onSave}>✓</button>
-          <button className="btn-secondary" style={{padding:'8px 12px',fontSize:12,flexShrink:0}} onClick={()=>setEditField(null)}>✗</button>
+          <button className="btn-primary" style={{padding:'8px 14px',fontSize:12,flexShrink:0,borderRadius:14}} onClick={onSave}>✓</button>
+          <button className="btn-secondary" style={{padding:'8px 12px',fontSize:12,flexShrink:0,border:'none',borderRadius:14,boxShadow:'0 1px 2px rgba(15,23,42,0.06)'}} onClick={()=>setEditField(null)}>✗</button>
         </div>
       ) : (
         <div className={editable?'fld':''} onClick={()=>{if(editable){setEditField(label);setEditValue(value||'')}}}
-          style={{ padding:'9px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:value?'#1E293B':'#cbd5e1', minHeight:38, display:'flex', alignItems:'center', justifyContent:'space-between', cursor:editable?'pointer':'default', background:'#fff', ...f }}>
+          style={{ padding:'11px 14px', border:'none', borderRadius:14, fontSize:13, color:value?'#1E293B':'#cbd5e1', minHeight:38, display:'flex', alignItems:'center', justifyContent:'space-between', cursor:editable?'pointer':'default', background:'#fff', boxShadow:'0 1px 2px rgba(15,23,42,0.06)', ...f }}>
           <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1}}>{value||(editable?'Clic para agregar...':'—')}</span>
           {editable && <span style={{fontSize:11,color:'#cbd5e1',flexShrink:0,marginLeft:8}}>✏</span>}
         </div>
@@ -2696,8 +2696,9 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
       <div style={{background:'#F8F9FC',minHeight:'100vh',...f}} className="detail-enter">
         <style>{CSS}</style>
         <div style={{maxWidth:1060,margin:'0 auto',padding:'24px 28px'}}>
-          <button className="btn-secondary" onClick={()=>setView('list')} style={{marginBottom:20,fontSize:13}}>← Volver</button>
-          <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:'16px 16px 0 0',padding:'24px 28px',boxShadow:'0 1px 4px rgba(15,23,42,0.05)'}}>
+          <button className="btn-secondary" onClick={()=>setView('list')} style={{marginBottom:20,fontSize:13,border:'none',borderRadius:14,boxShadow:'0 1px 2px rgba(15,23,42,0.06)'}}>← Volver</button>
+          <div style={{background:'#fff',borderRadius:20,boxShadow:'0 1px 3px rgba(15,23,42,0.06)',overflow:'hidden'}}>
+          <div style={{padding:'28px 28px 20px'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:12}}>
               <div>
                 <div style={{fontSize:22,fontWeight:800,color:'#1E293B',marginBottom:6,letterSpacing:'-0.5px',...f}}>RUC <span style={{color:'#1E293B'}}>{c.ruc}</span></div>
@@ -2713,17 +2714,16 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                   <SemaforoTag updated_at={c.updated_at} estado={c.estado} />
                   {imputados.filter(i=>i.regimen).map(i=>(
                     <span key={i.id} style={{
-                      fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:10,
+                      fontSize:10,fontWeight:700,padding:'3px 10px',borderRadius:20,border:'none',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',
                       background:i.regimen==='RPA'?'#faf5ff':'#eff6ff',
-                      color:i.regimen==='RPA'?'#5b21b6':'#1E293B',
-                      border:`1px solid ${i.regimen==='RPA'?'#ddd6fe':'#bfdbfe'}`,...f
+                      color:i.regimen==='RPA'?'#5b21b6':'#1E293B',...f
                     }}>{i.regimen}</span>
                   ))}
                 </div>
               </div>
               <div style={{display:'flex',gap:8,alignItems:'center'}}>
                 {saving&&<span style={{fontSize:11,color:'#94a3b8',...f}}>Guardando...</span>}
-                {c.esta_detenido&&<span style={{background:'#fef2f2',color:'#dc2626',border:'1px solid #fecaca',padding:'3px 10px',borderRadius:20,fontSize:10,fontWeight:700,textTransform:'uppercase',...f}}>🔒 Detenido</span>}
+                {c.esta_detenido&&<span style={{background:'#fef2f2',color:'#dc2626',border:'none',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',padding:'4px 12px',borderRadius:20,fontSize:10,fontWeight:700,textTransform:'uppercase',...f}}>🔒 Detenido</span>}
                 <BadgeEditor
                   estado={c.estado}
                   subestado={c.subestado}
@@ -2733,12 +2733,12 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
               </div>
             </div>
           </div>
-          <div style={{background:'#fff',borderLeft:'1px solid #e2e8f0',borderRight:'1px solid #e2e8f0',display:'flex',overflowX:'auto',borderBottom:'2px solid #f1f5f9'}}>
+          <div style={{background:'#fff',display:'flex',overflowX:'auto',padding:'0 20px'}}>
             {[['datos','Datos'],['imputado','Imputado'],['plazo','Plazo'],['audiencias','Audiencias'],['top','Juicio Oral'],['teoria','⚖️ Teoría del Caso'],['carpeta','Carpeta'],...(esTitular?[['honorarios','💰 Honorarios']]:[])].map(([k,l])=>(
-              <button key={k} className="tab-btn" onClick={()=>setActiveTab(k)} style={{padding:'13px 20px',fontSize:13,fontWeight:activeTab===k?600:400,color:activeTab===k?'#2563eb':'#94a3b8',borderBottom:`2px solid ${activeTab===k?'#2563eb':'transparent'}`,whiteSpace:'nowrap',marginBottom:-2}}>{l}</button>
+              <button key={k} className="tab-btn" onClick={()=>setActiveTab(k)} style={{padding:'13px 16px',fontSize:13,fontWeight:activeTab===k?600:400,color:activeTab===k?'#1E293B':'#94a3b8',borderBottom:`2px solid ${activeTab===k?'#1E293B':'transparent'}`,whiteSpace:'nowrap',marginBottom:0}}>{l}</button>
             ))}
           </div>
-          <div style={{background:'#fff',border:'1px solid #e2e8f0',borderTop:'none',borderRadius:'0 0 16px 16px',padding:28,boxShadow:'0 2px 8px rgba(15,23,42,0.05)'}}>
+          <div style={{background:'#fff',padding:28}}>
             {activeTab==='datos'&&(
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
                 {[{key:'imputado',label:'Imputado(s)',full:true,editable:true},{key:'tribunal',label:'Tribunal',editable:true},{key:'rit',label:'RIT JG',editable:true},{key:'fiscal',label:'Fiscal a cargo',editable:true},{key:'cautelar',label:'Cautelar procesal',editable:true},{key:'centro_penal',label:'Centro Penal',editable:true},{key:'plazo',label:'Plazo / Vencimiento',editable:true,full:true}].map(field=>(
@@ -2787,14 +2787,14 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                     y abajo la lista de apelaciones (pueden ser varias en la misma causa). */}
                 <div style={{gridColumn:'1/-1',marginBottom:2}}>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6,gap:10}}>
-                    <div style={{display:'flex',alignItems:'center',gap:8,padding:'6px 12px',border:'1.5px solid #e2e8f0',borderRadius:20,fontSize:12,color: getCorteApelaciones(c.tribunal) ? '#1E293B' : '#cbd5e1',background:'#F8F9FC',fontWeight:600,...f}}>
+                    <div style={{display:'flex',alignItems:'center',gap:8,padding:'8px 14px',border:'none',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',borderRadius:20,fontSize:12,color: getCorteApelaciones(c.tribunal) ? '#1E293B' : '#cbd5e1',background:'#fff',fontWeight:600,...f}}>
                       <span>⚖</span>
                       <span>{getCorteApelaciones(c.tribunal) || 'Selecciona un tribunal'}</span>
                     </div>
                     <button onClick={async()=>{
                       const{data,error}=await supabase.from('apelaciones_corte').insert({causa_id:c.id}).select().single()
                       if(!error&&data){setApelaciones(prev=>[...prev,data]);if(registrarActividad)registrarActividad('accion',`Agregó una apelación en RUC ${c.ruc}`)}
-                    }} style={{fontSize:11,color:'#7c3aed',background:'#faf5ff',border:'1px solid #ddd6fe',borderRadius:6,padding:'5px 12px',cursor:'pointer',fontWeight:600,whiteSpace:'nowrap',...f}}>
+                    }} style={{fontSize:11,color:'#7c3aed',background:'#faf5ff',border:'none',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',borderRadius:14,padding:'7px 14px',cursor:'pointer',fontWeight:600,whiteSpace:'nowrap',...f}}>
                       + Agregar apelación
                     </button>
                   </div>
@@ -3158,6 +3158,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
             {esTitular && activeTab==='honorarios'&&(
               <HonorariosTab causaId={c.id} ruc={c.ruc} email={session?.user?.email||''} registrarActividad={registrarActividad} onAccion={()=>marcarAccion(c.id)}/>
             )}
+          </div>
           </div>
         </div>
       </div>
