@@ -2743,6 +2743,45 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                 {[{key:'imputado',label:'Imputado(s)',full:true,editable:true},{key:'tribunal',label:'Tribunal',editable:true},{key:'rit',label:'RIT JG',editable:true},{key:'fiscal',label:'Fiscal a cargo',editable:true},{key:'cautelar',label:'Cautelar procesal',editable:true},{key:'centro_penal',label:'Centro Penal',editable:true},{key:'plazo',label:'Plazo / Vencimiento',editable:true,full:true}].map(field=>(
                   <Field key={field.key} label={field.label} value={c[field.key]} editable={field.editable} full={field.full} fieldKey={field.key} editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField(field.key,editValue)}/>
                 ))}
+                {/* 🔀 Detecta imputados antiguos guardados con 2+ nombres juntos en un
+                    solo campo (ej. "JUAN PEREZ Y PEDRO GOMEZ") y permite separarlos en
+                    registros individuales, igual que si se hubieran agregado uno por uno. */}
+                {(() => {
+                  const nombreCombinado = imputados.length === 1 ? imputados[0].nombre : (imputados.length === 0 ? c.imputado : null)
+                  // Reconoce " Y ", "/" y " - " (con espacios) como separadores entre nombres.
+                  // El guión solo cuenta si tiene espacio a los lados, para no romper
+                  // apellidos compuestos como "PÉREZ-GARCÍA" (que van pegados, sin espacios).
+                  const partes = nombreCombinado ? nombreCombinado.split(/\s+Y\s+|\s*\/\s*|\s+-\s+/i).map(s=>s.trim()).filter(Boolean) : []
+                  if (partes.length < 2) return null
+                  return (
+                    <div style={{gridColumn:'1/-1',background:'#eff6ff',border:'1.5px solid #bfdbfe',borderRadius:10,padding:'12px 14px',marginTop:-4,marginBottom:4}}>
+                      <div style={{fontSize:12,color:'#1e40af',fontWeight:600,marginBottom:8,...f}}>
+                        🔀 Esto parece ser {partes.length} imputados juntos en un solo nombre: {partes.map((p,i)=><span key={i}>{i>0&&' · '}<strong>{p}</strong></span>)}
+                      </div>
+                      <button className="btn-secondary" style={{fontSize:12}} onClick={async()=>{
+                        if (!window.confirm(`¿Separar en ${partes.length} imputados individuales?\n\n${partes.join('\n')}`)) return
+                        let actualizados = []
+                        if (imputados.length === 1) {
+                          await supabase.from('imputados').update({nombre:partes[0]}).eq('id',imputados[0].id)
+                          actualizados = [{...imputados[0],nombre:partes[0]}]
+                          for (const nombre of partes.slice(1)) {
+                            const {data} = await supabase.from('imputados').insert({causa_id:c.id,nombre}).select().single()
+                            if (data) actualizados.push(data)
+                          }
+                        } else {
+                          for (const nombre of partes) {
+                            const {data} = await supabase.from('imputados').insert({causa_id:c.id,nombre}).select().single()
+                            if (data) actualizados.push(data)
+                          }
+                        }
+                        setImputados(actualizados)
+                        await updateField('imputado', partes.join('|'))
+                        await marcarAccion(c.id)
+                        if (registrarActividad) registrarActividad('accion', `Separó ${partes.length} imputados en RUC ${c.ruc}`)
+                      }}>🔀 Separar en {partes.length} imputados individuales</button>
+                    </div>
+                  )
+                })()}
                 {/* Corte de Apelaciones — se calcula sola según el tribunal. Compacta arriba,
                     y abajo la lista de apelaciones (pueden ser varias en la misma causa). */}
                 <div style={{gridColumn:'1/-1',marginBottom:2}}>
