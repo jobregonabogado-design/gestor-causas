@@ -2700,8 +2700,8 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
         <style>{CSS}</style>
         <div style={{maxWidth:1060,margin:'0 auto',padding:'24px 28px'}}>
           <button className="btn-secondary" onClick={()=>setView('list')} style={{marginBottom:20,fontSize:13,border:'none',borderRadius:14,boxShadow:'0 1px 2px rgba(15,23,42,0.06)'}}>← Volver</button>
-          <div style={{background:'#fff',borderRadius:20,boxShadow:'0 1px 3px rgba(15,23,42,0.06)',overflow:'hidden'}}>
-          <div style={{padding:'28px 28px 20px'}}>
+          <div style={{background:'#fff',borderRadius:20,boxShadow:'0 1px 3px rgba(15,23,42,0.06)'}}>
+          <div style={{padding:'28px 28px 20px',borderRadius:'20px 20px 0 0'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:12}}>
               <div>
                 <div style={{fontSize:22,fontWeight:800,color:'#1E293B',marginBottom:6,letterSpacing:'-0.5px',...f}}>RUC <span style={{color:'#1E293B'}}>{c.ruc}</span></div>
@@ -2741,7 +2741,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
               <button key={k} className="tab-btn" onClick={()=>setActiveTab(k)} style={{padding:'13px 16px',fontSize:13,fontWeight:activeTab===k?600:400,color:activeTab===k?'#1E293B':'#94a3b8',borderBottom:`2px solid ${activeTab===k?'#1E293B':'transparent'}`,whiteSpace:'nowrap',marginBottom:0}}>{l}</button>
             ))}
           </div>
-          <div style={{background:'#fff',padding:28}}>
+          <div style={{background:'#fff',padding:28,borderRadius:'0 0 20px 20px'}}>
             {activeTab==='datos'&&(
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
                 {[{key:'imputado',label:'Imputado(s)',full:true,editable:true},{key:'tribunal',label:'Tribunal',editable:true},{key:'rit',label:'RIT JG',editable:true},{key:'fiscal',label:'Fiscal a cargo',editable:true},{key:'cautelar',label:'Cautelar procesal',editable:true},{key:'centro_penal',label:'Centro Penal',editable:true},{key:'plazo',label:'Plazo / Vencimiento',editable:true,full:true}].map(field=>(
