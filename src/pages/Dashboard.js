@@ -1295,18 +1295,13 @@ function SemaforoTag({ updated_at, estado }) {
   const s = getSemaforo(updated_at, estado)
   if (!s) return null
   return (
-    <div style={{
-      display: 'inline-flex', alignItems: 'center', gap: 6,
-      background: s.bg, border: `1.5px solid ${s.border}`,
-      borderRadius: 20, padding: '3px 10px',
-    }}>
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
       <span style={{
-        width: 10, height: 10, borderRadius: '50%',
+        width: 7, height: 7, borderRadius: '50%',
         background: s.color, flexShrink: 0, display: 'inline-block',
         animation: s.pulsar ? 'semaforo-pulse 1.5s infinite' : 'none',
-        boxShadow: `0 0 6px ${s.color}88`
       }}/>
-      <span style={{ fontSize: 10, fontWeight: 700, color: s.color, letterSpacing: 0.5, ...f }}>
+      <span style={{ fontSize: 11, fontWeight: 600, color: s.color, ...f }}>
         {s.label}
       </span>
     </div>
@@ -3313,9 +3308,9 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
         )}
 
         <div style={{display:'flex',gap:8,marginBottom:16,flexWrap:'wrap',alignItems:'center'}}>
-          <div style={{flex:1,minWidth:260,position:'relative'}}>
+          <div style={{flex:2,minWidth:320,position:'relative'}}>
             <span style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',color:'#94a3b8',fontSize:14}}>🔍</span>
-            <input style={{...inp,paddingLeft:36}} placeholder="Buscar por RUC, RIT, imputado, delito, tribunal..." value={search} onChange={e=>setSearch(e.target.value)}/>
+            <input style={{...inp,paddingLeft:36}} placeholder="Buscar por RUC, RIT, imputado, delito..." value={search} onChange={e=>setSearch(e.target.value)}/>
           </div>
           <select style={{...inp,width:'auto',minWidth:180}} value={filterTribunal} onChange={e=>setFilterTribunal(e.target.value)}><option value="">Todos los tribunales</option>{tribunales.map(t=><option key={t} value={t}>{t}</option>)}</select>
           <select style={{...inp,width:'auto',minWidth:160}} value={filterEstado} onChange={e=>setFilterEstado(e.target.value)}><option value="">Todos los estados</option>{Object.entries(estadoConfig).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}</select>
