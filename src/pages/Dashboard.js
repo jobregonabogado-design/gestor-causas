@@ -3184,7 +3184,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
               if(st.key===''){setFilterEstado('');setGrupoAbierto('')}
               else if(grupoAbierto===st.key){setFilterEstado('');setGrupoAbierto('')}
               else{setFilterEstado(st.key);setGrupoAbierto(st.key)}
-            }} style={{flex:1,background:activo&&st.key!==''?'#f8faff':'#fff',border:`1.5px solid ${st.border}`,borderLeft:`3px solid ${st.color}`,borderRadius:10,padding:'20px 24px',boxShadow:activo&&st.key!==''?`0 4px 16px rgba(15,23,42,0.10)`:'0 1px 3px rgba(15,23,42,0.05)'}}>
+            }} style={{flex:1,textAlign:'center',background:activo&&st.key!==''?'#f8faff':'#fff',border:`1.5px solid ${st.border}`,borderLeft:`3px solid ${st.color}`,borderRadius:10,padding:'20px 24px',boxShadow:activo&&st.key!==''?`0 4px 16px rgba(15,23,42,0.10)`:'0 1px 3px rgba(15,23,42,0.05)'}}>
               <div style={{fontSize:9,fontWeight:600,letterSpacing:1.5,textTransform:'uppercase',color:'#94a3b8',marginBottom:8,...f}}>{st.label}</div>
               <div style={{fontSize:34,fontWeight:800,color:st.color,lineHeight:1,letterSpacing:'-1px',...f}}>{st.num}</div>
             </div>)
