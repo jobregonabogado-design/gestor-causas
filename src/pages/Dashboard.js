@@ -1967,6 +1967,197 @@ function HonorariosTab({ causaId, ruc, email, registrarActividad, onAccion }) {
   )
 }
 
+// ─── CAUTELARES — historial (no se borra), abono 1x1 y fórmula de arresto nocturno ─
+const TIPOS_ABONO_DIRECTO = ['Prisión Preventiva','Internación Provisoria','Arresto Total','Sujeción a SENAME']
+const CAUTELAR_NOCTURNO = 'Arresto Nocturno'
+const TIPOS_CAUTELARES_ADULTO = ['Prisión Preventiva','Arresto Total',CAUTELAR_NOCTURNO,'Firma','Arraigo Nacional','Prohibición de acercarse a la víctima','Prohibición de acercarse a la víctima (VIF Art. 9)','Prohibición de portar armas']
+const TIPOS_CAUTELARES_RPA = ['Internación Provisoria','Arresto Total',CAUTELAR_NOCTURNO,'Sujeción a SENAME','Firma','Arraigo Nacional','Prohibición de acercarse a la víctima','Prohibición de acercarse a la víctima (VIF Art. 9)','Prohibición de portar armas']
+
+function diasEntreFechasCaut(inicio, fin) {
+  if (!inicio || !fin) return 0
+  const a = new Date(inicio+'T12:00:00'), b = new Date(fin+'T12:00:00')
+  if (isNaN(a)||isNaN(b)) return 0
+  return Math.max(0, Math.round((b-a)/(1000*60*60*24)))
+}
+
+function CautelaresPanel({ causaId, cautelares, esRPA, onGuardar, onActualizar, registrarActividad, ruc }) {
+  const hoyISO = new Date().toISOString().slice(0,10)
+  const TIPOS = esRPA ? TIPOS_CAUTELARES_RPA : TIPOS_CAUTELARES_ADULTO
+  const [showForm,setShowForm] = useState(false)
+  const [form,setForm] = useState({ tipo:TIPOS[0], fecha_inicio:hoyISO, fecha_termino:'', frecuencia:'Mensual' })
+  const [guardando,setGuardando] = useState(false)
+  const [fechaCalc,setFechaCalc] = useState(hoyISO) // calculadora ad-hoc, no se guarda
+  const [nocturnoEdit,setNocturnoEdit] = useState({}) // {id: {bruto, calculado}} temporal por fila
+
+  // ✅ Abono total EN VIVO: para tipos de abono directo usa fecha_termino si ya
+  // cerró, o "hoy" si sigue vigente (así los días van corriendo solos). Para
+  // Arresto Nocturno solo suma lo que se haya sumado explícitamente.
+  const totalAbono = cautelares.reduce((sum,ct)=>{
+    if (TIPOS_ABONO_DIRECTO.includes(ct.tipo)) {
+      return sum + diasEntreFechasCaut(ct.fecha_inicio, ct.fecha_termino || hoyISO)
+    }
+    if (ct.tipo === CAUTELAR_NOCTURNO && ct.sumado_a_abono) {
+      return sum + (parseFloat(ct.abono_nocturno_calculado)||0)
+    }
+    return sum
+  },0)
+
+  const handleGuardar = async () => {
+    if (!form.fecha_inicio) return
+    setGuardando(true)
+    await onGuardar(form)
+    setForm({ tipo:TIPOS[0], fecha_inicio:hoyISO, fecha_termino:'', frecuencia:'Mensual' })
+    setShowForm(false)
+    setGuardando(false)
+  }
+
+  const cerrarCautelar = async (ct) => {
+    const fecha = window.prompt(`¿Hasta qué fecha estuvo vigente "${ct.tipo}"? (formato AAAA-MM-DD)`, hoyISO)
+    if (!fecha) return
+    await onActualizar(ct.id, { fecha_termino: fecha })
+  }
+
+  const calcularNocturno = (ct) => {
+    const bruto = ct.fecha_termino ? diasEntreFechasCaut(ct.fecha_inicio, ct.fecha_termino) : diasEntreFechasCaut(ct.fecha_inicio, fechaCalc)
+    const calculado = Math.round((bruto*8/12)*100)/100
+    setNocturnoEdit(prev=>({...prev,[ct.id]:{bruto,calculado}}))
+  }
+
+  const sumarNocturnoAlAbono = async (ct) => {
+    const calc = nocturnoEdit[ct.id]
+    if (!calc) return
+    await onActualizar(ct.id, { dias_nocturno_bruto: calc.bruto, abono_nocturno_calculado: calc.calculado, sumado_a_abono: true })
+    if (registrarActividad) registrarActividad('accion', `Sumó ${calc.calculado} días de abono (arresto nocturno) en RUC ${ruc}`)
+  }
+
+  return (
+    <div style={{gridColumn:'1/-1',marginTop:12}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:10}}>
+        <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,fontWeight:600,...f}}>
+          Cautelares {esRPA && <span style={{color:'#7c3aed'}}>(RPA)</span>}
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:12}}>
+          <div style={{textAlign:'right'}}>
+            <div style={{fontSize:9,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1,...f}}>Abono total (hoy)</div>
+            <div style={{fontSize:20,fontWeight:800,color:'#1E293B',...f}}>{totalAbono} días</div>
+          </div>
+          <button className="btn-secondary" style={{fontSize:12,border:'none',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',borderRadius:14}} onClick={()=>setShowForm(v=>!v)}>+ Agregar cautelar</button>
+        </div>
+      </div>
+
+      {cautelares.length===0 && <p style={{fontSize:13,color:'#94a3b8',marginBottom:12,...f}}>Sin cautelares registradas.</p>}
+
+      {cautelares.map(ct=>{
+        const esDirecto = TIPOS_ABONO_DIRECTO.includes(ct.tipo)
+        const esNocturno = ct.tipo === CAUTELAR_NOCTURNO
+        const vigente = !ct.fecha_termino
+        const diasDirecto = esDirecto ? diasEntreFechasCaut(ct.fecha_inicio, ct.fecha_termino||hoyISO) : 0
+        const calcLocal = nocturnoEdit[ct.id]
+        return (
+          <div key={ct.id} style={{background:'#fff',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',borderRadius:14,padding:16,marginBottom:10}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:8}}>
+              <div>
+                <div style={{fontSize:13,fontWeight:700,color:'#1E293B',display:'flex',alignItems:'center',gap:8,...f}}>
+                  {ct.tipo}
+                  {vigente ? (
+                    <span style={{fontSize:9,fontWeight:700,color:'#059669',background:'#ecfdf5',padding:'2px 8px',borderRadius:10,textTransform:'uppercase',...f}}>Vigente</span>
+                  ) : (
+                    <span style={{fontSize:9,fontWeight:700,color:'#64748b',background:'#F1F5F9',padding:'2px 8px',borderRadius:10,textTransform:'uppercase',...f}}>Cerrada</span>
+                  )}
+                </div>
+                <div style={{fontSize:11,color:'#94a3b8',marginTop:3,...f}}>
+                  Desde {ct.fecha_inicio}{ct.fecha_termino?` hasta ${ct.fecha_termino}`:''}
+                  {ct.frecuencia?` · ${ct.frecuencia}`:''}
+                </div>
+              </div>
+              {vigente && <button onClick={()=>cerrarCautelar(ct)} style={{fontSize:11,color:'#dc2626',background:'transparent',border:'none',cursor:'pointer',fontWeight:600,...f}}>Cerrar / cambiar</button>}
+            </div>
+
+            {esDirecto && (
+              <div style={{marginTop:10,fontSize:12,color:'#1E293B',...f}}>
+                📐 Abono 1×1: <strong>{diasDirecto} días</strong>{vigente?' (calculado a hoy, sigue corriendo)':''}
+              </div>
+            )}
+
+            {esNocturno && (
+              <div style={{marginTop:10,background:'#F8F9FC',borderRadius:10,padding:12}}>
+                <div style={{fontSize:11,color:'#64748b',marginBottom:8,...f}}>
+                  Días de arresto nocturno (1×1, informativo): <strong>{ct.fecha_termino ? diasEntreFechasCaut(ct.fecha_inicio,ct.fecha_termino) : diasEntreFechasCaut(ct.fecha_inicio,fechaCalc)}</strong>
+                </div>
+                {ct.sumado_a_abono ? (
+                  <div style={{fontSize:12,color:'#059669',fontWeight:600,...f}}>✓ Ya se sumó al abono: {ct.abono_nocturno_calculado} días</div>
+                ) : (
+                  <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+                    <button className="btn-secondary" style={{fontSize:11,border:'none',boxShadow:'0 1px 2px rgba(15,23,42,0.06)'}} onClick={()=>calcularNocturno(ct)}>🧮 Calcular abono (días × 8 ÷ 12)</button>
+                    {calcLocal && (
+                      <>
+                        <span style={{fontSize:12,color:'#1E293B',...f}}>= <strong>{calcLocal.calculado} días</strong> de abono</span>
+                        <button className="btn-primary" style={{fontSize:11,borderRadius:10}} onClick={()=>sumarNocturnoAlAbono(ct)}>+ Sumar al abono total</button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      })}
+
+      {/* Calculadora ad-hoc: elegir cualquier fecha para previsualizar, sin guardar nada */}
+      <div style={{background:'#eff6ff',borderRadius:14,padding:14,marginTop:14,marginBottom:showForm?14:0}}>
+        <div style={{fontSize:11,color:'#1e40af',fontWeight:600,marginBottom:8,...f}}>🧮 Calculadora — no guarda nada, solo previsualiza a una fecha distinta de hoy</div>
+        <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
+          <input type="date" style={{padding:'8px 12px',border:'none',borderRadius:10,fontSize:13,boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}} value={fechaCalc} onChange={e=>setFechaCalc(e.target.value)}/>
+          <span style={{fontSize:12,color:'#1e40af',...f}}>
+            Abono proyectado a esa fecha: <strong>{cautelares.reduce((s,ct)=>{
+              if (TIPOS_ABONO_DIRECTO.includes(ct.tipo)) return s + diasEntreFechasCaut(ct.fecha_inicio, ct.fecha_termino || fechaCalc)
+              if (ct.tipo===CAUTELAR_NOCTURNO && ct.sumado_a_abono) return s + (parseFloat(ct.abono_nocturno_calculado)||0)
+              return s
+            },0)} días</strong>
+          </span>
+        </div>
+      </div>
+
+      {showForm && (
+        <div style={{background:'#F8F9FC',borderRadius:14,padding:16,marginTop:14}}>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
+            <div style={{gridColumn:'1/-1'}}>
+              <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.2,marginBottom:5,fontWeight:600,...f}}>Tipo de cautelar</div>
+              <select style={{width:'100%',padding:'9px 12px',border:'none',borderRadius:10,fontSize:13,boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}} value={form.tipo} onChange={e=>setForm(p=>({...p,tipo:e.target.value}))}>
+                {TIPOS.map(t=><option key={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.2,marginBottom:5,fontWeight:600,...f}}>Fecha de inicio</div>
+              <input type="date" style={{width:'100%',padding:'9px 12px',border:'none',borderRadius:10,fontSize:13,boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}} value={form.fecha_inicio} onChange={e=>setForm(p=>({...p,fecha_inicio:e.target.value}))}/>
+            </div>
+            <div>
+              <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.2,marginBottom:5,fontWeight:600,...f}}>Fecha de término (si ya terminó)</div>
+              <input type="date" style={{width:'100%',padding:'9px 12px',border:'none',borderRadius:10,fontSize:13,boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}} value={form.fecha_termino} onChange={e=>setForm(p=>({...p,fecha_termino:e.target.value}))}/>
+            </div>
+            {form.tipo==='Firma' && (
+              <div style={{gridColumn:'1/-1'}}>
+                <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.2,marginBottom:5,fontWeight:600,...f}}>Frecuencia</div>
+                <select style={{width:'100%',padding:'9px 12px',border:'none',borderRadius:10,fontSize:13,boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}} value={form.frecuencia} onChange={e=>setForm(p=>({...p,frecuencia:e.target.value}))}>
+                  <option>Mensual</option><option>Quincenal</option><option>Semanal</option>
+                </select>
+              </div>
+            )}
+          </div>
+          <div style={{display:'flex',gap:8}}>
+            <button className="btn-primary" style={{borderRadius:14}} onClick={handleGuardar} disabled={guardando}>{guardando?'Guardando...':'Guardar cautelar'}</button>
+            <button className="btn-secondary" style={{border:'none',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',borderRadius:14}} onClick={()=>setShowForm(false)}>Cancelar</button>
+          </div>
+        </div>
+      )}
+
+      <div style={{fontSize:11,color:'#94a3b8',marginTop:10,lineHeight:1.6,...f}}>
+        ⚠ El conteo de días no suma +1 por el día de inicio — si en tu práctica el abono se cuenta incluyendo ese primer día, avísame y lo ajusto.
+      </div>
+    </div>
+  )
+}
+
 function TeoriaDelCaso({ causaId, ruc, session, registrarActividad, onAccion }) {
   const [teoria, setTeoria] = useState(null)
   const [form, setForm] = useState({ hechos:'', teoria_defensa:'', prueba:'', observaciones:'' })
@@ -2442,6 +2633,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
   const [audiencias,setAudiencias]=useState([])
   const [aumentos,setAumentos]=useState([])
   const [apelaciones,setApelaciones]=useState([])
+  const [cautelares,setCautelares]=useState([])
   const [imputados,setImputados]=useState([])
   const [showAudForm,setShowAudForm]=useState(false)
   const [nuevaAud,setNuevaAud]=useState({fecha:'',hora:'',tipo:'',tribunal:'',sala:'',resultado:'',notas:''})
@@ -2480,13 +2672,14 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
 
   const openCausa=async(c)=>{
     setSelectedCausa(c);setView('detail');setActiveTab('datos')
-    const[{data:a},{data:au},{data:imp},{data:apel}]=await Promise.all([
+    const[{data:a},{data:au},{data:imp},{data:apel},{data:caut}]=await Promise.all([
       supabase.from('audiencias').select('*').or(`causa_id.eq.${c.id},ruc.eq.${c.ruc}`).order('fecha',{ascending:false}),
       supabase.from('aumentos_plazo').select('*').eq('causa_id',c.id).order('fecha_audiencia',{ascending:true}),
       supabase.from('imputados').select('*').eq('causa_id',c.id).order('created_at',{ascending:true}),
       supabase.from('apelaciones_corte').select('*').eq('causa_id',c.id).order('created_at',{ascending:true}),
+      supabase.from('cautelares_causa').select('*').eq('causa_id',c.id).order('fecha_inicio',{ascending:true}),
     ])
-    setAudiencias(a||[]);setAumentos(au||[]);setImputados(imp||[]);setApelaciones(apel||[])
+    setAudiencias(a||[]);setAumentos(au||[]);setImputados(imp||[]);setApelaciones(apel||[]);setCautelares(caut||[])
   }
 
   // ✅ Función central para marcar acción real — actualiza updated_at y semáforo
@@ -2930,6 +3123,21 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                   </div>
                 </div>
                 {/* Delegación de Poder */}
+                <CautelaresPanel
+                  causaId={c.id}
+                  ruc={c.ruc}
+                  cautelares={cautelares}
+                  esRPA={imputados.some(i=>i.regimen==='RPA')}
+                  registrarActividad={registrarActividad}
+                  onGuardar={async(form)=>{
+                    const{data,error}=await supabase.from('cautelares_causa').insert({causa_id:c.id,tipo:form.tipo,fecha_inicio:form.fecha_inicio,fecha_termino:form.fecha_termino||null,frecuencia:form.tipo==='Firma'?form.frecuencia:null}).select().single()
+                    if(!error&&data){setCautelares(prev=>[...prev,data]);if(registrarActividad)registrarActividad('accion',`Agregó cautelar "${form.tipo}" en RUC ${c.ruc}`)}
+                  }}
+                  onActualizar={async(id,campos)=>{
+                    await supabase.from('cautelares_causa').update(campos).eq('id',id)
+                    setCautelares(prev=>prev.map(x=>x.id===id?{...x,...campos}:x))
+                  }}
+                />
                 <div style={{gridColumn:'1/-1',marginTop:8}}>
                   <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:8,fontWeight:600,...f}}>Delegación de Poder</div>
                   <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
