@@ -3172,12 +3172,43 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
         <div style={{marginBottom:24}}/>
 
         <div className='stats-grid' style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:12,marginBottom:24}}>
-          {[{key:'',label:'Total',num:stats.total,color:'#1E293B',grad:'linear-gradient(135deg,#1e293b,#1E293B)',border:'#e2e8f0'},{key:'vigente',label:'Vigentes',num:stats.vigente,color:'#059669',grad:'linear-gradient(135deg,#10b981,#059669)',border:'#a7f3d0'},{key:'terminada',label:'Terminadas',num:stats.terminada,color:'#64748b',grad:'linear-gradient(135deg,#94a3b8,#64748b)',border:'#e2e8f0'},{key:'vencido',label:'Plazo Vencido',num:stats.vencido,color:'#dc2626',grad:'linear-gradient(135deg,#ef4444,#dc2626)',border:'#fecaca'},{key:'proximo',label:'Por Vencer',num:stats.proximo,color:'#d97706',grad:'linear-gradient(135deg,#f59e0b,#d97706)',border:'#fde68a'},{key:'apjo',label:'APJO',num:stats.apjo,color:'#7c3aed',grad:'linear-gradient(135deg,#8b5cf6,#7c3aed)',border:'#ddd6fe'},{key:'top',label:'Juicio Oral',num:stats.juicioOral,color:'#0891b2',grad:'linear-gradient(135deg,#06b6d4,#0891b2)',border:'#a5f3fc'}].map(st=>{
+          {/* 3 tarjetas grandes — las únicas 3 categorías que dividen TODAS las causas sin cruzarse */}
+          {[{key:'',label:'Total',num:stats.total,color:'#1E293B',border:'#e2e8f0'},{key:'vigente',label:'Vigentes',num:stats.vigente,color:'#059669',border:'#a7f3d0'},{key:'terminada',label:'Terminadas',num:stats.terminada,color:'#64748b',border:'#e2e8f0'}].map(st=>{
             const active=filterEstado===st.key&&st.key!==''
-            return(<div key={st.key} className="stat-card" onClick={()=>setFilterEstado(filterEstado===st.key?'':st.key)} style={{background:active?'#f8faff':'#fff',border:`1.5px solid ${active?st.border:st.border}`,borderLeft:`3px solid ${st.color}`,borderRadius:10,padding:'16px 18px',boxShadow:active?`0 4px 16px rgba(15,23,42,0.10)`:'0 1px 3px rgba(15,23,42,0.05)'}}>
+            return(<div key={st.key} className="stat-card" onClick={()=>setFilterEstado(filterEstado===st.key?'':st.key)} style={{background:active?'#f8faff':'#fff',border:`1.5px solid ${st.border}`,borderLeft:`3px solid ${st.color}`,borderRadius:10,padding:'20px 24px',boxShadow:active?`0 4px 16px rgba(15,23,42,0.10)`:'0 1px 3px rgba(15,23,42,0.05)'}}>
               <div style={{fontSize:9,fontWeight:600,letterSpacing:1.5,textTransform:'uppercase',color:'#94a3b8',marginBottom:8,...f}}>{st.label}</div>
-              <div style={{fontSize:32,fontWeight:800,color:st.color,lineHeight:1,letterSpacing:'-1px',...f}}>{st.num}</div>
+              <div style={{fontSize:34,fontWeight:800,color:st.color,lineHeight:1,letterSpacing:'-1px',...f}}>{st.num}</div>
             </div>)
+          })}
+        </div>
+
+        {/* Chips de subestado — se cruzan con Vigente/Terminada, por eso van livianos y aparte.
+            Los de Vigente (vencido/por vencer/APJO/juicio oral) y los de Terminada (condena/absuelto/
+            salidas alternativas) van en el mismo formato de chip, uno al lado del otro. */}
+        <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:24}}>
+          {[
+            {key:'vencido',label:'⚠ Plazo vencido',num:stats.vencido,activeColor:'#dc2626',activeBg:'#fef2f2',activeBorder:'#fecaca'},
+            {key:'proximo',label:'⏱ Por vencer',num:stats.proximo,activeColor:'#d97706',activeBg:'#fffbeb',activeBorder:'#fde68a'},
+            {key:'apjo',label:'⚖ APJO',num:stats.apjo,activeColor:'#334155',activeBg:'#F8F9FC',activeBorder:'#e2e8f0'},
+            {key:'top',label:'🏛 Juicio Oral',num:stats.juicioOral,activeColor:'#334155',activeBg:'#F8F9FC',activeBorder:'#e2e8f0'},
+          ].filter(ch=>ch.num>0).map(ch=>{
+            const active=filterEstado===ch.key
+            return(<button key={ch.key} onClick={()=>setFilterEstado(filterEstado===ch.key?'':ch.key)}
+              style={{fontSize:12,fontWeight:600,padding:'7px 14px',borderRadius:20,cursor:'pointer',
+                color:active?ch.activeColor:'#64748b', background:active?ch.activeBg:'#fff', border:`1.5px solid ${active?ch.activeBorder:'#e2e8f0'}`,...f}}>
+              {ch.label} · {ch.num}
+            </button>)
+          })}
+          {SUBESTADOS_TERMINADA.map(sub=>{
+            const num = causas.filter(c=>c.estado==='terminada'&&c.subestado===sub).length
+            if (num===0) return null
+            const cfg = estadoConfig[sub]
+            const active=filterEstado===sub
+            return(<button key={sub} onClick={()=>setFilterEstado(filterEstado===sub?'':sub)}
+              style={{fontSize:12,fontWeight:600,padding:'7px 14px',borderRadius:20,cursor:'pointer',
+                color:active?cfg.color:'#64748b', background:active?cfg.bg:'#fff', border:`1.5px solid ${active?cfg.border:'#e2e8f0'}`,...f}}>
+              {cfg.label} · {num}
+            </button>)
           })}
         </div>
 
@@ -3291,7 +3322,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
             <table style={{width:'100%',borderCollapse:'collapse'}}>
               <thead>
                 <tr style={{borderBottom:'2px solid #f1f5f9',background:'#fafbff'}}>
-                  {[{key:'ruc',label:'RUC'},{key:'rit',label:'RIT'},{key:'tribunal',label:'Tribunal'},{key:'imputado',label:'Imputado'},{key:'delito',label:'Delito'},{key:'fiscal',label:'Fiscal'},{key:'plazo',label:'Plazo'},{key:'estado',label:'Estado'}].map(col=>(
+                  {[{key:'ruc',label:'RUC'},{key:'rit',label:'RIT'},{key:'tribunal',label:'Tribunal'},{key:'imputado',label:'Imputado'},{key:'delito',label:'Delito'}].map(col=>(
                     <th key={col.key} className="sort-col" onClick={()=>handleSort(col.key)} style={{padding:'13px 16px',textAlign:'left',fontSize:10,fontWeight:700,color:sortCol===col.key?'#2563eb':'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,...f}}>{col.label}<SortIcon col={col.key}/></th>
                   ))}
                 </tr>
@@ -3310,9 +3341,6 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                     <td style={{padding:'12px 16px',fontSize:12,color:'#475569',fontWeight:500,...f}}>{c.tribunal}</td>
                     <td style={{padding:'12px 16px',...f}}><div style={{maxWidth:210,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:13,color:'#1E293B',fontWeight:500}}>{c.imputado}</div></td>
                     <td style={{padding:'12px 16px',...f}}><div style={{maxWidth:180,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:12,color:'#64748b'}}>{(c.delito||'').replace(/\|/g,', ')||'—'}</div></td>
-                    <td style={{padding:'12px 16px',fontSize:12,color:c.fiscal?'#374151':'#e2e8f0',fontStyle:c.fiscal?'normal':'italic',...f}}>{c.fiscal||'Sin asignar'}</td>
-                    <td style={{padding:'12px 16px',...f}}><div style={{maxWidth:130,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:11,color:'#94a3b8'}}>{c.plazo||'—'}</div></td>
-                    <td style={{padding:'12px 16px'}}><Badge estado={c.estado} subestado={c.subestado}/></td>
                   </tr>
                 ))}
               </tbody>
