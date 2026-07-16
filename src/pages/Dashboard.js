@@ -3171,49 +3171,50 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
       <div style={{maxWidth:1380,margin:'0 auto',padding:'28px'}}>
         <div style={{marginBottom:24}}/>
 
-        {/* 3 tarjetas grandes, a todo el ancho — mismo borde izq/der que el buscador y la tabla de abajo */}
+        {/* 3 tarjetas grandes — sin borde duro, solo sombra suave; activa = fondo negro sólido (como Apple) */}
         <div style={{display:'flex',gap:16,marginBottom:16}}>
-          {[{key:'',label:'Total',num:stats.total,color:'#1E293B',border:'#e2e8f0'},{key:'vigente',label:'Vigentes',num:stats.vigente,color:'#059669',border:'#a7f3d0'},{key:'terminada',label:'Terminadas',num:stats.terminada,color:'#64748b',border:'#e2e8f0'}].map(st=>{
+          {[{key:'',label:'Total',num:stats.total},{key:'vigente',label:'Vigentes',num:stats.vigente},{key:'terminada',label:'Terminadas',num:stats.terminada}].map(st=>{
             const activo = st.key===''? grupoAbierto==='' : grupoAbierto===st.key
+            const enfasis = activo && st.key!==''
             return(<div key={st.key} className="stat-card" onClick={()=>{
               if(st.key===''){setFilterEstado('');setGrupoAbierto('')}
               else if(grupoAbierto===st.key){setFilterEstado('');setGrupoAbierto('')}
               else{setFilterEstado(st.key);setGrupoAbierto(st.key)}
-            }} style={{flex:1,textAlign:'center',background:activo&&st.key!==''?'#f8faff':'#fff',border:`1.5px solid ${st.border}`,borderLeft:`3px solid ${st.color}`,borderRadius:10,padding:'20px 24px',boxShadow:activo&&st.key!==''?`0 4px 16px rgba(15,23,42,0.10)`:'0 1px 3px rgba(15,23,42,0.05)'}}>
-              <div style={{fontSize:9,fontWeight:600,letterSpacing:1.5,textTransform:'uppercase',color:'#94a3b8',marginBottom:8,...f}}>{st.label}</div>
-              <div style={{fontSize:34,fontWeight:800,color:st.color,lineHeight:1,letterSpacing:'-1px',...f}}>{st.num}</div>
+            }} style={{flex:1,textAlign:'center',background:enfasis?'#1E293B':'#fff',border:'none',borderRadius:20,padding:'28px 24px',boxShadow:enfasis?'0 8px 24px rgba(15,23,42,0.16)':'0 1px 3px rgba(15,23,42,0.06)',transition:'all 0.2s'}}>
+              <div style={{fontSize:11,fontWeight:600,letterSpacing:0.5,color:enfasis?'rgba(255,255,255,0.55)':'#94a3b8',marginBottom:10,...f}}>{st.label}</div>
+              <div style={{fontSize:38,fontWeight:800,color:enfasis?'#fff':'#1E293B',lineHeight:1,letterSpacing:'-1.5px',...f}}>{st.num}</div>
             </div>)
           })}
         </div>
 
-        {/* Chips de subestado — solo aparecen al abrir Vigente o Terminada (no todos juntos siempre) */}
+        {/* Chips de subestado — mismo criterio: sin borde duro, solo fondo suave */}
         {grupoAbierto==='vigente' && (
-          <div className="chip-group" style={{display:'flex',justifyContent:'center',gap:8,flexWrap:'wrap',marginBottom:24}}>
+          <div className="chip-group" style={{display:'flex',gap:10,flexWrap:'wrap',marginBottom:24,marginTop:4}}>
             {[
-              {key:'vencido',label:'⚠ Plazo vencido',num:stats.vencido,activeColor:'#dc2626',activeBg:'#fef2f2',activeBorder:'#fecaca'},
-              {key:'proximo',label:'⏱ Por vencer',num:stats.proximo,activeColor:'#d97706',activeBg:'#fffbeb',activeBorder:'#fde68a'},
-              {key:'apjo',label:'⚖ APJO',num:stats.apjo,activeColor:'#334155',activeBg:'#F8F9FC',activeBorder:'#e2e8f0'},
-              {key:'top',label:'🏛 Juicio Oral',num:stats.juicioOral,activeColor:'#334155',activeBg:'#F8F9FC',activeBorder:'#e2e8f0'},
+              {key:'vencido',label:'⚠ Plazo vencido',num:stats.vencido,activeColor:'#dc2626',activeBg:'#fef2f2'},
+              {key:'proximo',label:'⏱ Por vencer',num:stats.proximo,activeColor:'#d97706',activeBg:'#fffbeb'},
+              {key:'apjo',label:'⚖ APJO',num:stats.apjo,activeColor:'#334155',activeBg:'#F1F5F9'},
+              {key:'top',label:'🏛 Juicio Oral',num:stats.juicioOral,activeColor:'#334155',activeBg:'#F1F5F9'},
             ].filter(ch=>ch.num>0).map(ch=>{
               const active=filterEstado===ch.key
               return(<button key={ch.key} className="chip-btn" onClick={()=>setFilterEstado(filterEstado===ch.key?'vigente':ch.key)}
-                style={{fontSize:12,fontWeight:600,padding:'7px 14px',borderRadius:20,cursor:'pointer',
-                  color:active?ch.activeColor:'#64748b', background:active?ch.activeBg:'#fff', border:`1.5px solid ${active?ch.activeBorder:'#e2e8f0'}`,...f}}>
+                style={{fontSize:13,fontWeight:600,padding:'9px 16px',borderRadius:100,cursor:'pointer',border:'none',
+                  color:active?ch.activeColor:'#48484A', background:active?ch.activeBg:'#fff',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}}>
                 {ch.label} · {ch.num}
               </button>)
             })}
           </div>
         )}
         {grupoAbierto==='terminada' && (
-          <div className="chip-group" style={{display:'flex',justifyContent:'center',gap:8,flexWrap:'wrap',marginBottom:24}}>
+          <div className="chip-group" style={{display:'flex',gap:10,flexWrap:'wrap',marginBottom:24,marginTop:4}}>
             {SUBESTADOS_TERMINADA.map(sub=>{
               const num = causas.filter(c=>c.estado==='terminada'&&c.subestado===sub).length
               if (num===0) return null
               const cfg = estadoConfig[sub]
               const active=filterEstado===sub
               return(<button key={sub} className="chip-btn" onClick={()=>setFilterEstado(filterEstado===sub?'terminada':sub)}
-                style={{fontSize:12,fontWeight:600,padding:'7px 14px',borderRadius:20,cursor:'pointer',
-                  color:active?cfg.color:'#64748b', background:active?cfg.bg:'#fff', border:`1.5px solid ${active?cfg.border:'#e2e8f0'}`,...f}}>
+                style={{fontSize:13,fontWeight:600,padding:'9px 16px',borderRadius:100,cursor:'pointer',border:'none',
+                  color:active?cfg.color:'#48484A', background:active?cfg.bg:'#fff',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}}>
                 {cfg.label} · {num}
               </button>)
             })}
@@ -3307,39 +3308,39 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
           </div>
         )}
 
-        <div style={{display:'flex',gap:8,marginBottom:16,flexWrap:'wrap',alignItems:'center'}}>
+        <div style={{display:'flex',gap:10,marginBottom:16,flexWrap:'wrap',alignItems:'center'}}>
           <div style={{flex:2,minWidth:320,position:'relative'}}>
-            <span style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',color:'#94a3b8',fontSize:14}}>🔍</span>
-            <input style={{...inp,paddingLeft:36}} placeholder="Buscar por RUC, RIT, imputado, delito..." value={search} onChange={e=>setSearch(e.target.value)}/>
+            <span style={{position:'absolute',left:14,top:'50%',transform:'translateY(-50%)',color:'#94a3b8',fontSize:14}}>🔍</span>
+            <input style={{width:'100%',padding:'11px 14px',paddingLeft:38,border:'none',borderRadius:14,fontSize:13,color:'#1E293B',background:'#fff',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}} placeholder="Buscar por RUC, RIT, imputado, delito..." value={search} onChange={e=>setSearch(e.target.value)}/>
           </div>
-          <select style={{...inp,width:'auto',minWidth:180}} value={filterTribunal} onChange={e=>setFilterTribunal(e.target.value)}><option value="">Todos los tribunales</option>{tribunales.map(t=><option key={t} value={t}>{t}</option>)}</select>
-          <select style={{...inp,width:'auto',minWidth:160}} value={filterEstado} onChange={e=>setFilterEstado(e.target.value)}><option value="">Todos los estados</option>{Object.entries(estadoConfig).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}</select>
+          <select style={{width:'auto',minWidth:180,padding:'11px 14px',border:'none',borderRadius:14,fontSize:13,color:'#1E293B',background:'#fff',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}} value={filterTribunal} onChange={e=>setFilterTribunal(e.target.value)}><option value="">Todos los tribunales</option>{tribunales.map(t=><option key={t} value={t}>{t}</option>)}</select>
+          <select style={{width:'auto',minWidth:160,padding:'11px 14px',border:'none',borderRadius:14,fontSize:13,color:'#1E293B',background:'#fff',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}} value={filterEstado} onChange={e=>setFilterEstado(e.target.value)}><option value="">Todos los estados</option>{Object.entries(estadoConfig).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}</select>
           <div style={{width:220}}>
             <SearchableSelect value={filterDelito} onChange={v=>setFilterDelito(v)} options={DELITOS_CATALOGO} placeholder="Todos los delitos" isDelito={true}/>
           </div>
-          {hayFiltrosActivos && <button className="btn-secondary" style={{fontSize:12,color:'#dc2626',borderColor:'#fecaca'}} onClick={limpiarFiltros}>✕ Limpiar</button>}
+          {hayFiltrosActivos && <button className="btn-secondary" style={{fontSize:12,color:'#dc2626',border:'none',boxShadow:'0 1px 2px rgba(15,23,42,0.06)'}} onClick={limpiarFiltros}>✕ Limpiar</button>}
           <span style={{fontSize:12,color:'#94a3b8',fontWeight:500,...f}}>{filtered.length} resultado{filtered.length!==1?'s':''}</span>
-          <button className="btn-primary" onClick={()=>setShowNuevaCausa(true)}>+ Nueva causa</button>
-          <button className="btn-secondary" onClick={()=>setShowStats(!showStats)} style={{borderColor:showStats?'#2563eb':'#e2e8f0',color:showStats?'#2563eb':'#374151'}}>{showStats?'Ocultar':'📊 Estadísticas'}</button>
+          <button className="btn-primary" style={{borderRadius:14}} onClick={()=>setShowNuevaCausa(true)}>+ Nueva causa</button>
+          <button className="btn-secondary" onClick={()=>setShowStats(!showStats)} style={{border:'none',borderRadius:14,boxShadow:'0 1px 2px rgba(15,23,42,0.06)',color:showStats?'#2563eb':'#374151'}}>{showStats?'Ocultar':'📊 Estadísticas'}</button>
         </div>
 
         {loading?(
           <div style={{textAlign:'center',padding:60,color:'#94a3b8',fontSize:14,...f}}>Cargando causas...</div>
         ):(
-          <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:16,boxShadow:'0 2px 12px rgba(15,23,42,0.06)',overflowX:'auto'}}>
+          <div style={{background:'#fff',border:'none',borderRadius:20,boxShadow:'0 1px 2px rgba(15,23,42,0.06)',padding:8,overflowX:'auto'}}>
             <table style={{width:'100%',borderCollapse:'collapse'}}>
               <thead>
-                <tr style={{borderBottom:'2px solid #f1f5f9',background:'#fafbff'}}>
+                <tr style={{border:'none',background:'transparent'}}>
                   {[{key:'ruc',label:'RUC'},{key:'rit',label:'RIT'},{key:'tribunal',label:'Tribunal'},{key:'imputado',label:'Imputado'},{key:'delito',label:'Delito'}].map(col=>(
-                    <th key={col.key} className="sort-col" onClick={()=>handleSort(col.key)} style={{padding:'13px 16px',textAlign:'left',fontSize:10,fontWeight:700,color:sortCol===col.key?'#2563eb':'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,...f}}>{col.label}<SortIcon col={col.key}/></th>
+                    <th key={col.key} className="sort-col" onClick={()=>handleSort(col.key)} style={{padding:'16px 20px 12px',textAlign:'left',fontSize:10,fontWeight:700,color:sortCol===col.key?'#2563eb':'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,...f}}>{col.label}<SortIcon col={col.key}/></th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((c)=>(
-                  <tr key={c.id} className="row-hover" onClick={()=>openCausa(c)} style={{borderBottom:'1px solid #F8F9FC',background:'#fff'}}>
-                    <td style={{padding:'12px 16px',fontSize:12,fontWeight:700,color:'#1E293B',...f}}>{c.ruc}</td>
-                    <td style={{padding:'12px 16px',fontSize:12,color:'#94a3b8',fontWeight:500,...f}}>
+                  <tr key={c.id} className="row-hover" onClick={()=>openCausa(c)} style={{border:'none',background:'#fff'}}>
+                    <td style={{padding:'14px 20px',fontSize:12,fontWeight:700,color:'#1E293B',borderRadius:'14px 0 0 14px',...f}}>{c.ruc}</td>
+                    <td style={{padding:'14px 20px',fontSize:12,color:'#94a3b8',fontWeight:500,...f}}>
                       {/* ✅ Semáforo como tag visible en la lista — solo causas vigentes */}
                       <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
                         <SemaforoTag updated_at={c.updated_at} estado={c.estado} />
@@ -3348,7 +3349,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                     </td>
                     <td style={{padding:'12px 16px',fontSize:12,color:'#475569',fontWeight:500,...f}}>{c.tribunal}</td>
                     <td style={{padding:'12px 16px',...f}}><div style={{maxWidth:210,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:13,color:'#1E293B',fontWeight:500}}>{c.imputado}</div></td>
-                    <td style={{padding:'12px 16px',...f}}><div style={{maxWidth:180,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:12,color:'#64748b'}}>{(c.delito||'').replace(/\|/g,', ')||'—'}</div></td>
+                    <td style={{padding:'14px 20px',borderRadius:'0 14px 14px 0',...f}}><div style={{maxWidth:180,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:12,color:'#64748b'}}>{(c.delito||'').replace(/\|/g,', ')||'—'}</div></td>
                   </tr>
                 ))}
               </tbody>
