@@ -2634,7 +2634,10 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
     let list=causas.filter(c=>{
       const s=search.toLowerCase()
       const match=!s||[c.ruc,c.rit,c.imputado,c.delito,c.tribunal,c.fiscal].some(v=>v?.toLowerCase().includes(s))
-      const estadoMatch=!filterEstado||(filterEstado==='vigente'?c.estado==='vigente':filterEstado==='terminada'?c.estado==='terminada':filterEstado==='top'?(c.subestado==='juicio_oral'||c.tiene_top===true):c.subestado===filterEstado)
+      // ✅ "Terminada" (general, sin subestado elegido) funciona como cola de pendientes:
+      // solo muestra las terminadas que TODAVÍA no tienen subestado. Apenas se le pone
+      // un subestado a una causa, desaparece de aquí y solo aparece en su subestado específico.
+      const estadoMatch=!filterEstado||(filterEstado==='vigente'?c.estado==='vigente':filterEstado==='terminada'?(c.estado==='terminada'&&!c.subestado):filterEstado==='top'?(c.subestado==='juicio_oral'||c.tiene_top===true):c.subestado===filterEstado)
       const delitoMatch=!filterDelito||(c.delito||'').split('|').map(d=>d.trim()).includes(filterDelito)
       return match&&(!filterTribunal||c.tribunal===filterTribunal)&&estadoMatch&&delitoMatch
     })
