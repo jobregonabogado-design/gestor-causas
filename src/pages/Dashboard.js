@@ -2661,6 +2661,31 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
     filtered.forEach(c=>{if(c.tribunal){map[c.tribunal]=(map[c.tribunal]||0)+1}})
     return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,15).map(([name,value])=>({name,value}))
   },[filtered])
+  // 📊 Resultados en causas terminadas — para tu % de rendimiento (condena preso/libre,
+  // absoluciones, salidas alternativas). Respeta los mismos filtros de arriba.
+  const chartResultados=useMemo(()=>{
+    const terminadas=filtered.filter(c=>c.estado==='terminada')
+    const map={}
+    terminadas.forEach(c=>{const s=c.subestado||'sin_subestado';map[s]=(map[s]||0)+1})
+    const total=terminadas.length
+    return Object.entries(map).sort((a,b)=>b[1]-a[1]).map(([subestado,value])=>({
+      subestado,
+      label: estadoConfig[subestado]?.label || subestado.toUpperCase(),
+      color: estadoConfig[subestado]?.color || '#64748b',
+      bg: estadoConfig[subestado]?.bg || '#F8F9FC',
+      border: estadoConfig[subestado]?.border || '#e2e8f0',
+      value,
+      pct: total>0 ? Math.round((value/total)*100) : 0,
+    }))
+  },[filtered])
+  const totalTerminadas = chartResultados.reduce((s,r)=>s+r.value,0)
+  const sumaSubestados = (...keys) => chartResultados.filter(r=>keys.includes(r.subestado)).reduce((s,r)=>s+r.value,0)
+  const pctDe = (n) => totalTerminadas>0 ? Math.round((n/totalTerminadas)*100) : 0
+  const resumenRendimiento = {
+    absoluciones: { n: sumaSubestados('absuelto'), pct: pctDe(sumaSubestados('absuelto')) },
+    condenas: { n: sumaSubestados('condena_preso','condena_libertad'), pct: pctDe(sumaSubestados('condena_preso','condena_libertad')) },
+    salidasAlt: { n: sumaSubestados('scp','salida_ar'), pct: pctDe(sumaSubestados('scp','salida_ar')) },
+  }
   const COLORS=['#2563eb','#7c3aed','#059669','#dc2626','#d97706','#0891b2','#db2777','#65a30d','#ea580c','#6366f1']
   const inp={width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}
 
@@ -3164,6 +3189,42 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                 </ResponsiveContainer>
                 )}
               </div>
+            </div>
+
+            {/* 📊 Resultados en causas terminadas — % de rendimiento (condena / absolución / salida alternativa) */}
+            <div style={{marginTop:32,paddingTop:24,borderTop:'1px solid #f1f5f9'}}>
+              <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:4,fontWeight:700,...f}}>Resultados en causas terminadas</div>
+              <div style={{fontSize:11,color:'#cbd5e1',marginBottom:16,...f}}>Tu % de rendimiento, según los mismos filtros de arriba · {totalTerminadas} causa{totalTerminadas!==1?'s':''} terminada{totalTerminadas!==1?'s':''}</div>
+              {totalTerminadas===0 ? (
+                <div style={{textAlign:'center',padding:'40px 0',color:'#cbd5e1',fontSize:13,...f}}>Sin causas terminadas para estos filtros.</div>
+              ) : (
+                <>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,marginBottom:20}}>
+                    <div style={{background:'#ecfdf5',border:'1.5px solid #a7f3d0',borderRadius:12,padding:'16px',textAlign:'center'}}>
+                      <div style={{fontSize:26,fontWeight:900,color:'#059669',letterSpacing:'-1px',...f}}>{resumenRendimiento.absoluciones.pct}%</div>
+                      <div style={{fontSize:11,color:'#065f46',fontWeight:600,marginTop:4,...f}}>Absoluciones ({resumenRendimiento.absoluciones.n})</div>
+                    </div>
+                    <div style={{background:'#fff7ed',border:'1.5px solid #fed7aa',borderRadius:12,padding:'16px',textAlign:'center'}}>
+                      <div style={{fontSize:26,fontWeight:900,color:'#d97706',letterSpacing:'-1px',...f}}>{resumenRendimiento.salidasAlt.pct}%</div>
+                      <div style={{fontSize:11,color:'#92400e',fontWeight:600,marginTop:4,...f}}>Salidas alternativas ({resumenRendimiento.salidasAlt.n})</div>
+                    </div>
+                    <div style={{background:'#fef2f2',border:'1.5px solid #fecaca',borderRadius:12,padding:'16px',textAlign:'center'}}>
+                      <div style={{fontSize:26,fontWeight:900,color:'#dc2626',letterSpacing:'-1px',...f}}>{resumenRendimiento.condenas.pct}%</div>
+                      <div style={{fontSize:11,color:'#991b1b',fontWeight:600,marginTop:4,...f}}>Condenas ({resumenRendimiento.condenas.n})</div>
+                    </div>
+                  </div>
+                  <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:10,fontWeight:600,...f}}>Detalle por subestado</div>
+                  {chartResultados.map(r=>(
+                    <div key={r.subestado} style={{display:'flex',alignItems:'center',gap:12,marginBottom:8}}>
+                      <div style={{width:150,fontSize:12,fontWeight:600,color:r.color,flexShrink:0,...f}}>{r.label}</div>
+                      <div style={{flex:1,background:'#F8F9FC',borderRadius:6,height:22,position:'relative',overflow:'hidden',border:`1px solid ${r.border}`}}>
+                        <div style={{width:`${r.pct}%`,height:'100%',background:r.bg,borderRight:`2px solid ${r.color}`,transition:'width 0.3s'}}/>
+                      </div>
+                      <div style={{width:70,fontSize:12,fontWeight:700,color:'#1E293B',textAlign:'right',flexShrink:0,...f}}>{r.value} · {r.pct}%</div>
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
           </div>
         )}
