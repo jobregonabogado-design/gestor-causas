@@ -25,6 +25,10 @@ const CSS = `
   input:focus,select:focus,textarea:focus { outline:none; border-color:#93c5fd !important; box-shadow:0 0 0 3px rgba(37,99,235,0.08) !important; }
   .tc-section textarea:focus { box-shadow: none !important; border-color: transparent !important; }
   @keyframes semaforo-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.6;transform:scale(1.2)} }
+  @keyframes chipIn { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
+  .chip-group { animation:chipIn 0.28s cubic-bezier(0.4,0,0.2,1) forwards; }
+  .chip-btn { transition:all 0.18s ease; }
+  .chip-btn:hover { transform:translateY(-1px); box-shadow:0 3px 10px rgba(15,23,42,0.08); }
   @media (max-width: 640px) {
     .stats-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 8px !important; }
     .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -2448,6 +2452,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
   const [saving,setSaving]=useState(false)
   const [showNuevaCausa,setShowNuevaCausa]=useState(false)
   const [showStats,setShowStats]=useState(false)
+  const [grupoAbierto,setGrupoAbierto]=useState('') // '' | 'vigente' | 'terminada' — controla qué chips de subestado se muestran
   const [nuevaCausa,setNuevaCausa]=useState({ruc:'',rit:'',tribunal:'',delito:'',imputado:'',imputado_rut:'',imputado_fecha_nac:'',imputado_domicilio:'',imputado_nacionalidad:'',fiscal:'',cautelar:'',centro_penal:'',plazo:'',fecha_inicio:'',dias_plazo:'',fecha_hechos:'',estado:'vigente'})
   const [rutBuscando,setRutBuscando]=useState(false)
   const [rutEncontrado,setRutEncontrado]=useState(null)
@@ -3171,46 +3176,54 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
       <div style={{maxWidth:1380,margin:'0 auto',padding:'28px'}}>
         <div style={{marginBottom:24}}/>
 
-        <div className='stats-grid' style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:12,marginBottom:24}}>
-          {/* 3 tarjetas grandes — las únicas 3 categorías que dividen TODAS las causas sin cruzarse */}
+        {/* 3 tarjetas grandes, centradas — las únicas 3 categorías que dividen TODAS las causas sin cruzarse */}
+        <div style={{display:'flex',justifyContent:'center',gap:16,marginBottom:16}}>
           {[{key:'',label:'Total',num:stats.total,color:'#1E293B',border:'#e2e8f0'},{key:'vigente',label:'Vigentes',num:stats.vigente,color:'#059669',border:'#a7f3d0'},{key:'terminada',label:'Terminadas',num:stats.terminada,color:'#64748b',border:'#e2e8f0'}].map(st=>{
-            const active=filterEstado===st.key&&st.key!==''
-            return(<div key={st.key} className="stat-card" onClick={()=>setFilterEstado(filterEstado===st.key?'':st.key)} style={{background:active?'#f8faff':'#fff',border:`1.5px solid ${st.border}`,borderLeft:`3px solid ${st.color}`,borderRadius:10,padding:'20px 24px',boxShadow:active?`0 4px 16px rgba(15,23,42,0.10)`:'0 1px 3px rgba(15,23,42,0.05)'}}>
+            const activo = st.key===''? grupoAbierto==='' : grupoAbierto===st.key
+            return(<div key={st.key} className="stat-card" onClick={()=>{
+              if(st.key===''){setFilterEstado('');setGrupoAbierto('')}
+              else if(grupoAbierto===st.key){setFilterEstado('');setGrupoAbierto('')}
+              else{setFilterEstado(st.key);setGrupoAbierto(st.key)}
+            }} style={{width:220,background:activo&&st.key!==''?'#f8faff':'#fff',border:`1.5px solid ${st.border}`,borderLeft:`3px solid ${st.color}`,borderRadius:10,padding:'20px 24px',boxShadow:activo&&st.key!==''?`0 4px 16px rgba(15,23,42,0.10)`:'0 1px 3px rgba(15,23,42,0.05)'}}>
               <div style={{fontSize:9,fontWeight:600,letterSpacing:1.5,textTransform:'uppercase',color:'#94a3b8',marginBottom:8,...f}}>{st.label}</div>
               <div style={{fontSize:34,fontWeight:800,color:st.color,lineHeight:1,letterSpacing:'-1px',...f}}>{st.num}</div>
             </div>)
           })}
         </div>
 
-        {/* Chips de subestado — se cruzan con Vigente/Terminada, por eso van livianos y aparte.
-            Los de Vigente (vencido/por vencer/APJO/juicio oral) y los de Terminada (condena/absuelto/
-            salidas alternativas) van en el mismo formato de chip, uno al lado del otro. */}
-        <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:24}}>
-          {[
-            {key:'vencido',label:'⚠ Plazo vencido',num:stats.vencido,activeColor:'#dc2626',activeBg:'#fef2f2',activeBorder:'#fecaca'},
-            {key:'proximo',label:'⏱ Por vencer',num:stats.proximo,activeColor:'#d97706',activeBg:'#fffbeb',activeBorder:'#fde68a'},
-            {key:'apjo',label:'⚖ APJO',num:stats.apjo,activeColor:'#334155',activeBg:'#F8F9FC',activeBorder:'#e2e8f0'},
-            {key:'top',label:'🏛 Juicio Oral',num:stats.juicioOral,activeColor:'#334155',activeBg:'#F8F9FC',activeBorder:'#e2e8f0'},
-          ].filter(ch=>ch.num>0).map(ch=>{
-            const active=filterEstado===ch.key
-            return(<button key={ch.key} onClick={()=>setFilterEstado(filterEstado===ch.key?'':ch.key)}
-              style={{fontSize:12,fontWeight:600,padding:'7px 14px',borderRadius:20,cursor:'pointer',
-                color:active?ch.activeColor:'#64748b', background:active?ch.activeBg:'#fff', border:`1.5px solid ${active?ch.activeBorder:'#e2e8f0'}`,...f}}>
-              {ch.label} · {ch.num}
-            </button>)
-          })}
-          {SUBESTADOS_TERMINADA.map(sub=>{
-            const num = causas.filter(c=>c.estado==='terminada'&&c.subestado===sub).length
-            if (num===0) return null
-            const cfg = estadoConfig[sub]
-            const active=filterEstado===sub
-            return(<button key={sub} onClick={()=>setFilterEstado(filterEstado===sub?'':sub)}
-              style={{fontSize:12,fontWeight:600,padding:'7px 14px',borderRadius:20,cursor:'pointer',
-                color:active?cfg.color:'#64748b', background:active?cfg.bg:'#fff', border:`1.5px solid ${active?cfg.border:'#e2e8f0'}`,...f}}>
-              {cfg.label} · {num}
-            </button>)
-          })}
-        </div>
+        {/* Chips de subestado — solo aparecen al abrir Vigente o Terminada (no todos juntos siempre) */}
+        {grupoAbierto==='vigente' && (
+          <div className="chip-group" style={{display:'flex',justifyContent:'center',gap:8,flexWrap:'wrap',marginBottom:24}}>
+            {[
+              {key:'vencido',label:'⚠ Plazo vencido',num:stats.vencido,activeColor:'#dc2626',activeBg:'#fef2f2',activeBorder:'#fecaca'},
+              {key:'proximo',label:'⏱ Por vencer',num:stats.proximo,activeColor:'#d97706',activeBg:'#fffbeb',activeBorder:'#fde68a'},
+              {key:'apjo',label:'⚖ APJO',num:stats.apjo,activeColor:'#334155',activeBg:'#F8F9FC',activeBorder:'#e2e8f0'},
+              {key:'top',label:'🏛 Juicio Oral',num:stats.juicioOral,activeColor:'#334155',activeBg:'#F8F9FC',activeBorder:'#e2e8f0'},
+            ].filter(ch=>ch.num>0).map(ch=>{
+              const active=filterEstado===ch.key
+              return(<button key={ch.key} className="chip-btn" onClick={()=>setFilterEstado(filterEstado===ch.key?'vigente':ch.key)}
+                style={{fontSize:12,fontWeight:600,padding:'7px 14px',borderRadius:20,cursor:'pointer',
+                  color:active?ch.activeColor:'#64748b', background:active?ch.activeBg:'#fff', border:`1.5px solid ${active?ch.activeBorder:'#e2e8f0'}`,...f}}>
+                {ch.label} · {ch.num}
+              </button>)
+            })}
+          </div>
+        )}
+        {grupoAbierto==='terminada' && (
+          <div className="chip-group" style={{display:'flex',justifyContent:'center',gap:8,flexWrap:'wrap',marginBottom:24}}>
+            {SUBESTADOS_TERMINADA.map(sub=>{
+              const num = causas.filter(c=>c.estado==='terminada'&&c.subestado===sub).length
+              if (num===0) return null
+              const cfg = estadoConfig[sub]
+              const active=filterEstado===sub
+              return(<button key={sub} className="chip-btn" onClick={()=>setFilterEstado(filterEstado===sub?'terminada':sub)}
+                style={{fontSize:12,fontWeight:600,padding:'7px 14px',borderRadius:20,cursor:'pointer',
+                  color:active?cfg.color:'#64748b', background:active?cfg.bg:'#fff', border:`1.5px solid ${active?cfg.border:'#e2e8f0'}`,...f}}>
+                {cfg.label} · {num}
+              </button>)
+            })}
+          </div>
+        )}
 
         {showStats&&(
           <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:16,padding:28,marginBottom:24}}>
