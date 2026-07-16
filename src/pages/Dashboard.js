@@ -49,6 +49,7 @@ const estadoConfig = {
   condena_preso:     { label:'CONDENA — PRESO',         color:'#991b1b', bg:'#fef2f2', border:'#fecaca' },
   condena_libertad:  { label:'CONDENA — LIBERTAD',      color:'#92400e', bg:'#fff7ed', border:'#fed7aa' },
   absuelto:          { label:'ABSUELTO',                color:'#065f46', bg:'#ecfdf5', border:'#a7f3d0' },
+  dnp:               { label:'DNP',                      color:'#475569', bg:'#F8F9FC', border:'#e2e8f0' },
   scp:               { label:'SALIDA ALTERNATIVA SCP',  color:'#065f46', bg:'#ecfdf5', border:'#a7f3d0' },
   salida_ar:         { label:'SALIDA ALTERNATIVA AR',   color:'#065f46', bg:'#ecfdf5', border:'#a7f3d0' },
   // Estados principales
@@ -57,7 +58,7 @@ const estadoConfig = {
 }
 
 const SUBESTADOS_VIGENTE = ['plazo_vigente','proximo','vencido','apjo','juicio_oral']
-const SUBESTADOS_TERMINADA = ['renuncia','revocacion','condena_preso','condena_libertad','absuelto','scp','salida_ar']
+const SUBESTADOS_TERMINADA = ['renuncia','revocacion','condena_preso','condena_libertad','absuelto','dnp','scp','salida_ar']
 
 function getBadgeConfig(estado, subestado) {
   if (subestado && estadoConfig[subestado]) return estadoConfig[subestado]
@@ -1360,7 +1361,7 @@ function BadgeEditor({ estado, subestado, onChangeEstado, onChangeSubestado }) {
           {/* Cambiar estado principal */}
           <div style={{ padding:'8px 12px', fontSize:9, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, fontWeight:700, borderBottom:'1px solid #f1f5f9', ...f }}>Estado principal</div>
           {['vigente','terminada'].map(e => (
-            <div key={e} onClick={()=>{ onChangeEstado(e); setOpen(false) }}
+            <div key={e} onClick={()=>{ onChangeEstado(e) }}
               style={{ padding:'9px 14px', fontSize:12, fontWeight: estado===e?700:400, color: estado===e?'#1E293B':'#374151', background: estado===e?'#eff6ff':'transparent', cursor:'pointer', display:'flex', alignItems:'center', gap:8, ...f }}
               onMouseEnter={ev=>{ if(estado!==e) ev.currentTarget.style.background='#f8faff' }}
               onMouseLeave={ev=>{ if(estado!==e) ev.currentTarget.style.background='transparent' }}>
@@ -3189,7 +3190,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
 
         {/* Chips de subestado — mismo criterio: sin borde duro, solo fondo suave */}
         {grupoAbierto==='vigente' && (
-          <div className="chip-group" style={{display:'flex',gap:10,flexWrap:'wrap',marginBottom:24,marginTop:4}}>
+          <div className="chip-group" style={{display:'flex',justifyContent:'center',gap:10,flexWrap:'wrap',marginBottom:24,marginTop:4}}>
             {[
               {key:'vencido',label:'⚠ Plazo vencido',num:stats.vencido,activeColor:'#dc2626',activeBg:'#fef2f2'},
               {key:'proximo',label:'⏱ Por vencer',num:stats.proximo,activeColor:'#d97706',activeBg:'#fffbeb'},
@@ -3206,7 +3207,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
           </div>
         )}
         {grupoAbierto==='terminada' && (
-          <div className="chip-group" style={{display:'flex',gap:10,flexWrap:'wrap',marginBottom:24,marginTop:4}}>
+          <div className="chip-group" style={{display:'flex',justifyContent:'center',gap:10,flexWrap:'wrap',marginBottom:24,marginTop:4}}>
             {SUBESTADOS_TERMINADA.map(sub=>{
               const num = causas.filter(c=>c.estado==='terminada'&&c.subestado===sub).length
               if (num===0) return null
