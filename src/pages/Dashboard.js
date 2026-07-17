@@ -2037,35 +2037,36 @@ function CautelaresPanel({ causaId, cautelares, esRPA, onGuardar, onActualizar, 
   }
 
   return (
-    <div style={{gridColumn:'1/-1',marginTop:16,marginBottom:8}}>
-      {/* Casilla principal — grande, siempre visible, clic para desplegar/colapsar */}
+    <div style={{gridColumn:'1/-1',marginTop:2,marginBottom:2}}>
+      {/* Label arriba, igual que cualquier otro campo del formulario */}
+      <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>
+        Cautelar Personal {esRPA && <span style={{color:'#7c3aed'}}>· RPA</span>}
+      </div>
+
+      {/* Casilla — mismo look que los demás campos (fondo blanco, sombra suave, mismo alto).
+          Al hacer clic se despliega el detalle, la calculadora y "+ Agregar más cautelares". */}
       <div
-        className="caut-header"
+        className="fld"
         onClick={()=>setExpanded(v=>!v)}
         style={{
           cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center',
-          background:'linear-gradient(135deg,#1E293B,#0f172a)', color:'#fff',
-          borderRadius: expanded ? '18px 18px 0 0' : 18,
-          padding:'22px 26px', boxShadow:'0 6px 20px rgba(15,23,42,0.18)',
+          padding:'11px 14px', borderRadius: expanded ? '14px 14px 0 0' : 14, fontSize:13,
+          color:'#1E293B', minHeight:38, background:'#fff', boxShadow:'0 1px 2px rgba(15,23,42,0.06)', ...f,
         }}>
-        <div>
-          <div style={{fontSize:12,opacity:0.65,textTransform:'uppercase',letterSpacing:1.5,fontWeight:700,...f}}>
-            🔒 Cautelar Personal {esRPA && <span style={{color:'#c4b5fd'}}>· RPA</span>}
-          </div>
-          <div style={{fontSize:30,fontWeight:900,letterSpacing:'-1px',marginTop:4,...f}}>
-            {totalAbono} <span style={{fontSize:16,fontWeight:600,opacity:0.7}}>días de abono</span>
-          </div>
+        <span style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+          <span>🔒</span>
+          <strong>{totalAbono} días de abono</strong>
           {totalDiasSename > 0 && (
-            <div style={{fontSize:12,opacity:0.75,marginTop:6,...f}}>
-              ⓘ Sujeción a SENAME: {totalDiasSename} días registrados — <strong>no cuentan para el abono 2×1</strong>, se llevan aparte.
-            </div>
+            <span style={{fontSize:11,color:'#92400e',background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:10,padding:'2px 8px',...f}}>
+              SENAME: {totalDiasSename}d (aparte)
+            </span>
           )}
-        </div>
-        <div style={{fontSize:22,opacity:0.7}}>{expanded ? '▲' : '▼'}</div>
+        </span>
+        <span style={{fontSize:11,color:'#94a3b8',flexShrink:0,marginLeft:8}}>{expanded ? '▲' : '▼'}</span>
       </div>
 
       {expanded && (
-        <div style={{background:'#fff',boxShadow:'0 1px 3px rgba(15,23,42,0.08)',borderRadius:'0 0 18px 18px',padding:'22px 24px'}}>
+        <div style={{background:'#F8F9FC',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',borderRadius:'0 0 14px 14px',padding:'18px 16px'}}>
 
           {cautelares.length===0 && <p style={{fontSize:14,color:'#94a3b8',marginBottom:14,...f}}>Sin cautelares registradas todavía.</p>}
 
