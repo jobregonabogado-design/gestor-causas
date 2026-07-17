@@ -1722,7 +1722,185 @@ const TC_SECCIONES = [
   { key:'prueba',        icon:'🔍', label:'Prueba y testigos',      placeholder:'Lista de testigos, peritos, documentos, evidencias materiales, cadena de custodia...' },
   { key:'fallos',        icon:'📄', label:'Fallos de referencia',   placeholder:null },
   { key:'observaciones', icon:'📝', label:'Observaciones',          placeholder:'Notas de seguimiento, criterios del tribunal, pendientes...' },
+  { key:'carpeta',       icon:'📁', label:'Carpeta y Documentos',   placeholder:null },
+  { key:'diligencias',   icon:'📨', label:'Diligencias Fiscalía',   placeholder:null },
 ]
+
+// ─── DILIGENCIAS ANTE FISCALÍA — declaración de imputado, petición de carpeta,
+// entrevista con el fiscal, etc. Cada una nace con un FOLIO (número de
+// seguimiento que entrega el portal de Fiscalía al momento de la solicitud —
+// obligatorio, hay que exigirlo siempre) y más adelante recibe una respuesta
+// por correo (aprobada, con fecha de citación, o rechazada con motivo). ──────
+const TIPOS_DILIGENCIA = ['Declaración de imputado','Petición de carpeta','Entrevista con el fiscal','Reconstitución de escena','Careo','Otra diligencia']
+const ESTADOS_DILIGENCIA = {
+  pendiente:    { label:'Pendiente de respuesta',   color:'#92400e', bg:'#fff7ed', border:'#fed7aa' },
+  aprobada:     { label:'Aprobada',                 color:'#065f46', bg:'#ecfdf5', border:'#a7f3d0' },
+  con_citacion: { label:'Con fecha de citación',     color:'#1e40af', bg:'#eff6ff', border:'#bfdbfe' },
+  rechazada:    { label:'Rechazada',                color:'#991b1b', bg:'#fef2f2', border:'#fecaca' },
+}
+
+function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, onAccion }) {
+  const [diligencias, setDiligencias] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [form, setForm] = useState({ tipo: TIPOS_DILIGENCIA[0], fecha_solicitud: new Date().toISOString().slice(0,10), folio:'' })
+  const [guardando, setGuardando] = useState(false)
+  const [respondiendoId, setRespondiendoId] = useState(null)
+  const [formResp, setFormResp] = useState({ estado:'aprobada', fecha_respuesta:new Date().toISOString().slice(0,10), fecha_citacion:'', respuesta_detalle:'' })
+  const f = { fontFamily:"'Inter',sans-serif" }
+  const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:'#1E293B', background:'#fff', ...f }
+
+  useEffect(() => { cargar() }, [causaId])
+
+  const cargar = async () => {
+    setLoading(true)
+    const { data } = await supabase.from('diligencias_fiscalia').select('*').eq('causa_id', causaId).order('fecha_solicitud', { ascending:false })
+    setDiligencias(data || [])
+    setLoading(false)
+  }
+
+  const agregar = async () => {
+    if (!form.folio.trim()) { alert('El folio es obligatorio — es tu número de seguimiento ante la Fiscalía. Exígelo siempre al hacer la solicitud.'); return }
+    if (!form.fecha_solicitud) return
+    setGuardando(true)
+    const { data, error } = await supabase.from('diligencias_fiscalia').insert({
+      causa_id: causaId, tipo: form.tipo, fecha_solicitud: form.fecha_solicitud, folio: form.folio.toUpperCase(), estado:'pendiente', registrado_por: email
+    }).select().single()
+    if (!error && data) {
+      setDiligencias(prev => [data, ...prev])
+      if (registrarActividad) registrarActividad('accion', `Registró diligencia "${form.tipo}" (folio ${form.folio}) en RUC ${ruc}`)
+      if (onAccion) onAccion()
+    }
+    setForm({ tipo: TIPOS_DILIGENCIA[0], fecha_solicitud: new Date().toISOString().slice(0,10), folio:'' })
+    setShowForm(false)
+    setGuardando(false)
+  }
+
+  const empezarRespuesta = (d) => {
+    setRespondiendoId(d.id)
+    setFormResp({
+      estado: d.estado !== 'pendiente' ? d.estado : 'aprobada',
+      fecha_respuesta: d.fecha_respuesta || new Date().toISOString().slice(0,10),
+      fecha_citacion: d.fecha_citacion || '',
+      respuesta_detalle: d.respuesta_detalle || '',
+    })
+  }
+
+  const guardarRespuesta = async (id) => {
+    if (!formResp.fecha_respuesta) return
+    const campos = {
+      estado: formResp.estado,
+      fecha_respuesta: formResp.fecha_respuesta,
+      fecha_citacion: formResp.estado === 'con_citacion' ? (formResp.fecha_citacion || null) : null,
+      respuesta_detalle: formResp.respuesta_detalle || null,
+    }
+    await supabase.from('diligencias_fiscalia').update(campos).eq('id', id)
+    setDiligencias(prev => prev.map(d => d.id === id ? { ...d, ...campos } : d))
+    setRespondiendoId(null)
+    if (registrarActividad) registrarActividad('accion', `Registró respuesta de Fiscalía (${ESTADOS_DILIGENCIA[formResp.estado]?.label}) en RUC ${ruc}`)
+    if (onAccion) onAccion()
+  }
+
+  if (loading) return <div style={{ textAlign:'center', padding:40, color:'#94a3b8', fontSize:13, ...f }}>Cargando diligencias...</div>
+
+  return (
+    <div>
+      <div style={{ fontSize:12, color:'#94a3b8', marginBottom:16, lineHeight:1.6, ...f }}>
+        Cada solicitud a Fiscalía (declaración, petición de carpeta, entrevista con el fiscal, etc.) entrega un <strong>folio de seguimiento</strong> al momento de ingresarla — expígelo siempre y regístralo aquí. Días después llega la respuesta por correo: aprobada, con fecha de citación, o rechazada con motivo.
+      </div>
+
+      {diligencias.length === 0 && <p style={{ color:'#94a3b8', fontSize:13, marginBottom:14, ...f }}>Sin diligencias registradas todavía.</p>}
+
+      {diligencias.map(d => {
+        const cfg = ESTADOS_DILIGENCIA[d.estado] || ESTADOS_DILIGENCIA.pendiente
+        return (
+          <div key={d.id} style={{ background:'#F8F9FC', border:'1px solid #e2e8f0', borderRadius:12, padding:'14px 16px', marginBottom:10 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:8 }}>
+              <div>
+                <div style={{ fontSize:13, fontWeight:700, color:'#1E293B', ...f }}>{d.tipo}</div>
+                <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>Solicitada el {d.fecha_solicitud} · Folio <strong style={{color:'#475569'}}>{d.folio}</strong></div>
+              </div>
+              <span style={{ fontSize:10, fontWeight:700, padding:'3px 10px', borderRadius:20, textTransform:'uppercase', letterSpacing:0.3, color:cfg.color, background:cfg.bg, border:`1px solid ${cfg.border}`, ...f }}>{cfg.label}</span>
+            </div>
+
+            {respondiendoId === d.id ? (
+              <div style={{ marginTop:12, paddingTop:12, borderTop:'1px solid #e2e8f0' }}>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
+                  <div>
+                    <div style={{ fontSize:10, color:'#64748b', textTransform:'uppercase', letterSpacing:1.2, marginBottom:5, fontWeight:600, ...f }}>Resultado</div>
+                    <select style={inp} value={formResp.estado} onChange={e=>setFormResp(p=>({...p,estado:e.target.value}))}>
+                      <option value="aprobada">Aprobada</option>
+                      <option value="con_citacion">Con fecha de citación</option>
+                      <option value="rechazada">Rechazada</option>
+                    </select>
+                  </div>
+                  <div>
+                    <div style={{ fontSize:10, color:'#64748b', textTransform:'uppercase', letterSpacing:1.2, marginBottom:5, fontWeight:600, ...f }}>Fecha de la respuesta</div>
+                    <input type="date" style={inp} value={formResp.fecha_respuesta} onChange={e=>setFormResp(p=>({...p,fecha_respuesta:e.target.value}))}/>
+                  </div>
+                  {formResp.estado === 'con_citacion' && (
+                    <div style={{ gridColumn:'1/-1' }}>
+                      <div style={{ fontSize:10, color:'#64748b', textTransform:'uppercase', letterSpacing:1.2, marginBottom:5, fontWeight:600, ...f }}>Fecha de la citación</div>
+                      <input type="date" style={inp} value={formResp.fecha_citacion} onChange={e=>setFormResp(p=>({...p,fecha_citacion:e.target.value}))}/>
+                    </div>
+                  )}
+                  <div style={{ gridColumn:'1/-1' }}>
+                    <div style={{ fontSize:10, color:'#64748b', textTransform:'uppercase', letterSpacing:1.2, marginBottom:5, fontWeight:600, ...f }}>{formResp.estado==='rechazada' ? 'Motivo del rechazo' : 'Detalle (opcional)'}</div>
+                    <input style={inp} placeholder={formResp.estado==='rechazada' ? 'Motivo indicado por Fiscalía...' : 'Notas adicionales...'} value={formResp.respuesta_detalle} onChange={e=>setFormResp(p=>({...p,respuesta_detalle:e.target.value}))}/>
+                  </div>
+                </div>
+                <div style={{ display:'flex', gap:8 }}>
+                  <button className="btn-primary" style={{ fontSize:12 }} onClick={()=>guardarRespuesta(d.id)}>✓ Guardar respuesta</button>
+                  <button className="btn-secondary" style={{ fontSize:12 }} onClick={()=>setRespondiendoId(null)}>Cancelar</button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ marginTop:10 }}>
+                {d.estado !== 'pendiente' && (
+                  <div style={{ fontSize:12, color:'#475569', ...f }}>
+                    Respondida el {d.fecha_respuesta}
+                    {d.estado === 'con_citacion' && d.fecha_citacion && <> · Cita el <strong>{d.fecha_citacion}</strong></>}
+                    {d.respuesta_detalle && <div style={{ marginTop:4, color:'#64748b' }}>{d.respuesta_detalle}</div>}
+                  </div>
+                )}
+                <button onClick={()=>empezarRespuesta(d)} style={{ fontSize:11, color:'#2563eb', background:'transparent', border:'none', cursor:'pointer', fontWeight:600, marginTop:6, padding:0, ...f }}>
+                  {d.estado === 'pendiente' ? '+ Registrar respuesta' : '✏ Editar respuesta'}
+                </button>
+              </div>
+            )}
+          </div>
+        )
+      })}
+
+      {showForm ? (
+        <div style={{ background:'#F8F9FC', border:'1.5px solid #e2e8f0', borderRadius:12, padding:16, marginTop:8 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
+            <div style={{ gridColumn:'1/-1' }}>
+              <div style={{ fontSize:10, color:'#64748b', textTransform:'uppercase', letterSpacing:1.2, marginBottom:5, fontWeight:600, ...f }}>Tipo de diligencia</div>
+              <select style={inp} value={form.tipo} onChange={e=>setForm(p=>({...p,tipo:e.target.value}))}>
+                {TIPOS_DILIGENCIA.map(t=><option key={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <div style={{ fontSize:10, color:'#64748b', textTransform:'uppercase', letterSpacing:1.2, marginBottom:5, fontWeight:600, ...f }}>Fecha de la solicitud</div>
+              <input type="date" style={inp} value={form.fecha_solicitud} onChange={e=>setForm(p=>({...p,fecha_solicitud:e.target.value}))}/>
+            </div>
+            <div>
+              <div style={{ fontSize:10, color:'#dc2626', textTransform:'uppercase', letterSpacing:1.2, marginBottom:5, fontWeight:700, ...f }}>Folio *</div>
+              <input style={{...inp,borderColor:'#fecaca'}} placeholder="Número de seguimiento" value={form.folio} onChange={e=>setForm(p=>({...p,folio:e.target.value}))}/>
+            </div>
+          </div>
+          <div style={{ display:'flex', gap:8 }}>
+            <button className="btn-primary" onClick={agregar} disabled={guardando}>{guardando?'Guardando...':'Guardar diligencia'}</button>
+            <button className="btn-secondary" onClick={()=>setShowForm(false)}>Cancelar</button>
+          </div>
+        </div>
+      ) : (
+        <button className="btn-secondary" style={{ marginTop:8 }} onClick={()=>setShowForm(true)}>+ Nueva diligencia</button>
+      )}
+    </div>
+  )
+}
 
 function FallosReferencia({ causaId, ruc, email, onAccion }) {
   const [fallos, setFallos] = useState([])
@@ -2209,7 +2387,7 @@ function CautelaresPanel({ causaId, cautelares, esRPA, onGuardar, onActualizar, 
   )
 }
 
-function TeoriaDelCaso({ causaId, ruc, session, registrarActividad, onAccion }) {
+function TeoriaDelCaso({ causaId, ruc, session, registrarActividad, onAccion, carpetaRef, onUpdateCarpetaRef }) {
   const [teoria, setTeoria] = useState(null)
   const [form, setForm] = useState({ hechos:'', teoria_defensa:'', prueba:'', observaciones:'' })
   const [historial, setHistorial] = useState([])
@@ -2218,6 +2396,8 @@ function TeoriaDelCaso({ causaId, ruc, session, registrarActividad, onAccion }) 
   const [savedAt, setSavedAt] = useState(null)
   const [seccionActiva, setSeccionActiva] = useState('hechos')
   const [showHistorial, setShowHistorial] = useState(false)
+  const [editandoRef, setEditandoRef] = useState(false)
+  const [refValue, setRefValue] = useState('')
   const debounceRef = useRef(null)
 
   useEffect(() => { cargar() }, [causaId])
@@ -2286,23 +2466,6 @@ function TeoriaDelCaso({ causaId, ruc, session, registrarActividad, onAccion }) 
             </button>
           )
         })}
-        <div style={{ padding:'16px', marginTop:8, borderTop:'1px solid #E2E8F0' }}>
-          <div style={{ fontSize:9, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, fontWeight:700, marginBottom:8, ...f }}>Progreso</div>
-          {TC_SECCIONES.map(s => {
-            const pct = Math.min(100, Math.round(((form[s.key]||'').length / 200) * 100))
-            return (
-              <div key={s.key} style={{ marginBottom:6 }}>
-                <div style={{ display:'flex', justifyContent:'space-between', marginBottom:2 }}>
-                  <span style={{ fontSize:9, color:'#94a3b8', ...f }}>{s.icon}</span>
-                  <span style={{ fontSize:9, color:'#64748b', ...f }}>{pct}%</span>
-                </div>
-                <div style={{ height:3, background:'#E2E8F0', borderRadius:2 }}>
-                  <div style={{ height:3, width:`${pct}%`, background: pct>0?'#1E293B':'transparent', borderRadius:2, transition:'width 0.3s' }}/>
-                </div>
-              </div>
-            )
-          })}
-        </div>
       </div>
       <div style={{ display:'flex', flexDirection:'column', background:'#fff' }}>
         <div style={{ padding:'16px 20px', borderBottom:'1px solid #E2E8F0', display:'flex', justifyContent:'space-between', alignItems:'center', background:'#F8F9FC' }}>
@@ -2346,18 +2509,37 @@ function TeoriaDelCaso({ causaId, ruc, session, registrarActividad, onAccion }) 
         <div className="tc-section" style={{ flex:1, padding:'20px' }}>
           {seccionActiva === 'fallos' ? (
             <FallosReferencia causaId={causaId} ruc={ruc} email={session?.user?.email || ''} onAccion={onAccion} />
+          ) : seccionActiva === 'carpeta' ? (
+            <div>
+              <div style={{ marginBottom:20 }}>
+                <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, marginBottom:6, fontWeight:600, ...f }}>Referencia carpeta física</div>
+                {editandoRef ? (
+                  <div style={{ display:'flex', gap:6 }}>
+                    <input style={{ width:'100%', padding:'9px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:'#1E293B', background:'#fff', ...f }}
+                      value={refValue} onChange={e=>setRefValue(e.target.value)}
+                      onKeyDown={e=>{if(e.key==='Enter'){onUpdateCarpetaRef(refValue);setEditandoRef(false)}if(e.key==='Escape')setEditandoRef(false)}} autoFocus/>
+                    <button className="btn-primary" style={{padding:'8px 14px',fontSize:12}} onClick={()=>{onUpdateCarpetaRef(refValue);setEditandoRef(false)}}>✓</button>
+                    <button className="btn-secondary" style={{padding:'8px 12px',fontSize:12}} onClick={()=>setEditandoRef(false)}>✗</button>
+                  </div>
+                ) : (
+                  <div className="fld" onClick={()=>{setEditandoRef(true);setRefValue(carpetaRef||'')}}
+                    style={{ padding:'9px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:carpetaRef?'#1E293B':'#94a3b8', minHeight:38, display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer', background:'#fff', ...f }}>
+                    <span>{carpetaRef || 'Clic para agregar...'}</span>
+                    <span style={{ fontSize:11, color:'#94a3b8' }}>✏</span>
+                  </div>
+                )}
+              </div>
+              <CarpetaOneDrive ruc={ruc}/>
+              <div style={{ marginTop:28, paddingTop:24, borderTop:'1px solid #f1f5f9' }}>
+                <DocumentosGuardados causaId={causaId} email={session?.user?.email || ''} onAccion={onAccion}/>
+              </div>
+            </div>
+          ) : seccionActiva === 'diligencias' ? (
+            <DiligenciasFiscalia causaId={causaId} ruc={ruc} email={session?.user?.email || ''} registrarActividad={registrarActividad} onAccion={onAccion} />
           ) : (
             <textarea value={form[seccionActiva] || ''} onChange={e => handleChange(seccionActiva, e.target.value)} placeholder={seccionActual?.placeholder}
               style={{ width:'100%', height:'100%', minHeight:360, border:'none', outline:'none', resize:'none', fontSize:14, lineHeight:1.8, color:'#1E293B', background:'transparent', fontFamily:"'Inter',sans-serif", padding:0 }}/>
           )}
-        </div>
-        <div style={{ padding:'10px 20px', borderTop:'1px solid #E2E8F0', display:'flex', gap:8, overflowX:'auto' }}>
-          {TC_SECCIONES.map(s => (
-            <button key={s.key} onClick={() => setSeccionActiva(s.key)}
-              style={{ padding:'4px 12px', borderRadius:20, fontSize:11, border:`1.5px solid ${seccionActiva===s.key?'#1E293B':'#E2E8F0'}`, background: seccionActiva===s.key?'#1E293B':'#fff', color: seccionActiva===s.key?'#fff':'#94a3b8', cursor:'pointer', fontWeight:500, whiteSpace:'nowrap', ...f }}>
-              {s.icon} {s.label.split(' ')[0]}
-            </button>
-          ))}
         </div>
       </div>
     </div>
@@ -3135,7 +3317,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
             </div>
           </div>
           <div style={{background:'#fff',display:'flex',overflowX:'auto',padding:'0 20px'}}>
-            {[['datos','Datos'],['imputado','Imputado'],['plazo','Plazo'],['audiencias','Audiencias'],['top','Juicio Oral'],['teoria','⚖️ Teoría del Caso'],['carpeta','Carpeta'],...(esTitular?[['honorarios','💰 Honorarios']]:[])].map(([k,l])=>(
+            {[['datos','Datos'],['imputado','Imputado'],['plazo','Plazo'],['audiencias','Audiencias'],['top','Juicio Oral'],['teoria','⚖️ Teoría del Caso'],...(esTitular?[['honorarios','💰 Honorarios']]:[])].map(([k,l])=>(
               <button key={k} className="tab-btn" onClick={()=>setActiveTab(k)} style={{padding:'13px 16px',fontSize:13,fontWeight:activeTab===k?600:400,color:activeTab===k?'#1E293B':'#94a3b8',borderBottom:`2px solid ${activeTab===k?'#1E293B':'transparent'}`,whiteSpace:'nowrap',marginBottom:0}}>{l}</button>
             ))}
           </div>
@@ -3604,17 +3786,9 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
             {activeTab==='teoria'&&(
               <TeoriaDelCaso
                 causaId={c.id} ruc={c.ruc} session={session} registrarActividad={registrarActividad}
+                carpetaRef={c.carpeta_ref} onUpdateCarpetaRef={(v)=>updateField('carpeta_ref',v)}
                 onAccion={() => marcarAccion(c.id)} // ✅ actualiza semáforo
               />
-            )}
-            {activeTab==='carpeta'&&(
-              <div>
-                <Field label="Referencia carpeta física" value={c.carpeta_ref} editable editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField('carpeta_ref',editValue)}/>
-                <div style={{marginTop:16}}><CarpetaOneDrive ruc={c.ruc}/></div>
-                <div style={{marginTop:28,paddingTop:24,borderTop:'1px solid #f1f5f9'}}>
-                  <DocumentosGuardados causaId={c.id} email={session?.user?.email||''} onAccion={()=>marcarAccion(c.id)}/>
-                </div>
-              </div>
             )}
             {esTitular && activeTab==='honorarios'&&(
               <HonorariosTab causaId={c.id} ruc={c.ruc} email={session?.user?.email||''} registrarActividad={registrarActividad} onAccion={()=>marcarAccion(c.id)}/>
