@@ -3084,10 +3084,30 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                 {/* 3. Tribunal */}
                 <Field label="Tribunal" value={c.tribunal} editable fieldKey="tribunal" editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField('tribunal',editValue)}/>
 
-                {/* Resto de campos: RIT, Fiscal, Cautelar procesal (texto libre), Centro Penal */}
-                {[{key:'rit',label:'RIT JG',editable:true},{key:'fiscal',label:'Fiscal a cargo',editable:true},{key:'cautelar',label:'Cautelar procesal',editable:true},{key:'centro_penal',label:'Centro Penal',editable:true}].map(field=>(
+                {/* Resto de campos: RIT, Fiscal, Centro Penal — se quitó "Cautelar procesal" (texto
+                    libre sin función real): el módulo funcional de Cautelares va justo abajo, en
+                    su lugar, en vez de repetirse más abajo en la pestaña. */}
+                {[{key:'rit',label:'RIT JG',editable:true},{key:'fiscal',label:'Fiscal a cargo',editable:true},{key:'centro_penal',label:'Centro Penal',editable:true}].map(field=>(
                   <Field key={field.key} label={field.label} value={c[field.key]} editable={field.editable} full={field.full} fieldKey={field.key} editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField(field.key,editValue)}/>
                 ))}
+
+                {/* Cautelares — módulo grande y colapsable, en el lugar donde antes estaba el
+                    campo de texto "Cautelar procesal" (que no tenía función). */}
+                <CautelaresPanel
+                  causaId={c.id}
+                  ruc={c.ruc}
+                  cautelares={cautelares}
+                  esRPA={imputados.some(i=>i.regimen==='RPA')}
+                  registrarActividad={registrarActividad}
+                  onGuardar={async(form)=>{
+                    const{data,error}=await supabase.from('cautelares_causa').insert({causa_id:c.id,tipo:form.tipo,fecha_inicio:form.fecha_inicio,fecha_termino:form.fecha_termino||null,frecuencia:form.tipo==='Firma'?form.frecuencia:null}).select().single()
+                    if(!error&&data){setCautelares(prev=>[...prev,data]);if(registrarActividad)registrarActividad('accion',`Agregó cautelar "${form.tipo}" en RUC ${c.ruc}`)}
+                  }}
+                  onActualizar={async(id,campos)=>{
+                    await supabase.from('cautelares_causa').update(campos).eq('id',id)
+                    setCautelares(prev=>prev.map(x=>x.id===id?{...x,...campos}:x))
+                  }}
+                />
 
                 {/* Delito(s) — sincronizado con los imputados. 1 imputado = mismo dato; varios = uno por cada uno */}
                 <div style={{gridColumn:'1/-1',marginBottom:2}}>
@@ -3201,23 +3221,6 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                     </div>
                   )}
                 </div>
-
-                {/* Cautelares — módulo grande y colapsable, justo debajo de la franja de plazo/hechos */}
-                <CautelaresPanel
-                  causaId={c.id}
-                  ruc={c.ruc}
-                  cautelares={cautelares}
-                  esRPA={imputados.some(i=>i.regimen==='RPA')}
-                  registrarActividad={registrarActividad}
-                  onGuardar={async(form)=>{
-                    const{data,error}=await supabase.from('cautelares_causa').insert({causa_id:c.id,tipo:form.tipo,fecha_inicio:form.fecha_inicio,fecha_termino:form.fecha_termino||null,frecuencia:form.tipo==='Firma'?form.frecuencia:null}).select().single()
-                    if(!error&&data){setCautelares(prev=>[...prev,data]);if(registrarActividad)registrarActividad('accion',`Agregó cautelar "${form.tipo}" en RUC ${c.ruc}`)}
-                  }}
-                  onActualizar={async(id,campos)=>{
-                    await supabase.from('cautelares_causa').update(campos).eq('id',id)
-                    setCautelares(prev=>prev.map(x=>x.id===id?{...x,...campos}:x))
-                  }}
-                />
 
                 <div style={{gridColumn:'1/-1',marginTop:8}}>
                   <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:8,fontWeight:600,...f}}>Delegación de Poder</div>
