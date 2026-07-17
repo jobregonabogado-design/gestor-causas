@@ -1892,26 +1892,31 @@ function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, onAccion
     const { data, error } = await supabase.from('diligencias_fiscalia').insert({
       causa_id: causaId, tipo: form.tipo, fecha_solicitud: form.fecha_solicitud, folio: form.folio.toUpperCase(), observacion: form.observacion || null, estado:'pendiente', registrado_por: email
     }).select().single()
-    if (!error && data) {
-      let dataFinal = data
-      // Si el comprobante se detectó por PDF (arrastrado), se sube y se adjunta
-      // automáticamente a esta misma diligencia — sin tener que volver a subirlo.
-      if (comprobantePendiente) {
-        try {
-          const path = `diligencias/${data.id}/comprobante_${Date.now()}_${comprobantePendiente.name}`
-          const { error: upErr } = await supabase.storage.from('documentos').upload(path, comprobantePendiente)
-          if (!upErr) {
-            const { data: urlData } = supabase.storage.from('documentos').getPublicUrl(path)
-            const camposArchivo = { comprobante_url: urlData.publicUrl, comprobante_path: path, comprobante_nombre: comprobantePendiente.name }
-            await supabase.from('diligencias_fiscalia').update(camposArchivo).eq('id', data.id)
-            dataFinal = { ...data, ...camposArchivo }
-          }
-        } catch { /* si falla el adjunto, la diligencia igual queda guardada */ }
-      }
-      setDiligencias(prev => [dataFinal, ...prev])
-      if (registrarActividad) registrarActividad('accion', `Registró diligencia "${form.tipo}" (folio ${form.folio}) en RUC ${ruc}`)
-      if (onAccion) onAccion()
+    if (error || !data) {
+      // ✅ Antes esto fallaba en silencio y solo cerraba el formulario. Ahora
+      // se muestra el error real y NO se pierde lo que ya habías escrito.
+      alert('No se pudo guardar la diligencia: ' + (error?.message || 'Error desconocido. Revisa la consola del navegador (F12) para más detalle.'))
+      setGuardando(false)
+      return
     }
+    let dataFinal = data
+    // Si el comprobante se detectó por PDF (arrastrado), se sube y se adjunta
+    // automáticamente a esta misma diligencia — sin tener que volver a subirlo.
+    if (comprobantePendiente) {
+      try {
+        const path = `diligencias/${data.id}/comprobante_${Date.now()}_${comprobantePendiente.name}`
+        const { error: upErr } = await supabase.storage.from('documentos').upload(path, comprobantePendiente)
+        if (!upErr) {
+          const { data: urlData } = supabase.storage.from('documentos').getPublicUrl(path)
+          const camposArchivo = { comprobante_url: urlData.publicUrl, comprobante_path: path, comprobante_nombre: comprobantePendiente.name }
+          await supabase.from('diligencias_fiscalia').update(camposArchivo).eq('id', data.id)
+          dataFinal = { ...data, ...camposArchivo }
+        }
+      } catch { /* si falla el adjunto, la diligencia igual queda guardada */ }
+    }
+    setDiligencias(prev => [dataFinal, ...prev])
+    if (registrarActividad) registrarActividad('accion', `Registró diligencia "${form.tipo}" (folio ${form.folio}) en RUC ${ruc}`)
+    if (onAccion) onAccion()
     setForm({ tipo: TIPOS_DILIGENCIA[0], fecha_solicitud: new Date().toISOString().slice(0,10), folio:'', observacion:'' })
     setComprobantePendiente(null)
     setAvisoRuc('')
