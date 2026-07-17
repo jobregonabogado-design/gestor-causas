@@ -2666,6 +2666,103 @@ function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudiencia, o
   )
 }
 
+// ─── TARJETA POR IMPUTADO — cuando hay 2+ imputados, agrupa todo lo que puede
+// variar entre ellos: Centro Penal, Cautelar Personal, Delito(s), Delegación de
+// Poder y Correo de notificación. Colapsable, con su propio estado de edición
+// local (para que no choquen entre tarjetas de distintos imputados). Los datos
+// de la causa (Tribunal, Corte, RIT, Fiscal, Fechas) quedan arriba, compartidos,
+// porque son los mismos para toda la causa sin importar cuántos imputados haya. ─
+function ImputadoDatosCard({ imp, causaId, ruc, cautelares, registrarActividad, onUpdateCampo, onDelitoChange, onGuardarCautelar, onActualizarCautelar }) {
+  const [expanded, setExpanded] = useState(false)
+  const [editField, setEditField] = useState(null)
+  const [editValue, setEditValue] = useState('')
+  const f = { fontFamily:"'Inter',sans-serif" }
+
+  return (
+    <div style={{border:'1px solid #e2e8f0', borderRadius:14, background:'#fff', boxShadow:'0 1px 2px rgba(15,23,42,0.06)', overflow:'hidden'}}>
+      <div
+        onClick={()=>setExpanded(v=>!v)}
+        style={{cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center', padding:'14px 16px'}}>
+        <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+          <span style={{fontSize:14,fontWeight:700,color:'#1E293B',...f}}>👤 {imp.nombre||'Sin nombre'}</span>
+          {imp.regimen && (
+            <span style={{fontSize:10,fontWeight:700,padding:'3px 9px',borderRadius:10,background:imp.regimen==='RPA'?'#faf5ff':'#eff6ff',color:imp.regimen==='RPA'?'#5b21b6':'#1E293B',border:`1px solid ${imp.regimen==='RPA'?'#ddd6fe':'#bfdbfe'}`,...f}}>{imp.regimen}</span>
+          )}
+        </div>
+        <span style={{fontSize:12,color:'#94a3b8'}}>{expanded ? '▲' : '▼'}</span>
+      </div>
+
+      {expanded && (
+        <div style={{padding:'0 16px 16px', borderTop:'1px solid #f1f5f9', display:'flex', flexDirection:'column', gap:16}}>
+          {/* Centro Penal */}
+          <div style={{marginTop:14}}>
+            <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Centro Penal</div>
+            <SearchableSelect value={imp.lugar_detencion} onChange={(v)=>onUpdateCampo('lugar_detencion', v)} options={CENTROS_PENALES} placeholder="Buscar centro penal..." isDelito={false}/>
+          </div>
+
+          {/* Cautelar Personal */}
+          <CautelaresPanel
+            causaId={causaId}
+            ruc={ruc}
+            cautelares={cautelares}
+            esRPA={imp.regimen==='RPA'}
+            registrarActividad={registrarActividad}
+            onGuardar={onGuardarCautelar}
+            onActualizar={onActualizarCautelar}
+          />
+
+          {/* Delito(s) */}
+          <div>
+            <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Delito(s)</div>
+            <div style={{display:'flex'}}>
+              <DelitoCard value={imp.delitos} onChange={onDelitoChange} options={DELITOS_CATALOGO} />
+            </div>
+          </div>
+
+          {/* Delegación de Poder */}
+          <div>
+            <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:8,fontWeight:600,...f}}>Delegación de Poder</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+              <Field label="Abogado delegado" value={imp.delegacion_abogado} editable fieldKey="delegacion_abogado" editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>{onUpdateCampo('delegacion_abogado',editValue);setEditField(null)}}/>
+              <div>
+                <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Fecha de delegación</div>
+                {editField==='delegacion_fecha'?(
+                  <div style={{display:'flex',gap:6}}>
+                    <input type="date" style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}}
+                      value={editValue} onChange={e=>setEditValue(e.target.value)}
+                      onKeyDown={e=>{if(e.key==='Enter'){onUpdateCampo('delegacion_fecha',editValue);setEditField(null)}if(e.key==='Escape')setEditField(null)}} autoFocus/>
+                    <button className="btn-primary" style={{padding:'8px 14px',fontSize:12}} onClick={()=>{onUpdateCampo('delegacion_fecha',editValue);setEditField(null)}}>✓</button>
+                    <button className="btn-secondary" style={{padding:'8px 12px',fontSize:12}} onClick={()=>setEditField(null)}>✗</button>
+                  </div>
+                ):(
+                  <div className="fld" onClick={()=>{setEditField('delegacion_fecha');setEditValue(imp.delegacion_fecha||'')}}
+                    style={{padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:imp.delegacion_fecha?'#1E293B':'#94a3b8',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
+                    <span>{imp.delegacion_fecha || 'Clic para agregar...'}</span>
+                    <span style={{fontSize:11,color:'#94a3b8'}}>✏</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Correo de Notificación */}
+          <div>
+            <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Correo de notificación</div>
+            <select
+              style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:imp.correo_notificacion?'#1E293B':'#94a3b8',background:'#fff',cursor:'pointer',...f}}
+              value={imp.correo_notificacion||''}
+              onChange={e=>onUpdateCampo('correo_notificacion', e.target.value)}>
+              <option value="">Seleccionar correo...</option>
+              <option value="JOBREGONABOGADO@GMAIL.COM">JOBREGONABOGADO@GMAIL.COM</option>
+              <option value="NOTIFICACION.DEFENSAPENAL@GMAIL.COM">NOTIFICACION.DEFENSAPENAL@GMAIL.COM</option>
+            </select>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Dashboard({ session, userRol, registrarActividad, causaInicial, onCausaInicialUsada }) {
   const esTitular = userRol?.rol === 'titular'
   const [causas,setCausas]=useState([])
@@ -2772,6 +2869,15 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
     setImputados(prev => prev.map(x => x.id === impId ? { ...x, lugar_detencion: valor } : x))
     const imp = imputados.find(x => x.id === impId)
     if (registrarActividad) registrarActividad('accion', `Actualizó centro penal de ${imp?.nombre || 'imputado'} en RUC ${selectedCausa.ruc}`)
+  }
+
+  // ✅ Genérica — usada por Delegación de Poder y Correo de notificación cuando
+  // hay varios imputados y cada uno puede tener datos distintos.
+  const actualizarCampoImputado = async (impId, field, valor) => {
+    await supabase.from('imputados').update({ [field]: valor }).eq('id', impId)
+    setImputados(prev => prev.map(x => x.id === impId ? { ...x, [field]: valor } : x))
+    const imp = imputados.find(x => x.id === impId)
+    if (registrarActividad) registrarActividad('accion', `Actualizó datos de ${imp?.nombre || 'imputado'} en RUC ${selectedCausa.ruc}`)
   }
 
   const updateField=async(field,value)=>{
@@ -3101,114 +3207,9 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                   <Field key={field.key} label={field.label} value={c[field.key]} editable={field.editable} full={field.full} fieldKey={field.key} editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField(field.key,editValue)}/>
                 ))}
 
-                {/* Centro Penal — vinculado al imputado, misma lógica que Cautelares.
-                    1 imputado = campo único (pero ya guardado en el imputado); 2+ = uno por
-                    cada uno (puede variar entre ellos). Usa la columna "lugar_detencion" que
-                    ya existe en imputados — no requiere ninguna migración nueva. */}
-                {imputados.length === 0 ? (
-                  <Field label="Centro Penal" value={c.centro_penal} editable fieldKey="centro_penal" editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField('centro_penal',editValue)}/>
-                ) : imputados.length === 1 ? (
-                  <Field label="Centro Penal" value={imputados[0].lugar_detencion} editable fieldKey="centro_penal" editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={async()=>{await actualizarCentroPenalImputado(imputados[0].id, editValue);setEditField(null)}}/>
-                ) : (
-                  <div style={{gridColumn:'1/-1',marginBottom:2}}>
-                    <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Centro Penal</div>
-                    <div style={{display:'flex',flexWrap:'wrap',gap:16}}>
-                      {imputados.map(imp=>(
-                        <div key={imp.id} style={{flex:'1 1 300px',maxWidth:380}}>
-                          <div style={{fontSize:11,fontWeight:700,color:'#1E293B',marginBottom:4,...f}}>👤 {imp.nombre||'Sin nombre'}</div>
-                          <SearchableSelect value={imp.lugar_detencion} onChange={(v)=>actualizarCentroPenalImputado(imp.id, v)} options={CENTROS_PENALES} placeholder="Buscar centro penal..." isDelito={false}/>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Cautelares — vinculadas al imputado correspondiente. Con 1 imputado se ve
-                    igual que antes; con 2+ imputados, cada uno tiene su propia casilla y sus
-                    propias cautelares (igual que ya pasa con Delito(s) más abajo). */}
-                {imputados.length <= 1 ? (
-                  <CautelaresPanel
-                    causaId={c.id}
-                    ruc={c.ruc}
-                    cautelares={cautelares}
-                    esRPA={imputados.some(i=>i.regimen==='RPA')}
-                    registrarActividad={registrarActividad}
-                    onGuardar={async(form)=>{
-                      const{data,error}=await supabase.from('cautelares_causa').insert({causa_id:c.id,imputado_id:imputados[0]?.id||null,tipo:form.tipo,fecha_inicio:form.fecha_inicio,fecha_termino:form.fecha_termino||null,frecuencia:form.tipo==='Firma'?form.frecuencia:null}).select().single()
-                      if(!error&&data){setCautelares(prev=>[...prev,data]);if(registrarActividad)registrarActividad('accion',`Agregó cautelar "${form.tipo}" en RUC ${c.ruc}`)}
-                    }}
-                    onActualizar={async(id,campos)=>{
-                      await supabase.from('cautelares_causa').update(campos).eq('id',id)
-                      setCautelares(prev=>prev.map(x=>x.id===id?{...x,...campos}:x))
-                    }}
-                  />
-                ) : (
-                  <div style={{gridColumn:'1/-1',display:'flex',flexDirection:'column',gap:14}}>
-                    {imputados.map(imp=>(
-                      <CautelaresPanel
-                        key={imp.id}
-                        nombreImputado={imp.nombre || 'Sin nombre'}
-                        causaId={c.id}
-                        ruc={c.ruc}
-                        cautelares={cautelares.filter(ct=>ct.imputado_id===imp.id)}
-                        esRPA={imp.regimen==='RPA'}
-                        registrarActividad={registrarActividad}
-                        onGuardar={async(form)=>{
-                          const{data,error}=await supabase.from('cautelares_causa').insert({causa_id:c.id,imputado_id:imp.id,tipo:form.tipo,fecha_inicio:form.fecha_inicio,fecha_termino:form.fecha_termino||null,frecuencia:form.tipo==='Firma'?form.frecuencia:null}).select().single()
-                          if(!error&&data){setCautelares(prev=>[...prev,data]);if(registrarActividad)registrarActividad('accion',`Agregó cautelar "${form.tipo}" a ${imp.nombre||'imputado'} en RUC ${c.ruc}`)}
-                        }}
-                        onActualizar={async(id,campos)=>{
-                          await supabase.from('cautelares_causa').update(campos).eq('id',id)
-                          setCautelares(prev=>prev.map(x=>x.id===id?{...x,...campos}:x))
-                        }}
-                      />
-                    ))}
-                  </div>
-                )}
-
-                {/* Delito(s) — sincronizado con los imputados. 1 imputado = mismo dato; varios = uno por cada uno.
-                    Ahora en tarjetas angostas y colapsables (misma dinámica que Cautelares). */}
-                <div style={{gridColumn:'1/-1',marginBottom:2}}>
-                  <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Delito(s)</div>
-                  {imputados.length === 0 ? (
-                    <div style={{display:'flex'}}>
-                      <DelitoCard value={c.delito} onChange={(v)=>updateField('delito', v)} options={DELITOS_CATALOGO} />
-                    </div>
-                  ) : imputados.length === 1 ? (
-                    imputados[0].delitos ? (
-                      <div style={{display:'flex'}}>
-                        <DelitoCard value={imputados[0].delitos} onChange={(v)=>actualizarDelitosImputado(imputados[0].id, v)} options={DELITOS_CATALOGO} />
-                      </div>
-                    ) : c.delito ? (
-                      <div>
-                        <div style={{fontSize:12,color:'#92400e',background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:8,padding:'10px 12px',marginBottom:8,...f}}>
-                          📋 Ya tenías guardado: <strong>{c.delito.replace(/\|/g,', ')}</strong> — aún no vinculado al imputado.
-                        </div>
-                        <button className="btn-secondary" style={{fontSize:12}} onClick={()=>actualizarDelitosImputado(imputados[0].id, c.delito)}>✓ Vincular a {imputados[0].nombre||'este imputado'}</button>
-                      </div>
-                    ) : (
-                      <div style={{display:'flex'}}>
-                        <DelitoCard value="" onChange={(v)=>actualizarDelitosImputado(imputados[0].id, v)} options={DELITOS_CATALOGO} />
-                      </div>
-                    )
-                  ) : (
-                    <div>
-                      {c.delito && imputados.every(i=>!i.delitos) && (
-                        <div style={{fontSize:12,color:'#92400e',background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:8,padding:'10px 12px',marginBottom:12,...f}}>
-                          📋 Ya tenías guardado: <strong>{c.delito.replace(/\|/g,', ')}</strong> — aún no vinculado a ningún imputado. Asígnalo manualmente abajo con "+ Agregar delito" en el imputado que corresponda.
-                        </div>
-                      )}
-                      <div style={{display:'flex',flexWrap:'wrap',gap:16}}>
-                        {imputados.map(imp=>(
-                          <DelitoCard key={imp.id} nombreImputado={imp.nombre||'Sin nombre'} value={imp.delitos} onChange={(v)=>actualizarDelitosImputado(imp.id, v)} options={DELITOS_CATALOGO} />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
                 {/* ── Franja compacta, alineada a la izquierda: Vencimiento del plazo, Fecha ACD y
-                     Fecha de los hechos — más chica que antes, como pidió Joaquín ── */}
+                     Fecha de los hechos — datos de la CAUSA (son los mismos sin importar cuántos
+                     imputados haya), por eso van aquí arriba, junto a Tribunal/RIT/Fiscal ── */}
                 <div style={{gridColumn:'1/-1',marginTop:2,marginBottom:2}}>
                   <div style={{display:'flex',gap:10,flexWrap:'wrap',maxWidth:640}}>
                     {/* Vencimiento del plazo */}
@@ -3283,42 +3284,120 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                   )}
                 </div>
 
-                <div style={{gridColumn:'1/-1',marginTop:8}}>
-                  <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:8,fontWeight:600,...f}}>Delegación de Poder</div>
-                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-                    <Field label="Abogado delegado" value={c.delegacion_abogado} editable fieldKey="delegacion_abogado" editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField('delegacion_abogado',editValue)}/>
-                    <div>
-                      <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Fecha de delegación</div>
-                      {editField==='delegacion_fecha'?(
-                        <div style={{display:'flex',gap:6}}>
-                          <input type="date" style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}}
-                            value={editValue} onChange={e=>setEditValue(e.target.value)}
-                            onKeyDown={e=>{if(e.key==='Enter')updateField('delegacion_fecha',editValue);if(e.key==='Escape')setEditField(null)}} autoFocus/>
-                          <button className="btn-primary" style={{padding:'8px 14px',fontSize:12}} onClick={()=>updateField('delegacion_fecha',editValue)}>✓</button>
-                          <button className="btn-secondary" style={{padding:'8px 12px',fontSize:12}} onClick={()=>setEditField(null)}>✗</button>
+                {/* ── Todo lo que puede variar por imputado: Centro Penal, Cautelar Personal,
+                     Delito(s), Delegación de Poder y Correo de notificación. Con 1 imputado se
+                     ve igual que siempre (campos sueltos); con 2+, cada uno tiene su propia
+                     tarjeta colapsable con toda su información agrupada. ── */}
+                {imputados.length <= 1 ? (
+                  <>
+                    {imputados.length === 0 ? (
+                      <Field label="Centro Penal" value={c.centro_penal} editable fieldKey="centro_penal" editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField('centro_penal',editValue)}/>
+                    ) : (
+                      <Field label="Centro Penal" value={imputados[0].lugar_detencion} editable fieldKey="centro_penal" editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={async()=>{await actualizarCentroPenalImputado(imputados[0].id, editValue);setEditField(null)}}/>
+                    )}
+
+                    <CautelaresPanel
+                      causaId={c.id}
+                      ruc={c.ruc}
+                      cautelares={cautelares}
+                      esRPA={imputados.some(i=>i.regimen==='RPA')}
+                      registrarActividad={registrarActividad}
+                      onGuardar={async(form)=>{
+                        const{data,error}=await supabase.from('cautelares_causa').insert({causa_id:c.id,imputado_id:imputados[0]?.id||null,tipo:form.tipo,fecha_inicio:form.fecha_inicio,fecha_termino:form.fecha_termino||null,frecuencia:form.tipo==='Firma'?form.frecuencia:null}).select().single()
+                        if(!error&&data){setCautelares(prev=>[...prev,data]);if(registrarActividad)registrarActividad('accion',`Agregó cautelar "${form.tipo}" en RUC ${c.ruc}`)}
+                      }}
+                      onActualizar={async(id,campos)=>{
+                        await supabase.from('cautelares_causa').update(campos).eq('id',id)
+                        setCautelares(prev=>prev.map(x=>x.id===id?{...x,...campos}:x))
+                      }}
+                    />
+
+                    <div style={{gridColumn:'1/-1',marginBottom:2}}>
+                      <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Delito(s)</div>
+                      {imputados.length === 0 ? (
+                        <div style={{display:'flex'}}>
+                          <DelitoCard value={c.delito} onChange={(v)=>updateField('delito', v)} options={DELITOS_CATALOGO} />
                         </div>
-                      ):(
-                        <div className="fld" onClick={()=>{setEditField('delegacion_fecha');setEditValue(c.delegacion_fecha||'')}}
-                          style={{padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:c.delegacion_fecha?'#1E293B':'#94a3b8',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
-                          <span>{c.delegacion_fecha || 'Clic para agregar...'}</span>
-                          <span style={{fontSize:11,color:'#94a3b8'}}>✏</span>
+                      ) : imputados[0].delitos ? (
+                        <div style={{display:'flex'}}>
+                          <DelitoCard value={imputados[0].delitos} onChange={(v)=>actualizarDelitosImputado(imputados[0].id, v)} options={DELITOS_CATALOGO} />
+                        </div>
+                      ) : c.delito ? (
+                        <div>
+                          <div style={{fontSize:12,color:'#92400e',background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:8,padding:'10px 12px',marginBottom:8,...f}}>
+                            📋 Ya tenías guardado: <strong>{c.delito.replace(/\|/g,', ')}</strong> — aún no vinculado al imputado.
+                          </div>
+                          <button className="btn-secondary" style={{fontSize:12}} onClick={()=>actualizarDelitosImputado(imputados[0].id, c.delito)}>✓ Vincular a {imputados[0].nombre||'este imputado'}</button>
+                        </div>
+                      ) : (
+                        <div style={{display:'flex'}}>
+                          <DelitoCard value="" onChange={(v)=>actualizarDelitosImputado(imputados[0].id, v)} options={DELITOS_CATALOGO} />
                         </div>
                       )}
                     </div>
+
+                    <div style={{gridColumn:'1/-1',marginTop:8}}>
+                      <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:8,fontWeight:600,...f}}>Delegación de Poder</div>
+                      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+                        <Field label="Abogado delegado" value={imputados.length===0?c.delegacion_abogado:imputados[0].delegacion_abogado} editable fieldKey="delegacion_abogado" editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>{imputados.length===0?updateField('delegacion_abogado',editValue):actualizarCampoImputado(imputados[0].id,'delegacion_abogado',editValue);setEditField(null)}}/>
+                        <div>
+                          <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Fecha de delegación</div>
+                          {editField==='delegacion_fecha'?(
+                            <div style={{display:'flex',gap:6}}>
+                              <input type="date" style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}}
+                                value={editValue} onChange={e=>setEditValue(e.target.value)}
+                                onKeyDown={e=>{if(e.key==='Enter'){imputados.length===0?updateField('delegacion_fecha',editValue):actualizarCampoImputado(imputados[0].id,'delegacion_fecha',editValue);setEditField(null)}if(e.key==='Escape')setEditField(null)}} autoFocus/>
+                              <button className="btn-primary" style={{padding:'8px 14px',fontSize:12}} onClick={()=>{imputados.length===0?updateField('delegacion_fecha',editValue):actualizarCampoImputado(imputados[0].id,'delegacion_fecha',editValue);setEditField(null)}}>✓</button>
+                              <button className="btn-secondary" style={{padding:'8px 12px',fontSize:12}} onClick={()=>setEditField(null)}>✗</button>
+                            </div>
+                          ):(
+                            <div className="fld" onClick={()=>{setEditField('delegacion_fecha');setEditValue((imputados.length===0?c.delegacion_fecha:imputados[0].delegacion_fecha)||'')}}
+                              style={{padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:(imputados.length===0?c.delegacion_fecha:imputados[0].delegacion_fecha)?'#1E293B':'#94a3b8',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
+                              <span>{(imputados.length===0?c.delegacion_fecha:imputados[0].delegacion_fecha) || 'Clic para agregar...'}</span>
+                              <span style={{fontSize:11,color:'#94a3b8'}}>✏</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{gridColumn:'1/-1',marginTop:4}}>
+                      <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Correo de notificación</div>
+                      <select
+                        style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:(imputados.length===0?c.correo_notificacion:imputados[0].correo_notificacion)?'#1E293B':'#94a3b8',background:'#fff',cursor:'pointer',...f}}
+                        value={(imputados.length===0?c.correo_notificacion:imputados[0].correo_notificacion)||''}
+                        onChange={e=>imputados.length===0?updateField('correo_notificacion', e.target.value):actualizarCampoImputado(imputados[0].id,'correo_notificacion', e.target.value)}>
+                        <option value="">Seleccionar correo...</option>
+                        <option value="JOBREGONABOGADO@GMAIL.COM">JOBREGONABOGADO@GMAIL.COM</option>
+                        <option value="NOTIFICACION.DEFENSAPENAL@GMAIL.COM">NOTIFICACION.DEFENSAPENAL@GMAIL.COM</option>
+                      </select>
+                    </div>
+                  </>
+                ) : (
+                  <div style={{gridColumn:'1/-1',display:'flex',flexDirection:'column',gap:12}}>
+                    {imputados.map(imp=>(
+                      <ImputadoDatosCard
+                        key={imp.id}
+                        imp={imp}
+                        causaId={c.id}
+                        ruc={c.ruc}
+                        cautelares={cautelares.filter(ct=>ct.imputado_id===imp.id)}
+                        registrarActividad={registrarActividad}
+                        onUpdateCampo={(field,value)=>actualizarCampoImputado(imp.id, field, value)}
+                        onDelitoChange={(v)=>actualizarDelitosImputado(imp.id, v)}
+                        onGuardarCautelar={async(form)=>{
+                          const{data,error}=await supabase.from('cautelares_causa').insert({causa_id:c.id,imputado_id:imp.id,tipo:form.tipo,fecha_inicio:form.fecha_inicio,fecha_termino:form.fecha_termino||null,frecuencia:form.tipo==='Firma'?form.frecuencia:null}).select().single()
+                          if(!error&&data){setCautelares(prev=>[...prev,data]);if(registrarActividad)registrarActividad('accion',`Agregó cautelar "${form.tipo}" a ${imp.nombre||'imputado'} en RUC ${c.ruc}`)}
+                        }}
+                        onActualizarCautelar={async(id,campos)=>{
+                          await supabase.from('cautelares_causa').update(campos).eq('id',id)
+                          setCautelares(prev=>prev.map(x=>x.id===id?{...x,...campos}:x))
+                        }}
+                      />
+                    ))}
                   </div>
-                </div>
-                {/* Correo de Notificación */}
-                <div style={{gridColumn:'1/-1',marginTop:4}}>
-                  <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Correo de notificación</div>
-                  <select
-                    style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:c.correo_notificacion?'#1E293B':'#94a3b8',background:'#fff',cursor:'pointer',...f}}
-                    value={c.correo_notificacion||''}
-                    onChange={e=>updateField('correo_notificacion', e.target.value)}>
-                    <option value="">Seleccionar correo...</option>
-                    <option value="JOBREGONABOGADO@GMAIL.COM">JOBREGONABOGADO@GMAIL.COM</option>
-                    <option value="NOTIFICACION.DEFENSAPENAL@GMAIL.COM">NOTIFICACION.DEFENSAPENAL@GMAIL.COM</option>
-                  </select>
-                </div>
+                )}
+
                 <div style={{gridColumn:'1/-1',marginTop:8}}>
                   <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:8,fontWeight:600,...f}}>Imputados adicionales</div>
                   {(c.imputado||'').split('|').filter((_,i)=>i>0).map((imp,i)=>(
