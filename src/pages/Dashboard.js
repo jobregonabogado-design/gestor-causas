@@ -29,6 +29,8 @@ const CSS = `
   .chip-group { animation:chipIn 0.28s cubic-bezier(0.4,0,0.2,1) forwards; }
   .chip-btn { transition:all 0.18s ease; }
   .chip-btn:hover { transform:translateY(-1px); box-shadow:0 3px 10px rgba(15,23,42,0.08); }
+  .caut-header { transition:filter 0.2s ease; }
+  .caut-header:hover { filter:brightness(1.08); }
   @media (max-width: 640px) {
     .stats-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 8px !important; }
     .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -128,7 +130,6 @@ function corregirOrtografia(texto) {
   }
   return resultado
 }
-
 
 // ─── LISTA COMPLETA DE TRIBUNALES CHILE ──────────────────────────────────────
 const TRIBUNALES_CHILE = [
@@ -1765,9 +1766,6 @@ function FallosReferencia({ causaId, ruc, email, onAccion }) {
 }
 
 // ─── DOCUMENTOS GUARDADOS EN LA APP (independiente de OneDrive) ──────────────
-// A diferencia de OneDrive (que solo se enlaza, sin ocupar espacio acá), estos
-// documentos SÍ se suben y quedan guardados en la app — para lo puntual que
-// quieras tener siempre a mano sin depender de que el Drive esté disponible.
 const ICONO_POR_EXT = { pdf:'📄', doc:'📝', docx:'📝', xls:'📊', xlsx:'📊', jpg:'🖼️', jpeg:'🖼️', png:'🖼️', zip:'🗜️' }
 function iconoDocumento(nombre) {
   const ext = (nombre.split('.').pop() || '').toLowerCase()
@@ -1968,10 +1966,11 @@ function HonorariosTab({ causaId, ruc, email, registrarActividad, onAccion }) {
 }
 
 // ─── CAUTELARES — historial (no se borra), abono 1x1 y fórmula de arresto nocturno ─
-const TIPOS_ABONO_DIRECTO = ['Prisión Preventiva','Internación Provisoria','Arresto Total','Sujeción a SENAME']
+const TIPOS_ABONO_DIRECTO = ['Prisión Preventiva','Internación Provisoria','Arresto Total']
+const CAUTELAR_SENAME = 'Sujeción a SENAME'
 const CAUTELAR_NOCTURNO = 'Arresto Nocturno'
 const TIPOS_CAUTELARES_ADULTO = ['Prisión Preventiva','Arresto Total',CAUTELAR_NOCTURNO,'Firma','Arraigo Nacional','Prohibición de acercarse a la víctima','Prohibición de acercarse a la víctima (VIF Art. 9)','Prohibición de portar armas']
-const TIPOS_CAUTELARES_RPA = ['Internación Provisoria','Arresto Total',CAUTELAR_NOCTURNO,'Sujeción a SENAME','Firma','Arraigo Nacional','Prohibición de acercarse a la víctima','Prohibición de acercarse a la víctima (VIF Art. 9)','Prohibición de portar armas']
+const TIPOS_CAUTELARES_RPA = ['Internación Provisoria','Arresto Total',CAUTELAR_NOCTURNO,CAUTELAR_SENAME,'Firma','Arraigo Nacional','Prohibición de acercarse a la víctima','Prohibición de acercarse a la víctima (VIF Art. 9)','Prohibición de portar armas']
 
 function diasEntreFechasCaut(inicio, fin) {
   if (!inicio || !fin) return 0
@@ -1983,15 +1982,16 @@ function diasEntreFechasCaut(inicio, fin) {
 function CautelaresPanel({ causaId, cautelares, esRPA, onGuardar, onActualizar, registrarActividad, ruc }) {
   const hoyISO = new Date().toISOString().slice(0,10)
   const TIPOS = esRPA ? TIPOS_CAUTELARES_RPA : TIPOS_CAUTELARES_ADULTO
+  const [expanded,setExpanded] = useState(true) // la casilla queda visible; al abrir se ve el detalle y el botón de agregar
   const [showForm,setShowForm] = useState(false)
   const [form,setForm] = useState({ tipo:TIPOS[0], fecha_inicio:hoyISO, fecha_termino:'', frecuencia:'Mensual' })
   const [guardando,setGuardando] = useState(false)
   const [fechaCalc,setFechaCalc] = useState(hoyISO) // calculadora ad-hoc, no se guarda
   const [nocturnoEdit,setNocturnoEdit] = useState({}) // {id: {bruto, calculado}} temporal por fila
 
-  // ✅ Abono total EN VIVO: para tipos de abono directo usa fecha_termino si ya
-  // cerró, o "hoy" si sigue vigente (así los días van corriendo solos). Para
-  // Arresto Nocturno solo suma lo que se haya sumado explícitamente.
+  // ✅ Abono total EN VIVO — SOLO cuenta Prisión Preventiva / Internación Provisoria /
+  // Arresto Total (y Arresto Nocturno ya sumado explícitamente). Sujeción a SENAME
+  // NUNCA suma acá — se cuenta aparte, para no duplicar el cómputo 1x1.
   const totalAbono = cautelares.reduce((sum,ct)=>{
     if (TIPOS_ABONO_DIRECTO.includes(ct.tipo)) {
       return sum + diasEntreFechasCaut(ct.fecha_inicio, ct.fecha_termino || hoyISO)
@@ -1999,6 +1999,12 @@ function CautelaresPanel({ causaId, cautelares, esRPA, onGuardar, onActualizar, 
     if (ct.tipo === CAUTELAR_NOCTURNO && ct.sumado_a_abono) {
       return sum + (parseFloat(ct.abono_nocturno_calculado)||0)
     }
+    return sum
+  },0)
+
+  // Días de SENAME — solo informativo, no entra al abono 1x1
+  const totalDiasSename = cautelares.reduce((sum,ct)=>{
+    if (ct.tipo === CAUTELAR_SENAME) return sum + diasEntreFechasCaut(ct.fecha_inicio, ct.fecha_termino || hoyISO)
     return sum
   },0)
 
@@ -2031,129 +2037,173 @@ function CautelaresPanel({ causaId, cautelares, esRPA, onGuardar, onActualizar, 
   }
 
   return (
-    <div style={{gridColumn:'1/-1',marginTop:12}}>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:10}}>
-        <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,fontWeight:600,...f}}>
-          Cautelares {esRPA && <span style={{color:'#7c3aed'}}>(RPA)</span>}
-        </div>
-        <div style={{display:'flex',alignItems:'center',gap:12}}>
-          <div style={{textAlign:'right'}}>
-            <div style={{fontSize:9,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1,...f}}>Abono total (hoy)</div>
-            <div style={{fontSize:20,fontWeight:800,color:'#1E293B',...f}}>{totalAbono} días</div>
+    <div style={{gridColumn:'1/-1',marginTop:16,marginBottom:8}}>
+      {/* Casilla principal — grande, siempre visible, clic para desplegar/colapsar */}
+      <div
+        className="caut-header"
+        onClick={()=>setExpanded(v=>!v)}
+        style={{
+          cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center',
+          background:'linear-gradient(135deg,#1E293B,#0f172a)', color:'#fff',
+          borderRadius: expanded ? '18px 18px 0 0' : 18,
+          padding:'22px 26px', boxShadow:'0 6px 20px rgba(15,23,42,0.18)',
+        }}>
+        <div>
+          <div style={{fontSize:12,opacity:0.65,textTransform:'uppercase',letterSpacing:1.5,fontWeight:700,...f}}>
+            🔒 Cautelar Personal {esRPA && <span style={{color:'#c4b5fd'}}>· RPA</span>}
           </div>
-          <button className="btn-secondary" style={{fontSize:12,border:'none',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',borderRadius:14}} onClick={()=>setShowForm(v=>!v)}>+ Agregar cautelar</button>
+          <div style={{fontSize:30,fontWeight:900,letterSpacing:'-1px',marginTop:4,...f}}>
+            {totalAbono} <span style={{fontSize:16,fontWeight:600,opacity:0.7}}>días de abono</span>
+          </div>
+          {totalDiasSename > 0 && (
+            <div style={{fontSize:12,opacity:0.75,marginTop:6,...f}}>
+              ⓘ Sujeción a SENAME: {totalDiasSename} días registrados — <strong>no cuentan para el abono 2×1</strong>, se llevan aparte.
+            </div>
+          )}
         </div>
+        <div style={{fontSize:22,opacity:0.7}}>{expanded ? '▲' : '▼'}</div>
       </div>
 
-      {cautelares.length===0 && <p style={{fontSize:13,color:'#94a3b8',marginBottom:12,...f}}>Sin cautelares registradas.</p>}
+      {expanded && (
+        <div style={{background:'#fff',boxShadow:'0 1px 3px rgba(15,23,42,0.08)',borderRadius:'0 0 18px 18px',padding:'22px 24px'}}>
 
-      {cautelares.map(ct=>{
-        const esDirecto = TIPOS_ABONO_DIRECTO.includes(ct.tipo)
-        const esNocturno = ct.tipo === CAUTELAR_NOCTURNO
-        const vigente = !ct.fecha_termino
-        const diasDirecto = esDirecto ? diasEntreFechasCaut(ct.fecha_inicio, ct.fecha_termino||hoyISO) : 0
-        const calcLocal = nocturnoEdit[ct.id]
-        return (
-          <div key={ct.id} style={{background:'#fff',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',borderRadius:14,padding:16,marginBottom:10}}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:8}}>
-              <div>
-                <div style={{fontSize:13,fontWeight:700,color:'#1E293B',display:'flex',alignItems:'center',gap:8,...f}}>
-                  {ct.tipo}
-                  {vigente ? (
-                    <span style={{fontSize:9,fontWeight:700,color:'#059669',background:'#ecfdf5',padding:'2px 8px',borderRadius:10,textTransform:'uppercase',...f}}>Vigente</span>
-                  ) : (
-                    <span style={{fontSize:9,fontWeight:700,color:'#64748b',background:'#F1F5F9',padding:'2px 8px',borderRadius:10,textTransform:'uppercase',...f}}>Cerrada</span>
-                  )}
-                </div>
-                <div style={{fontSize:11,color:'#94a3b8',marginTop:3,...f}}>
-                  Desde {ct.fecha_inicio}{ct.fecha_termino?` hasta ${ct.fecha_termino}`:''}
-                  {ct.frecuencia?` · ${ct.frecuencia}`:''}
-                </div>
-              </div>
-              {vigente && <button onClick={()=>cerrarCautelar(ct)} style={{fontSize:11,color:'#dc2626',background:'transparent',border:'none',cursor:'pointer',fontWeight:600,...f}}>Cerrar / cambiar</button>}
-            </div>
+          {cautelares.length===0 && <p style={{fontSize:14,color:'#94a3b8',marginBottom:14,...f}}>Sin cautelares registradas todavía.</p>}
 
-            {esDirecto && (
-              <div style={{marginTop:10,fontSize:12,color:'#1E293B',...f}}>
-                📐 Abono 1×1: <strong>{diasDirecto} días</strong>{vigente?' (calculado a hoy, sigue corriendo)':''}
-              </div>
-            )}
-
-            {esNocturno && (
-              <div style={{marginTop:10,background:'#F8F9FC',borderRadius:10,padding:12}}>
-                <div style={{fontSize:11,color:'#64748b',marginBottom:8,...f}}>
-                  Días de arresto nocturno (1×1, informativo): <strong>{ct.fecha_termino ? diasEntreFechasCaut(ct.fecha_inicio,ct.fecha_termino) : diasEntreFechasCaut(ct.fecha_inicio,fechaCalc)}</strong>
+          {cautelares.map(ct=>{
+            const esDirecto = TIPOS_ABONO_DIRECTO.includes(ct.tipo)
+            const esNocturno = ct.tipo === CAUTELAR_NOCTURNO
+            const esSename = ct.tipo === CAUTELAR_SENAME
+            const vigente = !ct.fecha_termino
+            const diasDirecto = esDirecto ? diasEntreFechasCaut(ct.fecha_inicio, ct.fecha_termino||hoyISO) : 0
+            const diasSename = esSename ? diasEntreFechasCaut(ct.fecha_inicio, ct.fecha_termino||hoyISO) : 0
+            const calcLocal = nocturnoEdit[ct.id]
+            return (
+              <div key={ct.id} style={{background:'#F8F9FC',border:'1px solid #e2e8f0',borderRadius:16,padding:'18px 20px',marginBottom:12}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:8}}>
+                  <div>
+                    <div style={{fontSize:15,fontWeight:700,color:'#1E293B',display:'flex',alignItems:'center',gap:8,...f}}>
+                      {ct.tipo}
+                      {vigente ? (
+                        <span style={{fontSize:10,fontWeight:700,color:'#059669',background:'#ecfdf5',padding:'3px 9px',borderRadius:10,textTransform:'uppercase',...f}}>Vigente</span>
+                      ) : (
+                        <span style={{fontSize:10,fontWeight:700,color:'#64748b',background:'#F1F5F9',padding:'3px 9px',borderRadius:10,textTransform:'uppercase',...f}}>Cerrada</span>
+                      )}
+                      {esSename && (
+                        <span style={{fontSize:10,fontWeight:700,color:'#92400e',background:'#fff7ed',padding:'3px 9px',borderRadius:10,textTransform:'uppercase',...f}}>Sin abono 2×1</span>
+                      )}
+                    </div>
+                    <div style={{fontSize:12,color:'#94a3b8',marginTop:4,...f}}>
+                      Desde {ct.fecha_inicio}{ct.fecha_termino?` hasta ${ct.fecha_termino}`:''}
+                      {ct.frecuencia?` · ${ct.frecuencia}`:''}
+                    </div>
+                  </div>
+                  {vigente && <button onClick={()=>cerrarCautelar(ct)} style={{fontSize:12,color:'#dc2626',background:'transparent',border:'none',cursor:'pointer',fontWeight:600,...f}}>Cerrar / cambiar</button>}
                 </div>
-                {ct.sumado_a_abono ? (
-                  <div style={{fontSize:12,color:'#059669',fontWeight:600,...f}}>✓ Ya se sumó al abono: {ct.abono_nocturno_calculado} días</div>
-                ) : (
-                  <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
-                    <button className="btn-secondary" style={{fontSize:11,border:'none',boxShadow:'0 1px 2px rgba(15,23,42,0.06)'}} onClick={()=>calcularNocturno(ct)}>🧮 Calcular abono (días × 8 ÷ 12)</button>
-                    {calcLocal && (
-                      <>
-                        <span style={{fontSize:12,color:'#1E293B',...f}}>= <strong>{calcLocal.calculado} días</strong> de abono</span>
-                        <button className="btn-primary" style={{fontSize:11,borderRadius:10}} onClick={()=>sumarNocturnoAlAbono(ct)}>+ Sumar al abono total</button>
-                      </>
+
+                {esDirecto && (
+                  <div style={{marginTop:12,fontSize:13,color:'#1E293B',...f}}>
+                    📐 Abono 1×1: <strong>{diasDirecto} días</strong>{vigente?' (calculado a hoy, sigue corriendo)':''}
+                  </div>
+                )}
+
+                {esSename && (
+                  <div style={{marginTop:12,background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:10,padding:'10px 14px'}}>
+                    <div style={{fontSize:13,color:'#92400e',fontWeight:600,...f}}>
+                      {diasSename} días de Sujeción a SENAME{vigente?' (a hoy, sigue corriendo)':''}
+                    </div>
+                    <div style={{fontSize:11,color:'#b45309',marginTop:3,...f}}>
+                      Este tipo de medida no otorga abono 2×1. Se muestra por separado para que nunca se sume por error al abono total.
+                    </div>
+                  </div>
+                )}
+
+                {esNocturno && (
+                  <div style={{marginTop:12,background:'#F8F9FC',border:'1px solid #e2e8f0',borderRadius:10,padding:14}}>
+                    <div style={{fontSize:12,color:'#64748b',marginBottom:8,...f}}>
+                      Días de arresto nocturno (1×1, informativo): <strong>{ct.fecha_termino ? diasEntreFechasCaut(ct.fecha_inicio,ct.fecha_termino) : diasEntreFechasCaut(ct.fecha_inicio,fechaCalc)}</strong>
+                    </div>
+                    {ct.sumado_a_abono ? (
+                      <div style={{fontSize:13,color:'#059669',fontWeight:600,...f}}>✓ Ya se sumó al abono: {ct.abono_nocturno_calculado} días</div>
+                    ) : (
+                      <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+                        <button className="btn-secondary" style={{fontSize:12,border:'none',boxShadow:'0 1px 2px rgba(15,23,42,0.06)'}} onClick={()=>calcularNocturno(ct)}>🧮 Calcular abono (días × 8 ÷ 12)</button>
+                        {calcLocal && (
+                          <>
+                            <span style={{fontSize:13,color:'#1E293B',...f}}>= <strong>{calcLocal.calculado} días</strong> de abono</span>
+                            <button className="btn-primary" style={{fontSize:12,borderRadius:10}} onClick={()=>sumarNocturnoAlAbono(ct)}>+ Sumar al abono total</button>
+                          </>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
               </div>
-            )}
+            )
+          })}
+
+          {/* Calculadora ad-hoc: elegir cualquier fecha para previsualizar, sin guardar nada.
+              Siempre vuelve a "hoy" con un botón dedicado — nunca queda "pegada" en otra fecha. */}
+          <div style={{background:'#eff6ff',borderRadius:16,padding:18,marginTop:16,marginBottom:showForm?16:0}}>
+            <div style={{fontSize:12,color:'#1e40af',fontWeight:700,marginBottom:10,...f}}>🧮 Calculadora — no guarda nada, solo previsualiza a una fecha distinta de hoy</div>
+            <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
+              <input type="date" style={{padding:'9px 14px',border:'none',borderRadius:10,fontSize:14,boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}} value={fechaCalc} onChange={e=>setFechaCalc(e.target.value)}/>
+              {fechaCalc !== hoyISO && (
+                <button className="btn-secondary" style={{fontSize:12,border:'none',boxShadow:'0 1px 2px rgba(15,23,42,0.06)'}} onClick={()=>setFechaCalc(hoyISO)}>↺ Volver a hoy</button>
+              )}
+              <span style={{fontSize:13,color:'#1e40af',...f}}>
+                Abono proyectado a esa fecha: <strong>{cautelares.reduce((s,ct)=>{
+                  if (TIPOS_ABONO_DIRECTO.includes(ct.tipo)) return s + diasEntreFechasCaut(ct.fecha_inicio, ct.fecha_termino || fechaCalc)
+                  if (ct.tipo===CAUTELAR_NOCTURNO && ct.sumado_a_abono) return s + (parseFloat(ct.abono_nocturno_calculado)||0)
+                  return s
+                },0)} días</strong>
+              </span>
+            </div>
           </div>
-        )
-      })}
 
-      {/* Calculadora ad-hoc: elegir cualquier fecha para previsualizar, sin guardar nada */}
-      <div style={{background:'#eff6ff',borderRadius:14,padding:14,marginTop:14,marginBottom:showForm?14:0}}>
-        <div style={{fontSize:11,color:'#1e40af',fontWeight:600,marginBottom:8,...f}}>🧮 Calculadora — no guarda nada, solo previsualiza a una fecha distinta de hoy</div>
-        <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
-          <input type="date" style={{padding:'8px 12px',border:'none',borderRadius:10,fontSize:13,boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}} value={fechaCalc} onChange={e=>setFechaCalc(e.target.value)}/>
-          <span style={{fontSize:12,color:'#1e40af',...f}}>
-            Abono proyectado a esa fecha: <strong>{cautelares.reduce((s,ct)=>{
-              if (TIPOS_ABONO_DIRECTO.includes(ct.tipo)) return s + diasEntreFechasCaut(ct.fecha_inicio, ct.fecha_termino || fechaCalc)
-              if (ct.tipo===CAUTELAR_NOCTURNO && ct.sumado_a_abono) return s + (parseFloat(ct.abono_nocturno_calculado)||0)
-              return s
-            },0)} días</strong>
-          </span>
-        </div>
-      </div>
-
-      {showForm && (
-        <div style={{background:'#F8F9FC',borderRadius:14,padding:16,marginTop:14}}>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
-            <div style={{gridColumn:'1/-1'}}>
-              <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.2,marginBottom:5,fontWeight:600,...f}}>Tipo de cautelar</div>
-              <select style={{width:'100%',padding:'9px 12px',border:'none',borderRadius:10,fontSize:13,boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}} value={form.tipo} onChange={e=>setForm(p=>({...p,tipo:e.target.value}))}>
-                {TIPOS.map(t=><option key={t}>{t}</option>)}
-              </select>
-            </div>
-            <div>
-              <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.2,marginBottom:5,fontWeight:600,...f}}>Fecha de inicio</div>
-              <input type="date" style={{width:'100%',padding:'9px 12px',border:'none',borderRadius:10,fontSize:13,boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}} value={form.fecha_inicio} onChange={e=>setForm(p=>({...p,fecha_inicio:e.target.value}))}/>
-            </div>
-            <div>
-              <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.2,marginBottom:5,fontWeight:600,...f}}>Fecha de término (si ya terminó)</div>
-              <input type="date" style={{width:'100%',padding:'9px 12px',border:'none',borderRadius:10,fontSize:13,boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}} value={form.fecha_termino} onChange={e=>setForm(p=>({...p,fecha_termino:e.target.value}))}/>
-            </div>
-            {form.tipo==='Firma' && (
-              <div style={{gridColumn:'1/-1'}}>
-                <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.2,marginBottom:5,fontWeight:600,...f}}>Frecuencia</div>
-                <select style={{width:'100%',padding:'9px 12px',border:'none',borderRadius:10,fontSize:13,boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}} value={form.frecuencia} onChange={e=>setForm(p=>({...p,frecuencia:e.target.value}))}>
-                  <option>Mensual</option><option>Quincenal</option><option>Semanal</option>
-                </select>
+          {showForm ? (
+            <div style={{background:'#F8F9FC',borderRadius:16,padding:18,marginTop:16}}>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
+                <div style={{gridColumn:'1/-1'}}>
+                  <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.2,marginBottom:5,fontWeight:600,...f}}>Tipo de cautelar</div>
+                  <select style={{width:'100%',padding:'9px 12px',border:'none',borderRadius:10,fontSize:13,boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}} value={form.tipo} onChange={e=>setForm(p=>({...p,tipo:e.target.value}))}>
+                    {TIPOS.map(t=><option key={t}>{t}</option>)}
+                  </select>
+                  {form.tipo === CAUTELAR_SENAME && (
+                    <div style={{fontSize:11,color:'#b45309',marginTop:6,...f}}>⚠ Recuerda: esta medida no otorga abono 2×1 — se registrará por separado.</div>
+                  )}
+                </div>
+                <div>
+                  <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.2,marginBottom:5,fontWeight:600,...f}}>Fecha de inicio</div>
+                  <input type="date" style={{width:'100%',padding:'9px 12px',border:'none',borderRadius:10,fontSize:13,boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}} value={form.fecha_inicio} onChange={e=>setForm(p=>({...p,fecha_inicio:e.target.value}))}/>
+                </div>
+                <div>
+                  <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.2,marginBottom:5,fontWeight:600,...f}}>Fecha de término (si ya terminó)</div>
+                  <input type="date" style={{width:'100%',padding:'9px 12px',border:'none',borderRadius:10,fontSize:13,boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}} value={form.fecha_termino} onChange={e=>setForm(p=>({...p,fecha_termino:e.target.value}))}/>
+                </div>
+                {form.tipo==='Firma' && (
+                  <div style={{gridColumn:'1/-1'}}>
+                    <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.2,marginBottom:5,fontWeight:600,...f}}>Frecuencia</div>
+                    <select style={{width:'100%',padding:'9px 12px',border:'none',borderRadius:10,fontSize:13,boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}} value={form.frecuencia} onChange={e=>setForm(p=>({...p,frecuencia:e.target.value}))}>
+                      <option>Mensual</option><option>Quincenal</option><option>Semanal</option>
+                    </select>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-          <div style={{display:'flex',gap:8}}>
-            <button className="btn-primary" style={{borderRadius:14}} onClick={handleGuardar} disabled={guardando}>{guardando?'Guardando...':'Guardar cautelar'}</button>
-            <button className="btn-secondary" style={{border:'none',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',borderRadius:14}} onClick={()=>setShowForm(false)}>Cancelar</button>
+              <div style={{display:'flex',gap:8}}>
+                <button className="btn-primary" style={{borderRadius:14}} onClick={handleGuardar} disabled={guardando}>{guardando?'Guardando...':'Guardar cautelar'}</button>
+                <button className="btn-secondary" style={{border:'none',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',borderRadius:14}} onClick={()=>setShowForm(false)}>Cancelar</button>
+              </div>
+            </div>
+          ) : (
+            // El botón de agregar aparece DESPUÉS de ver el detalle desplegado, como pidió Joaquín
+            <button className="btn-secondary" style={{fontSize:13,border:'none',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',borderRadius:14,marginTop:4}} onClick={()=>setShowForm(true)}>+ Agregar más cautelares</button>
+          )}
+
+          <div style={{fontSize:11,color:'#94a3b8',marginTop:12,lineHeight:1.6,...f}}>
+            ⚠ El conteo de días no suma +1 por el día de inicio — si en tu práctica el abono se cuenta incluyendo ese primer día, avísame y lo ajusto.
           </div>
         </div>
       )}
-
-      <div style={{fontSize:11,color:'#94a3b8',marginTop:10,lineHeight:1.6,...f}}>
-        ⚠ El conteo de días no suma +1 por el día de inicio — si en tu práctica el abono se cuenta incluyendo ese primer día, avísame y lo ajusto.
-      </div>
     </div>
   )
 }
@@ -2937,17 +2987,14 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
           <div style={{background:'#fff',padding:28,borderRadius:'0 0 20px 20px'}}>
             {activeTab==='datos'&&(
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
-                {[{key:'imputado',label:'Imputado(s)',full:true,editable:true},{key:'tribunal',label:'Tribunal',editable:true},{key:'rit',label:'RIT JG',editable:true},{key:'fiscal',label:'Fiscal a cargo',editable:true},{key:'cautelar',label:'Cautelar procesal',editable:true},{key:'centro_penal',label:'Centro Penal',editable:true},{key:'plazo',label:'Plazo / Vencimiento',editable:true,full:true}].map(field=>(
-                  <Field key={field.key} label={field.label} value={c[field.key]} editable={field.editable} full={field.full} fieldKey={field.key} editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField(field.key,editValue)}/>
-                ))}
+                {/* 1. Imputado(s) */}
+                <Field label="Imputado(s)" value={c.imputado} editable full fieldKey="imputado" editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField('imputado',editValue)}/>
+
                 {/* 🔀 Detecta imputados antiguos guardados con 2+ nombres juntos en un
                     solo campo (ej. "JUAN PEREZ Y PEDRO GOMEZ") y permite separarlos en
                     registros individuales, igual que si se hubieran agregado uno por uno. */}
                 {(() => {
                   const nombreCombinado = imputados.length === 1 ? imputados[0].nombre : (imputados.length === 0 ? c.imputado : null)
-                  // Reconoce " Y ", "/" y " - " (con espacios) como separadores entre nombres.
-                  // El guión solo cuenta si tiene espacio a los lados, para no romper
-                  // apellidos compuestos como "PÉREZ-GARCÍA" (que van pegados, sin espacios).
                   const partes = nombreCombinado ? nombreCombinado.split(/\s+Y\s+|\s*\/\s*|\s+-\s+/i).map(s=>s.trim()).filter(Boolean) : []
                   if (partes.length < 2) return null
                   return (
@@ -2979,8 +3026,9 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                     </div>
                   )
                 })()}
-                {/* Corte de Apelaciones — se calcula sola según el tribunal. Compacta arriba,
-                    y abajo la lista de apelaciones (pueden ser varias en la misma causa). */}
+
+                {/* 2. Corte de Apelaciones — se calcula sola según el tribunal. Va justo
+                    debajo de Imputado y antes de Tribunal, como pidió Joaquín. */}
                 <div style={{gridColumn:'1/-1',marginBottom:2}}>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6,gap:10}}>
                     <div style={{display:'flex',alignItems:'center',gap:8,padding:'8px 14px',border:'none',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',borderRadius:20,fontSize:12,color: getCorteApelaciones(c.tribunal) ? '#1E293B' : '#94a3b8',background:'#fff',fontWeight:600,...f}}>
@@ -3032,6 +3080,15 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                     </div>
                   )}
                 </div>
+
+                {/* 3. Tribunal */}
+                <Field label="Tribunal" value={c.tribunal} editable fieldKey="tribunal" editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField('tribunal',editValue)}/>
+
+                {/* Resto de campos: RIT, Fiscal, Cautelar procesal (texto libre), Centro Penal */}
+                {[{key:'rit',label:'RIT JG',editable:true},{key:'fiscal',label:'Fiscal a cargo',editable:true},{key:'cautelar',label:'Cautelar procesal',editable:true},{key:'centro_penal',label:'Centro Penal',editable:true}].map(field=>(
+                  <Field key={field.key} label={field.label} value={c[field.key]} editable={field.editable} full={field.full} fieldKey={field.key} editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField(field.key,editValue)}/>
+                ))}
+
                 {/* Delito(s) — sincronizado con los imputados. 1 imputado = mismo dato; varios = uno por cada uno */}
                 <div style={{gridColumn:'1/-1',marginBottom:2}}>
                   <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Delito(s)</div>
@@ -3068,61 +3125,84 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                     </div>
                   )}
                 </div>
-                {/* Fecha de los hechos + Fecha ACD (Control Detención) */}
-                <div style={{gridColumn:'1/-1',marginTop:4,display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-                  <div>
-                    <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Fecha de los hechos</div>
-                    {editField==='fecha_hechos'?(
-                      <div style={{display:'flex',gap:6}}>
-                        <input type="date" style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}}
-                          value={editValue} onChange={e=>setEditValue(e.target.value)}
-                          onKeyDown={e=>{if(e.key==='Enter')updateField('fecha_hechos',editValue);if(e.key==='Escape')setEditField(null)}} autoFocus/>
-                        <button className="btn-primary" style={{padding:'8px 14px',fontSize:12}} onClick={()=>updateField('fecha_hechos',editValue)}>✓</button>
-                        <button className="btn-secondary" style={{padding:'8px 12px',fontSize:12}} onClick={()=>setEditField(null)}>✗</button>
-                      </div>
-                    ):(
-                      <div className="fld" onClick={()=>{setEditField('fecha_hechos');setEditValue(c.fecha_hechos||'')}}
-                        style={{padding:'9px 12px',border:'1.5px solid #fecaca',borderRadius:8,fontSize:13,fontWeight:700,color:c.fecha_hechos?'#991b1b':'#94a3b8',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:c.fecha_hechos?'#fef2f2':'#fff',...f}}>
-                        <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
-                          <span>{c.fecha_hechos || 'Clic para agregar...'}</span>
-                          {c.fecha_hechos && imputados.map(imp => {
-                            if (!imp.fecha_nacimiento && !imp.regimen) return null
-                            const regimen = imp.regimen || calcularRegimenAlMomento(imp.fecha_nacimiento, c.fecha_hechos)
-                            if (!regimen) return null
-                            return (
-                              <span key={imp.id} style={{
-                                fontSize:10,fontWeight:700,padding:'3px 10px',borderRadius:10,
-                                background: regimen==='RPA'?'#faf5ff':'#eff6ff',
-                                color: regimen==='RPA'?'#5b21b6':'#1E293B',
-                                border: `1.5px solid ${regimen==='RPA'?'#ddd6fe':'#bfdbfe'}`,
-                                ...f
-                              }}>
-                                ✓ {imp.nombre?.split(' ')[0]}: {regimen}
-                              </span>
-                            )
-                          })}
+
+                {/* ── Franja compacta, alineada a la izquierda: Vencimiento del plazo, Fecha ACD y
+                     Fecha de los hechos — más chica que antes, como pidió Joaquín ── */}
+                <div style={{gridColumn:'1/-1',marginTop:2,marginBottom:2}}>
+                  <div style={{display:'flex',gap:10,flexWrap:'wrap',maxWidth:640}}>
+                    {/* Vencimiento del plazo */}
+                    <div style={{flex:'1 1 190px',minWidth:170}}>
+                      <div style={{fontSize:9,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4,fontWeight:600,...f}}>Vencimiento del plazo</div>
+                      {editField==='Plazo / Vencimiento'?(
+                        <div style={{display:'flex',gap:4}}>
+                          <input style={{width:'100%',padding:'7px 9px',border:'none',borderRadius:8,fontSize:11,color:'#1E293B',background:'#fff',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}} value={editValue} onChange={e=>setEditValue(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')updateField('plazo',editValue);if(e.key==='Escape')setEditField(null)}} autoFocus/>
+                          <button className="btn-primary" style={{padding:'5px 9px',fontSize:10,borderRadius:8}} onClick={()=>updateField('plazo',editValue)}>✓</button>
                         </div>
-                        <span style={{fontSize:11,color:'#f87171'}}>✏</span>
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Fecha ACD (Control Detención)</div>
-                    {(() => {
-                      const activosPlazo = (aumentos||[]).filter(a=>!a.eliminado).sort((x,y)=>x.fecha_audiencia.localeCompare(y.fecha_audiencia))
-                      const fechaAcd = activosPlazo[0]?.fecha_audiencia
-                      return (
-                        <div onClick={()=>setActiveTab('plazo')}
-                          style={{padding:'9px 12px',border:'1.5px solid #bfdbfe',borderRadius:8,fontSize:13,fontWeight:700,color:fechaAcd?'#1e40af':'#94a3b8',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:fechaAcd?'#eff6ff':'#fff',...f}}
-                          title="Se toma automáticamente de la primera audiencia registrada en la pestaña Plazo">
-                          <span>{fechaAcd || 'Sin audiencias en Plazo aún'}</span>
-                          <span style={{fontSize:11,color:'#93c5fd'}}>↗</span>
+                      ):(
+                        <div className="fld" onClick={()=>{setEditField('Plazo / Vencimiento');setEditValue(c.plazo||'')}}
+                          style={{padding:'7px 9px',borderRadius:8,fontSize:11,fontWeight:600,color:c.plazo?'#1E293B':'#94a3b8',minHeight:30,display:'flex',alignItems:'center',cursor:'pointer',background:'#fff',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}}>
+                          <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{c.plazo||'Clic para agregar...'}</span>
                         </div>
-                      )
-                    })()}
+                      )}
+                    </div>
+                    {/* Fecha ACD (Control Detención) — se toma de la 1ª audiencia registrada en Plazo */}
+                    <div style={{flex:'1 1 150px',minWidth:140}}>
+                      <div style={{fontSize:9,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4,fontWeight:600,...f}}>Fecha ACD</div>
+                      {(() => {
+                        const activosPlazo = (aumentos||[]).filter(a=>!a.eliminado).sort((x,y)=>x.fecha_audiencia.localeCompare(y.fecha_audiencia))
+                        const fechaAcd = activosPlazo[0]?.fecha_audiencia
+                        return (
+                          <div onClick={()=>setActiveTab('plazo')}
+                            style={{padding:'7px 9px',borderRadius:8,fontSize:11,fontWeight:600,color:fechaAcd?'#1e40af':'#94a3b8',minHeight:30,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}}
+                            title="Se toma automáticamente de la primera audiencia registrada en la pestaña Plazo">
+                            <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{fechaAcd || 'Sin audiencias'}</span>
+                            <span style={{fontSize:9,color:'#93c5fd'}}>↗</span>
+                          </div>
+                        )
+                      })()}
+                    </div>
+                    {/* Fecha de los hechos */}
+                    <div style={{flex:'1 1 150px',minWidth:140}}>
+                      <div style={{fontSize:9,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4,fontWeight:600,...f}}>Fecha de los hechos</div>
+                      {editField==='fecha_hechos'?(
+                        <div style={{display:'flex',gap:4}}>
+                          <input type="date" style={{width:'100%',padding:'7px 9px',border:'none',borderRadius:8,fontSize:11,color:'#1E293B',background:'#fff',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}}
+                            value={editValue} onChange={e=>setEditValue(e.target.value)}
+                            onKeyDown={e=>{if(e.key==='Enter')updateField('fecha_hechos',editValue);if(e.key==='Escape')setEditField(null)}} autoFocus/>
+                          <button className="btn-primary" style={{padding:'5px 9px',fontSize:10,borderRadius:8}} onClick={()=>updateField('fecha_hechos',editValue)}>✓</button>
+                        </div>
+                      ):(
+                        <div className="fld" onClick={()=>{setEditField('fecha_hechos');setEditValue(c.fecha_hechos||'')}}
+                          style={{padding:'7px 9px',borderRadius:8,fontSize:11,fontWeight:700,color:c.fecha_hechos?'#991b1b':'#94a3b8',minHeight:30,display:'flex',alignItems:'center',cursor:'pointer',background:c.fecha_hechos?'#fef2f2':'#fff',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}}>
+                          <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{c.fecha_hechos || 'Clic para agregar...'}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
+                  {/* Chips de régimen RPA/ADULTO por imputado, debajo de la franja compacta */}
+                  {c.fecha_hechos && imputados.some(imp=>imp.fecha_nacimiento||imp.regimen) && (
+                    <div style={{display:'flex',gap:6,flexWrap:'wrap',marginTop:8}}>
+                      {imputados.map(imp => {
+                        if (!imp.fecha_nacimiento && !imp.regimen) return null
+                        const regimen = imp.regimen || calcularRegimenAlMomento(imp.fecha_nacimiento, c.fecha_hechos)
+                        if (!regimen) return null
+                        return (
+                          <span key={imp.id} style={{
+                            fontSize:10,fontWeight:700,padding:'3px 10px',borderRadius:10,
+                            background: regimen==='RPA'?'#faf5ff':'#eff6ff',
+                            color: regimen==='RPA'?'#5b21b6':'#1E293B',
+                            border: `1.5px solid ${regimen==='RPA'?'#ddd6fe':'#bfdbfe'}`,
+                            ...f
+                          }}>
+                            ✓ {imp.nombre?.split(' ')[0]}: {regimen}
+                          </span>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
-                {/* Delegación de Poder */}
+
+                {/* Cautelares — módulo grande y colapsable, justo debajo de la franja de plazo/hechos */}
                 <CautelaresPanel
                   causaId={c.id}
                   ruc={c.ruc}
@@ -3138,6 +3218,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                     setCautelares(prev=>prev.map(x=>x.id===id?{...x,...campos}:x))
                   }}
                 />
+
                 <div style={{gridColumn:'1/-1',marginTop:8}}>
                   <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:8,fontWeight:600,...f}}>Delegación de Poder</div>
                   <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
@@ -3195,6 +3276,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
 
               </div>
             )}
+
             {activeTab==='imputado'&&(
               <div>
                 {imputados.map((imp,idx)=>(
