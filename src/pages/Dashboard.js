@@ -1243,9 +1243,9 @@ function DelitosChips({ value, onChange, options }) {
       {lista.length > 0 && (
         <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginBottom:10 }}>
           {lista.map((d, i) => (
-            <div key={i} style={{ display:'flex', alignItems:'center', gap:6, background:'#fef2f2', border:'1px solid #fecaca', borderRadius:8, padding:'6px 10px', maxWidth:'100%' }}>
-              <span style={{ fontSize:12, color:'#991b1b', fontWeight:600, ...f }}>{d}</span>
-              <button onClick={() => quitar(i)} style={{ background:'transparent', border:'none', cursor:'pointer', color:'#fca5a5', fontSize:13, padding:0, flexShrink:0 }}>✕</button>
+            <div key={i} style={{ display:'flex', alignItems:'center', gap:7, background:'#fef2f2', border:'1px solid #fecaca', borderRadius:8, padding:'5px 9px', maxWidth:'100%' }}>
+              <span style={{ fontSize:11, color:'#991b1b', fontWeight:600, ...f }}>{d}</span>
+              <button onClick={() => quitar(i)} style={{ background:'transparent', border:'none', cursor:'pointer', color:'#fca5a5', fontSize:12, padding:0, flexShrink:0 }}>✕</button>
             </div>
           ))}
         </div>
@@ -1259,6 +1259,38 @@ function DelitosChips({ value, onChange, options }) {
         </div>
       ) : (
         <button className="btn-secondary" style={{ fontSize:12 }} onClick={() => setAdding(true)}>+ Agregar delito</button>
+      )}
+    </div>
+  )
+}
+
+// ─── TARJETA DE DELITOS COLAPSABLE — angosta (no ocupa todo el ancho), con la
+// misma dinámica de "clic para desplegar" que Cautelares. Se usa tanto para el
+// caso de 1 imputado como para cada imputado cuando hay varios. ──────────────
+function DelitoCard({ nombreImputado, value, onChange, options }) {
+  const [expanded, setExpanded] = useState(true)
+  const lista = (value || '').split('|').map(s => s.trim()).filter(Boolean)
+  const f = { fontFamily:"'Inter',sans-serif" }
+  return (
+    <div style={{flex:'1 1 360px', maxWidth:460, minWidth:260}}>
+      {nombreImputado && (
+        <div style={{fontSize:11,fontWeight:700,color:'#1E293B',marginBottom:6,...f}}>👤 {nombreImputado}</div>
+      )}
+      <div
+        className="fld"
+        onClick={()=>setExpanded(v=>!v)}
+        style={{
+          cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center',
+          padding:'9px 12px', borderRadius: expanded ? '12px 12px 0 0' : 12, fontSize:13,
+          color:'#1E293B', minHeight:34, background:'#fff', boxShadow:'0 1px 2px rgba(15,23,42,0.06)', ...f,
+        }}>
+        <span>{lista.length===0 ? 'Sin delitos' : `${lista.length} delito${lista.length!==1?'s':''}`}</span>
+        <span style={{fontSize:11,color:'#94a3b8'}}>{expanded ? '▲' : '▼'}</span>
+      </div>
+      {expanded && (
+        <div style={{background:'#F8F9FC',borderRadius:'0 0 12px 12px',padding:'12px',boxShadow:'0 1px 2px rgba(15,23,42,0.06)'}}>
+          <DelitosChips value={value} onChange={onChange} options={options} />
+        </div>
       )}
     </div>
   )
@@ -2732,6 +2764,16 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
     if (registrarActividad) registrarActividad('accion', `Actualizó delitos de ${imp?.nombre || 'imputado'} en RUC ${selectedCausa.ruc}`)
   }
 
+  // ✅ Centro Penal por imputado — usa la misma columna "lugar_detencion" que ya
+  // existe en imputados (la que se usa en la pestaña Imputado cuando está detenido),
+  // así no hace falta ninguna migración nueva en Supabase.
+  const actualizarCentroPenalImputado = async (impId, valor) => {
+    await supabase.from('imputados').update({ lugar_detencion: valor }).eq('id', impId)
+    setImputados(prev => prev.map(x => x.id === impId ? { ...x, lugar_detencion: valor } : x))
+    const imp = imputados.find(x => x.id === impId)
+    if (registrarActividad) registrarActividad('accion', `Actualizó centro penal de ${imp?.nombre || 'imputado'} en RUC ${selectedCausa.ruc}`)
+  }
+
   const updateField=async(field,value)=>{
     const camposSinMayusculas = ['estado','subestado','tiene_top']
     if (typeof value === 'string' && !camposSinMayusculas.includes(field)) value = value.toUpperCase()
@@ -3053,12 +3095,33 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                 {/* 3. Tribunal */}
                 <Field label="Tribunal" value={c.tribunal} editable fieldKey="tribunal" editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField('tribunal',editValue)}/>
 
-                {/* Resto de campos: RIT, Fiscal, Centro Penal — se quitó "Cautelar procesal" (texto
-                    libre sin función real): el módulo funcional de Cautelares va justo abajo, en
-                    su lugar, en vez de repetirse más abajo en la pestaña. */}
-                {[{key:'rit',label:'RIT JG',editable:true},{key:'fiscal',label:'Fiscal a cargo',editable:true},{key:'centro_penal',label:'Centro Penal',editable:true}].map(field=>(
+                {/* Resto de campos: RIT, Fiscal — se quitó "Cautelar procesal" (texto libre sin
+                    función real) y "Centro Penal" (ahora vinculado por imputado, ver más abajo). */}
+                {[{key:'rit',label:'RIT JG',editable:true},{key:'fiscal',label:'Fiscal a cargo',editable:true}].map(field=>(
                   <Field key={field.key} label={field.label} value={c[field.key]} editable={field.editable} full={field.full} fieldKey={field.key} editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField(field.key,editValue)}/>
                 ))}
+
+                {/* Centro Penal — vinculado al imputado, misma lógica que Cautelares.
+                    1 imputado = campo único (pero ya guardado en el imputado); 2+ = uno por
+                    cada uno (puede variar entre ellos). Usa la columna "lugar_detencion" que
+                    ya existe en imputados — no requiere ninguna migración nueva. */}
+                {imputados.length === 0 ? (
+                  <Field label="Centro Penal" value={c.centro_penal} editable fieldKey="centro_penal" editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField('centro_penal',editValue)}/>
+                ) : imputados.length === 1 ? (
+                  <Field label="Centro Penal" value={imputados[0].lugar_detencion} editable fieldKey="centro_penal" editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={async()=>{await actualizarCentroPenalImputado(imputados[0].id, editValue);setEditField(null)}}/>
+                ) : (
+                  <div style={{gridColumn:'1/-1',marginBottom:2}}>
+                    <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Centro Penal</div>
+                    <div style={{display:'flex',flexWrap:'wrap',gap:16}}>
+                      {imputados.map(imp=>(
+                        <div key={imp.id} style={{flex:'1 1 300px',maxWidth:380}}>
+                          <div style={{fontSize:11,fontWeight:700,color:'#1E293B',marginBottom:4,...f}}>👤 {imp.nombre||'Sin nombre'}</div>
+                          <SearchableSelect value={imp.lugar_detencion} onChange={(v)=>actualizarCentroPenalImputado(imp.id, v)} options={CENTROS_PENALES} placeholder="Buscar centro penal..." isDelito={false}/>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Cautelares — vinculadas al imputado correspondiente. Con 1 imputado se ve
                     igual que antes; con 2+ imputados, cada uno tiene su propia casilla y sus
@@ -3103,14 +3166,19 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                   </div>
                 )}
 
-                {/* Delito(s) — sincronizado con los imputados. 1 imputado = mismo dato; varios = uno por cada uno */}
+                {/* Delito(s) — sincronizado con los imputados. 1 imputado = mismo dato; varios = uno por cada uno.
+                    Ahora en tarjetas angostas y colapsables (misma dinámica que Cautelares). */}
                 <div style={{gridColumn:'1/-1',marginBottom:2}}>
                   <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Delito(s)</div>
                   {imputados.length === 0 ? (
-                    <DelitosChips value={c.delito} onChange={(v)=>updateField('delito', v)} options={DELITOS_CATALOGO} />
+                    <div style={{display:'flex'}}>
+                      <DelitoCard value={c.delito} onChange={(v)=>updateField('delito', v)} options={DELITOS_CATALOGO} />
+                    </div>
                   ) : imputados.length === 1 ? (
                     imputados[0].delitos ? (
-                      <DelitosChips value={imputados[0].delitos} onChange={(v)=>actualizarDelitosImputado(imputados[0].id, v)} options={DELITOS_CATALOGO} />
+                      <div style={{display:'flex'}}>
+                        <DelitoCard value={imputados[0].delitos} onChange={(v)=>actualizarDelitosImputado(imputados[0].id, v)} options={DELITOS_CATALOGO} />
+                      </div>
                     ) : c.delito ? (
                       <div>
                         <div style={{fontSize:12,color:'#92400e',background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:8,padding:'10px 12px',marginBottom:8,...f}}>
@@ -3119,7 +3187,9 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                         <button className="btn-secondary" style={{fontSize:12}} onClick={()=>actualizarDelitosImputado(imputados[0].id, c.delito)}>✓ Vincular a {imputados[0].nombre||'este imputado'}</button>
                       </div>
                     ) : (
-                      <DelitosChips value="" onChange={(v)=>actualizarDelitosImputado(imputados[0].id, v)} options={DELITOS_CATALOGO} />
+                      <div style={{display:'flex'}}>
+                        <DelitoCard value="" onChange={(v)=>actualizarDelitosImputado(imputados[0].id, v)} options={DELITOS_CATALOGO} />
+                      </div>
                     )
                   ) : (
                     <div>
@@ -3128,12 +3198,9 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                           📋 Ya tenías guardado: <strong>{c.delito.replace(/\|/g,', ')}</strong> — aún no vinculado a ningún imputado. Asígnalo manualmente abajo con "+ Agregar delito" en el imputado que corresponda.
                         </div>
                       )}
-                      <div style={{display:'flex',flexDirection:'column',gap:12}}>
+                      <div style={{display:'flex',flexWrap:'wrap',gap:16}}>
                         {imputados.map(imp=>(
-                          <div key={imp.id} style={{border:'1px solid #e2e8f0',borderRadius:10,padding:'12px 14px',background:'#F8F9FC'}}>
-                            <div style={{fontSize:12,fontWeight:700,color:'#1E293B',marginBottom:8,...f}}>👤 {imp.nombre||'Sin nombre'}</div>
-                            <DelitosChips value={imp.delitos} onChange={(v)=>actualizarDelitosImputado(imp.id, v)} options={DELITOS_CATALOGO} />
-                          </div>
+                          <DelitoCard key={imp.id} nombreImputado={imp.nombre||'Sin nombre'} value={imp.delitos} onChange={(v)=>actualizarDelitosImputado(imp.id, v)} options={DELITOS_CATALOGO} />
                         ))}
                       </div>
                     </div>
