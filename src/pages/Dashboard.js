@@ -1739,6 +1739,124 @@ const ESTADOS_DILIGENCIA = {
   rechazada:    { label:'Rechazada',                color:'#991b1b', bg:'#fef2f2', border:'#fecaca' },
 }
 
+// ─── LECTURA AUTOMÁTICA DEL COMPROBANTE DE FISCALÍA ──────────────────────────
+// Los PDF que entrega el portal "mi.Fiscalía en línea" tienen texto real (no
+// son una foto escaneada), así que se puede leer sin OCR. Se carga pdf.js
+// desde un CDN en tiempo de ejecución (no requiere agregar nada al
+// package.json ni tocar el proceso de build).
+let _pdfjsCargando = null
+function cargarPdfJs() {
+  if (typeof window !== 'undefined' && window.pdfjsLib) return Promise.resolve(window.pdfjsLib)
+  if (_pdfjsCargando) return _pdfjsCargando
+  _pdfjsCargando = new Promise((resolve, reject) => {
+    const script = document.createElement('script')
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'
+    script.onload = () => {
+      try {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
+        resolve(window.pdfjsLib)
+      } catch (e) { reject(e) }
+    }
+    script.onerror = () => reject(new Error('No se pudo cargar el lector de PDF (revisa tu conexión a internet)'))
+    document.body.appendChild(script)
+  })
+  return _pdfjsCargando
+}
+
+async function extraerTextoPdf(file) {
+  const pdfjsLib = await cargarPdfJs()
+  const arrayBuffer = await file.arrayBuffer()
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
+  let texto = ''
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i)
+    const content = await page.getTextContent()
+    texto += content.items.map(it => it.str).join(' ') + '\n'
+  }
+  return texto
+}
+
+// Reconoce el formato del "Comprobante Ingreso Solicitud Asociada a una Causa"
+// de mi.Fiscalía en línea. Es a prueba de variaciones menores de espaciado,
+// pero siempre se muestra al usuario para que revise/corrija antes de guardar.
+function parsearComprobanteFiscalia(texto) {
+  const buscar = (regex) => { const m = texto.match(regex); return m ? m[1].replace(/\s+/g,' ').trim() : '' }
+  const ruc = buscar(/RUC\s+(\d{6,9}-[\dkK])/i)
+  const fechaIngresoRaw = buscar(/Fecha Ingreso\s+(\d{2}\/\d{2}\/\d{4})/i)
+  const fiscal = buscar(/Fiscal Asignado\s+([A-ZÁÉÍÓÚÑ ]+?)(?=\s+Representado|\s+Tipo Abogado|$)/i)
+  const representado = buscar(/Representado\s+([A-ZÁÉÍÓÚÑ ]+?)(?=\s+Tipo Abogado|$)/i)
+  const nombreCaso = buscar(/Nombre Caso\s+([^\n]+?)(?=\s+Fiscalia|$)/i)
+
+  // Folio: el N° Solicitud siempre tiene menos dígitos (6-9) que el Folio (10-15).
+  // Tomando el número puro más largo del documento se aísla el folio de forma
+  // confiable (el RUC tiene guión y las fechas tienen "/", así que no compiten).
+  const numeros = texto.match(/\b\d{10,15}\b/g) || []
+  const folio = numeros[0] || ''
+
+  // Observación / detalle de lo solicitado: todo el texto entre "Observación"
+  // (encabezado de la tabla) y "Documentos Adjuntos".
+  let observacion = ''
+  const idxObs = texto.indexOf('Observación')
+  const idxDocs = texto.indexOf('Documentos Adjuntos')
+  if (idxObs !== -1) {
+    const fin = idxDocs !== -1 ? idxDocs : texto.length
+    observacion = texto.slice(idxObs + 'Observación'.length, fin).replace(/\s+/g,' ').trim()
+    observacion = observacion.replace(/^Ingreso Solicitud Portal\.?\s*/i, '')
+  }
+
+  let fechaSolicitud = ''
+  if (fechaIngresoRaw) {
+    const [d,m,y] = fechaIngresoRaw.split('/')
+    if (d && m && y) fechaSolicitud = `${y}-${m}-${d}`
+  }
+
+  return { ruc, fechaSolicitud, fiscal, representado, nombreCaso, folio, observacion }
+}
+
+// ─── LECTURA DE SCREENSHOTS (imágenes) DEL COMPROBANTE — vía OCR ─────────────
+// A diferencia del PDF (que ya trae texto real), una foto/captura es solo
+// píxeles: hay que leerla con reconocimiento óptico de caracteres (OCR).
+// Se usa Tesseract.js cargado desde un CDN en tiempo de ejecución (mismo
+// enfoque que pdf.js, no requiere tocar package.json).
+let _tesseractCargando = null
+function cargarTesseract() {
+  if (typeof window !== 'undefined' && window.Tesseract) return Promise.resolve(window.Tesseract)
+  if (_tesseractCargando) return _tesseractCargando
+  _tesseractCargando = new Promise((resolve, reject) => {
+    const script = document.createElement('script')
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js'
+    script.onload = () => resolve(window.Tesseract)
+    script.onerror = () => reject(new Error('No se pudo cargar el lector de imágenes (revisa tu conexión a internet)'))
+    document.body.appendChild(script)
+  })
+  return _tesseractCargando
+}
+
+async function extraerTextoImagen(file) {
+  const Tesseract = await cargarTesseract()
+  const { data } = await Tesseract.recognize(file, 'spa')
+  return data.text || ''
+}
+
+// Días HÁBILES transcurridos desde una fecha (excluye sábados y domingos) —
+// para avisar cuando ya pasaron los ~5 días hábiles típicos de respuesta de
+// Fiscalía y todavía no ha llegado nada, así el usuario sabe que debe
+// hacer seguimiento.
+function diasHabilesDesde(fechaISO) {
+  if (!fechaISO) return 0
+  const inicio = new Date(fechaISO + 'T00:00:00')
+  const hoy = new Date(); hoy.setHours(0,0,0,0)
+  if (isNaN(inicio) || inicio > hoy) return 0
+  let dias = 0
+  const cursor = new Date(inicio)
+  while (cursor < hoy) {
+    cursor.setDate(cursor.getDate() + 1)
+    const diaSemana = cursor.getDay() // 0=domingo, 6=sábado
+    if (diaSemana !== 0 && diaSemana !== 6) dias++
+  }
+  return dias
+}
+
 function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, onAccion }) {
   const [diligencias, setDiligencias] = useState([])
   const [loading, setLoading] = useState(true)
@@ -1748,6 +1866,11 @@ function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, onAccion
   const [respondiendoId, setRespondiendoId] = useState(null)
   const [formResp, setFormResp] = useState({ estado:'aprobada', fecha_respuesta:new Date().toISOString().slice(0,10), fecha_citacion:'', respuesta_detalle:'' })
   const [subiendoId, setSubiendoId] = useState(null) // id de la diligencia que está subiendo un archivo (comprobante o respuesta)
+  const [analizandoPdf, setAnalizandoPdf] = useState(false)
+  const [dragPdf, setDragPdf] = useState(false)
+  const [comprobantePendiente, setComprobantePendiente] = useState(null) // File detectado, se sube junto con la diligencia al guardar
+  const [avisoRuc, setAvisoRuc] = useState('') // aviso si el RUC leído del PDF no coincide con esta causa
+  const nuevaDiligenciaFileRef = useRef(null)
   const comprobanteInputRef = useRef(null)
   const respuestaInputRef = useRef(null)
   const f = { fontFamily:"'Inter',sans-serif" }
@@ -1770,14 +1893,33 @@ function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, onAccion
       causa_id: causaId, tipo: form.tipo, fecha_solicitud: form.fecha_solicitud, folio: form.folio.toUpperCase(), observacion: form.observacion || null, estado:'pendiente', registrado_por: email
     }).select().single()
     if (!error && data) {
-      setDiligencias(prev => [data, ...prev])
+      let dataFinal = data
+      // Si el comprobante se detectó por PDF (arrastrado), se sube y se adjunta
+      // automáticamente a esta misma diligencia — sin tener que volver a subirlo.
+      if (comprobantePendiente) {
+        try {
+          const path = `diligencias/${data.id}/comprobante_${Date.now()}_${comprobantePendiente.name}`
+          const { error: upErr } = await supabase.storage.from('documentos').upload(path, comprobantePendiente)
+          if (!upErr) {
+            const { data: urlData } = supabase.storage.from('documentos').getPublicUrl(path)
+            const camposArchivo = { comprobante_url: urlData.publicUrl, comprobante_path: path, comprobante_nombre: comprobantePendiente.name }
+            await supabase.from('diligencias_fiscalia').update(camposArchivo).eq('id', data.id)
+            dataFinal = { ...data, ...camposArchivo }
+          }
+        } catch { /* si falla el adjunto, la diligencia igual queda guardada */ }
+      }
+      setDiligencias(prev => [dataFinal, ...prev])
       if (registrarActividad) registrarActividad('accion', `Registró diligencia "${form.tipo}" (folio ${form.folio}) en RUC ${ruc}`)
       if (onAccion) onAccion()
     }
     setForm({ tipo: TIPOS_DILIGENCIA[0], fecha_solicitud: new Date().toISOString().slice(0,10), folio:'', observacion:'' })
+    setComprobantePendiente(null)
+    setAvisoRuc('')
     setShowForm(false)
     setGuardando(false)
   }
+
+  const normalizarRuc = (r) => (r||'').replace(/[.\-\s]/g,'').toUpperCase()
 
   const empezarRespuesta = (d) => {
     setRespondiendoId(d.id)
@@ -1804,12 +1946,10 @@ function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, onAccion
     if (onAccion) onAccion()
   }
 
-  // ✅ Antes de guardar cualquier documento (comprobante o respuesta), se pide
-  // confirmar el RUC que aparece en ese PDF. Si no coincide con el RUC de esta
-  // causa, se avisa antes de subirlo — para evitar arrastrarlo a la causa
-  // equivocada por error.
-  const normalizarRuc = (r) => (r||'').replace(/[.\-\s]/g,'').toUpperCase()
-
+  // ✅ Antes de guardar cualquier documento (comprobante o respuesta) desde las
+  // tarjetas ya existentes, se pide confirmar el RUC que aparece en ese PDF.
+  // Si no coincide con el RUC de esta causa, se avisa antes de subirlo — para
+  // evitar arrastrarlo a la causa equivocada por error.
   const confirmarRucYSubir = (file, tipoDoc, diligenciaId) => {
     const rucIngresado = window.prompt(`Confirma el RUC que aparece en este documento (esta causa es RUC ${ruc}):`, ruc)
     if (rucIngresado === null) return // canceló
@@ -1841,7 +1981,47 @@ function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, onAccion
     }
   }
 
+  // ✅ Al arrastrar/seleccionar el comprobante (PDF o screenshot/imagen) de
+  // Fiscalía para una diligencia NUEVA: se lee el texto (o se hace OCR si es
+  // una imagen), se completan folio/fecha/observación solas, y el archivo
+  // queda listo para adjuntarse automáticamente al guardar. Nunca se guarda
+  // nada sin que el usuario revise y confirme — el formulario siempre se abre
+  // para poder corregir cualquier campo antes de "Guardar diligencia".
+  const procesarPdfComprobante = async (file) => {
+    const esPdf = file?.type === 'application/pdf'
+    const esImagen = file?.type?.startsWith('image/')
+    if (!file || (!esPdf && !esImagen)) { alert('Solo se aceptan archivos PDF o imágenes (screenshot).'); return }
+    setAnalizandoPdf(true)
+    setAvisoRuc('')
+    try {
+      const texto = esPdf ? await extraerTextoPdf(file) : await extraerTextoImagen(file)
+      const datos = parsearComprobanteFiscalia(texto)
+      setForm(p => ({
+        ...p,
+        folio: datos.folio || p.folio,
+        fecha_solicitud: datos.fechaSolicitud || p.fecha_solicitud,
+        observacion: datos.observacion || p.observacion,
+      }))
+      setComprobantePendiente(file)
+      if (datos.ruc && normalizarRuc(datos.ruc) !== normalizarRuc(ruc)) {
+        setAvisoRuc(`⚠ Este comprobante indica RUC ${datos.ruc}, pero esta causa es RUC ${ruc}. Revisa antes de guardar — puede que corresponda a otra causa.`)
+      }
+      if (!datos.folio) {
+        alert(esImagen
+          ? 'No se pudo detectar el folio automáticamente en la imagen (el OCR de screenshots es menos preciso que leer un PDF) — complétalo a mano antes de guardar.'
+          : 'No se pudo detectar el folio automáticamente — complétalo a mano antes de guardar.')
+      }
+    } catch (err) {
+      alert('No se pudo leer el comprobante automáticamente. Completa los datos a mano. (' + (err?.message || '') + ')')
+    } finally {
+      setAnalizandoPdf(false)
+      setShowForm(true)
+    }
+  }
+
   if (loading) return <div style={{ textAlign:'center', padding:40, color:'#94a3b8', fontSize:13, ...f }}>Cargando diligencias...</div>
+
+  const pendientesConAviso = diligencias.filter(d => d.estado === 'pendiente' && diasHabilesDesde(d.fecha_solicitud) >= 5).length
 
   return (
     <div>
@@ -1849,10 +2029,18 @@ function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, onAccion
         Cada solicitud a Fiscalía (declaración, petición de carpeta, entrevista con el fiscal, etc.) entrega un <strong>folio de seguimiento</strong> al momento de ingresarla — exígelo siempre y regístralo aquí. Días después llega la respuesta por correo: aprobada, con fecha de citación, o rechazada con motivo.
       </div>
 
+      {pendientesConAviso > 0 && (
+        <div style={{ fontSize:12, color:'#991b1b', background:'#fef2f2', border:'1px solid #fecaca', borderRadius:8, padding:'10px 12px', marginBottom:14, fontWeight:600, ...f }}>
+          ⚠ Tienes {pendientesConAviso} diligencia{pendientesConAviso!==1?'s':''} con más de 5 días hábiles sin respuesta — puede que sea hora de hacer seguimiento.
+        </div>
+      )}
+
       {diligencias.length === 0 && <p style={{ color:'#94a3b8', fontSize:13, marginBottom:14, ...f }}>Sin diligencias registradas todavía.</p>}
 
       {diligencias.map(d => {
         const cfg = ESTADOS_DILIGENCIA[d.estado] || ESTADOS_DILIGENCIA.pendiente
+        const diasHabiles = d.estado === 'pendiente' ? diasHabilesDesde(d.fecha_solicitud) : 0
+        const avisoSeguimiento = d.estado === 'pendiente' && diasHabiles >= 5
         return (
           <div key={d.id} style={{ background:'#F8F9FC', border:'1px solid #e2e8f0', borderRadius:12, padding:'14px 16px', marginBottom:10 }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:8 }}>
@@ -1860,7 +2048,12 @@ function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, onAccion
                 <div style={{ fontSize:13, fontWeight:700, color:'#1E293B', ...f }}>{d.tipo}</div>
                 <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>Solicitada el {d.fecha_solicitud} · Folio <strong style={{color:'#475569'}}>{d.folio}</strong></div>
               </div>
-              <span style={{ fontSize:10, fontWeight:700, padding:'3px 10px', borderRadius:20, textTransform:'uppercase', letterSpacing:0.3, color:cfg.color, background:cfg.bg, border:`1px solid ${cfg.border}`, ...f }}>{cfg.label}</span>
+              <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:4 }}>
+                <span style={{ fontSize:10, fontWeight:700, padding:'3px 10px', borderRadius:20, textTransform:'uppercase', letterSpacing:0.3, color:cfg.color, background:cfg.bg, border:`1px solid ${cfg.border}`, ...f }}>{cfg.label}</span>
+                {avisoSeguimiento && (
+                  <span style={{ fontSize:10, fontWeight:700, color:'#991b1b', ...f }}>⚠ {diasHabiles} días hábiles sin respuesta</span>
+                )}
+              </div>
             </div>
 
             {d.observacion && (
@@ -1947,13 +2140,22 @@ function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, onAccion
       })}
 
       {/* Inputs de archivo ocultos y compartidos — se activan según en qué tarjeta se hizo clic */}
-      <input ref={comprobanteInputRef} type="file" accept=".pdf" style={{ display:'none' }}
+      <input ref={comprobanteInputRef} type="file" accept=".pdf,image/*" style={{ display:'none' }}
         onChange={e=>{ const file=e.target.files[0]; const id=e.target.dataset.diligenciaId; if(file&&id) confirmarRucYSubir(file,'comprobante',id); e.target.value='' }}/>
-      <input ref={respuestaInputRef} type="file" accept=".pdf" style={{ display:'none' }}
+      <input ref={respuestaInputRef} type="file" accept=".pdf,image/*" style={{ display:'none' }}
         onChange={e=>{ const file=e.target.files[0]; const id=e.target.dataset.diligenciaId; if(file&&id) confirmarRucYSubir(file,'respuesta',id); e.target.value='' }}/>
 
       {showForm ? (
         <div style={{ background:'#F8F9FC', border:'1.5px solid #e2e8f0', borderRadius:12, padding:16, marginTop:8 }}>
+          {comprobantePendiente && (
+            <div style={{ fontSize:12, color:'#065f46', background:'#ecfdf5', border:'1px solid #a7f3d0', borderRadius:8, padding:'8px 10px', marginBottom:10, ...f }}>
+              📎 Se detectó y se adjuntará automáticamente: <strong>{comprobantePendiente.name}</strong>
+              <button onClick={()=>setComprobantePendiente(null)} style={{ marginLeft:8, background:'transparent', border:'none', color:'#059669', cursor:'pointer', fontSize:11, textDecoration:'underline', ...f }}>quitar</button>
+            </div>
+          )}
+          {avisoRuc && (
+            <div style={{ fontSize:12, color:'#991b1b', background:'#fef2f2', border:'1px solid #fecaca', borderRadius:8, padding:'8px 10px', marginBottom:10, ...f }}>{avisoRuc}</div>
+          )}
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
             <div style={{ gridColumn:'1/-1' }}>
               <div style={{ fontSize:10, color:'#64748b', textTransform:'uppercase', letterSpacing:1.2, marginBottom:5, fontWeight:600, ...f }}>Tipo de diligencia</div>
@@ -1976,11 +2178,26 @@ function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, onAccion
           </div>
           <div style={{ display:'flex', gap:8 }}>
             <button className="btn-primary" onClick={agregar} disabled={guardando}>{guardando?'Guardando...':'Guardar diligencia'}</button>
-            <button className="btn-secondary" onClick={()=>setShowForm(false)}>Cancelar</button>
+            <button className="btn-secondary" onClick={()=>{setShowForm(false);setComprobantePendiente(null);setAvisoRuc('')}}>Cancelar</button>
           </div>
         </div>
       ) : (
-        <button className="btn-secondary" style={{ marginTop:8 }} onClick={()=>setShowForm(true)}>+ Nueva diligencia</button>
+        <div
+          onDragOver={e=>{e.preventDefault();setDragPdf(true)}}
+          onDragLeave={()=>setDragPdf(false)}
+          onDrop={e=>{e.preventDefault();setDragPdf(false);const file=e.dataTransfer.files[0];if(file)procesarPdfComprobante(file)}}
+          onClick={()=>nuevaDiligenciaFileRef.current.click()}
+          style={{ border:`2px dashed ${dragPdf?'#2563eb':'#e2e8f0'}`, borderRadius:12, padding:'22px 16px', textAlign:'center', background:dragPdf?'#eff6ff':'#F8F9FC', cursor:'pointer', marginTop:8, transition:'all 0.2s' }}>
+          <input ref={nuevaDiligenciaFileRef} type="file" accept=".pdf,image/*" style={{ display:'none' }}
+            onChange={e=>{ const file=e.target.files[0]; if(file) procesarPdfComprobante(file); e.target.value='' }}/>
+          <div style={{ fontSize:24, marginBottom:6 }}>{analizandoPdf ? '⏳' : '📄'}</div>
+          <div style={{ fontSize:13, fontWeight:600, color:'#475569', ...f }}>
+            {analizandoPdf ? 'Leyendo comprobante...' : dragPdf ? 'Suelta el archivo aquí' : 'Arrastra el comprobante (PDF o screenshot) de Fiscalía — se completa solo'}
+          </div>
+          <div style={{ fontSize:11, color:'#94a3b8', marginTop:6, ...f }}>
+            o <span style={{ color:'#2563eb', fontWeight:600 }} onClick={e=>{e.stopPropagation();setShowForm(true)}}>ingresar manualmente</span>
+          </div>
+        </div>
       )}
     </div>
   )
@@ -2066,7 +2283,48 @@ function iconoDocumento(nombre) {
   return ICONO_POR_EXT[ext] || '📎'
 }
 
-function DocumentosGuardados({ causaId, email, onAccion }) {
+// Detecta si un PDF es un comprobante de mi.Fiscalía en línea (por palabras
+// clave que siempre aparecen en ese formato), para poder redirigirlo solo a
+// "Diligencias Fiscalía" en vez de guardarlo como documento genérico.
+function esComprobanteFiscalia(texto) {
+  return /SIAU|Comprobante Ingreso Solicitud|mi\s*\.\s*FISCAL[IÍ]A|Sistema de Informaci[oó]n y Atenci[oó]n a Usuarios/i.test(texto || '')
+}
+
+function adivinarTipoDiligencia(observacion) {
+  const o = (observacion || '').toUpperCase()
+  if (o.includes('DECLARACION') || o.includes('DECLARACIÓN')) return 'Declaración de imputado'
+  if (o.includes('CARPETA')) return 'Petición de carpeta'
+  if (o.includes('ENTREVISTA')) return 'Entrevista con el fiscal'
+  if (o.includes('RECONSTITUCION') || o.includes('RECONSTITUCIÓN')) return 'Reconstitución de escena'
+  if (o.includes('CAREO')) return 'Careo'
+  return 'Otra diligencia'
+}
+
+// Crea el registro en diligencias_fiscalia a partir de un comprobante detectado
+// automáticamente (arrastrado en cualquier parte de la app) y le adjunta el
+// mismo PDF como comprobante — para que quede junto al resto del seguimiento.
+async function guardarComprobanteComoDiligencia(file, texto, { causaId, ruc, email, registrarActividad, onAccion }) {
+  const datos = parsearComprobanteFiscalia(texto)
+  const tipo = adivinarTipoDiligencia(datos.observacion)
+  const { data, error } = await supabase.from('diligencias_fiscalia').insert({
+    causa_id: causaId, tipo, fecha_solicitud: datos.fechaSolicitud || new Date().toISOString().slice(0,10),
+    folio: datos.folio || 'SIN FOLIO DETECTADO', observacion: datos.observacion || null, estado:'pendiente', registrado_por: email
+  }).select().single()
+  if (error || !data) throw (error || new Error('No se pudo crear el registro de la diligencia'))
+  try {
+    const path = `diligencias/${data.id}/comprobante_${Date.now()}_${file.name}`
+    const { error: upErr } = await supabase.storage.from('documentos').upload(path, file)
+    if (!upErr) {
+      const { data: urlData } = supabase.storage.from('documentos').getPublicUrl(path)
+      await supabase.from('diligencias_fiscalia').update({ comprobante_url: urlData.publicUrl, comprobante_path: path, comprobante_nombre: file.name }).eq('id', data.id)
+    }
+  } catch { /* la diligencia igual queda registrada aunque falle adjuntar el archivo */ }
+  if (registrarActividad) registrarActividad('accion', `Detectó y registró automáticamente una diligencia de Fiscalía (folio ${datos.folio || 'sin detectar'}) en RUC ${ruc}`)
+  if (onAccion) onAccion()
+  return { folio: datos.folio, rucDetectado: datos.ruc, tipo }
+}
+
+function DocumentosGuardados({ causaId, ruc, email, registrarActividad, onAccion }) {
   const [docs, setDocs] = useState([])
   const [subiendo, setSubiendo] = useState(false)
   const [drag, setDrag] = useState(false)
@@ -2083,6 +2341,22 @@ function DocumentosGuardados({ causaId, email, onAccion }) {
     if (!file) return
     setSubiendo(true)
     try {
+      // ✅ Si es un PDF, primero se revisa si es un comprobante de Fiscalía —
+      // en ese caso NO se guarda acá, se redirige solo a "Diligencias Fiscalía"
+      // (leyendo folio/fecha/observación igual que si se arrastrara ahí).
+      if (file.type === 'application/pdf') {
+        try {
+          const texto = await extraerTextoPdf(file)
+          if (esComprobanteFiscalia(texto)) {
+            const resultado = await guardarComprobanteComoDiligencia(file, texto, { causaId, ruc, email, registrarActividad, onAccion })
+            alert(`📨 Este archivo es un comprobante de Fiscalía (folio ${resultado.folio || 'no detectado, revísalo'}) — se guardó en la sección "Diligencias Fiscalía", no aquí, para que quede junto con el resto del seguimiento de esa causa.`)
+            setSubiendo(false)
+            return
+          }
+        } catch (errLectura) {
+          console.warn('No se pudo analizar el PDF, se sube como documento genérico:', errLectura)
+        }
+      }
       const path = `${causaId}/${Date.now()}_${file.name}`
       const { error: uploadError } = await supabase.storage.from('documentos').upload(path, file)
       if (uploadError) throw uploadError
@@ -2529,6 +2803,11 @@ function TeoriaDelCaso({ causaId, ruc, session, registrarActividad, onAccion, ca
   }
 
   const seccionActual = TC_SECCIONES.find(s => s.key === seccionActiva)
+  // ✅ Guardar / Historial / contador de caracteres solo tienen sentido en las
+  // secciones de texto con autoguardado. Fallos, Carpeta y Diligencias tienen
+  // su propio guardado interno — mostrar el botón "Guardar" de aquí arriba
+  // ahí confundía (no hacía nada útil sobre esas secciones).
+  const esSeccionTexto = !['fallos','carpeta','diligencias'].includes(seccionActiva)
   const totalCaracteres = Object.values(form).join('').length
 
   if (loading) return <div style={{ textAlign:'center', padding:40, color:'#94a3b8', fontSize:13, ...f }}>Cargando teoría del caso...</div>
@@ -2555,21 +2834,25 @@ function TeoriaDelCaso({ causaId, ruc, session, registrarActividad, onAccion, ca
         <div style={{ padding:'16px 20px', borderBottom:'1px solid #E2E8F0', display:'flex', justifyContent:'space-between', alignItems:'center', background:'#F8F9FC' }}>
           <div>
             <div style={{ fontSize:15, fontWeight:700, color:'#1E293B', ...f }}>{seccionActual?.icon} {seccionActual?.label}</div>
-            <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>
-              {totalCaracteres > 0 ? `${totalCaracteres.toLocaleString()} caracteres` : 'Sin contenido aún'}
-              {savedAt && <span style={{ marginLeft:8, color:'#059669' }}>✓ Guardado {savedAt.toLocaleTimeString('es-CL', { hour:'2-digit', minute:'2-digit' })}</span>}
+            {esSeccionTexto && (
+              <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>
+                {totalCaracteres > 0 ? `${totalCaracteres.toLocaleString()} caracteres` : 'Sin contenido aún'}
+                {savedAt && <span style={{ marginLeft:8, color:'#059669' }}>✓ Guardado {savedAt.toLocaleTimeString('es-CL', { hour:'2-digit', minute:'2-digit' })}</span>}
+              </div>
+            )}
+          </div>
+          {esSeccionTexto && (
+            <div style={{ display:'flex', gap:8 }}>
+              <button onClick={() => setShowHistorial(!showHistorial)} className="btn-secondary" style={{ fontSize:12, borderColor: showHistorial?'#1E293B':'#E2E8F0', color: showHistorial?'#1E293B':'#64748b' }}>
+                🕐 Historial {historial.length > 0 && `(${historial.length})`}
+              </button>
+              <button onClick={() => guardar(form, false)} disabled={saving} className="btn-primary" style={{ fontSize:12 }}>
+                {saving ? '⏳ Guardando...' : '💾 Guardar'}
+              </button>
             </div>
-          </div>
-          <div style={{ display:'flex', gap:8 }}>
-            <button onClick={() => setShowHistorial(!showHistorial)} className="btn-secondary" style={{ fontSize:12, borderColor: showHistorial?'#1E293B':'#E2E8F0', color: showHistorial?'#1E293B':'#64748b' }}>
-              🕐 Historial {historial.length > 0 && `(${historial.length})`}
-            </button>
-            <button onClick={() => guardar(form, false)} disabled={saving} className="btn-primary" style={{ fontSize:12 }}>
-              {saving ? '⏳ Guardando...' : '💾 Guardar'}
-            </button>
-          </div>
+          )}
         </div>
-        {showHistorial && (
+        {esSeccionTexto && showHistorial && (
           <div style={{ background:'#F8F9FC', borderBottom:'1px solid #E2E8F0', padding:'16px 20px', maxHeight:200, overflowY:'auto' }}>
             <div style={{ fontSize:11, fontWeight:700, color:'#475569', textTransform:'uppercase', letterSpacing:1, marginBottom:10, ...f }}>Historial de modificaciones</div>
             {historial.length === 0 ? (
@@ -2615,7 +2898,7 @@ function TeoriaDelCaso({ causaId, ruc, session, registrarActividad, onAccion, ca
               </div>
               <CarpetaOneDrive ruc={ruc}/>
               <div style={{ marginTop:28, paddingTop:24, borderTop:'1px solid #f1f5f9' }}>
-                <DocumentosGuardados causaId={causaId} email={session?.user?.email || ''} onAccion={onAccion}/>
+                <DocumentosGuardados causaId={causaId} ruc={ruc} email={session?.user?.email || ''} registrarActividad={registrarActividad} onAccion={onAccion}/>
               </div>
             </div>
           ) : seccionActiva === 'diligencias' ? (
