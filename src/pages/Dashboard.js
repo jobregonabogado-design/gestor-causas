@@ -2793,6 +2793,8 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
   const [filterTribunal,setFilterTribunal]=useState('')
   const [filterEstado,setFilterEstado]=useState('')
   const [filterDelito,setFilterDelito]=useState('')
+  const [filterRegimen,setFilterRegimen]=useState('') // '' | 'RPA' | 'ADULTO' | 'MIXTO'
+  const [regimenesPorCausa,setRegimenesPorCausa]=useState({}) // { causa_id: Set(['ADULTO','RPA']) }
   const [sortCol,setSortCol]=useState('created_at')
   const [sortDir,setSortDir]=useState('desc')
   const [view,setView]=useState('list')
@@ -2836,6 +2838,17 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
         return { ...c, tribunal: normT(c.tribunal), subestado }
       })
       setCausas(causasActualizadas)
+    }
+    // ✅ Régimen de todos los imputados, para poder filtrar la lista por RPA/Adulto/Mixta
+    const { data: todosImputados } = await supabase.from('imputados').select('causa_id, regimen')
+    if (todosImputados) {
+      const mapa = {}
+      todosImputados.forEach(imp => {
+        if (!imp.regimen) return
+        if (!mapa[imp.causa_id]) mapa[imp.causa_id] = new Set()
+        mapa[imp.causa_id].add(imp.regimen)
+      })
+      setRegimenesPorCausa(mapa)
     }
     setLoading(false)
   }
@@ -3021,13 +3034,16 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
       // un subestado a una causa, desaparece de aquí y solo aparece en su subestado específico.
       const estadoMatch=!filterEstado||(filterEstado==='vigente'?c.estado==='vigente':filterEstado==='terminada'?(c.estado==='terminada'&&!c.subestado):filterEstado==='top'?(c.subestado==='juicio_oral'||c.tiene_top===true):c.subestado===filterEstado)
       const delitoMatch=!filterDelito||(c.delito||'').split('|').map(d=>d.trim()).includes(filterDelito)
-      return match&&(!filterTribunal||c.tribunal===filterTribunal)&&estadoMatch&&delitoMatch
+      // ✅ Régimen: RPA/Adulto = al menos un imputado con ese régimen; Mixta = tiene ambos
+      const regs = regimenesPorCausa[c.id]
+      const regimenMatch=!filterRegimen||(regs && (filterRegimen==='MIXTO' ? (regs.has('RPA')&&regs.has('ADULTO')) : regs.has(filterRegimen)))
+      return match&&(!filterTribunal||c.tribunal===filterTribunal)&&estadoMatch&&delitoMatch&&regimenMatch
     })
     return[...list].sort((a,b)=>{const av=a[sortCol]||'',bv=b[sortCol]||'';return sortDir==='asc'?av.localeCompare(bv):bv.localeCompare(av)})
-  },[causas,search,filterTribunal,filterEstado,filterDelito,sortCol,sortDir])
+  },[causas,search,filterTribunal,filterEstado,filterDelito,filterRegimen,regimenesPorCausa,sortCol,sortDir])
 
-  const hayFiltrosActivos = !!(search||filterTribunal||filterEstado||filterDelito)
-  const limpiarFiltros = () => { setSearch(''); setFilterTribunal(''); setFilterEstado(''); setFilterDelito('') }
+  const hayFiltrosActivos = !!(search||filterTribunal||filterEstado||filterDelito||filterRegimen)
+  const limpiarFiltros = () => { setSearch(''); setFilterTribunal(''); setFilterEstado(''); setFilterDelito(''); setFilterRegimen('') }
 
   const stats=useMemo(()=>({
     total:causas.length, vigente:causas.filter(c=>c.estado==='vigente').length, terminada:causas.filter(c=>c.estado==='terminada').length,
@@ -3097,7 +3113,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                   <span style={{color:'#e2e8f0'}}>|</span>
                   <span style={{color:'#475569',fontWeight:500}}>{c.imputado}</span>
                   <SemaforoTag updated_at={c.updated_at} estado={c.estado} />
-                  {imputados.filter(i=>i.regimen).map(i=>(
+                  {imputados.length === 1 && imputados.filter(i=>i.regimen).map(i=>(
                     <span key={i.id} style={{
                       fontSize:10,fontWeight:700,padding:'3px 10px',borderRadius:20,border:'none',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',
                       background:i.regimen==='RPA'?'#faf5ff':'#eff6ff',
@@ -3765,6 +3781,12 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
           <div style={{width:220}}>
             <SearchableSelect value={filterDelito} onChange={v=>setFilterDelito(v)} options={DELITOS_CATALOGO} placeholder="Todos los delitos" isDelito={true}/>
           </div>
+          <select style={{width:'auto',minWidth:150,padding:'11px 14px',border:'none',borderRadius:14,fontSize:13,color:'#1E293B',background:'#fff',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}} value={filterRegimen} onChange={e=>setFilterRegimen(e.target.value)}>
+            <option value="">RPA / Adulto</option>
+            <option value="ADULTO">Solo Adulto</option>
+            <option value="RPA">Solo RPA</option>
+            <option value="MIXTO">Mixta (RPA y Adulto)</option>
+          </select>
           {hayFiltrosActivos && <button className="btn-secondary" style={{fontSize:12,color:'#dc2626',border:'none',boxShadow:'0 1px 2px rgba(15,23,42,0.06)'}} onClick={limpiarFiltros}>✕ Limpiar</button>}
           <span style={{fontSize:12,color:'#94a3b8',fontWeight:500,...f}}>{filtered.length} resultado{filtered.length!==1?'s':''}</span>
           <button className="btn-primary" style={{borderRadius:14}} onClick={()=>setShowNuevaCausa(true)}>+ Nueva causa</button>
