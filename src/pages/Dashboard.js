@@ -1979,7 +1979,7 @@ function diasEntreFechasCaut(inicio, fin) {
   return Math.max(0, Math.round((b-a)/(1000*60*60*24)))
 }
 
-function CautelaresPanel({ causaId, cautelares, esRPA, onGuardar, onActualizar, registrarActividad, ruc }) {
+function CautelaresPanel({ causaId, cautelares, esRPA, onGuardar, onActualizar, registrarActividad, ruc, nombreImputado }) {
   const hoyISO = new Date().toISOString().slice(0,10)
   const TIPOS = esRPA ? TIPOS_CAUTELARES_RPA : TIPOS_CAUTELARES_ADULTO
   const [expanded,setExpanded] = useState(true) // la casilla queda visible; al abrir se ve el detalle
@@ -2038,7 +2038,7 @@ function CautelaresPanel({ causaId, cautelares, esRPA, onGuardar, onActualizar, 
     <div style={{gridColumn:'1/-1',marginTop:2,marginBottom:2}}>
       {/* Label arriba, igual que cualquier otro campo del formulario */}
       <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>
-        Cautelar Personal {esRPA && <span style={{color:'#7c3aed'}}>· RPA</span>}
+        Cautelar Personal{nombreImputado && <span style={{color:'#1E293B',textTransform:'none',letterSpacing:0}}> — {nombreImputado}</span>} {esRPA && <span style={{color:'#7c3aed'}}>· RPA</span>}
       </div>
 
       {/* Casilla — mismo look que los demás campos (fondo blanco, sombra suave, mismo alto).
@@ -3060,23 +3060,48 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                   <Field key={field.key} label={field.label} value={c[field.key]} editable={field.editable} full={field.full} fieldKey={field.key} editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField(field.key,editValue)}/>
                 ))}
 
-                {/* Cautelares — módulo grande y colapsable, en el lugar donde antes estaba el
-                    campo de texto "Cautelar procesal" (que no tenía función). */}
-                <CautelaresPanel
-                  causaId={c.id}
-                  ruc={c.ruc}
-                  cautelares={cautelares}
-                  esRPA={imputados.some(i=>i.regimen==='RPA')}
-                  registrarActividad={registrarActividad}
-                  onGuardar={async(form)=>{
-                    const{data,error}=await supabase.from('cautelares_causa').insert({causa_id:c.id,tipo:form.tipo,fecha_inicio:form.fecha_inicio,fecha_termino:form.fecha_termino||null,frecuencia:form.tipo==='Firma'?form.frecuencia:null}).select().single()
-                    if(!error&&data){setCautelares(prev=>[...prev,data]);if(registrarActividad)registrarActividad('accion',`Agregó cautelar "${form.tipo}" en RUC ${c.ruc}`)}
-                  }}
-                  onActualizar={async(id,campos)=>{
-                    await supabase.from('cautelares_causa').update(campos).eq('id',id)
-                    setCautelares(prev=>prev.map(x=>x.id===id?{...x,...campos}:x))
-                  }}
-                />
+                {/* Cautelares — vinculadas al imputado correspondiente. Con 1 imputado se ve
+                    igual que antes; con 2+ imputados, cada uno tiene su propia casilla y sus
+                    propias cautelares (igual que ya pasa con Delito(s) más abajo). */}
+                {imputados.length <= 1 ? (
+                  <CautelaresPanel
+                    causaId={c.id}
+                    ruc={c.ruc}
+                    cautelares={cautelares}
+                    esRPA={imputados.some(i=>i.regimen==='RPA')}
+                    registrarActividad={registrarActividad}
+                    onGuardar={async(form)=>{
+                      const{data,error}=await supabase.from('cautelares_causa').insert({causa_id:c.id,imputado_id:imputados[0]?.id||null,tipo:form.tipo,fecha_inicio:form.fecha_inicio,fecha_termino:form.fecha_termino||null,frecuencia:form.tipo==='Firma'?form.frecuencia:null}).select().single()
+                      if(!error&&data){setCautelares(prev=>[...prev,data]);if(registrarActividad)registrarActividad('accion',`Agregó cautelar "${form.tipo}" en RUC ${c.ruc}`)}
+                    }}
+                    onActualizar={async(id,campos)=>{
+                      await supabase.from('cautelares_causa').update(campos).eq('id',id)
+                      setCautelares(prev=>prev.map(x=>x.id===id?{...x,...campos}:x))
+                    }}
+                  />
+                ) : (
+                  <div style={{gridColumn:'1/-1',display:'flex',flexDirection:'column',gap:14}}>
+                    {imputados.map(imp=>(
+                      <CautelaresPanel
+                        key={imp.id}
+                        nombreImputado={imp.nombre || 'Sin nombre'}
+                        causaId={c.id}
+                        ruc={c.ruc}
+                        cautelares={cautelares.filter(ct=>ct.imputado_id===imp.id)}
+                        esRPA={imp.regimen==='RPA'}
+                        registrarActividad={registrarActividad}
+                        onGuardar={async(form)=>{
+                          const{data,error}=await supabase.from('cautelares_causa').insert({causa_id:c.id,imputado_id:imp.id,tipo:form.tipo,fecha_inicio:form.fecha_inicio,fecha_termino:form.fecha_termino||null,frecuencia:form.tipo==='Firma'?form.frecuencia:null}).select().single()
+                          if(!error&&data){setCautelares(prev=>[...prev,data]);if(registrarActividad)registrarActividad('accion',`Agregó cautelar "${form.tipo}" a ${imp.nombre||'imputado'} en RUC ${c.ruc}`)}
+                        }}
+                        onActualizar={async(id,campos)=>{
+                          await supabase.from('cautelares_causa').update(campos).eq('id',id)
+                          setCautelares(prev=>prev.map(x=>x.id===id?{...x,...campos}:x))
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
 
                 {/* Delito(s) — sincronizado con los imputados. 1 imputado = mismo dato; varios = uno por cada uno */}
                 <div style={{gridColumn:'1/-1',marginBottom:2}}>
