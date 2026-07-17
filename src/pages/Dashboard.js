@@ -1743,10 +1743,13 @@ function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, onAccion
   const [diligencias, setDiligencias] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ tipo: TIPOS_DILIGENCIA[0], fecha_solicitud: new Date().toISOString().slice(0,10), folio:'' })
+  const [form, setForm] = useState({ tipo: TIPOS_DILIGENCIA[0], fecha_solicitud: new Date().toISOString().slice(0,10), folio:'', observacion:'' })
   const [guardando, setGuardando] = useState(false)
   const [respondiendoId, setRespondiendoId] = useState(null)
   const [formResp, setFormResp] = useState({ estado:'aprobada', fecha_respuesta:new Date().toISOString().slice(0,10), fecha_citacion:'', respuesta_detalle:'' })
+  const [subiendoId, setSubiendoId] = useState(null) // id de la diligencia que está subiendo un archivo (comprobante o respuesta)
+  const comprobanteInputRef = useRef(null)
+  const respuestaInputRef = useRef(null)
   const f = { fontFamily:"'Inter',sans-serif" }
   const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:'#1E293B', background:'#fff', ...f }
 
@@ -1764,14 +1767,14 @@ function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, onAccion
     if (!form.fecha_solicitud) return
     setGuardando(true)
     const { data, error } = await supabase.from('diligencias_fiscalia').insert({
-      causa_id: causaId, tipo: form.tipo, fecha_solicitud: form.fecha_solicitud, folio: form.folio.toUpperCase(), estado:'pendiente', registrado_por: email
+      causa_id: causaId, tipo: form.tipo, fecha_solicitud: form.fecha_solicitud, folio: form.folio.toUpperCase(), observacion: form.observacion || null, estado:'pendiente', registrado_por: email
     }).select().single()
     if (!error && data) {
       setDiligencias(prev => [data, ...prev])
       if (registrarActividad) registrarActividad('accion', `Registró diligencia "${form.tipo}" (folio ${form.folio}) en RUC ${ruc}`)
       if (onAccion) onAccion()
     }
-    setForm({ tipo: TIPOS_DILIGENCIA[0], fecha_solicitud: new Date().toISOString().slice(0,10), folio:'' })
+    setForm({ tipo: TIPOS_DILIGENCIA[0], fecha_solicitud: new Date().toISOString().slice(0,10), folio:'', observacion:'' })
     setShowForm(false)
     setGuardando(false)
   }
@@ -1801,12 +1804,49 @@ function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, onAccion
     if (onAccion) onAccion()
   }
 
+  // ✅ Antes de guardar cualquier documento (comprobante o respuesta), se pide
+  // confirmar el RUC que aparece en ese PDF. Si no coincide con el RUC de esta
+  // causa, se avisa antes de subirlo — para evitar arrastrarlo a la causa
+  // equivocada por error.
+  const normalizarRuc = (r) => (r||'').replace(/[.\-\s]/g,'').toUpperCase()
+
+  const confirmarRucYSubir = (file, tipoDoc, diligenciaId) => {
+    const rucIngresado = window.prompt(`Confirma el RUC que aparece en este documento (esta causa es RUC ${ruc}):`, ruc)
+    if (rucIngresado === null) return // canceló
+    if (normalizarRuc(rucIngresado) !== normalizarRuc(ruc)) {
+      const continuar = window.confirm(`⚠ El RUC que escribiste (${rucIngresado}) no coincide con el RUC de esta causa (${ruc}).\n\n¿Seguro que quieres guardar este documento aquí de todas formas?`)
+      if (!continuar) return
+    }
+    subirDocumento(file, tipoDoc, diligenciaId)
+  }
+
+  const subirDocumento = async (file, tipoDoc, diligenciaId) => {
+    setSubiendoId(diligenciaId)
+    try {
+      const path = `diligencias/${diligenciaId}/${tipoDoc}_${Date.now()}_${file.name}`
+      const { error: uploadError } = await supabase.storage.from('documentos').upload(path, file)
+      if (uploadError) throw uploadError
+      const { data: urlData } = supabase.storage.from('documentos').getPublicUrl(path)
+      const campos = tipoDoc === 'comprobante'
+        ? { comprobante_url: urlData.publicUrl, comprobante_path: path, comprobante_nombre: file.name }
+        : { respuesta_url: urlData.publicUrl, respuesta_path: path, respuesta_nombre: file.name }
+      await supabase.from('diligencias_fiscalia').update(campos).eq('id', diligenciaId)
+      setDiligencias(prev => prev.map(d => d.id === diligenciaId ? { ...d, ...campos } : d))
+      if (registrarActividad) registrarActividad('accion', `Adjuntó ${tipoDoc==='comprobante'?'comprobante':'respuesta'} de diligencia en RUC ${ruc}`)
+      if (onAccion) onAccion()
+    } catch (err) {
+      alert('No se pudo subir el archivo: ' + (err?.message || 'Error desconocido.'))
+    } finally {
+      setSubiendoId(null)
+    }
+  }
+
   if (loading) return <div style={{ textAlign:'center', padding:40, color:'#94a3b8', fontSize:13, ...f }}>Cargando diligencias...</div>
 
   return (
     <div>
       <div style={{ fontSize:12, color:'#94a3b8', marginBottom:16, lineHeight:1.6, ...f }}>
-        Cada solicitud a Fiscalía (declaración, petición de carpeta, entrevista con el fiscal, etc.) entrega un <strong>folio de seguimiento</strong> al momento de ingresarla — expígelo siempre y regístralo aquí. Días después llega la respuesta por correo: aprobada, con fecha de citación, o rechazada con motivo.
+        Cada solicitud a Fiscalía (declaración, petición de carpeta, entrevista con el fiscal, etc.) entrega un <strong>folio de seguimiento</strong> al momento de ingresarla — exígelo siempre y regístralo aquí. Días después llega la respuesta por correo: aprobada, con fecha de citación, o rechazada con motivo.
       </div>
 
       {diligencias.length === 0 && <p style={{ color:'#94a3b8', fontSize:13, marginBottom:14, ...f }}>Sin diligencias registradas todavía.</p>}
@@ -1821,6 +1861,40 @@ function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, onAccion
                 <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>Solicitada el {d.fecha_solicitud} · Folio <strong style={{color:'#475569'}}>{d.folio}</strong></div>
               </div>
               <span style={{ fontSize:10, fontWeight:700, padding:'3px 10px', borderRadius:20, textTransform:'uppercase', letterSpacing:0.3, color:cfg.color, background:cfg.bg, border:`1px solid ${cfg.border}`, ...f }}>{cfg.label}</span>
+            </div>
+
+            {d.observacion && (
+              <div style={{ fontSize:12, color:'#64748b', marginTop:8, background:'#fff', border:'1px solid #e2e8f0', borderRadius:8, padding:'8px 10px', ...f }}>{d.observacion}</div>
+            )}
+
+            {/* Comprobante y respuesta — adjuntar / ver PDF, cada uno con verificación de RUC al subir */}
+            <div style={{ display:'flex', gap:16, flexWrap:'wrap', marginTop:10 }}>
+              <div>
+                <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1, fontWeight:600, marginBottom:4, ...f }}>Comprobante</div>
+                {d.comprobante_url ? (
+                  <a href={d.comprobante_url} target="_blank" rel="noreferrer" style={{ fontSize:12, color:'#2563eb', fontWeight:600, textDecoration:'none', ...f }}>📄 {d.comprobante_nombre || 'Ver PDF'}</a>
+                ) : (
+                  <button
+                    onClick={()=>{ comprobanteInputRef.current.dataset.diligenciaId = d.id; comprobanteInputRef.current.click() }}
+                    disabled={subiendoId===d.id}
+                    style={{ fontSize:11, color:'#2563eb', background:'transparent', border:'none', cursor:'pointer', fontWeight:600, padding:0, ...f }}>
+                    {subiendoId===d.id ? 'Subiendo...' : '+ Adjuntar comprobante'}
+                  </button>
+                )}
+              </div>
+              <div>
+                <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1, fontWeight:600, marginBottom:4, ...f }}>Respuesta</div>
+                {d.respuesta_url ? (
+                  <a href={d.respuesta_url} target="_blank" rel="noreferrer" style={{ fontSize:12, color:'#2563eb', fontWeight:600, textDecoration:'none', ...f }}>📄 {d.respuesta_nombre || 'Ver PDF'}</a>
+                ) : (
+                  <button
+                    onClick={()=>{ respuestaInputRef.current.dataset.diligenciaId = d.id; respuestaInputRef.current.click() }}
+                    disabled={subiendoId===d.id}
+                    style={{ fontSize:11, color:'#2563eb', background:'transparent', border:'none', cursor:'pointer', fontWeight:600, padding:0, ...f }}>
+                    {subiendoId===d.id ? 'Subiendo...' : '+ Adjuntar respuesta'}
+                  </button>
+                )}
+              </div>
             </div>
 
             {respondiendoId === d.id ? (
@@ -1872,6 +1946,12 @@ function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, onAccion
         )
       })}
 
+      {/* Inputs de archivo ocultos y compartidos — se activan según en qué tarjeta se hizo clic */}
+      <input ref={comprobanteInputRef} type="file" accept=".pdf" style={{ display:'none' }}
+        onChange={e=>{ const file=e.target.files[0]; const id=e.target.dataset.diligenciaId; if(file&&id) confirmarRucYSubir(file,'comprobante',id); e.target.value='' }}/>
+      <input ref={respuestaInputRef} type="file" accept=".pdf" style={{ display:'none' }}
+        onChange={e=>{ const file=e.target.files[0]; const id=e.target.dataset.diligenciaId; if(file&&id) confirmarRucYSubir(file,'respuesta',id); e.target.value='' }}/>
+
       {showForm ? (
         <div style={{ background:'#F8F9FC', border:'1.5px solid #e2e8f0', borderRadius:12, padding:16, marginTop:8 }}>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
@@ -1888,6 +1968,10 @@ function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, onAccion
             <div>
               <div style={{ fontSize:10, color:'#dc2626', textTransform:'uppercase', letterSpacing:1.2, marginBottom:5, fontWeight:700, ...f }}>Folio *</div>
               <input style={{...inp,borderColor:'#fecaca'}} placeholder="Número de seguimiento" value={form.folio} onChange={e=>setForm(p=>({...p,folio:e.target.value}))}/>
+            </div>
+            <div style={{ gridColumn:'1/-1' }}>
+              <div style={{ fontSize:10, color:'#64748b', textTransform:'uppercase', letterSpacing:1.2, marginBottom:5, fontWeight:600, ...f }}>Detalle de lo solicitado (opcional)</div>
+              <input style={inp} placeholder="Ej: Declaración de los imputados para reconocer los hechos y aportar antecedentes..." value={form.observacion} onChange={e=>setForm(p=>({...p,observacion:e.target.value}))}/>
             </div>
           </div>
           <div style={{ display:'flex', gap:8 }}>
