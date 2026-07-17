@@ -1307,7 +1307,7 @@ const getSemaforo = (updated_at, estado) => {
     color: '#991b1b', bg: '#fef2f2', border: '#fecaca',
     label: 'SIN ACTIVIDAD', dias: null, pulsar: true
   }
-  const dias = Math.floor((new Date() - new Date(updated_at)) / (1000*60*60*24))
+  const dias = Math.max(0, Math.floor((new Date() - new Date(updated_at)) / (1000*60*60*24)))
   if (dias <= 2) return {
     color: '#065f46', bg: '#ecfdf5', border: '#6ee7b7',
     label: dias === 0 ? 'HOY' : dias === 1 ? 'AYER' : `HACE ${dias} DÍAS`,
@@ -2672,24 +2672,46 @@ function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudiencia, o
 // local (para que no choquen entre tarjetas de distintos imputados). Los datos
 // de la causa (Tribunal, Corte, RIT, Fiscal, Fechas) quedan arriba, compartidos,
 // porque son los mismos para toda la causa sin importar cuántos imputados haya. ─
-function ImputadoDatosCard({ imp, causaId, ruc, cautelares, registrarActividad, onUpdateCampo, onDelitoChange, onGuardarCautelar, onActualizarCautelar }) {
+function ImputadoDatosCard({ imp, numero, causaId, ruc, cautelares, registrarActividad, onUpdateCampo, onDelitoChange, onGuardarCautelar, onActualizarCautelar }) {
   const [expanded, setExpanded] = useState(false)
   const [editField, setEditField] = useState(null)
   const [editValue, setEditValue] = useState('')
   const f = { fontFamily:"'Inter',sans-serif" }
 
+  // Resumen — visible aunque la tarjeta esté colapsada, para no tener que abrirla
+  // solo para ver lo esencial. Texto plano, sin emojis.
+  const numDelitos = (imp.delitos||'').split('|').map(s=>s.trim()).filter(Boolean).length
+  const hoyISO = new Date().toISOString().slice(0,10)
+  const totalAbonoImp = (cautelares||[]).reduce((sum,ct)=>{
+    if (TIPOS_ABONO_DIRECTO.includes(ct.tipo)) return sum + diasEntreFechasCaut(ct.fecha_inicio, ct.fecha_termino || hoyISO)
+    if (ct.tipo === CAUTELAR_NOCTURNO && ct.sumado_a_abono) return sum + (parseFloat(ct.abono_nocturno_calculado)||0)
+    return sum
+  },0)
+
   return (
     <div style={{border:'1px solid #e2e8f0', borderRadius:14, background:'#fff', boxShadow:'0 1px 2px rgba(15,23,42,0.06)', overflow:'hidden'}}>
       <div
         onClick={()=>setExpanded(v=>!v)}
-        style={{cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center', padding:'14px 16px'}}>
-        <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
-          <span style={{fontSize:14,fontWeight:700,color:'#1E293B',...f}}>👤 {imp.nombre||'Sin nombre'}</span>
-          {imp.regimen && (
-            <span style={{fontSize:10,fontWeight:700,padding:'3px 9px',borderRadius:10,background:imp.regimen==='RPA'?'#faf5ff':'#eff6ff',color:imp.regimen==='RPA'?'#5b21b6':'#1E293B',border:`1px solid ${imp.regimen==='RPA'?'#ddd6fe':'#bfdbfe'}`,...f}}>{imp.regimen}</span>
-          )}
+        style={{cursor:'pointer', padding:'14px 16px'}}>
+        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+          <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+            {numero && (
+              <span style={{width:22,height:22,borderRadius:'50%',background:'linear-gradient(135deg,#2563eb,#1d4ed8)',color:'#fff',fontSize:11,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,...f}}>{numero}</span>
+            )}
+            <span style={{fontSize:14,fontWeight:700,color:'#1E293B',...f}}>{imp.nombre||'Sin nombre'}</span>
+            {imp.regimen && (
+              <span style={{fontSize:10,fontWeight:700,padding:'3px 9px',borderRadius:10,background:imp.regimen==='RPA'?'#faf5ff':'#eff6ff',color:imp.regimen==='RPA'?'#5b21b6':'#1E293B',border:`1px solid ${imp.regimen==='RPA'?'#ddd6fe':'#bfdbfe'}`,...f}}>{imp.regimen}</span>
+            )}
+          </div>
+          <span style={{fontSize:12,color:'#94a3b8'}}>{expanded ? '▲' : '▼'}</span>
         </div>
-        <span style={{fontSize:12,color:'#94a3b8'}}>{expanded ? '▲' : '▼'}</span>
+        <div style={{fontSize:12,color:'#64748b',marginTop:4,...f}}>
+          <strong style={{color:'#1E293B'}}>{numDelitos}</strong> delito{numDelitos!==1?'s':''}
+          <span style={{color:'#cbd5e1',margin:'0 8px'}}>·</span>
+          <strong style={{color:'#1E293B'}}>{totalAbonoImp}</strong> días de abono
+          <span style={{color:'#cbd5e1',margin:'0 8px'}}>·</span>
+          {imp.lugar_detencion || <span style={{color:'#94a3b8'}}>Sin centro penal</span>}
+        </div>
       </div>
 
       {expanded && (
@@ -3223,20 +3245,21 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                   )}
                 </div>
 
-                {/* 3. Tribunal */}
-                <Field label="Tribunal" value={c.tribunal} editable fieldKey="tribunal" editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField('tribunal',editValue)}/>
+                {/* ── Datos de la causa: Tribunal, RIT, Fiscal y las fechas — agrupados en un
+                     solo panel (en vez de casillas sueltas), para que se lea de un vistazo y
+                     quede fijo arriba, sin importar cuánto crezcan las tarjetas de imputado. ── */}
+                <div style={{gridColumn:'1/-1',border:'1px solid #e2e8f0',borderRadius:16,padding:'18px 20px',background:'#F8F9FC'}}>
+                  <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.3,fontWeight:700,marginBottom:14,...f}}>Datos de la causa</div>
 
-                {/* Resto de campos: RIT, Fiscal — se quitó "Cautelar procesal" (texto libre sin
-                    función real) y "Centro Penal" (ahora vinculado por imputado, ver más abajo). */}
-                {[{key:'rit',label:'RIT JG',editable:true},{key:'fiscal',label:'Fiscal a cargo',editable:true}].map(field=>(
-                  <Field key={field.key} label={field.label} value={c[field.key]} editable={field.editable} full={field.full} fieldKey={field.key} editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField(field.key,editValue)}/>
-                ))}
+                  <Field label="Tribunal" value={c.tribunal} editable full fieldKey="tribunal" editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField('tribunal',editValue)}/>
 
-                {/* ── Franja compacta, alineada a la izquierda: Vencimiento del plazo, Fecha ACD y
-                     Fecha de los hechos — datos de la CAUSA (son los mismos sin importar cuántos
-                     imputados haya), por eso van aquí arriba, junto a Tribunal/RIT/Fiscal ── */}
-                <div style={{gridColumn:'1/-1',marginTop:2,marginBottom:2}}>
-                  <div style={{display:'flex',gap:10,flexWrap:'wrap',maxWidth:640}}>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginTop:2}}>
+                    {[{key:'rit',label:'RIT JG',editable:true},{key:'fiscal',label:'Fiscal a cargo',editable:true}].map(field=>(
+                      <Field key={field.key} label={field.label} value={c[field.key]} editable={field.editable} full={field.full} fieldKey={field.key} editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField(field.key,editValue)}/>
+                    ))}
+                  </div>
+
+                  <div style={{display:'flex',gap:10,flexWrap:'wrap',maxWidth:640,marginTop:16}}>
                     {/* Vencimiento del plazo */}
                     <div style={{flex:'1 1 190px',minWidth:170}}>
                       <div style={{fontSize:9,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4,fontWeight:600,...f}}>Vencimiento del plazo</div>
@@ -3286,33 +3309,12 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                       )}
                     </div>
                   </div>
-                  {/* Chips de régimen RPA/ADULTO por imputado, debajo de la franja compacta */}
-                  {c.fecha_hechos && imputados.some(imp=>imp.fecha_nacimiento||imp.regimen) && (
-                    <div style={{display:'flex',gap:6,flexWrap:'wrap',marginTop:8}}>
-                      {imputados.map(imp => {
-                        if (!imp.fecha_nacimiento && !imp.regimen) return null
-                        const regimen = imp.regimen || calcularRegimenAlMomento(imp.fecha_nacimiento, c.fecha_hechos)
-                        if (!regimen) return null
-                        return (
-                          <span key={imp.id} style={{
-                            fontSize:10,fontWeight:700,padding:'3px 10px',borderRadius:10,
-                            background: regimen==='RPA'?'#faf5ff':'#eff6ff',
-                            color: regimen==='RPA'?'#5b21b6':'#1E293B',
-                            border: `1.5px solid ${regimen==='RPA'?'#ddd6fe':'#bfdbfe'}`,
-                            ...f
-                          }}>
-                            ✓ {imp.nombre?.split(' ')[0]}: {regimen}
-                          </span>
-                        )
-                      })}
-                    </div>
-                  )}
                 </div>
 
                 {/* ── Todo lo que puede variar por imputado: Centro Penal, Cautelar Personal,
                      Delito(s), Delegación de Poder y Correo de notificación. Con 1 imputado se
                      ve igual que siempre (campos sueltos); con 2+, cada uno tiene su propia
-                     tarjeta colapsable con toda su información agrupada. ── */}
+                     tarjeta colapsable con toda su información agrupada, numerada. ── */}
                 {imputados.length <= 1 ? (
                   <>
                     {imputados.length === 0 ? (
@@ -3400,10 +3402,11 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                   </>
                 ) : (
                   <div style={{gridColumn:'1/-1',display:'flex',flexDirection:'column',gap:12}}>
-                    {imputados.map(imp=>(
+                    {imputados.map((imp,idx)=>(
                       <ImputadoDatosCard
                         key={imp.id}
                         imp={imp}
+                        numero={idx+1}
                         causaId={c.id}
                         ruc={c.ruc}
                         cautelares={cautelares.filter(ct=>ct.imputado_id===imp.id)}
