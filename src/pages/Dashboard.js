@@ -35,6 +35,7 @@ const CSS = `
     .stats-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 8px !important; }
     .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .hide-mobile { display: none !important; }
+    .grid2-mobile { grid-template-columns: 1fr !important; }
   }
 `
 
@@ -4393,7 +4394,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
         <div style={{position:'fixed',top:0,left:0,width:'100%',height:'100%',background:'rgba(15,23,42,0.5)',display:'flex',alignItems:'flex-start',justifyContent:'center',paddingTop:'5vh',zIndex:200,backdropFilter:'blur(4px)'}} onClick={e=>e.target===e.currentTarget&&setShowNuevaCausa(false)}>
           <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:16,padding:32,width:540,maxWidth:'90vw',boxShadow:'0 24px 80px rgba(15,23,42,0.22)',maxHeight:'90vh',overflowY:'auto'}}>
             <div style={{fontSize:20,fontWeight:800,color:'#1E293B',marginBottom:24,...f}}>Nueva Causa</div>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+            <div className="grid2-mobile" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
               {/* RUC y RIT */}
               {[{key:'ruc',label:'RUC *',ph:'Ej: 2600123456-7',full:true},{key:'rit',label:'RIT',ph:'Ej: 1234-2026'}].map(field=>(
                 <div key={field.key} style={{gridColumn:field.full?'1/-1':'auto'}}>
