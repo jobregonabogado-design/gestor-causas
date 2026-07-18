@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { f } from './primitives'
 import { DiligenciasFiscalia } from './diligencias'
 import { FallosReferencia, DocumentosGuardados } from './documentos'
+import CarpetaOneDrive from '../../components/CarpetaOneDrive'
 
 const TC_SECCIONES = [
   { key:'hechos',        icon:'📋', label:'Hechos del caso',       placeholder:'Describe los hechos relevantes: lugar, fecha, circunstancias, cronología de los eventos...' },

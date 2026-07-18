@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { supabase } from '../lib/supabase'
-import CarpetaOneDrive from '../components/CarpetaOneDrive'
 import {
   estadoConfig, SUBESTADOS_VIGENTE, SUBESTADOS_TERMINADA, getBadgeConfig,
   corregirOrtografia, getCorteApelaciones, TRIBUNALES_CHILE, DELITOS_CATALOGO,
