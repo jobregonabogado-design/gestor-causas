@@ -1,6 +1,6 @@
-const CLIENT_ID = process.env.REACT_APP_MS_CLIENT_ID
-const TENANT_ID = process.env.REACT_APP_MS_TENANT_ID
-const FOLDER_NAME = process.env.REACT_APP_ONEDRIVE_FOLDER || 'CAUSAS JOA'
+const CLIENT_ID = import.meta.env.VITE_MS_CLIENT_ID
+const TENANT_ID = import.meta.env.VITE_MS_TENANT_ID
+const FOLDER_NAME = import.meta.env.VITE_ONEDRIVE_FOLDER || 'CAUSAS JOA'
 
 const SCOPES = ['Files.ReadWrite', 'User.Read']
 const REDIRECT_URI = window.location.origin + '/ms-callback.html'

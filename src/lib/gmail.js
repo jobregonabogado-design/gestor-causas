@@ -1,12 +1,12 @@
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf'
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
 
-const CLIENT_ID = process.env.REACT_APP_GMAIL_CLIENT_ID
+const CLIENT_ID = import.meta.env.VITE_GMAIL_CLIENT_ID
 const REDIRECT_URI = window.location.origin + '/gmail-callback.html'
 const SCOPES = 'https://www.googleapis.com/auth/gmail.readonly'
 
 const SUPABASE_FUNCTION_URL = 'https://qttwthpgzzjzidimlkkh.supabase.co/functions/v1/gmail-token'
-const SUPABASE_ANON_KEY = process.env.REACT_APP_SUPABASE_ANON_KEY || ''
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 
 export async function exchangeCodeForToken(code) {
   const res = await fetch(SUPABASE_FUNCTION_URL, {
