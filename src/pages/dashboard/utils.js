@@ -1079,3 +1079,47 @@ export function calcularEdadActual(fechaNac) {
   if (m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) edad--
   return edad
 }
+export function calcularRegimenAlMomento(fechaNac, fechaHechos) {
+  if (!fechaNac || !fechaHechos) return null
+  const nac = new Date(fechaNac + 'T12:00:00')
+  const hechos = new Date(fechaHechos + 'T12:00:00')
+  if (isNaN(nac) || isNaN(hechos)) return null
+  let edad = hechos.getFullYear() - nac.getFullYear()
+  const m = hechos.getMonth() - nac.getMonth()
+  if (m < 0 || (m === 0 && hechos.getDate() < nac.getDate())) edad--
+  return edad < 18 ? 'RPA' : 'ADULTO'
+}
+
+export function calcularVencimiento(fechaInicio, diasPlazo) {
+  if (!fechaInicio || !diasPlazo) return ''
+  const inicio = new Date(fechaInicio + 'T12:00:00')
+  inicio.setDate(inicio.getDate() + parseInt(diasPlazo))
+  return inicio.toLocaleDateString('es-CL', { day:'2-digit', month:'2-digit', year:'numeric' })
+}
+
+export function parseFechaCL(str) {
+  if (!str) return null
+  const limpio = str.replace(/VENCE\s*/i, '').trim()
+  const partes = limpio.split(/[\/\-\.]/)
+  if (partes.length < 3) return null
+  const [d, m, a] = partes
+  const fecha = new Date(`${a.length===2?'20'+a:a}-${m.padStart(2,'0')}-${d.padStart(2,'0')}T12:00:00`)
+  return isNaN(fecha) ? null : fecha
+}
+
+export function diasRestantes(plazoStr) {
+  const fecha = parseFechaCL(plazoStr)
+  if (!fecha) return null
+  const hoy = new Date(); hoy.setHours(0,0,0,0)
+  return Math.ceil((fecha - hoy) / (1000*60*60*24))
+}
+
+export function calcularSubestado(plazoStr) {
+  const diff = diasRestantes(plazoStr)
+  if (diff === null) return null
+  if (diff < 0) return 'vencido'
+  if (diff <= 3) return 'proximo'
+  return null
+}
+
+
