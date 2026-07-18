@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard'
 import Calendario from './pages/Calendario'
 import Escritos from './pages/Escritos'
 import CodigosLeyes from './pages/CodigosLeyes'
+import Contabilidad from './pages/Contabilidad'
 
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
@@ -556,6 +557,11 @@ export default function App() {
                       )}
                     </button>
                   )}
+                  {esTitular && (
+                    <button onClick={() => { setShowUserMenu(false); setPagina('contabilidad') }} style={{ width:'100%', textAlign:'left', background:'none', border:'none', borderTop:'1px solid #F1F5F9', padding:'12px 16px', fontSize:13, cursor:'pointer', color:'#374151', fontFamily:"'Inter',sans-serif" }}>
+                      💰 Contabilidad
+                    </button>
+                  )}
                   <button onClick={handleSignOut} style={{ width:'100%', textAlign:'left', background:'none', border:'none', borderTop:'1px solid #F1F5F9', padding:'12px 16px', fontSize:13, cursor:'pointer', color:'#dc2626', fontWeight:600, fontFamily:"'Inter',sans-serif" }}>
                     ⏻ Salir
                   </button>
@@ -586,6 +592,9 @@ export default function App() {
         )}
         {pagina === 'codigos' && (
           <CodigosLeyes />
+        )}
+        {pagina === 'contabilidad' && esTitular && (
+          <Contabilidad />
         )}
       </div>
     </div>
