@@ -29,10 +29,18 @@ const CSS = `
   .chip-group { animation:chipIn 0.28s cubic-bezier(0.4,0,0.2,1) forwards; }
   .chip-btn { transition:all 0.18s ease; }
   .chip-btn:hover { transform:translateY(-1px); box-shadow:0 3px 10px rgba(15,23,42,0.08); }
+  .caut-header { transition:filter 0.2s ease; }
+  .caut-header:hover { filter:brightness(1.08); }
+  .causa-row { border-bottom:1px solid #f1f5f9; }
+  .causa-row:last-child { border-bottom:none; }
+  .causa-row-mobile { display:none; }
   @media (max-width: 640px) {
     .stats-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 8px !important; }
     .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .hide-mobile { display: none !important; }
+    .grid2-mobile { grid-template-columns: 1fr !important; }
+    .causa-col-desktop { display: none !important; }
+    .causa-row-mobile { display: block !important; }
   }
 `
 
@@ -128,7 +136,6 @@ function corregirOrtografia(texto) {
   }
   return resultado
 }
-
 
 // ─── LISTA COMPLETA DE TRIBUNALES CHILE ──────────────────────────────────────
 const TRIBUNALES_CHILE = [
@@ -1242,9 +1249,9 @@ function DelitosChips({ value, onChange, options }) {
       {lista.length > 0 && (
         <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginBottom:10 }}>
           {lista.map((d, i) => (
-            <div key={i} style={{ display:'flex', alignItems:'center', gap:6, background:'#fef2f2', border:'1px solid #fecaca', borderRadius:8, padding:'6px 10px', maxWidth:'100%' }}>
-              <span style={{ fontSize:12, color:'#991b1b', fontWeight:600, ...f }}>{d}</span>
-              <button onClick={() => quitar(i)} style={{ background:'transparent', border:'none', cursor:'pointer', color:'#fca5a5', fontSize:13, padding:0, flexShrink:0 }}>✕</button>
+            <div key={i} style={{ display:'flex', alignItems:'center', gap:7, background:'#fef2f2', border:'1px solid #fecaca', borderRadius:8, padding:'5px 9px', maxWidth:'100%' }}>
+              <span style={{ fontSize:11, color:'#991b1b', fontWeight:600, ...f }}>{d}</span>
+              <button onClick={() => quitar(i)} style={{ background:'transparent', border:'none', cursor:'pointer', color:'#fca5a5', fontSize:12, padding:0, flexShrink:0 }}>✕</button>
             </div>
           ))}
         </div>
@@ -1263,6 +1270,38 @@ function DelitosChips({ value, onChange, options }) {
   )
 }
 
+// ─── TARJETA DE DELITOS COLAPSABLE — angosta (no ocupa todo el ancho), con la
+// misma dinámica de "clic para desplegar" que Cautelares. Se usa tanto para el
+// caso de 1 imputado como para cada imputado cuando hay varios. ──────────────
+function DelitoCard({ nombreImputado, value, onChange, options }) {
+  const [expanded, setExpanded] = useState(true)
+  const lista = (value || '').split('|').map(s => s.trim()).filter(Boolean)
+  const f = { fontFamily:"'Inter',sans-serif" }
+  return (
+    <div style={{flex:'1 1 360px', maxWidth:460, minWidth:260}}>
+      {nombreImputado && (
+        <div style={{fontSize:11,fontWeight:700,color:'#1E293B',marginBottom:6,...f}}>👤 {nombreImputado}</div>
+      )}
+      <div
+        className="fld"
+        onClick={()=>setExpanded(v=>!v)}
+        style={{
+          cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center',
+          padding:'9px 12px', borderRadius: expanded ? '12px 12px 0 0' : 12, fontSize:13,
+          color:'#1E293B', minHeight:34, background:'#fff', boxShadow:'0 1px 2px rgba(15,23,42,0.06)', ...f,
+        }}>
+        <span>{lista.length===0 ? 'Sin delitos' : `${lista.length} delito${lista.length!==1?'s':''}`}</span>
+        <span style={{fontSize:11,color:'#94a3b8'}}>{expanded ? '▲' : '▼'}</span>
+      </div>
+      {expanded && (
+        <div style={{background:'#F8F9FC',borderRadius:'0 0 12px 12px',padding:'12px',boxShadow:'0 1px 2px rgba(15,23,42,0.06)'}}>
+          <DelitosChips value={value} onChange={onChange} options={options} />
+        </div>
+      )}
+    </div>
+  )
+}
+
 const TMAP = {'JG VINA DEL MAR':'JG VIÑA DEL MAR','JG CONCEPCION':'JG CONCEPCIÓN','JG VALPARAISO':'JG VALPARAÍSO','JG QUILPUE':'JG QUILPUÉ','JG CHILLAN':'JG CHILLÁN','JG AYSEN':'JG AYSÉN','JG CANETE':'JG CAÑETE','TOP CANETE':'TOP CAÑETE','13 JG DE STGO':'13 JG STGO','TOP SERENA':'TOP LA SERENA'}
 const normT = t => t ? (TMAP[t.trim()] || t.trim()) : t
 const f = { fontFamily:"'Inter',sans-serif" }
@@ -1274,7 +1313,7 @@ const getSemaforo = (updated_at, estado) => {
     color: '#991b1b', bg: '#fef2f2', border: '#fecaca',
     label: 'SIN ACTIVIDAD', dias: null, pulsar: true
   }
-  const dias = Math.floor((new Date() - new Date(updated_at)) / (1000*60*60*24))
+  const dias = Math.max(0, Math.floor((new Date() - new Date(updated_at)) / (1000*60*60*24)))
   if (dias <= 2) return {
     color: '#065f46', bg: '#ecfdf5', border: '#6ee7b7',
     label: dias === 0 ? 'HOY' : dias === 1 ? 'AYER' : `HACE ${dias} DÍAS`,
@@ -1689,7 +1728,562 @@ const TC_SECCIONES = [
   { key:'prueba',        icon:'🔍', label:'Prueba y testigos',      placeholder:'Lista de testigos, peritos, documentos, evidencias materiales, cadena de custodia...' },
   { key:'fallos',        icon:'📄', label:'Fallos de referencia',   placeholder:null },
   { key:'observaciones', icon:'📝', label:'Observaciones',          placeholder:'Notas de seguimiento, criterios del tribunal, pendientes...' },
+  { key:'carpeta',       icon:'📁', label:'Carpeta y Documentos',   placeholder:null },
+  { key:'diligencias',   icon:'📨', label:'Diligencias Fiscalía',   placeholder:null },
 ]
+
+// ─── DILIGENCIAS ANTE FISCALÍA — declaración de imputado, petición de carpeta,
+// entrevista con el fiscal, etc. Cada una nace con un FOLIO (número de
+// seguimiento que entrega el portal de Fiscalía al momento de la solicitud —
+// obligatorio, hay que exigirlo siempre) y más adelante recibe una respuesta
+// por correo (aprobada, con fecha de citación, o rechazada con motivo). ──────
+const TIPOS_DILIGENCIA = ['Declaración de imputado','Petición de carpeta','Entrevista con el fiscal','Reconstitución de escena','Careo','Otra diligencia']
+const ESTADOS_DILIGENCIA = {
+  pendiente:    { label:'Pendiente de respuesta',   color:'#92400e', bg:'#fff7ed', border:'#fed7aa' },
+  aprobada:     { label:'Aprobada',                 color:'#065f46', bg:'#ecfdf5', border:'#a7f3d0' },
+  con_citacion: { label:'Con fecha de citación',     color:'#1e40af', bg:'#eff6ff', border:'#bfdbfe' },
+  rechazada:    { label:'Rechazada',                color:'#991b1b', bg:'#fef2f2', border:'#fecaca' },
+}
+
+// ─── LECTURA AUTOMÁTICA DEL COMPROBANTE DE FISCALÍA ──────────────────────────
+// Los PDF que entrega el portal "mi.Fiscalía en línea" tienen texto real (no
+// son una foto escaneada), así que se puede leer sin OCR. Se carga pdf.js
+// desde un CDN en tiempo de ejecución (no requiere agregar nada al
+// package.json ni tocar el proceso de build).
+let _pdfjsCargando = null
+function cargarPdfJs() {
+  if (typeof window !== 'undefined' && window.pdfjsLib) return Promise.resolve(window.pdfjsLib)
+  if (_pdfjsCargando) return _pdfjsCargando
+  _pdfjsCargando = new Promise((resolve, reject) => {
+    const script = document.createElement('script')
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'
+    script.onload = () => {
+      try {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
+        resolve(window.pdfjsLib)
+      } catch (e) { reject(e) }
+    }
+    script.onerror = () => reject(new Error('No se pudo cargar el lector de PDF (revisa tu conexión a internet)'))
+    document.body.appendChild(script)
+  })
+  return _pdfjsCargando
+}
+
+async function extraerTextoPdf(file) {
+  const pdfjsLib = await cargarPdfJs()
+  const arrayBuffer = await file.arrayBuffer()
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
+  let texto = ''
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i)
+    const content = await page.getTextContent()
+    texto += content.items.map(it => it.str).join(' ') + '\n'
+  }
+  return texto
+}
+
+// Reconoce el formato del "Comprobante Ingreso Solicitud Asociada a una Causa"
+// de mi.Fiscalía en línea. Es a prueba de variaciones menores de espaciado,
+// pero siempre se muestra al usuario para que revise/corrija antes de guardar.
+function parsearComprobanteFiscalia(texto) {
+  const buscar = (regex) => { const m = texto.match(regex); return m ? m[1].replace(/\s+/g,' ').trim() : '' }
+  const ruc = buscar(/RUC\s+(\d{6,9}-[\dkK])/i)
+  const fechaIngresoRaw = buscar(/Fecha Ingreso\s+(\d{2}\/\d{2}\/\d{4})/i)
+  const fiscal = buscar(/Fiscal Asignado\s+([A-ZÁÉÍÓÚÑ ]+?)(?=\s+Representado|\s+Tipo Abogado|$)/i)
+  const representado = buscar(/Representado\s+([A-ZÁÉÍÓÚÑ ]+?)(?=\s+Tipo Abogado|$)/i)
+  const nombreCaso = buscar(/Nombre Caso\s+([^\n]+?)(?=\s+Fiscalia|$)/i)
+
+  // Folio: el N° Solicitud siempre tiene menos dígitos (6-9) que el Folio (10-15).
+  // Tomando el número puro más largo del documento se aísla el folio de forma
+  // confiable (el RUC tiene guión y las fechas tienen "/", así que no compiten).
+  const numeros = texto.match(/\b\d{10,15}\b/g) || []
+  const folio = numeros[0] || ''
+
+  // Observación / detalle de lo solicitado: todo el texto entre "Observación"
+  // (encabezado de la tabla) y "Documentos Adjuntos".
+  let observacion = ''
+  const idxObs = texto.indexOf('Observación')
+  const idxDocs = texto.indexOf('Documentos Adjuntos')
+  if (idxObs !== -1) {
+    const fin = idxDocs !== -1 ? idxDocs : texto.length
+    observacion = texto.slice(idxObs + 'Observación'.length, fin).replace(/\s+/g,' ').trim()
+    observacion = observacion.replace(/^Ingreso Solicitud Portal\.?\s*/i, '')
+  }
+
+  let fechaSolicitud = ''
+  if (fechaIngresoRaw) {
+    const [d,m,y] = fechaIngresoRaw.split('/')
+    if (d && m && y) fechaSolicitud = `${y}-${m}-${d}`
+  }
+
+  return { ruc, fechaSolicitud, fiscal, representado, nombreCaso, folio, observacion }
+}
+
+// ─── LECTURA DE SCREENSHOTS (imágenes) DEL COMPROBANTE — vía OCR ─────────────
+// A diferencia del PDF (que ya trae texto real), una foto/captura es solo
+// píxeles: hay que leerla con reconocimiento óptico de caracteres (OCR).
+// Se usa Tesseract.js cargado desde un CDN en tiempo de ejecución (mismo
+// enfoque que pdf.js, no requiere tocar package.json).
+let _tesseractCargando = null
+function cargarTesseract() {
+  if (typeof window !== 'undefined' && window.Tesseract) return Promise.resolve(window.Tesseract)
+  if (_tesseractCargando) return _tesseractCargando
+  _tesseractCargando = new Promise((resolve, reject) => {
+    const script = document.createElement('script')
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js'
+    script.onload = () => resolve(window.Tesseract)
+    script.onerror = () => reject(new Error('No se pudo cargar el lector de imágenes (revisa tu conexión a internet)'))
+    document.body.appendChild(script)
+  })
+  return _tesseractCargando
+}
+
+async function extraerTextoImagen(file) {
+  const Tesseract = await cargarTesseract()
+  const { data } = await Tesseract.recognize(file, 'spa')
+  return data.text || ''
+}
+
+// Días HÁBILES transcurridos desde una fecha (excluye sábados y domingos) —
+// para avisar cuando ya pasaron los ~5 días hábiles típicos de respuesta de
+// Fiscalía y todavía no ha llegado nada, así el usuario sabe que debe
+// hacer seguimiento.
+function diasHabilesDesde(fechaISO) {
+  if (!fechaISO) return 0
+  const inicio = new Date(fechaISO + 'T00:00:00')
+  const hoy = new Date(); hoy.setHours(0,0,0,0)
+  if (isNaN(inicio) || inicio > hoy) return 0
+  let dias = 0
+  const cursor = new Date(inicio)
+  while (cursor < hoy) {
+    cursor.setDate(cursor.getDate() + 1)
+    const diaSemana = cursor.getDay() // 0=domingo, 6=sábado
+    if (diaSemana !== 0 && diaSemana !== 6) dias++
+  }
+  return dias
+}
+
+function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, onAccion }) {
+  const [diligencias, setDiligencias] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [form, setForm] = useState({ tipo: TIPOS_DILIGENCIA[0], fecha_solicitud: new Date().toISOString().slice(0,10), folio:'', observacion:'' })
+  const [guardando, setGuardando] = useState(false)
+  const [respondiendoId, setRespondiendoId] = useState(null)
+  const [editandoDatosId, setEditandoDatosId] = useState(null)
+  const [formEdit, setFormEdit] = useState({ tipo:'', fecha_solicitud:'', folio:'', observacion:'' })
+  const [formResp, setFormResp] = useState({ estado:'aprobada', fecha_respuesta:new Date().toISOString().slice(0,10), fecha_citacion:'', respuesta_detalle:'' })
+  const [subiendoId, setSubiendoId] = useState(null) // id de la diligencia que está subiendo un archivo (comprobante o respuesta)
+  const [analizandoPdf, setAnalizandoPdf] = useState(false)
+  const [dragPdf, setDragPdf] = useState(false)
+  const [comprobantePendiente, setComprobantePendiente] = useState(null) // File detectado, se sube junto con la diligencia al guardar
+  const [avisoRuc, setAvisoRuc] = useState('') // aviso si el RUC leído del PDF no coincide con esta causa
+  const nuevaDiligenciaFileRef = useRef(null)
+  const comprobanteInputRef = useRef(null)
+  const respuestaInputRef = useRef(null)
+  const f = { fontFamily:"'Inter',sans-serif" }
+  const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:'#1E293B', background:'#fff', ...f }
+
+  useEffect(() => { cargar() }, [causaId])
+
+  const cargar = async () => {
+    setLoading(true)
+    const { data } = await supabase.from('diligencias_fiscalia').select('*').eq('causa_id', causaId).order('fecha_solicitud', { ascending:false })
+    setDiligencias(data || [])
+    setLoading(false)
+  }
+
+  const agregar = async () => {
+    if (!form.folio.trim()) { alert('El folio es obligatorio — es tu número de seguimiento ante la Fiscalía. Exígelo siempre al hacer la solicitud.'); return }
+    if (!form.fecha_solicitud) return
+    setGuardando(true)
+    const { data, error } = await supabase.from('diligencias_fiscalia').insert({
+      causa_id: causaId, tipo: form.tipo, fecha_solicitud: form.fecha_solicitud, folio: form.folio.toUpperCase(), observacion: form.observacion || null, estado:'pendiente', registrado_por: email
+    }).select().single()
+    if (error || !data) {
+      // ✅ Antes esto fallaba en silencio y solo cerraba el formulario. Ahora
+      // se muestra el error real y NO se pierde lo que ya habías escrito.
+      alert('No se pudo guardar la diligencia: ' + (error?.message || 'Error desconocido. Revisa la consola del navegador (F12) para más detalle.'))
+      setGuardando(false)
+      return
+    }
+    let dataFinal = data
+    // Si el comprobante se detectó por PDF (arrastrado), se sube y se adjunta
+    // automáticamente a esta misma diligencia — sin tener que volver a subirlo.
+    if (comprobantePendiente) {
+      try {
+        const path = `diligencias/${data.id}/comprobante_${Date.now()}_${comprobantePendiente.name}`
+        const { error: upErr } = await supabase.storage.from('documentos').upload(path, comprobantePendiente)
+        if (!upErr) {
+          const { data: urlData } = supabase.storage.from('documentos').getPublicUrl(path)
+          const camposArchivo = { comprobante_url: urlData.publicUrl, comprobante_path: path, comprobante_nombre: comprobantePendiente.name }
+          await supabase.from('diligencias_fiscalia').update(camposArchivo).eq('id', data.id)
+          dataFinal = { ...data, ...camposArchivo }
+        }
+      } catch { /* si falla el adjunto, la diligencia igual queda guardada */ }
+    }
+    setDiligencias(prev => [dataFinal, ...prev])
+    if (registrarActividad) registrarActividad('accion', `Registró diligencia "${form.tipo}" (folio ${form.folio}) en RUC ${ruc}`)
+    if (onAccion) onAccion()
+    setForm({ tipo: TIPOS_DILIGENCIA[0], fecha_solicitud: new Date().toISOString().slice(0,10), folio:'', observacion:'' })
+    setComprobantePendiente(null)
+    setAvisoRuc('')
+    setShowForm(false)
+    setGuardando(false)
+  }
+
+  const normalizarRuc = (r) => (r||'').replace(/[.\-\s]/g,'').toUpperCase()
+
+  // ✅ Corregir el folio, fecha, tipo u observación de una diligencia ya
+  // registrada — para cuando la lectura automática del PDF se equivoca
+  // (folio duplicado o mal leído), sin tener que borrar todo y perder el
+  // comprobante ya adjuntado.
+  const empezarEdicionDatos = (d) => {
+    setEditandoDatosId(d.id)
+    setFormEdit({ tipo: d.tipo, fecha_solicitud: d.fecha_solicitud, folio: d.folio, observacion: d.observacion || '' })
+  }
+
+  const guardarEdicionDatos = async (id) => {
+    if (!formEdit.folio.trim()) { alert('El folio no puede quedar vacío.'); return }
+    if (!formEdit.fecha_solicitud) return
+    const campos = { tipo: formEdit.tipo, fecha_solicitud: formEdit.fecha_solicitud, folio: formEdit.folio.toUpperCase(), observacion: formEdit.observacion || null }
+    await supabase.from('diligencias_fiscalia').update(campos).eq('id', id)
+    setDiligencias(prev => prev.map(d => d.id === id ? { ...d, ...campos } : d))
+    setEditandoDatosId(null)
+    if (registrarActividad) registrarActividad('accion', `Corrigió datos de una diligencia (folio ${formEdit.folio}) en RUC ${ruc}`)
+    if (onAccion) onAccion()
+  }
+
+  const empezarRespuesta = (d) => {
+    setRespondiendoId(d.id)
+    setFormResp({
+      estado: d.estado !== 'pendiente' ? d.estado : 'aprobada',
+      fecha_respuesta: d.fecha_respuesta || new Date().toISOString().slice(0,10),
+      fecha_citacion: d.fecha_citacion || '',
+      respuesta_detalle: d.respuesta_detalle || '',
+    })
+  }
+
+  const guardarRespuesta = async (id) => {
+    if (!formResp.fecha_respuesta) return
+    const campos = {
+      estado: formResp.estado,
+      fecha_respuesta: formResp.fecha_respuesta,
+      fecha_citacion: formResp.estado === 'con_citacion' ? (formResp.fecha_citacion || null) : null,
+      respuesta_detalle: formResp.respuesta_detalle || null,
+    }
+    await supabase.from('diligencias_fiscalia').update(campos).eq('id', id)
+    setDiligencias(prev => prev.map(d => d.id === id ? { ...d, ...campos } : d))
+    setRespondiendoId(null)
+    if (registrarActividad) registrarActividad('accion', `Registró respuesta de Fiscalía (${ESTADOS_DILIGENCIA[formResp.estado]?.label}) en RUC ${ruc}`)
+    if (onAccion) onAccion()
+  }
+
+  // ⚠️ Por regla general las diligencias de Fiscalía NO se eliminan (sirven
+  // como medio de prueba y argumento de alegatos). Esto es solo para corregir
+  // errores reales de carga: una lectura automática duplicada, un folio mal
+  // detectado, etc. — por eso pide confirmar dos veces antes de borrar.
+  const eliminarDiligencia = async (d) => {
+    if (!window.confirm(`¿Seguro que quieres eliminar esta diligencia?\n\n"${d.tipo}" — Folio ${d.folio}\n\nEsto NO se puede deshacer. Solo hazlo si es un error de carga (por ejemplo, quedó duplicada o el folio se leyó mal) — nunca para borrar una diligencia real.`)) return
+    if (!window.confirm('Confirma una segunda vez: ¿eliminar definitivamente esta diligencia?')) return
+    await supabase.from('diligencias_fiscalia').delete().eq('id', d.id)
+    setDiligencias(prev => prev.filter(x => x.id !== d.id))
+    if (registrarActividad) registrarActividad('accion', `Eliminó diligencia "${d.tipo}" (folio ${d.folio}) en RUC ${ruc} — corrección de error de carga`)
+    if (onAccion) onAccion()
+  }
+
+  // ✅ Antes de guardar cualquier documento (comprobante o respuesta) desde las
+  // tarjetas ya existentes, se pide confirmar el RUC que aparece en ese PDF.
+  // Si no coincide con el RUC de esta causa, se avisa antes de subirlo — para
+  // evitar arrastrarlo a la causa equivocada por error.
+  const confirmarRucYSubir = (file, tipoDoc, diligenciaId) => {
+    const rucIngresado = window.prompt(`Confirma el RUC que aparece en este documento (esta causa es RUC ${ruc}):`, ruc)
+    if (rucIngresado === null) return // canceló
+    if (normalizarRuc(rucIngresado) !== normalizarRuc(ruc)) {
+      const continuar = window.confirm(`⚠ El RUC que escribiste (${rucIngresado}) no coincide con el RUC de esta causa (${ruc}).\n\n¿Seguro que quieres guardar este documento aquí de todas formas?`)
+      if (!continuar) return
+    }
+    subirDocumento(file, tipoDoc, diligenciaId)
+  }
+
+  const subirDocumento = async (file, tipoDoc, diligenciaId) => {
+    setSubiendoId(diligenciaId)
+    try {
+      const path = `diligencias/${diligenciaId}/${tipoDoc}_${Date.now()}_${file.name}`
+      const { error: uploadError } = await supabase.storage.from('documentos').upload(path, file)
+      if (uploadError) throw uploadError
+      const { data: urlData } = supabase.storage.from('documentos').getPublicUrl(path)
+      const campos = tipoDoc === 'comprobante'
+        ? { comprobante_url: urlData.publicUrl, comprobante_path: path, comprobante_nombre: file.name }
+        : { respuesta_url: urlData.publicUrl, respuesta_path: path, respuesta_nombre: file.name }
+      await supabase.from('diligencias_fiscalia').update(campos).eq('id', diligenciaId)
+      setDiligencias(prev => prev.map(d => d.id === diligenciaId ? { ...d, ...campos } : d))
+      if (registrarActividad) registrarActividad('accion', `Adjuntó ${tipoDoc==='comprobante'?'comprobante':'respuesta'} de diligencia en RUC ${ruc}`)
+      if (onAccion) onAccion()
+    } catch (err) {
+      alert('No se pudo subir el archivo: ' + (err?.message || 'Error desconocido.'))
+    } finally {
+      setSubiendoId(null)
+    }
+  }
+
+  // ✅ Al arrastrar/seleccionar el comprobante (PDF o screenshot/imagen) de
+  // Fiscalía para una diligencia NUEVA: se lee el texto (o se hace OCR si es
+  // una imagen), se completan folio/fecha/observación solas, y el archivo
+  // queda listo para adjuntarse automáticamente al guardar. Nunca se guarda
+  // nada sin que el usuario revise y confirme — el formulario siempre se abre
+  // para poder corregir cualquier campo antes de "Guardar diligencia".
+  const procesarPdfComprobante = async (file) => {
+    const esPdf = file?.type === 'application/pdf'
+    const esImagen = file?.type?.startsWith('image/')
+    if (!file || (!esPdf && !esImagen)) { alert('Solo se aceptan archivos PDF o imágenes (screenshot).'); return }
+    setAnalizandoPdf(true)
+    setAvisoRuc('')
+    try {
+      const texto = esPdf ? await extraerTextoPdf(file) : await extraerTextoImagen(file)
+      const datos = parsearComprobanteFiscalia(texto)
+      setForm(p => ({
+        ...p,
+        folio: datos.folio || p.folio,
+        fecha_solicitud: datos.fechaSolicitud || p.fecha_solicitud,
+        observacion: datos.observacion || p.observacion,
+      }))
+      setComprobantePendiente(file)
+      if (datos.ruc && normalizarRuc(datos.ruc) !== normalizarRuc(ruc)) {
+        setAvisoRuc(`⚠ Este comprobante indica RUC ${datos.ruc}, pero esta causa es RUC ${ruc}. Revisa antes de guardar — puede que corresponda a otra causa.`)
+      }
+      if (!datos.folio) {
+        alert(esImagen
+          ? 'No se pudo detectar el folio automáticamente en la imagen (el OCR de screenshots es menos preciso que leer un PDF) — complétalo a mano antes de guardar.'
+          : 'No se pudo detectar el folio automáticamente — complétalo a mano antes de guardar.')
+      }
+    } catch (err) {
+      alert('No se pudo leer el comprobante automáticamente. Completa los datos a mano. (' + (err?.message || '') + ')')
+    } finally {
+      setAnalizandoPdf(false)
+      setShowForm(true)
+    }
+  }
+
+  if (loading) return <div style={{ textAlign:'center', padding:40, color:'#94a3b8', fontSize:13, ...f }}>Cargando diligencias...</div>
+
+  const pendientesConAviso = diligencias.filter(d => d.estado === 'pendiente' && diasHabilesDesde(d.fecha_solicitud) >= 5).length
+
+  return (
+    <div>
+      <div style={{ fontSize:12, color:'#94a3b8', marginBottom:16, lineHeight:1.6, ...f }}>
+        Cada solicitud a Fiscalía (declaración, petición de carpeta, entrevista con el fiscal, etc.) entrega un <strong>folio de seguimiento</strong> al momento de ingresarla — exígelo siempre y regístralo aquí. Días después llega la respuesta por correo: aprobada, con fecha de citación, o rechazada con motivo.
+      </div>
+
+      {pendientesConAviso > 0 && (
+        <div style={{ fontSize:12, color:'#991b1b', background:'#fef2f2', border:'1px solid #fecaca', borderRadius:8, padding:'10px 12px', marginBottom:14, fontWeight:600, ...f }}>
+          ⚠ Tienes {pendientesConAviso} diligencia{pendientesConAviso!==1?'s':''} con más de 5 días hábiles sin respuesta — puede que sea hora de hacer seguimiento.
+        </div>
+      )}
+
+      {diligencias.length === 0 && <p style={{ color:'#94a3b8', fontSize:13, marginBottom:14, ...f }}>Sin diligencias registradas todavía.</p>}
+
+      {diligencias.map(d => {
+        const cfg = ESTADOS_DILIGENCIA[d.estado] || ESTADOS_DILIGENCIA.pendiente
+        const diasHabiles = d.estado === 'pendiente' ? diasHabilesDesde(d.fecha_solicitud) : 0
+        const avisoSeguimiento = d.estado === 'pendiente' && diasHabiles >= 5
+        return (
+          <div key={d.id} style={{ background:'#F8F9FC', border:'1px solid #e2e8f0', borderRadius:12, padding:'14px 16px', marginBottom:10 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:8 }}>
+              <div>
+                <div style={{ fontSize:13, fontWeight:700, color:'#1E293B', ...f }}>{d.tipo}</div>
+                <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>Solicitada el {d.fecha_solicitud} · Folio <strong style={{color:'#475569'}}>{d.folio}</strong></div>
+              </div>
+              <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:4 }}>
+                <span style={{ fontSize:10, fontWeight:700, padding:'3px 10px', borderRadius:20, textTransform:'uppercase', letterSpacing:0.3, color:cfg.color, background:cfg.bg, border:`1px solid ${cfg.border}`, ...f }}>{cfg.label}</span>
+                {avisoSeguimiento && (
+                  <span style={{ fontSize:10, fontWeight:700, color:'#991b1b', ...f }}>⚠ {diasHabiles} días hábiles sin respuesta</span>
+                )}
+                <div style={{display:'flex',gap:8}}>
+                  <button onClick={()=>empezarEdicionDatos(d)} style={{ fontSize:10, color:'#2563eb', background:'transparent', border:'none', cursor:'pointer', padding:0, marginTop:2, fontWeight:600, ...f }}>
+                    ✏ Editar
+                  </button>
+                  <button onClick={()=>eliminarDiligencia(d)} title="Solo para corregir errores de carga (duplicados, folio mal leído, etc.)"
+                    style={{ fontSize:10, color:'#cbd5e1', background:'transparent', border:'none', cursor:'pointer', padding:0, marginTop:2, ...f }}>
+                    🗑 Eliminar
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {editandoDatosId === d.id ? (
+              <div style={{ marginTop:10, paddingTop:10, borderTop:'1px solid #e2e8f0' }}>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
+                  <div style={{ gridColumn:'1/-1' }}>
+                    <div style={{ fontSize:10, color:'#64748b', textTransform:'uppercase', letterSpacing:1.2, marginBottom:5, fontWeight:600, ...f }}>Tipo de diligencia</div>
+                    <select style={inp} value={formEdit.tipo} onChange={e=>setFormEdit(p=>({...p,tipo:e.target.value}))}>
+                      {TIPOS_DILIGENCIA.map(t=><option key={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <div style={{ fontSize:10, color:'#64748b', textTransform:'uppercase', letterSpacing:1.2, marginBottom:5, fontWeight:600, ...f }}>Fecha de la solicitud</div>
+                    <input type="date" style={inp} value={formEdit.fecha_solicitud} onChange={e=>setFormEdit(p=>({...p,fecha_solicitud:e.target.value}))}/>
+                  </div>
+                  <div>
+                    <div style={{ fontSize:10, color:'#dc2626', textTransform:'uppercase', letterSpacing:1.2, marginBottom:5, fontWeight:700, ...f }}>Folio *</div>
+                    <input style={{...inp,borderColor:'#fecaca'}} value={formEdit.folio} onChange={e=>setFormEdit(p=>({...p,folio:e.target.value}))}/>
+                  </div>
+                  <div style={{ gridColumn:'1/-1' }}>
+                    <div style={{ fontSize:10, color:'#64748b', textTransform:'uppercase', letterSpacing:1.2, marginBottom:5, fontWeight:600, ...f }}>Detalle de lo solicitado</div>
+                    <input style={inp} value={formEdit.observacion} onChange={e=>setFormEdit(p=>({...p,observacion:e.target.value}))}/>
+                  </div>
+                </div>
+                <div style={{ display:'flex', gap:8 }}>
+                  <button className="btn-primary" style={{ fontSize:12 }} onClick={()=>guardarEdicionDatos(d.id)}>✓ Guardar corrección</button>
+                  <button className="btn-secondary" style={{ fontSize:12 }} onClick={()=>setEditandoDatosId(null)}>Cancelar</button>
+                </div>
+              </div>
+            ) : d.observacion && (
+              <div style={{ fontSize:12, color:'#64748b', marginTop:8, background:'#fff', border:'1px solid #e2e8f0', borderRadius:8, padding:'8px 10px', ...f }}>{d.observacion}</div>
+            )}
+
+            {/* Comprobante y respuesta — adjuntar / ver PDF, cada uno con verificación de RUC al subir */}
+            <div style={{ display:'flex', gap:16, flexWrap:'wrap', marginTop:10 }}>
+              <div>
+                <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1, fontWeight:600, marginBottom:4, ...f }}>Comprobante</div>
+                {d.comprobante_url ? (
+                  <a href={d.comprobante_url} target="_blank" rel="noreferrer" style={{ fontSize:12, color:'#2563eb', fontWeight:600, textDecoration:'none', ...f }}>📄 {d.comprobante_nombre || 'Ver PDF'}</a>
+                ) : (
+                  <button
+                    onClick={()=>{ comprobanteInputRef.current.dataset.diligenciaId = d.id; comprobanteInputRef.current.click() }}
+                    disabled={subiendoId===d.id}
+                    style={{ fontSize:11, color:'#2563eb', background:'transparent', border:'none', cursor:'pointer', fontWeight:600, padding:0, ...f }}>
+                    {subiendoId===d.id ? 'Subiendo...' : '+ Adjuntar comprobante'}
+                  </button>
+                )}
+              </div>
+              <div>
+                <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1, fontWeight:600, marginBottom:4, ...f }}>Respuesta</div>
+                {d.respuesta_url ? (
+                  <a href={d.respuesta_url} target="_blank" rel="noreferrer" style={{ fontSize:12, color:'#2563eb', fontWeight:600, textDecoration:'none', ...f }}>📄 {d.respuesta_nombre || 'Ver PDF'}</a>
+                ) : (
+                  <button
+                    onClick={()=>{ respuestaInputRef.current.dataset.diligenciaId = d.id; respuestaInputRef.current.click() }}
+                    disabled={subiendoId===d.id}
+                    style={{ fontSize:11, color:'#2563eb', background:'transparent', border:'none', cursor:'pointer', fontWeight:600, padding:0, ...f }}>
+                    {subiendoId===d.id ? 'Subiendo...' : '+ Adjuntar respuesta'}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {respondiendoId === d.id ? (
+              <div style={{ marginTop:12, paddingTop:12, borderTop:'1px solid #e2e8f0' }}>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
+                  <div>
+                    <div style={{ fontSize:10, color:'#64748b', textTransform:'uppercase', letterSpacing:1.2, marginBottom:5, fontWeight:600, ...f }}>Resultado</div>
+                    <select style={inp} value={formResp.estado} onChange={e=>setFormResp(p=>({...p,estado:e.target.value}))}>
+                      <option value="aprobada">Aprobada</option>
+                      <option value="con_citacion">Con fecha de citación</option>
+                      <option value="rechazada">Rechazada</option>
+                    </select>
+                  </div>
+                  <div>
+                    <div style={{ fontSize:10, color:'#64748b', textTransform:'uppercase', letterSpacing:1.2, marginBottom:5, fontWeight:600, ...f }}>Fecha de la respuesta</div>
+                    <input type="date" style={inp} value={formResp.fecha_respuesta} onChange={e=>setFormResp(p=>({...p,fecha_respuesta:e.target.value}))}/>
+                  </div>
+                  {formResp.estado === 'con_citacion' && (
+                    <div style={{ gridColumn:'1/-1' }}>
+                      <div style={{ fontSize:10, color:'#64748b', textTransform:'uppercase', letterSpacing:1.2, marginBottom:5, fontWeight:600, ...f }}>Fecha de la citación</div>
+                      <input type="date" style={inp} value={formResp.fecha_citacion} onChange={e=>setFormResp(p=>({...p,fecha_citacion:e.target.value}))}/>
+                    </div>
+                  )}
+                  <div style={{ gridColumn:'1/-1' }}>
+                    <div style={{ fontSize:10, color:'#64748b', textTransform:'uppercase', letterSpacing:1.2, marginBottom:5, fontWeight:600, ...f }}>{formResp.estado==='rechazada' ? 'Motivo del rechazo' : 'Detalle (opcional)'}</div>
+                    <input style={inp} placeholder={formResp.estado==='rechazada' ? 'Motivo indicado por Fiscalía...' : 'Notas adicionales...'} value={formResp.respuesta_detalle} onChange={e=>setFormResp(p=>({...p,respuesta_detalle:e.target.value}))}/>
+                  </div>
+                </div>
+                <div style={{ display:'flex', gap:8 }}>
+                  <button className="btn-primary" style={{ fontSize:12 }} onClick={()=>guardarRespuesta(d.id)}>✓ Guardar respuesta</button>
+                  <button className="btn-secondary" style={{ fontSize:12 }} onClick={()=>setRespondiendoId(null)}>Cancelar</button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ marginTop:10 }}>
+                {d.estado !== 'pendiente' && (
+                  <div style={{ fontSize:12, color:'#475569', ...f }}>
+                    Respondida el {d.fecha_respuesta}
+                    {d.estado === 'con_citacion' && d.fecha_citacion && <> · Cita el <strong>{d.fecha_citacion}</strong></>}
+                    {d.respuesta_detalle && <div style={{ marginTop:4, color:'#64748b' }}>{d.respuesta_detalle}</div>}
+                  </div>
+                )}
+                <button onClick={()=>empezarRespuesta(d)} style={{ fontSize:11, color:'#2563eb', background:'transparent', border:'none', cursor:'pointer', fontWeight:600, marginTop:6, padding:0, ...f }}>
+                  {d.estado === 'pendiente' ? '+ Registrar respuesta' : '✏ Editar respuesta'}
+                </button>
+              </div>
+            )}
+          </div>
+        )
+      })}
+
+      {/* Inputs de archivo ocultos y compartidos — se activan según en qué tarjeta se hizo clic */}
+      <input ref={comprobanteInputRef} type="file" accept=".pdf,image/*" style={{ display:'none' }}
+        onChange={e=>{ const file=e.target.files[0]; const id=e.target.dataset.diligenciaId; if(file&&id) confirmarRucYSubir(file,'comprobante',id); e.target.value='' }}/>
+      <input ref={respuestaInputRef} type="file" accept=".pdf,image/*" style={{ display:'none' }}
+        onChange={e=>{ const file=e.target.files[0]; const id=e.target.dataset.diligenciaId; if(file&&id) confirmarRucYSubir(file,'respuesta',id); e.target.value='' }}/>
+
+      {showForm ? (
+        <div style={{ background:'#F8F9FC', border:'1.5px solid #e2e8f0', borderRadius:12, padding:16, marginTop:8 }}>
+          {comprobantePendiente && (
+            <div style={{ fontSize:12, color:'#065f46', background:'#ecfdf5', border:'1px solid #a7f3d0', borderRadius:8, padding:'8px 10px', marginBottom:10, ...f }}>
+              📎 Se detectó y se adjuntará automáticamente: <strong>{comprobantePendiente.name}</strong>
+              <button onClick={()=>setComprobantePendiente(null)} style={{ marginLeft:8, background:'transparent', border:'none', color:'#059669', cursor:'pointer', fontSize:11, textDecoration:'underline', ...f }}>quitar</button>
+            </div>
+          )}
+          {avisoRuc && (
+            <div style={{ fontSize:12, color:'#991b1b', background:'#fef2f2', border:'1px solid #fecaca', borderRadius:8, padding:'8px 10px', marginBottom:10, ...f }}>{avisoRuc}</div>
+          )}
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
+            <div style={{ gridColumn:'1/-1' }}>
+              <div style={{ fontSize:10, color:'#64748b', textTransform:'uppercase', letterSpacing:1.2, marginBottom:5, fontWeight:600, ...f }}>Tipo de diligencia</div>
+              <select style={inp} value={form.tipo} onChange={e=>setForm(p=>({...p,tipo:e.target.value}))}>
+                {TIPOS_DILIGENCIA.map(t=><option key={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <div style={{ fontSize:10, color:'#64748b', textTransform:'uppercase', letterSpacing:1.2, marginBottom:5, fontWeight:600, ...f }}>Fecha de la solicitud</div>
+              <input type="date" style={inp} value={form.fecha_solicitud} onChange={e=>setForm(p=>({...p,fecha_solicitud:e.target.value}))}/>
+            </div>
+            <div>
+              <div style={{ fontSize:10, color:'#dc2626', textTransform:'uppercase', letterSpacing:1.2, marginBottom:5, fontWeight:700, ...f }}>Folio *</div>
+              <input style={{...inp,borderColor:'#fecaca'}} placeholder="Número de seguimiento" value={form.folio} onChange={e=>setForm(p=>({...p,folio:e.target.value}))}/>
+            </div>
+            <div style={{ gridColumn:'1/-1' }}>
+              <div style={{ fontSize:10, color:'#64748b', textTransform:'uppercase', letterSpacing:1.2, marginBottom:5, fontWeight:600, ...f }}>Detalle de lo solicitado (opcional)</div>
+              <input style={inp} placeholder="Ej: Declaración de los imputados para reconocer los hechos y aportar antecedentes..." value={form.observacion} onChange={e=>setForm(p=>({...p,observacion:e.target.value}))}/>
+            </div>
+          </div>
+          <div style={{ display:'flex', gap:8 }}>
+            <button className="btn-primary" onClick={agregar} disabled={guardando}>{guardando?'Guardando...':'Guardar diligencia'}</button>
+            <button className="btn-secondary" onClick={()=>{setShowForm(false);setComprobantePendiente(null);setAvisoRuc('')}}>Cancelar</button>
+          </div>
+        </div>
+      ) : (
+        <div
+          onDragOver={e=>{e.preventDefault();setDragPdf(true)}}
+          onDragLeave={()=>setDragPdf(false)}
+          onDrop={e=>{e.preventDefault();setDragPdf(false);const file=e.dataTransfer.files[0];if(file)procesarPdfComprobante(file)}}
+          onClick={()=>nuevaDiligenciaFileRef.current.click()}
+          style={{ border:`2px dashed ${dragPdf?'#2563eb':'#e2e8f0'}`, borderRadius:12, padding:'22px 16px', textAlign:'center', background:dragPdf?'#eff6ff':'#F8F9FC', cursor:'pointer', marginTop:8, transition:'all 0.2s' }}>
+          <input ref={nuevaDiligenciaFileRef} type="file" accept=".pdf,image/*" style={{ display:'none' }}
+            onChange={e=>{ const file=e.target.files[0]; if(file) procesarPdfComprobante(file); e.target.value='' }}/>
+          <div style={{ fontSize:24, marginBottom:6 }}>{analizandoPdf ? '⏳' : '📄'}</div>
+          <div style={{ fontSize:13, fontWeight:600, color:'#475569', ...f }}>
+            {analizandoPdf ? 'Leyendo comprobante...' : dragPdf ? 'Suelta el archivo aquí' : 'Arrastra el comprobante (PDF o screenshot) de Fiscalía — se completa solo'}
+          </div>
+          <div style={{ fontSize:11, color:'#94a3b8', marginTop:6, ...f }}>
+            o <span style={{ color:'#2563eb', fontWeight:600 }} onClick={e=>{e.stopPropagation();setShowForm(true)}}>ingresar manualmente</span>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 function FallosReferencia({ causaId, ruc, email, onAccion }) {
   const [fallos, setFallos] = useState([])
@@ -1765,16 +2359,54 @@ function FallosReferencia({ causaId, ruc, email, onAccion }) {
 }
 
 // ─── DOCUMENTOS GUARDADOS EN LA APP (independiente de OneDrive) ──────────────
-// A diferencia de OneDrive (que solo se enlaza, sin ocupar espacio acá), estos
-// documentos SÍ se suben y quedan guardados en la app — para lo puntual que
-// quieras tener siempre a mano sin depender de que el Drive esté disponible.
 const ICONO_POR_EXT = { pdf:'📄', doc:'📝', docx:'📝', xls:'📊', xlsx:'📊', jpg:'🖼️', jpeg:'🖼️', png:'🖼️', zip:'🗜️' }
 function iconoDocumento(nombre) {
   const ext = (nombre.split('.').pop() || '').toLowerCase()
   return ICONO_POR_EXT[ext] || '📎'
 }
 
-function DocumentosGuardados({ causaId, email, onAccion }) {
+// Detecta si un PDF es un comprobante de mi.Fiscalía en línea (por palabras
+// clave que siempre aparecen en ese formato), para poder redirigirlo solo a
+// "Diligencias Fiscalía" en vez de guardarlo como documento genérico.
+function esComprobanteFiscalia(texto) {
+  return /SIAU|Comprobante Ingreso Solicitud|mi\s*\.\s*FISCAL[IÍ]A|Sistema de Informaci[oó]n y Atenci[oó]n a Usuarios/i.test(texto || '')
+}
+
+function adivinarTipoDiligencia(observacion) {
+  const o = (observacion || '').toUpperCase()
+  if (o.includes('DECLARACION') || o.includes('DECLARACIÓN')) return 'Declaración de imputado'
+  if (o.includes('CARPETA')) return 'Petición de carpeta'
+  if (o.includes('ENTREVISTA')) return 'Entrevista con el fiscal'
+  if (o.includes('RECONSTITUCION') || o.includes('RECONSTITUCIÓN')) return 'Reconstitución de escena'
+  if (o.includes('CAREO')) return 'Careo'
+  return 'Otra diligencia'
+}
+
+// Crea el registro en diligencias_fiscalia a partir de un comprobante detectado
+// automáticamente (arrastrado en cualquier parte de la app) y le adjunta el
+// mismo PDF como comprobante — para que quede junto al resto del seguimiento.
+async function guardarComprobanteComoDiligencia(file, texto, { causaId, ruc, email, registrarActividad, onAccion }) {
+  const datos = parsearComprobanteFiscalia(texto)
+  const tipo = adivinarTipoDiligencia(datos.observacion)
+  const { data, error } = await supabase.from('diligencias_fiscalia').insert({
+    causa_id: causaId, tipo, fecha_solicitud: datos.fechaSolicitud || new Date().toISOString().slice(0,10),
+    folio: datos.folio || 'SIN FOLIO DETECTADO', observacion: datos.observacion || null, estado:'pendiente', registrado_por: email
+  }).select().single()
+  if (error || !data) throw (error || new Error('No se pudo crear el registro de la diligencia'))
+  try {
+    const path = `diligencias/${data.id}/comprobante_${Date.now()}_${file.name}`
+    const { error: upErr } = await supabase.storage.from('documentos').upload(path, file)
+    if (!upErr) {
+      const { data: urlData } = supabase.storage.from('documentos').getPublicUrl(path)
+      await supabase.from('diligencias_fiscalia').update({ comprobante_url: urlData.publicUrl, comprobante_path: path, comprobante_nombre: file.name }).eq('id', data.id)
+    }
+  } catch { /* la diligencia igual queda registrada aunque falle adjuntar el archivo */ }
+  if (registrarActividad) registrarActividad('accion', `Detectó y registró automáticamente una diligencia de Fiscalía (folio ${datos.folio || 'sin detectar'}) en RUC ${ruc}`)
+  if (onAccion) onAccion()
+  return { folio: datos.folio, rucDetectado: datos.ruc, tipo }
+}
+
+function DocumentosGuardados({ causaId, ruc, email, registrarActividad, onAccion }) {
   const [docs, setDocs] = useState([])
   const [subiendo, setSubiendo] = useState(false)
   const [drag, setDrag] = useState(false)
@@ -1791,6 +2423,22 @@ function DocumentosGuardados({ causaId, email, onAccion }) {
     if (!file) return
     setSubiendo(true)
     try {
+      // ✅ Si es un PDF, primero se revisa si es un comprobante de Fiscalía —
+      // en ese caso NO se guarda acá, se redirige solo a "Diligencias Fiscalía"
+      // (leyendo folio/fecha/observación igual que si se arrastrara ahí).
+      if (file.type === 'application/pdf') {
+        try {
+          const texto = await extraerTextoPdf(file)
+          if (esComprobanteFiscalia(texto)) {
+            const resultado = await guardarComprobanteComoDiligencia(file, texto, { causaId, ruc, email, registrarActividad, onAccion })
+            alert(`📨 Este archivo es un comprobante de Fiscalía (folio ${resultado.folio || 'no detectado, revísalo'}) — se guardó en la sección "Diligencias Fiscalía", no aquí, para que quede junto con el resto del seguimiento de esa causa.`)
+            setSubiendo(false)
+            return
+          }
+        } catch (errLectura) {
+          console.warn('No se pudo analizar el PDF, se sube como documento genérico:', errLectura)
+        }
+      }
       const path = `${causaId}/${Date.now()}_${file.name}`
       const { error: uploadError } = await supabase.storage.from('documentos').upload(path, file)
       if (uploadError) throw uploadError
@@ -1848,6 +2496,8 @@ function DocumentosGuardados({ causaId, email, onAccion }) {
   )
 }
 
+const CUENTAS_TRANSFERENCIA = ['1. Cuenta RUT Banco Estado','2. Chequera Electrónica Banco Estado','3. Cuenta Empresa Banco Estado','4. Cta. Corriente Banco Chile']
+
 // ─── HONORARIOS (solo Titular) — permite abonos parciales con saldo pendiente ─
 function HonorariosTab({ causaId, ruc, email, registrarActividad, onAccion }) {
   const [honorario, setHonorario] = useState(null)
@@ -1855,9 +2505,10 @@ function HonorariosTab({ causaId, ruc, email, registrarActividad, onAccion }) {
   const [editandoMonto, setEditandoMonto] = useState(false)
   const [montoTemp, setMontoTemp] = useState('')
   const [showForm, setShowForm] = useState(false)
-  const [nuevoAbono, setNuevoAbono] = useState({ monto:'', fecha:new Date().toISOString().slice(0,10), forma_pago:'Transferencia', observacion:'' })
+  const [nuevoAbono, setNuevoAbono] = useState({ monto:'', fecha:new Date().toISOString().slice(0,10), forma_pago:'Transferencia', cuenta_transferencia:CUENTAS_TRANSFERENCIA[0], observacion:'' })
   const [guardando, setGuardando] = useState(false)
   const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #E2E8F0', borderRadius:8, fontSize:13, color:'#1E293B', background:'#fff', ...f }
+  const usaTransferencia = nuevoAbono.forma_pago === 'Transferencia' || nuevoAbono.forma_pago === 'Transferencia + Efectivo'
 
   useEffect(() => { cargar() }, [causaId])
 
@@ -1884,8 +2535,12 @@ function HonorariosTab({ causaId, ruc, email, registrarActividad, onAccion }) {
     const monto = parseFloat(nuevoAbono.monto)
     if (!monto || monto <= 0) { alert('Ingresa un monto válido'); return }
     setGuardando(true)
-    await supabase.from('abonos_honorarios').insert({ causa_id: causaId, monto, fecha: nuevoAbono.fecha, forma_pago: nuevoAbono.forma_pago, observacion: nuevoAbono.observacion, registrado_por: email })
-    setNuevoAbono({ monto:'', fecha:new Date().toISOString().slice(0,10), forma_pago:'Transferencia', observacion:'' })
+    await supabase.from('abonos_honorarios').insert({
+      causa_id: causaId, monto, fecha: nuevoAbono.fecha, forma_pago: nuevoAbono.forma_pago,
+      cuenta_transferencia: usaTransferencia ? nuevoAbono.cuenta_transferencia : null,
+      observacion: nuevoAbono.observacion, registrado_por: email
+    })
+    setNuevoAbono({ monto:'', fecha:new Date().toISOString().slice(0,10), forma_pago:'Transferencia', cuenta_transferencia:CUENTAS_TRANSFERENCIA[0], observacion:'' })
     setShowForm(false)
     setGuardando(false)
     await cargar()
@@ -1936,7 +2591,7 @@ function HonorariosTab({ causaId, ruc, email, registrarActividad, onAccion }) {
         <div key={a.id} style={{ display:'flex', gap:12, alignItems:'center', padding:'12px 16px', background:'#F8F9FC', border:'1px solid #e2e8f0', borderRadius:10, marginBottom:8 }}>
           <div style={{ width:36, height:36, background:'#ecfdf5', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', color:'#059669', fontSize:15, fontWeight:700, flexShrink:0 }}>$</div>
           <div style={{ flex:1 }}>
-            <div style={{ fontSize:13, fontWeight:700, color:'#1E293B', ...f }}>{fmt(a.monto)} <span style={{fontWeight:400,color:'#94a3b8',fontSize:12}}>· {a.forma_pago}</span></div>
+            <div style={{ fontSize:13, fontWeight:700, color:'#1E293B', ...f }}>{fmt(a.monto)} <span style={{fontWeight:400,color:'#94a3b8',fontSize:12}}>· {a.forma_pago}{a.cuenta_transferencia?' · '+a.cuenta_transferencia:''}</span></div>
             <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>{a.fecha}{a.observacion?' · '+a.observacion:''} · registrado por {a.registrado_por}</div>
           </div>
           <button onClick={()=>eliminarAbono(a)} style={{ background:'transparent', border:'none', cursor:'pointer', fontSize:14, color:'#fca5a5' }}>✕</button>
@@ -1950,9 +2605,16 @@ function HonorariosTab({ causaId, ruc, email, registrarActividad, onAccion }) {
             <div><div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4,fontWeight:600,...f}}>Fecha</div><input type="date" style={inp} value={nuevoAbono.fecha} onChange={e=>setNuevoAbono(p=>({...p,fecha:e.target.value}))}/></div>
             <div><div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4,fontWeight:600,...f}}>Forma de pago</div>
               <select style={inp} value={nuevoAbono.forma_pago} onChange={e=>setNuevoAbono(p=>({...p,forma_pago:e.target.value}))}>
-                <option>Transferencia</option><option>Efectivo</option><option>Cheque</option><option>Tarjeta</option><option>Otro</option>
+                <option>Transferencia</option><option>Efectivo</option><option>Transferencia + Efectivo</option><option>Cheque</option><option>Tarjeta</option><option>Otro</option>
               </select>
             </div>
+            {usaTransferencia && (
+              <div><div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4,fontWeight:600,...f}}>Cuenta de transferencia</div>
+                <select style={inp} value={nuevoAbono.cuenta_transferencia} onChange={e=>setNuevoAbono(p=>({...p,cuenta_transferencia:e.target.value}))}>
+                  {CUENTAS_TRANSFERENCIA.map(c=><option key={c}>{c}</option>)}
+                </select>
+              </div>
+            )}
             <div><div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4,fontWeight:600,...f}}>Observación</div><input style={inp} placeholder="Opcional" value={nuevoAbono.observacion} onChange={e=>setNuevoAbono(p=>({...p,observacion:e.target.value}))}/></div>
           </div>
           <div style={{ display:'flex', gap:8 }}>
@@ -1967,7 +2629,220 @@ function HonorariosTab({ causaId, ruc, email, registrarActividad, onAccion }) {
   )
 }
 
-function TeoriaDelCaso({ causaId, ruc, session, registrarActividad, onAccion }) {
+// ─── CAUTELARES — historial (no se borra), abono 1x1 y fórmula de arresto nocturno ─
+const TIPOS_ABONO_DIRECTO = ['Prisión Preventiva','Internación Provisoria','Arresto Total']
+const CAUTELAR_SENAME = 'Sujeción a SENAME'
+const CAUTELAR_NOCTURNO = 'Arresto Nocturno'
+const TIPOS_CAUTELARES_ADULTO = ['Prisión Preventiva','Arresto Total',CAUTELAR_NOCTURNO,'Firma','Arraigo Nacional','Prohibición de acercarse a la víctima','Prohibición de acercarse a la víctima (VIF Art. 9)','Prohibición de portar armas']
+const TIPOS_CAUTELARES_RPA = ['Internación Provisoria','Arresto Total',CAUTELAR_NOCTURNO,CAUTELAR_SENAME,'Firma','Arraigo Nacional','Prohibición de acercarse a la víctima','Prohibición de acercarse a la víctima (VIF Art. 9)','Prohibición de portar armas']
+const TIPOS_CAUTELARES_TODAS = [...new Set([...TIPOS_CAUTELARES_ADULTO, ...TIPOS_CAUTELARES_RPA])]
+
+function diasEntreFechasCaut(inicio, fin) {
+  if (!inicio || !fin) return 0
+  const a = new Date(inicio+'T12:00:00'), b = new Date(fin+'T12:00:00')
+  if (isNaN(a)||isNaN(b)) return 0
+  return Math.max(0, Math.round((b-a)/(1000*60*60*24)))
+}
+
+function CautelaresPanel({ causaId, cautelares, esRPA, onGuardar, onActualizar, registrarActividad, ruc, nombreImputado }) {
+  const hoyISO = new Date().toISOString().slice(0,10)
+  const TIPOS = esRPA ? TIPOS_CAUTELARES_RPA : TIPOS_CAUTELARES_ADULTO
+  const [expanded,setExpanded] = useState(true) // la casilla queda visible; al abrir se ve el detalle
+  const [form,setForm] = useState({ tipo:TIPOS[0], fecha_inicio:hoyISO, fecha_termino:'', frecuencia:'Mensual' })
+  const [guardando,setGuardando] = useState(false)
+  const [fechaCalc,setFechaCalc] = useState(hoyISO) // calculadora ad-hoc, no se guarda
+  const [nocturnoEdit,setNocturnoEdit] = useState({}) // {id: {bruto, calculado}} temporal por fila
+
+  // ✅ Abono total EN VIVO — SOLO cuenta Prisión Preventiva / Internación Provisoria /
+  // Arresto Total (y Arresto Nocturno ya sumado explícitamente). Sujeción a SENAME
+  // NUNCA suma acá — se cuenta aparte, para no duplicar el cómputo 1x1.
+  const totalAbono = cautelares.reduce((sum,ct)=>{
+    if (TIPOS_ABONO_DIRECTO.includes(ct.tipo)) {
+      return sum + diasEntreFechasCaut(ct.fecha_inicio, ct.fecha_termino || hoyISO)
+    }
+    if (ct.tipo === CAUTELAR_NOCTURNO && ct.sumado_a_abono) {
+      return sum + (parseFloat(ct.abono_nocturno_calculado)||0)
+    }
+    return sum
+  },0)
+
+  // Días de SENAME — solo informativo, no entra al abono 1x1
+  const totalDiasSename = cautelares.reduce((sum,ct)=>{
+    if (ct.tipo === CAUTELAR_SENAME) return sum + diasEntreFechasCaut(ct.fecha_inicio, ct.fecha_termino || hoyISO)
+    return sum
+  },0)
+
+  const handleGuardar = async () => {
+    if (!form.fecha_inicio) return
+    setGuardando(true)
+    await onGuardar(form)
+    setForm({ tipo:TIPOS[0], fecha_inicio:hoyISO, fecha_termino:'', frecuencia:'Mensual' })
+    setGuardando(false)
+  }
+
+  const cerrarCautelar = async (ct) => {
+    const fecha = window.prompt(`¿Hasta qué fecha estuvo vigente "${ct.tipo}"? (formato AAAA-MM-DD)`, hoyISO)
+    if (!fecha) return
+    await onActualizar(ct.id, { fecha_termino: fecha })
+  }
+
+  const calcularNocturno = (ct) => {
+    const bruto = ct.fecha_termino ? diasEntreFechasCaut(ct.fecha_inicio, ct.fecha_termino) : diasEntreFechasCaut(ct.fecha_inicio, fechaCalc)
+    const calculado = Math.round((bruto*8/12)*100)/100
+    setNocturnoEdit(prev=>({...prev,[ct.id]:{bruto,calculado}}))
+  }
+
+  const sumarNocturnoAlAbono = async (ct) => {
+    const calc = nocturnoEdit[ct.id]
+    if (!calc) return
+    await onActualizar(ct.id, { dias_nocturno_bruto: calc.bruto, abono_nocturno_calculado: calc.calculado, sumado_a_abono: true })
+    if (registrarActividad) registrarActividad('accion', `Sumó ${calc.calculado} días de abono (arresto nocturno) en RUC ${ruc}`)
+  }
+
+  return (
+    <div style={{gridColumn:'1/-1',marginTop:2,marginBottom:2}}>
+      {/* Label arriba, igual que cualquier otro campo del formulario */}
+      <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>
+        Cautelar Personal{nombreImputado && <span style={{color:'#1E293B',textTransform:'none',letterSpacing:0}}> — {nombreImputado}</span>} {esRPA && <span style={{color:'#7c3aed'}}>· RPA</span>}
+      </div>
+
+      {/* Casilla — mismo look que los demás campos (fondo blanco, sombra suave, mismo alto).
+          Al hacer clic se despliega el detalle, la calculadora y "+ Agregar más cautelares". */}
+      <div
+        className="fld"
+        onClick={()=>setExpanded(v=>!v)}
+        style={{
+          cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center',
+          padding:'11px 14px', borderRadius: expanded ? '14px 14px 0 0' : 14, fontSize:13,
+          color:'#1E293B', minHeight:38, background:'#fff', boxShadow:'0 1px 2px rgba(15,23,42,0.06)', ...f,
+        }}>
+        <span style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+          <span>🔒</span>
+          <strong>{totalAbono} días de abono</strong>
+          {totalDiasSename > 0 && (
+            <span style={{fontSize:11,color:'#92400e',background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:10,padding:'2px 8px',...f}}>
+              SENAME: {totalDiasSename}d (aparte)
+            </span>
+          )}
+        </span>
+        <span style={{fontSize:11,color:'#94a3b8',flexShrink:0,marginLeft:8}}>{expanded ? '▲' : '▼'}</span>
+      </div>
+
+      {expanded && (
+        <div style={{background:'#fff',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',borderRadius:'0 0 14px 14px',padding:'14px 16px 12px'}}>
+
+          {cautelares.length===0 && <p style={{fontSize:13,color:'#94a3b8',marginBottom:8,...f}}>Sin cautelares registradas todavía.</p>}
+
+          {/* Lista plana de cautelares registradas — texto/datos, sin tarjeta destacada */}
+          {cautelares.map((ct,idx)=>{
+            const esDirecto = TIPOS_ABONO_DIRECTO.includes(ct.tipo)
+            const esNocturno = ct.tipo === CAUTELAR_NOCTURNO
+            const esSename = ct.tipo === CAUTELAR_SENAME
+            const vigente = !ct.fecha_termino
+            const diasDirecto = esDirecto ? diasEntreFechasCaut(ct.fecha_inicio, ct.fecha_termino||hoyISO) : 0
+            const diasSename = esSename ? diasEntreFechasCaut(ct.fecha_inicio, ct.fecha_termino||hoyISO) : 0
+            const calcLocal = nocturnoEdit[ct.id]
+            return (
+              <div key={ct.id} style={{padding:'10px 0', borderBottom: idx<cautelares.length-1 ? '1px solid #f1f5f9' : 'none'}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:6}}>
+                  <div>
+                    <div style={{fontSize:13,fontWeight:600,color:'#1E293B',display:'flex',alignItems:'center',gap:6,flexWrap:'wrap',...f}}>
+                      {ct.tipo}
+                      <span style={{fontSize:11,fontWeight:600,color:vigente?'#059669':'#94a3b8',...f}}>{vigente?'Vigente':'Cerrada'}</span>
+                      {esSename && <span style={{fontSize:11,color:'#92400e',...f}}>· sin abono 2×1</span>}
+                    </div>
+                    <div style={{fontSize:11,color:'#94a3b8',marginTop:2,...f}}>
+                      Desde {ct.fecha_inicio}{ct.fecha_termino?` hasta ${ct.fecha_termino}`:''}
+                      {ct.frecuencia?` · ${ct.frecuencia}`:''}
+                    </div>
+                  </div>
+                  {vigente && <button onClick={()=>cerrarCautelar(ct)} style={{fontSize:11,color:'#dc2626',background:'transparent',border:'none',cursor:'pointer',fontWeight:600,...f}}>Cerrar / cambiar</button>}
+                </div>
+
+                {esDirecto && (
+                  <div style={{marginTop:6,fontSize:12,color:'#1E293B',...f}}>
+                    📐 Abono 1×1: <strong>{diasDirecto} días</strong>{vigente?' (a hoy, sigue corriendo)':''}
+                  </div>
+                )}
+
+                {esSename && (
+                  <div style={{marginTop:6,fontSize:12,color:'#92400e',...f}}>
+                    {diasSename} días de Sujeción a SENAME{vigente?' (a hoy, sigue corriendo)':''} — no otorgan abono 2×1, se llevan aparte.
+                  </div>
+                )}
+
+                {esNocturno && (
+                  <div style={{marginTop:6,fontSize:12,color:'#64748b',display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',...f}}>
+                    <span>Arresto nocturno (informativo): <strong>{ct.fecha_termino ? diasEntreFechasCaut(ct.fecha_inicio,ct.fecha_termino) : diasEntreFechasCaut(ct.fecha_inicio,fechaCalc)}</strong> días</span>
+                    {ct.sumado_a_abono ? (
+                      <span style={{color:'#059669',fontWeight:600}}>✓ Sumado: {ct.abono_nocturno_calculado} días</span>
+                    ) : (
+                      <>
+                        <button onClick={()=>calcularNocturno(ct)} style={{fontSize:11,color:'#2563eb',background:'none',border:'none',cursor:'pointer',fontWeight:600,...f}}>🧮 Calcular (×8÷12)</button>
+                        {calcLocal && (
+                          <>
+                            <span>= <strong>{calcLocal.calculado}</strong> días</span>
+                            <button onClick={()=>sumarNocturnoAlAbono(ct)} style={{fontSize:11,color:'#059669',background:'none',border:'none',cursor:'pointer',fontWeight:600,...f}}>+ Sumar al abono</button>
+                          </>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+
+          {/* Calculadora — solo aparece si hay al menos una cautelar que otorgue abono (directo o nocturno) */}
+          {cautelares.some(ct => TIPOS_ABONO_DIRECTO.includes(ct.tipo) || ct.tipo === CAUTELAR_NOCTURNO) && (
+            <div style={{padding:'10px 0', borderTop: cautelares.length>0 ? '1px solid #f1f5f9' : 'none'}}>
+              <div style={{fontSize:11,color:'#64748b',marginBottom:8,...f}}>🧮 Previsualizar abono a otra fecha (no guarda nada)</div>
+              <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
+                <input type="date" style={{padding:'7px 10px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}} value={fechaCalc} onChange={e=>setFechaCalc(e.target.value)}/>
+                {fechaCalc !== hoyISO && (
+                  <button onClick={()=>setFechaCalc(hoyISO)} style={{fontSize:11,color:'#2563eb',background:'none',border:'none',cursor:'pointer',fontWeight:600,...f}}>↺ Volver a hoy</button>
+                )}
+                <span style={{fontSize:12,color:'#475569',...f}}>
+                  Abono proyectado: <strong>{cautelares.reduce((s,ct)=>{
+                    if (TIPOS_ABONO_DIRECTO.includes(ct.tipo)) return s + diasEntreFechasCaut(ct.fecha_inicio, ct.fecha_termino || fechaCalc)
+                    if (ct.tipo===CAUTELAR_NOCTURNO && ct.sumado_a_abono) return s + (parseFloat(ct.abono_nocturno_calculado)||0)
+                    return s
+                  },0)} días</strong>
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Agregar cautelar — dropdown directo, sin botón intermedio */}
+          <div style={{paddingTop:12, marginTop: cautelares.length>0 ? 2 : 0, borderTop: cautelares.length>0 ? '1px solid #f1f5f9' : 'none'}}>
+            <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.2,marginBottom:6,fontWeight:600,...f}}>Agregar cautelar</div>
+            <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
+              <select style={{flex:'1 1 220px',minWidth:180,padding:'8px 10px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}} value={form.tipo} onChange={e=>setForm(p=>({...p,tipo:e.target.value}))}>
+                {TIPOS.map(t=><option key={t}>{t}</option>)}
+              </select>
+              <input type="date" style={{flex:'1 1 140px',minWidth:140,padding:'8px 10px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}} value={form.fecha_inicio} onChange={e=>setForm(p=>({...p,fecha_inicio:e.target.value}))}/>
+              {form.tipo==='Firma' && (
+                <select style={{flex:'1 1 140px',minWidth:140,padding:'8px 10px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}} value={form.frecuencia} onChange={e=>setForm(p=>({...p,frecuencia:e.target.value}))}>
+                  <option>Mensual</option><option>Quincenal</option><option>Semanal</option>
+                </select>
+              )}
+              <button className="btn-primary" style={{fontSize:12,padding:'8px 16px',borderRadius:8}} onClick={handleGuardar} disabled={guardando || !form.fecha_inicio}>{guardando?'Guardando...':'+ Agregar'}</button>
+            </div>
+            {form.tipo === CAUTELAR_SENAME && (
+              <div style={{fontSize:11,color:'#b45309',marginTop:6,...f}}>⚠ Esta medida no otorga abono 2×1 — se registrará por separado.</div>
+            )}
+          </div>
+
+          <div style={{fontSize:10,color:'#94a3b8',marginTop:10,lineHeight:1.5,...f}}>
+            El conteo de días no suma +1 por el día de inicio — si en tu práctica se cuenta incluyendo ese primer día, avísame y lo ajusto.
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function TeoriaDelCaso({ causaId, ruc, session, registrarActividad, onAccion, carpetaRef, onUpdateCarpetaRef }) {
   const [teoria, setTeoria] = useState(null)
   const [form, setForm] = useState({ hechos:'', teoria_defensa:'', prueba:'', observaciones:'' })
   const [historial, setHistorial] = useState([])
@@ -1976,6 +2851,8 @@ function TeoriaDelCaso({ causaId, ruc, session, registrarActividad, onAccion }) 
   const [savedAt, setSavedAt] = useState(null)
   const [seccionActiva, setSeccionActiva] = useState('hechos')
   const [showHistorial, setShowHistorial] = useState(false)
+  const [editandoRef, setEditandoRef] = useState(false)
+  const [refValue, setRefValue] = useState('')
   const debounceRef = useRef(null)
 
   useEffect(() => { cargar() }, [causaId])
@@ -2023,6 +2900,11 @@ function TeoriaDelCaso({ causaId, ruc, session, registrarActividad, onAccion }) 
   }
 
   const seccionActual = TC_SECCIONES.find(s => s.key === seccionActiva)
+  // ✅ Guardar / Historial / contador de caracteres solo tienen sentido en las
+  // secciones de texto con autoguardado. Fallos, Carpeta y Diligencias tienen
+  // su propio guardado interno — mostrar el botón "Guardar" de aquí arriba
+  // ahí confundía (no hacía nada útil sobre esas secciones).
+  const esSeccionTexto = !['fallos','carpeta','diligencias'].includes(seccionActiva)
   const totalCaracteres = Object.values(form).join('').length
 
   if (loading) return <div style={{ textAlign:'center', padding:40, color:'#94a3b8', fontSize:13, ...f }}>Cargando teoría del caso...</div>
@@ -2044,43 +2926,30 @@ function TeoriaDelCaso({ causaId, ruc, session, registrarActividad, onAccion }) 
             </button>
           )
         })}
-        <div style={{ padding:'16px', marginTop:8, borderTop:'1px solid #E2E8F0' }}>
-          <div style={{ fontSize:9, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, fontWeight:700, marginBottom:8, ...f }}>Progreso</div>
-          {TC_SECCIONES.map(s => {
-            const pct = Math.min(100, Math.round(((form[s.key]||'').length / 200) * 100))
-            return (
-              <div key={s.key} style={{ marginBottom:6 }}>
-                <div style={{ display:'flex', justifyContent:'space-between', marginBottom:2 }}>
-                  <span style={{ fontSize:9, color:'#94a3b8', ...f }}>{s.icon}</span>
-                  <span style={{ fontSize:9, color:'#64748b', ...f }}>{pct}%</span>
-                </div>
-                <div style={{ height:3, background:'#E2E8F0', borderRadius:2 }}>
-                  <div style={{ height:3, width:`${pct}%`, background: pct>0?'#1E293B':'transparent', borderRadius:2, transition:'width 0.3s' }}/>
-                </div>
-              </div>
-            )
-          })}
-        </div>
       </div>
       <div style={{ display:'flex', flexDirection:'column', background:'#fff' }}>
         <div style={{ padding:'16px 20px', borderBottom:'1px solid #E2E8F0', display:'flex', justifyContent:'space-between', alignItems:'center', background:'#F8F9FC' }}>
           <div>
             <div style={{ fontSize:15, fontWeight:700, color:'#1E293B', ...f }}>{seccionActual?.icon} {seccionActual?.label}</div>
-            <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>
-              {totalCaracteres > 0 ? `${totalCaracteres.toLocaleString()} caracteres` : 'Sin contenido aún'}
-              {savedAt && <span style={{ marginLeft:8, color:'#059669' }}>✓ Guardado {savedAt.toLocaleTimeString('es-CL', { hour:'2-digit', minute:'2-digit' })}</span>}
+            {esSeccionTexto && (
+              <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>
+                {totalCaracteres > 0 ? `${totalCaracteres.toLocaleString()} caracteres` : 'Sin contenido aún'}
+                {savedAt && <span style={{ marginLeft:8, color:'#059669' }}>✓ Guardado {savedAt.toLocaleTimeString('es-CL', { hour:'2-digit', minute:'2-digit' })}</span>}
+              </div>
+            )}
+          </div>
+          {esSeccionTexto && (
+            <div style={{ display:'flex', gap:8 }}>
+              <button onClick={() => setShowHistorial(!showHistorial)} className="btn-secondary" style={{ fontSize:12, borderColor: showHistorial?'#1E293B':'#E2E8F0', color: showHistorial?'#1E293B':'#64748b' }}>
+                🕐 Historial {historial.length > 0 && `(${historial.length})`}
+              </button>
+              <button onClick={() => guardar(form, false)} disabled={saving} className="btn-primary" style={{ fontSize:12 }}>
+                {saving ? '⏳ Guardando...' : '💾 Guardar'}
+              </button>
             </div>
-          </div>
-          <div style={{ display:'flex', gap:8 }}>
-            <button onClick={() => setShowHistorial(!showHistorial)} className="btn-secondary" style={{ fontSize:12, borderColor: showHistorial?'#1E293B':'#E2E8F0', color: showHistorial?'#1E293B':'#64748b' }}>
-              🕐 Historial {historial.length > 0 && `(${historial.length})`}
-            </button>
-            <button onClick={() => guardar(form, false)} disabled={saving} className="btn-primary" style={{ fontSize:12 }}>
-              {saving ? '⏳ Guardando...' : '💾 Guardar'}
-            </button>
-          </div>
+          )}
         </div>
-        {showHistorial && (
+        {esSeccionTexto && showHistorial && (
           <div style={{ background:'#F8F9FC', borderBottom:'1px solid #E2E8F0', padding:'16px 20px', maxHeight:200, overflowY:'auto' }}>
             <div style={{ fontSize:11, fontWeight:700, color:'#475569', textTransform:'uppercase', letterSpacing:1, marginBottom:10, ...f }}>Historial de modificaciones</div>
             {historial.length === 0 ? (
@@ -2104,18 +2973,37 @@ function TeoriaDelCaso({ causaId, ruc, session, registrarActividad, onAccion }) 
         <div className="tc-section" style={{ flex:1, padding:'20px' }}>
           {seccionActiva === 'fallos' ? (
             <FallosReferencia causaId={causaId} ruc={ruc} email={session?.user?.email || ''} onAccion={onAccion} />
+          ) : seccionActiva === 'carpeta' ? (
+            <div>
+              <div style={{ marginBottom:20 }}>
+                <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, marginBottom:6, fontWeight:600, ...f }}>Referencia carpeta física</div>
+                {editandoRef ? (
+                  <div style={{ display:'flex', gap:6 }}>
+                    <input style={{ width:'100%', padding:'9px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:'#1E293B', background:'#fff', ...f }}
+                      value={refValue} onChange={e=>setRefValue(e.target.value)}
+                      onKeyDown={e=>{if(e.key==='Enter'){onUpdateCarpetaRef(refValue);setEditandoRef(false)}if(e.key==='Escape')setEditandoRef(false)}} autoFocus/>
+                    <button className="btn-primary" style={{padding:'8px 14px',fontSize:12}} onClick={()=>{onUpdateCarpetaRef(refValue);setEditandoRef(false)}}>✓</button>
+                    <button className="btn-secondary" style={{padding:'8px 12px',fontSize:12}} onClick={()=>setEditandoRef(false)}>✗</button>
+                  </div>
+                ) : (
+                  <div className="fld" onClick={()=>{setEditandoRef(true);setRefValue(carpetaRef||'')}}
+                    style={{ padding:'9px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:carpetaRef?'#1E293B':'#94a3b8', minHeight:38, display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer', background:'#fff', ...f }}>
+                    <span>{carpetaRef || 'Clic para agregar...'}</span>
+                    <span style={{ fontSize:11, color:'#94a3b8' }}>✏</span>
+                  </div>
+                )}
+              </div>
+              <CarpetaOneDrive ruc={ruc}/>
+              <div style={{ marginTop:28, paddingTop:24, borderTop:'1px solid #f1f5f9' }}>
+                <DocumentosGuardados causaId={causaId} ruc={ruc} email={session?.user?.email || ''} registrarActividad={registrarActividad} onAccion={onAccion}/>
+              </div>
+            </div>
+          ) : seccionActiva === 'diligencias' ? (
+            <DiligenciasFiscalia causaId={causaId} ruc={ruc} email={session?.user?.email || ''} registrarActividad={registrarActividad} onAccion={onAccion} />
           ) : (
             <textarea value={form[seccionActiva] || ''} onChange={e => handleChange(seccionActiva, e.target.value)} placeholder={seccionActual?.placeholder}
               style={{ width:'100%', height:'100%', minHeight:360, border:'none', outline:'none', resize:'none', fontSize:14, lineHeight:1.8, color:'#1E293B', background:'transparent', fontFamily:"'Inter',sans-serif", padding:0 }}/>
           )}
-        </div>
-        <div style={{ padding:'10px 20px', borderTop:'1px solid #E2E8F0', display:'flex', gap:8, overflowX:'auto' }}>
-          {TC_SECCIONES.map(s => (
-            <button key={s.key} onClick={() => setSeccionActiva(s.key)}
-              style={{ padding:'4px 12px', borderRadius:20, fontSize:11, border:`1.5px solid ${seccionActiva===s.key?'#1E293B':'#E2E8F0'}`, background: seccionActiva===s.key?'#1E293B':'#fff', color: seccionActiva===s.key?'#fff':'#94a3b8', cursor:'pointer', fontWeight:500, whiteSpace:'nowrap', ...f }}>
-              {s.icon} {s.label.split(' ')[0]}
-            </button>
-          ))}
         </div>
       </div>
     </div>
@@ -2424,6 +3312,125 @@ function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudiencia, o
   )
 }
 
+// ─── TARJETA POR IMPUTADO — cuando hay 2+ imputados, agrupa todo lo que puede
+// variar entre ellos: Centro Penal, Cautelar Personal, Delito(s), Delegación de
+// Poder y Correo de notificación. Colapsable, con su propio estado de edición
+// local (para que no choquen entre tarjetas de distintos imputados). Los datos
+// de la causa (Tribunal, Corte, RIT, Fiscal, Fechas) quedan arriba, compartidos,
+// porque son los mismos para toda la causa sin importar cuántos imputados haya. ─
+function ImputadoDatosCard({ imp, numero, causaId, ruc, cautelares, registrarActividad, onUpdateCampo, onDelitoChange, onGuardarCautelar, onActualizarCautelar }) {
+  const [expanded, setExpanded] = useState(false)
+  const [editField, setEditField] = useState(null)
+  const [editValue, setEditValue] = useState('')
+  const f = { fontFamily:"'Inter',sans-serif" }
+
+  // Resumen — visible aunque la tarjeta esté colapsada, para no tener que abrirla
+  // solo para ver lo esencial. Texto plano, sin emojis.
+  const numDelitos = (imp.delitos||'').split('|').map(s=>s.trim()).filter(Boolean).length
+  const hoyISO = new Date().toISOString().slice(0,10)
+  const totalAbonoImp = (cautelares||[]).reduce((sum,ct)=>{
+    if (TIPOS_ABONO_DIRECTO.includes(ct.tipo)) return sum + diasEntreFechasCaut(ct.fecha_inicio, ct.fecha_termino || hoyISO)
+    if (ct.tipo === CAUTELAR_NOCTURNO && ct.sumado_a_abono) return sum + (parseFloat(ct.abono_nocturno_calculado)||0)
+    return sum
+  },0)
+
+  return (
+    <div style={{border:'1px solid #e2e8f0', borderRadius:14, background:'#fff', boxShadow:'0 1px 2px rgba(15,23,42,0.06)', overflow:'hidden'}}>
+      <div
+        onClick={()=>setExpanded(v=>!v)}
+        style={{cursor:'pointer', padding:'14px 16px'}}>
+        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+          <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+            {numero && (
+              <span style={{width:22,height:22,borderRadius:'50%',background:'linear-gradient(135deg,#2563eb,#1d4ed8)',color:'#fff',fontSize:11,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,...f}}>{numero}</span>
+            )}
+            <span style={{fontSize:14,fontWeight:700,color:'#1E293B',...f}}>{imp.nombre||'Sin nombre'}</span>
+            {imp.regimen && (
+              <span style={{fontSize:10,fontWeight:700,padding:'3px 9px',borderRadius:10,background:imp.regimen==='RPA'?'#faf5ff':'#eff6ff',color:imp.regimen==='RPA'?'#5b21b6':'#1E293B',border:`1px solid ${imp.regimen==='RPA'?'#ddd6fe':'#bfdbfe'}`,...f}}>{imp.regimen}</span>
+            )}
+          </div>
+          <span style={{fontSize:12,color:'#94a3b8'}}>{expanded ? '▲' : '▼'}</span>
+        </div>
+        <div style={{fontSize:12,color:'#64748b',marginTop:4,...f}}>
+          <strong style={{color:'#1E293B'}}>{numDelitos}</strong> delito{numDelitos!==1?'s':''}
+          <span style={{color:'#cbd5e1',margin:'0 8px'}}>·</span>
+          <strong style={{color:'#1E293B'}}>{totalAbonoImp}</strong> días de abono
+          <span style={{color:'#cbd5e1',margin:'0 8px'}}>·</span>
+          {imp.lugar_detencion || <span style={{color:'#94a3b8'}}>Sin centro penal</span>}
+        </div>
+      </div>
+
+      {expanded && (
+        <div style={{padding:'0 16px 16px', borderTop:'1px solid #f1f5f9', display:'flex', flexDirection:'column', gap:16}}>
+          {/* Centro Penal */}
+          <div style={{marginTop:14}}>
+            <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Centro Penal</div>
+            <SearchableSelect value={imp.lugar_detencion} onChange={(v)=>onUpdateCampo('lugar_detencion', v)} options={CENTROS_PENALES} placeholder="Buscar centro penal..." isDelito={false}/>
+          </div>
+
+          {/* Cautelar Personal */}
+          <CautelaresPanel
+            causaId={causaId}
+            ruc={ruc}
+            cautelares={cautelares}
+            esRPA={imp.regimen==='RPA'}
+            registrarActividad={registrarActividad}
+            onGuardar={onGuardarCautelar}
+            onActualizar={onActualizarCautelar}
+          />
+
+          {/* Delito(s) */}
+          <div>
+            <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Delito(s)</div>
+            <div style={{display:'flex'}}>
+              <DelitoCard value={imp.delitos} onChange={onDelitoChange} options={DELITOS_CATALOGO} />
+            </div>
+          </div>
+
+          {/* Delegación de Poder */}
+          <div>
+            <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:8,fontWeight:600,...f}}>Delegación de Poder</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+              <Field label="Abogado delegado" value={imp.delegacion_abogado} editable fieldKey="delegacion_abogado" editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>{onUpdateCampo('delegacion_abogado',editValue);setEditField(null)}}/>
+              <div>
+                <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Fecha de delegación</div>
+                {editField==='delegacion_fecha'?(
+                  <div style={{display:'flex',gap:6}}>
+                    <input type="date" style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}}
+                      value={editValue} onChange={e=>setEditValue(e.target.value)}
+                      onKeyDown={e=>{if(e.key==='Enter'){onUpdateCampo('delegacion_fecha',editValue);setEditField(null)}if(e.key==='Escape')setEditField(null)}} autoFocus/>
+                    <button className="btn-primary" style={{padding:'8px 14px',fontSize:12}} onClick={()=>{onUpdateCampo('delegacion_fecha',editValue);setEditField(null)}}>✓</button>
+                    <button className="btn-secondary" style={{padding:'8px 12px',fontSize:12}} onClick={()=>setEditField(null)}>✗</button>
+                  </div>
+                ):(
+                  <div className="fld" onClick={()=>{setEditField('delegacion_fecha');setEditValue(imp.delegacion_fecha||'')}}
+                    style={{padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:imp.delegacion_fecha?'#1E293B':'#94a3b8',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
+                    <span>{imp.delegacion_fecha || 'Clic para agregar...'}</span>
+                    <span style={{fontSize:11,color:'#94a3b8'}}>✏</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Correo de Notificación */}
+          <div>
+            <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Correo de notificación</div>
+            <select
+              style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:imp.correo_notificacion?'#1E293B':'#94a3b8',background:'#fff',cursor:'pointer',...f}}
+              value={imp.correo_notificacion||''}
+              onChange={e=>onUpdateCampo('correo_notificacion', e.target.value)}>
+              <option value="">Seleccionar correo...</option>
+              <option value="JOBREGONABOGADO@GMAIL.COM">JOBREGONABOGADO@GMAIL.COM</option>
+              <option value="NOTIFICACION.DEFENSAPENAL@GMAIL.COM">NOTIFICACION.DEFENSAPENAL@GMAIL.COM</option>
+            </select>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Dashboard({ session, userRol, registrarActividad, causaInicial, onCausaInicialUsada }) {
   const esTitular = userRol?.rol === 'titular'
   const [causas,setCausas]=useState([])
@@ -2432,6 +3439,8 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
   const [filterTribunal,setFilterTribunal]=useState('')
   const [filterEstado,setFilterEstado]=useState('')
   const [filterDelito,setFilterDelito]=useState('')
+  const [filterRegimen,setFilterRegimen]=useState('') // '' | 'RPA' | 'ADULTO' | 'MIXTO'
+  const [regimenesPorCausa,setRegimenesPorCausa]=useState({}) // { causa_id: Set(['ADULTO','RPA']) }
   const [sortCol,setSortCol]=useState('created_at')
   const [sortDir,setSortDir]=useState('desc')
   const [view,setView]=useState('list')
@@ -2442,6 +3451,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
   const [audiencias,setAudiencias]=useState([])
   const [aumentos,setAumentos]=useState([])
   const [apelaciones,setApelaciones]=useState([])
+  const [cautelares,setCautelares]=useState([])
   const [imputados,setImputados]=useState([])
   const [showAudForm,setShowAudForm]=useState(false)
   const [nuevaAud,setNuevaAud]=useState({fecha:'',hora:'',tipo:'',tribunal:'',sala:'',resultado:'',notas:''})
@@ -2475,18 +3485,30 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
       })
       setCausas(causasActualizadas)
     }
+    // ✅ Régimen de todos los imputados, para poder filtrar la lista por RPA/Adulto/Mixta
+    const { data: todosImputados } = await supabase.from('imputados').select('causa_id, regimen')
+    if (todosImputados) {
+      const mapa = {}
+      todosImputados.forEach(imp => {
+        if (!imp.regimen) return
+        if (!mapa[imp.causa_id]) mapa[imp.causa_id] = new Set()
+        mapa[imp.causa_id].add(imp.regimen)
+      })
+      setRegimenesPorCausa(mapa)
+    }
     setLoading(false)
   }
 
   const openCausa=async(c)=>{
     setSelectedCausa(c);setView('detail');setActiveTab('datos')
-    const[{data:a},{data:au},{data:imp},{data:apel}]=await Promise.all([
+    const[{data:a},{data:au},{data:imp},{data:apel},{data:caut}]=await Promise.all([
       supabase.from('audiencias').select('*').or(`causa_id.eq.${c.id},ruc.eq.${c.ruc}`).order('fecha',{ascending:false}),
       supabase.from('aumentos_plazo').select('*').eq('causa_id',c.id).order('fecha_audiencia',{ascending:true}),
       supabase.from('imputados').select('*').eq('causa_id',c.id).order('created_at',{ascending:true}),
       supabase.from('apelaciones_corte').select('*').eq('causa_id',c.id).order('created_at',{ascending:true}),
+      supabase.from('cautelares_causa').select('*').eq('causa_id',c.id).order('fecha_inicio',{ascending:true}),
     ])
-    setAudiencias(a||[]);setAumentos(au||[]);setImputados(imp||[]);setApelaciones(apel||[])
+    setAudiencias(a||[]);setAumentos(au||[]);setImputados(imp||[]);setApelaciones(apel||[]);setCautelares(caut||[])
   }
 
   // ✅ Función central para marcar acción real — actualiza updated_at y semáforo
@@ -2518,6 +3540,25 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
     setCausas(prev => prev.map(c => c.id === u.id ? u : c))
     const imp = nuevosImputados.find(x => x.id === impId)
     if (registrarActividad) registrarActividad('accion', `Actualizó delitos de ${imp?.nombre || 'imputado'} en RUC ${selectedCausa.ruc}`)
+  }
+
+  // ✅ Centro Penal por imputado — usa la misma columna "lugar_detencion" que ya
+  // existe en imputados (la que se usa en la pestaña Imputado cuando está detenido),
+  // así no hace falta ninguna migración nueva en Supabase.
+  const actualizarCentroPenalImputado = async (impId, valor) => {
+    await supabase.from('imputados').update({ lugar_detencion: valor }).eq('id', impId)
+    setImputados(prev => prev.map(x => x.id === impId ? { ...x, lugar_detencion: valor } : x))
+    const imp = imputados.find(x => x.id === impId)
+    if (registrarActividad) registrarActividad('accion', `Actualizó centro penal de ${imp?.nombre || 'imputado'} en RUC ${selectedCausa.ruc}`)
+  }
+
+  // ✅ Genérica — usada por Delegación de Poder y Correo de notificación cuando
+  // hay varios imputados y cada uno puede tener datos distintos.
+  const actualizarCampoImputado = async (impId, field, valor) => {
+    await supabase.from('imputados').update({ [field]: valor }).eq('id', impId)
+    setImputados(prev => prev.map(x => x.id === impId ? { ...x, [field]: valor } : x))
+    const imp = imputados.find(x => x.id === impId)
+    if (registrarActividad) registrarActividad('accion', `Actualizó datos de ${imp?.nombre || 'imputado'} en RUC ${selectedCausa.ruc}`)
   }
 
   const updateField=async(field,value)=>{
@@ -2639,13 +3680,16 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
       // un subestado a una causa, desaparece de aquí y solo aparece en su subestado específico.
       const estadoMatch=!filterEstado||(filterEstado==='vigente'?c.estado==='vigente':filterEstado==='terminada'?(c.estado==='terminada'&&!c.subestado):filterEstado==='top'?(c.subestado==='juicio_oral'||c.tiene_top===true):c.subestado===filterEstado)
       const delitoMatch=!filterDelito||(c.delito||'').split('|').map(d=>d.trim()).includes(filterDelito)
-      return match&&(!filterTribunal||c.tribunal===filterTribunal)&&estadoMatch&&delitoMatch
+      // ✅ Régimen: RPA/Adulto = al menos un imputado con ese régimen; Mixta = tiene ambos
+      const regs = regimenesPorCausa[c.id]
+      const regimenMatch=!filterRegimen||(regs && (filterRegimen==='MIXTO' ? (regs.has('RPA')&&regs.has('ADULTO')) : regs.has(filterRegimen)))
+      return match&&(!filterTribunal||c.tribunal===filterTribunal)&&estadoMatch&&delitoMatch&&regimenMatch
     })
     return[...list].sort((a,b)=>{const av=a[sortCol]||'',bv=b[sortCol]||'';return sortDir==='asc'?av.localeCompare(bv):bv.localeCompare(av)})
-  },[causas,search,filterTribunal,filterEstado,filterDelito,sortCol,sortDir])
+  },[causas,search,filterTribunal,filterEstado,filterDelito,filterRegimen,regimenesPorCausa,sortCol,sortDir])
 
-  const hayFiltrosActivos = !!(search||filterTribunal||filterEstado||filterDelito)
-  const limpiarFiltros = () => { setSearch(''); setFilterTribunal(''); setFilterEstado(''); setFilterDelito('') }
+  const hayFiltrosActivos = !!(search||filterTribunal||filterEstado||filterDelito||filterRegimen)
+  const limpiarFiltros = () => { setSearch(''); setFilterTribunal(''); setFilterEstado(''); setFilterDelito(''); setFilterRegimen('') }
 
   const stats=useMemo(()=>({
     total:causas.length, vigente:causas.filter(c=>c.estado==='vigente').length, terminada:causas.filter(c=>c.estado==='terminada').length,
@@ -2715,7 +3759,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                   <span style={{color:'#e2e8f0'}}>|</span>
                   <span style={{color:'#475569',fontWeight:500}}>{c.imputado}</span>
                   <SemaforoTag updated_at={c.updated_at} estado={c.estado} />
-                  {imputados.filter(i=>i.regimen).map(i=>(
+                  {imputados.length === 1 && imputados.filter(i=>i.regimen).map(i=>(
                     <span key={i.id} style={{
                       fontSize:10,fontWeight:700,padding:'3px 10px',borderRadius:20,border:'none',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',
                       background:i.regimen==='RPA'?'#faf5ff':'#eff6ff',
@@ -2737,24 +3781,46 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
             </div>
           </div>
           <div style={{background:'#fff',display:'flex',overflowX:'auto',padding:'0 20px'}}>
-            {[['datos','Datos'],['imputado','Imputado'],['plazo','Plazo'],['audiencias','Audiencias'],['top','Juicio Oral'],['teoria','⚖️ Teoría del Caso'],['carpeta','Carpeta'],...(esTitular?[['honorarios','💰 Honorarios']]:[])].map(([k,l])=>(
+            {[['datos','Datos'],['imputado','Imputado'],['plazo','Plazo'],['audiencias','Audiencias'],['top','Juicio Oral'],['teoria','⚖️ Teoría del Caso'],...(esTitular?[['honorarios','💰 Honorarios']]:[])].map(([k,l])=>(
               <button key={k} className="tab-btn" onClick={()=>setActiveTab(k)} style={{padding:'13px 16px',fontSize:13,fontWeight:activeTab===k?600:400,color:activeTab===k?'#1E293B':'#94a3b8',borderBottom:`2px solid ${activeTab===k?'#1E293B':'transparent'}`,whiteSpace:'nowrap',marginBottom:0}}>{l}</button>
             ))}
           </div>
           <div style={{background:'#fff',padding:28,borderRadius:'0 0 20px 20px'}}>
             {activeTab==='datos'&&(
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
-                {[{key:'imputado',label:'Imputado(s)',full:true,editable:true},{key:'tribunal',label:'Tribunal',editable:true},{key:'rit',label:'RIT JG',editable:true},{key:'fiscal',label:'Fiscal a cargo',editable:true},{key:'cautelar',label:'Cautelar procesal',editable:true},{key:'centro_penal',label:'Centro Penal',editable:true},{key:'plazo',label:'Plazo / Vencimiento',editable:true,full:true}].map(field=>(
-                  <Field key={field.key} label={field.label} value={c[field.key]} editable={field.editable} full={field.full} fieldKey={field.key} editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField(field.key,editValue)}/>
-                ))}
+                {/* 1. Imputado(s) — con el botón de agregar en la esquina derecha, junto al label */}
+                <div style={{gridColumn:'1/-1',marginBottom:2}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6,gap:10}}>
+                    <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,fontWeight:600,...f}}>Imputado(s)</div>
+                    <button className="btn-secondary" style={{fontSize:11,padding:'5px 12px',flexShrink:0}} onClick={()=>{setEditField('nuevo_imputado');setEditValue('')}}>+ Agregar imputado</button>
+                  </div>
+                  {editField==='campo_imputado'?(
+                    <div style={{display:'flex',gap:6,alignItems:'flex-start'}}>
+                      <input style={{width:'100%',padding:'11px 14px',border:'none',borderRadius:14,fontSize:13,color:'#1E293B',background:'#fff',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}} value={editValue} onChange={e=>setEditValue(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')updateField('imputado',editValue);if(e.key==='Escape')setEditField(null)}} autoFocus/>
+                      <button className="btn-primary" style={{padding:'8px 14px',fontSize:12,flexShrink:0,borderRadius:14}} onClick={()=>updateField('imputado',editValue)}>✓</button>
+                      <button className="btn-secondary" style={{padding:'8px 12px',fontSize:12,flexShrink:0,border:'none',borderRadius:14,boxShadow:'0 1px 2px rgba(15,23,42,0.06)'}} onClick={()=>setEditField(null)}>✗</button>
+                    </div>
+                  ):(
+                    <div className="fld" onClick={()=>{setEditField('campo_imputado');setEditValue(c.imputado||'')}}
+                      style={{padding:'11px 14px',border:'none',borderRadius:14,fontSize:13,color:c.imputado?'#1E293B':'#94a3b8',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}}>
+                      <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1}}>{c.imputado||'Clic para agregar...'}</span>
+                      <span style={{fontSize:11,color:'#94a3b8',flexShrink:0,marginLeft:8}}>✏</span>
+                    </div>
+                  )}
+                  {editField==='nuevo_imputado' && (
+                    <div style={{display:'flex',gap:8,marginTop:8}}>
+                      <input style={{flex:1,padding:'9px 12px',border:'1.5px solid #2563eb',borderRadius:8,fontSize:13,...f}} placeholder="Nombre del nuevo imputado" value={editValue} onChange={e=>setEditValue(e.target.value)} onKeyDown={async e=>{if(e.key==='Enter'){updateField('imputado',(c.imputado||'')+'|'+editValue);const{data}=await supabase.from('imputados').insert({causa_id:c.id,nombre:editValue}).select().single();if(data)setImputados(prev=>[...prev,data]);setEditField(null)}if(e.key==='Escape')setEditField(null)}} autoFocus/>
+                      <button className="btn-primary" style={{padding:'8px 14px',fontSize:12}} onClick={async()=>{updateField('imputado',(c.imputado||'')+'|'+editValue);const{data}=await supabase.from('imputados').insert({causa_id:c.id,nombre:editValue}).select().single();if(data)setImputados(prev=>[...prev,data]);setEditField(null)}}>+ Agregar</button>
+                      <button className="btn-secondary" style={{padding:'8px 12px',fontSize:12}} onClick={()=>setEditField(null)}>✕</button>
+                    </div>
+                  )}
+                </div>
+
                 {/* 🔀 Detecta imputados antiguos guardados con 2+ nombres juntos en un
                     solo campo (ej. "JUAN PEREZ Y PEDRO GOMEZ") y permite separarlos en
                     registros individuales, igual que si se hubieran agregado uno por uno. */}
                 {(() => {
                   const nombreCombinado = imputados.length === 1 ? imputados[0].nombre : (imputados.length === 0 ? c.imputado : null)
-                  // Reconoce " Y ", "/" y " - " (con espacios) como separadores entre nombres.
-                  // El guión solo cuenta si tiene espacio a los lados, para no romper
-                  // apellidos compuestos como "PÉREZ-GARCÍA" (que van pegados, sin espacios).
                   const partes = nombreCombinado ? nombreCombinado.split(/\s+Y\s+|\s*\/\s*|\s+-\s+/i).map(s=>s.trim()).filter(Boolean) : []
                   if (partes.length < 2) return null
                   return (
@@ -2786,8 +3852,9 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                     </div>
                   )
                 })()}
-                {/* Corte de Apelaciones — se calcula sola según el tribunal. Compacta arriba,
-                    y abajo la lista de apelaciones (pueden ser varias en la misma causa). */}
+
+                {/* 2. Corte de Apelaciones — se calcula sola según el tribunal. Va justo
+                    debajo de Imputado y antes de Tribunal, como pidió Joaquín. */}
                 <div style={{gridColumn:'1/-1',marginBottom:2}}>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6,gap:10}}>
                     <div style={{display:'flex',alignItems:'center',gap:8,padding:'8px 14px',border:'none',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',borderRadius:20,fontSize:12,color: getCorteApelaciones(c.tribunal) ? '#1E293B' : '#94a3b8',background:'#fff',fontWeight:600,...f}}>
@@ -2839,154 +3906,191 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                     </div>
                   )}
                 </div>
-                {/* Delito(s) — sincronizado con los imputados. 1 imputado = mismo dato; varios = uno por cada uno */}
-                <div style={{gridColumn:'1/-1',marginBottom:2}}>
-                  <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Delito(s)</div>
-                  {imputados.length === 0 ? (
-                    <DelitosChips value={c.delito} onChange={(v)=>updateField('delito', v)} options={DELITOS_CATALOGO} />
-                  ) : imputados.length === 1 ? (
-                    imputados[0].delitos ? (
-                      <DelitosChips value={imputados[0].delitos} onChange={(v)=>actualizarDelitosImputado(imputados[0].id, v)} options={DELITOS_CATALOGO} />
-                    ) : c.delito ? (
-                      <div>
-                        <div style={{fontSize:12,color:'#92400e',background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:8,padding:'10px 12px',marginBottom:8,...f}}>
-                          📋 Ya tenías guardado: <strong>{c.delito.replace(/\|/g,', ')}</strong> — aún no vinculado al imputado.
-                        </div>
-                        <button className="btn-secondary" style={{fontSize:12}} onClick={()=>actualizarDelitosImputado(imputados[0].id, c.delito)}>✓ Vincular a {imputados[0].nombre||'este imputado'}</button>
-                      </div>
-                    ) : (
-                      <DelitosChips value="" onChange={(v)=>actualizarDelitosImputado(imputados[0].id, v)} options={DELITOS_CATALOGO} />
-                    )
-                  ) : (
-                    <div>
-                      {c.delito && imputados.every(i=>!i.delitos) && (
-                        <div style={{fontSize:12,color:'#92400e',background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:8,padding:'10px 12px',marginBottom:12,...f}}>
-                          📋 Ya tenías guardado: <strong>{c.delito.replace(/\|/g,', ')}</strong> — aún no vinculado a ningún imputado. Asígnalo manualmente abajo con "+ Agregar delito" en el imputado que corresponda.
-                        </div>
-                      )}
-                      <div style={{display:'flex',flexDirection:'column',gap:12}}>
-                        {imputados.map(imp=>(
-                          <div key={imp.id} style={{border:'1px solid #e2e8f0',borderRadius:10,padding:'12px 14px',background:'#F8F9FC'}}>
-                            <div style={{fontSize:12,fontWeight:700,color:'#1E293B',marginBottom:8,...f}}>👤 {imp.nombre||'Sin nombre'}</div>
-                            <DelitosChips value={imp.delitos} onChange={(v)=>actualizarDelitosImputado(imp.id, v)} options={DELITOS_CATALOGO} />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-                {/* Fecha de los hechos + Fecha ACD (Control Detención) */}
-                <div style={{gridColumn:'1/-1',marginTop:4,display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-                  <div>
-                    <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Fecha de los hechos</div>
-                    {editField==='fecha_hechos'?(
-                      <div style={{display:'flex',gap:6}}>
-                        <input type="date" style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}}
-                          value={editValue} onChange={e=>setEditValue(e.target.value)}
-                          onKeyDown={e=>{if(e.key==='Enter')updateField('fecha_hechos',editValue);if(e.key==='Escape')setEditField(null)}} autoFocus/>
-                        <button className="btn-primary" style={{padding:'8px 14px',fontSize:12}} onClick={()=>updateField('fecha_hechos',editValue)}>✓</button>
-                        <button className="btn-secondary" style={{padding:'8px 12px',fontSize:12}} onClick={()=>setEditField(null)}>✗</button>
-                      </div>
-                    ):(
-                      <div className="fld" onClick={()=>{setEditField('fecha_hechos');setEditValue(c.fecha_hechos||'')}}
-                        style={{padding:'9px 12px',border:'1.5px solid #fecaca',borderRadius:8,fontSize:13,fontWeight:700,color:c.fecha_hechos?'#991b1b':'#94a3b8',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:c.fecha_hechos?'#fef2f2':'#fff',...f}}>
-                        <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
-                          <span>{c.fecha_hechos || 'Clic para agregar...'}</span>
-                          {c.fecha_hechos && imputados.map(imp => {
-                            if (!imp.fecha_nacimiento && !imp.regimen) return null
-                            const regimen = imp.regimen || calcularRegimenAlMomento(imp.fecha_nacimiento, c.fecha_hechos)
-                            if (!regimen) return null
-                            return (
-                              <span key={imp.id} style={{
-                                fontSize:10,fontWeight:700,padding:'3px 10px',borderRadius:10,
-                                background: regimen==='RPA'?'#faf5ff':'#eff6ff',
-                                color: regimen==='RPA'?'#5b21b6':'#1E293B',
-                                border: `1.5px solid ${regimen==='RPA'?'#ddd6fe':'#bfdbfe'}`,
-                                ...f
-                              }}>
-                                ✓ {imp.nombre?.split(' ')[0]}: {regimen}
-                              </span>
-                            )
-                          })}
-                        </div>
-                        <span style={{fontSize:11,color:'#f87171'}}>✏</span>
-                      </div>
-                    )}
+
+                {/* ── Datos de la causa: Tribunal, RIT, Fiscal y las fechas — agrupados en un
+                     solo panel (en vez de casillas sueltas), para que se lea de un vistazo y
+                     quede fijo arriba, sin importar cuánto crezcan las tarjetas de imputado. ── */}
+                <div style={{gridColumn:'1/-1',border:'1px solid #e2e8f0',borderRadius:16,padding:'18px 20px',background:'#F8F9FC'}}>
+                  <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.3,fontWeight:700,marginBottom:14,...f}}>Datos de la causa</div>
+
+                  <Field label="Tribunal" value={c.tribunal} editable full fieldKey="tribunal" editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField('tribunal',editValue)}/>
+
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginTop:2}}>
+                    {[{key:'rit',label:'RIT JG',editable:true},{key:'fiscal',label:'Fiscal a cargo',editable:true}].map(field=>(
+                      <Field key={field.key} label={field.label} value={c[field.key]} editable={field.editable} full={field.full} fieldKey={field.key} editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField(field.key,editValue)}/>
+                    ))}
                   </div>
-                  <div>
-                    <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Fecha ACD (Control Detención)</div>
-                    {(() => {
-                      const activosPlazo = (aumentos||[]).filter(a=>!a.eliminado).sort((x,y)=>x.fecha_audiencia.localeCompare(y.fecha_audiencia))
-                      const fechaAcd = activosPlazo[0]?.fecha_audiencia
-                      return (
-                        <div onClick={()=>setActiveTab('plazo')}
-                          style={{padding:'9px 12px',border:'1.5px solid #bfdbfe',borderRadius:8,fontSize:13,fontWeight:700,color:fechaAcd?'#1e40af':'#94a3b8',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:fechaAcd?'#eff6ff':'#fff',...f}}
-                          title="Se toma automáticamente de la primera audiencia registrada en la pestaña Plazo">
-                          <span>{fechaAcd || 'Sin audiencias en Plazo aún'}</span>
-                          <span style={{fontSize:11,color:'#93c5fd'}}>↗</span>
-                        </div>
-                      )
-                    })()}
-                  </div>
-                </div>
-                {/* Delegación de Poder */}
-                <div style={{gridColumn:'1/-1',marginTop:8}}>
-                  <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:8,fontWeight:600,...f}}>Delegación de Poder</div>
-                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-                    <Field label="Abogado delegado" value={c.delegacion_abogado} editable fieldKey="delegacion_abogado" editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField('delegacion_abogado',editValue)}/>
-                    <div>
-                      <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Fecha de delegación</div>
-                      {editField==='delegacion_fecha'?(
-                        <div style={{display:'flex',gap:6}}>
-                          <input type="date" style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}}
-                            value={editValue} onChange={e=>setEditValue(e.target.value)}
-                            onKeyDown={e=>{if(e.key==='Enter')updateField('delegacion_fecha',editValue);if(e.key==='Escape')setEditField(null)}} autoFocus/>
-                          <button className="btn-primary" style={{padding:'8px 14px',fontSize:12}} onClick={()=>updateField('delegacion_fecha',editValue)}>✓</button>
-                          <button className="btn-secondary" style={{padding:'8px 12px',fontSize:12}} onClick={()=>setEditField(null)}>✗</button>
+
+                  <div style={{display:'flex',gap:10,flexWrap:'wrap',maxWidth:640,marginTop:16}}>
+                    {/* Vencimiento del plazo */}
+                    <div style={{flex:'1 1 190px',minWidth:170}}>
+                      <div style={{fontSize:9,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4,fontWeight:600,...f}}>Vencimiento del plazo</div>
+                      {editField==='Plazo / Vencimiento'?(
+                        <div style={{display:'flex',gap:4}}>
+                          <input style={{width:'100%',padding:'7px 9px',border:'none',borderRadius:8,fontSize:11,color:'#1E293B',background:'#fff',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}} value={editValue} onChange={e=>setEditValue(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')updateField('plazo',editValue);if(e.key==='Escape')setEditField(null)}} autoFocus/>
+                          <button className="btn-primary" style={{padding:'5px 9px',fontSize:10,borderRadius:8}} onClick={()=>updateField('plazo',editValue)}>✓</button>
                         </div>
                       ):(
-                        <div className="fld" onClick={()=>{setEditField('delegacion_fecha');setEditValue(c.delegacion_fecha||'')}}
-                          style={{padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:c.delegacion_fecha?'#1E293B':'#94a3b8',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
-                          <span>{c.delegacion_fecha || 'Clic para agregar...'}</span>
-                          <span style={{fontSize:11,color:'#94a3b8'}}>✏</span>
+                        <div className="fld" onClick={()=>{setEditField('Plazo / Vencimiento');setEditValue(c.plazo||'')}}
+                          style={{padding:'7px 9px',borderRadius:8,fontSize:11,fontWeight:600,color:c.plazo?'#1E293B':'#94a3b8',minHeight:30,display:'flex',alignItems:'center',cursor:'pointer',background:'#fff',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}}>
+                          <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{c.plazo||'Clic para agregar...'}</span>
+                        </div>
+                      )}
+                    </div>
+                    {/* Fecha ACD (Control Detención) — se toma de la 1ª audiencia registrada en Plazo */}
+                    <div style={{flex:'1 1 150px',minWidth:140}}>
+                      <div style={{fontSize:9,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4,fontWeight:600,...f}}>Fecha ACD</div>
+                      {(() => {
+                        const activosPlazo = (aumentos||[]).filter(a=>!a.eliminado).sort((x,y)=>x.fecha_audiencia.localeCompare(y.fecha_audiencia))
+                        const fechaAcd = activosPlazo[0]?.fecha_audiencia
+                        return (
+                          <div onClick={()=>setActiveTab('plazo')}
+                            style={{padding:'7px 9px',borderRadius:8,fontSize:11,fontWeight:600,color:fechaAcd?'#1e40af':'#94a3b8',minHeight:30,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}}
+                            title="Se toma automáticamente de la primera audiencia registrada en la pestaña Plazo">
+                            <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{fechaAcd || 'Sin audiencias'}</span>
+                            <span style={{fontSize:9,color:'#93c5fd'}}>↗</span>
+                          </div>
+                        )
+                      })()}
+                    </div>
+                    {/* Fecha de los hechos */}
+                    <div style={{flex:'1 1 150px',minWidth:140}}>
+                      <div style={{fontSize:9,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4,fontWeight:600,...f}}>Fecha de los hechos</div>
+                      {editField==='fecha_hechos'?(
+                        <div style={{display:'flex',gap:4}}>
+                          <input type="date" style={{width:'100%',padding:'7px 9px',border:'none',borderRadius:8,fontSize:11,color:'#1E293B',background:'#fff',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}}
+                            value={editValue} onChange={e=>setEditValue(e.target.value)}
+                            onKeyDown={e=>{if(e.key==='Enter')updateField('fecha_hechos',editValue);if(e.key==='Escape')setEditField(null)}} autoFocus/>
+                          <button className="btn-primary" style={{padding:'5px 9px',fontSize:10,borderRadius:8}} onClick={()=>updateField('fecha_hechos',editValue)}>✓</button>
+                        </div>
+                      ):(
+                        <div className="fld" onClick={()=>{setEditField('fecha_hechos');setEditValue(c.fecha_hechos||'')}}
+                          style={{padding:'7px 9px',borderRadius:8,fontSize:11,fontWeight:700,color:c.fecha_hechos?'#991b1b':'#94a3b8',minHeight:30,display:'flex',alignItems:'center',cursor:'pointer',background:c.fecha_hechos?'#fef2f2':'#fff',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}}>
+                          <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{c.fecha_hechos || 'Clic para agregar...'}</span>
                         </div>
                       )}
                     </div>
                   </div>
                 </div>
-                {/* Correo de Notificación */}
-                <div style={{gridColumn:'1/-1',marginTop:4}}>
-                  <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Correo de notificación</div>
-                  <select
-                    style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:c.correo_notificacion?'#1E293B':'#94a3b8',background:'#fff',cursor:'pointer',...f}}
-                    value={c.correo_notificacion||''}
-                    onChange={e=>updateField('correo_notificacion', e.target.value)}>
-                    <option value="">Seleccionar correo...</option>
-                    <option value="JOBREGONABOGADO@GMAIL.COM">JOBREGONABOGADO@GMAIL.COM</option>
-                    <option value="NOTIFICACION.DEFENSAPENAL@GMAIL.COM">NOTIFICACION.DEFENSAPENAL@GMAIL.COM</option>
-                  </select>
-                </div>
-                <div style={{gridColumn:'1/-1',marginTop:8}}>
-                  <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:8,fontWeight:600,...f}}>Imputados adicionales</div>
-                  {(c.imputado||'').split('|').filter((_,i)=>i>0).map((imp,i)=>(
-                    <div key={i} style={{display:'flex',gap:8,marginBottom:6,alignItems:'center'}}>
-                      <div style={{flex:1,padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#F8F9FC',...f}}>{imp.trim()}</div>
-                      <button onClick={async()=>{const imps=(c.imputado||'').split('|');imps.splice(i+1,1);updateField('imputado',imps.join('|'));const impEncontrado=imputados.find(x=>x.nombre&&x.nombre.trim()===imp.trim());if(impEncontrado){await supabase.from('imputados').delete().eq('id',impEncontrado.id);setImputados(prev=>prev.filter(x=>x.id!==impEncontrado.id))}}} style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:7,padding:'7px 10px',fontSize:12,color:'#dc2626',cursor:'pointer',...f}}>✕</button>
+
+                {/* ── Todo lo que puede variar por imputado: Centro Penal, Cautelar Personal,
+                     Delito(s), Delegación de Poder y Correo de notificación. Con 1 imputado se
+                     ve igual que siempre (campos sueltos); con 2+, cada uno tiene su propia
+                     tarjeta colapsable con toda su información agrupada, numerada. ── */}
+                {imputados.length <= 1 ? (
+                  <>
+                    {imputados.length === 0 ? (
+                      <Field label="Centro Penal" value={c.centro_penal} editable fieldKey="centro_penal" editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField('centro_penal',editValue)}/>
+                    ) : (
+                      <Field label="Centro Penal" value={imputados[0].lugar_detencion} editable fieldKey="centro_penal" editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={async()=>{await actualizarCentroPenalImputado(imputados[0].id, editValue);setEditField(null)}}/>
+                    )}
+
+                    <CautelaresPanel
+                      causaId={c.id}
+                      ruc={c.ruc}
+                      cautelares={cautelares}
+                      esRPA={imputados.some(i=>i.regimen==='RPA')}
+                      registrarActividad={registrarActividad}
+                      onGuardar={async(form)=>{
+                        const{data,error}=await supabase.from('cautelares_causa').insert({causa_id:c.id,imputado_id:imputados[0]?.id||null,tipo:form.tipo,fecha_inicio:form.fecha_inicio,fecha_termino:form.fecha_termino||null,frecuencia:form.tipo==='Firma'?form.frecuencia:null}).select().single()
+                        if(!error&&data){setCautelares(prev=>[...prev,data]);if(registrarActividad)registrarActividad('accion',`Agregó cautelar "${form.tipo}" en RUC ${c.ruc}`)}
+                      }}
+                      onActualizar={async(id,campos)=>{
+                        await supabase.from('cautelares_causa').update(campos).eq('id',id)
+                        setCautelares(prev=>prev.map(x=>x.id===id?{...x,...campos}:x))
+                      }}
+                    />
+
+                    <div style={{gridColumn:'1/-1',marginBottom:2}}>
+                      <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Delito(s)</div>
+                      {imputados.length === 0 ? (
+                        <div style={{display:'flex'}}>
+                          <DelitoCard value={c.delito} onChange={(v)=>updateField('delito', v)} options={DELITOS_CATALOGO} />
+                        </div>
+                      ) : imputados[0].delitos ? (
+                        <div style={{display:'flex'}}>
+                          <DelitoCard value={imputados[0].delitos} onChange={(v)=>actualizarDelitosImputado(imputados[0].id, v)} options={DELITOS_CATALOGO} />
+                        </div>
+                      ) : c.delito ? (
+                        <div>
+                          <div style={{fontSize:12,color:'#92400e',background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:8,padding:'10px 12px',marginBottom:8,...f}}>
+                            📋 Ya tenías guardado: <strong>{c.delito.replace(/\|/g,', ')}</strong> — aún no vinculado al imputado.
+                          </div>
+                          <button className="btn-secondary" style={{fontSize:12}} onClick={()=>actualizarDelitosImputado(imputados[0].id, c.delito)}>✓ Vincular a {imputados[0].nombre||'este imputado'}</button>
+                        </div>
+                      ) : (
+                        <div style={{display:'flex'}}>
+                          <DelitoCard value="" onChange={(v)=>actualizarDelitosImputado(imputados[0].id, v)} options={DELITOS_CATALOGO} />
+                        </div>
+                      )}
                     </div>
-                  ))}
-                  {editField==='nuevo_imputado'?(
-                    <div style={{display:'flex',gap:8,marginTop:6}}>
-                      <input style={{flex:1,padding:'9px 12px',border:'1.5px solid #2563eb',borderRadius:8,fontSize:13,...f}} placeholder="Nombre del imputado adicional" value={editValue} onChange={e=>setEditValue(e.target.value)} onKeyDown={async e=>{if(e.key==='Enter'){updateField('imputado',(c.imputado||'')+'|'+editValue);const{data}=await supabase.from('imputados').insert({causa_id:c.id,nombre:editValue}).select().single();if(data)setImputados(prev=>[...prev,data]);setEditField(null)}if(e.key==='Escape')setEditField(null)}} autoFocus/>
-                      <button className="btn-primary" style={{padding:'8px 14px',fontSize:12}} onClick={async()=>{updateField('imputado',(c.imputado||'')+'|'+editValue);const{data}=await supabase.from('imputados').insert({causa_id:c.id,nombre:editValue}).select().single();if(data)setImputados(prev=>[...prev,data]);setEditField(null)}}>+ Agregar</button>
-                      <button className="btn-secondary" style={{padding:'8px 12px',fontSize:12}} onClick={()=>setEditField(null)}>✕</button>
+
+                    <div style={{gridColumn:'1/-1',marginTop:8}}>
+                      <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:8,fontWeight:600,...f}}>Delegación de Poder</div>
+                      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+                        <Field label="Abogado delegado" value={imputados.length===0?c.delegacion_abogado:imputados[0].delegacion_abogado} editable fieldKey="delegacion_abogado" editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>{imputados.length===0?updateField('delegacion_abogado',editValue):actualizarCampoImputado(imputados[0].id,'delegacion_abogado',editValue);setEditField(null)}}/>
+                        <div>
+                          <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Fecha de delegación</div>
+                          {editField==='delegacion_fecha'?(
+                            <div style={{display:'flex',gap:6}}>
+                              <input type="date" style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}}
+                                value={editValue} onChange={e=>setEditValue(e.target.value)}
+                                onKeyDown={e=>{if(e.key==='Enter'){imputados.length===0?updateField('delegacion_fecha',editValue):actualizarCampoImputado(imputados[0].id,'delegacion_fecha',editValue);setEditField(null)}if(e.key==='Escape')setEditField(null)}} autoFocus/>
+                              <button className="btn-primary" style={{padding:'8px 14px',fontSize:12}} onClick={()=>{imputados.length===0?updateField('delegacion_fecha',editValue):actualizarCampoImputado(imputados[0].id,'delegacion_fecha',editValue);setEditField(null)}}>✓</button>
+                              <button className="btn-secondary" style={{padding:'8px 12px',fontSize:12}} onClick={()=>setEditField(null)}>✗</button>
+                            </div>
+                          ):(
+                            <div className="fld" onClick={()=>{setEditField('delegacion_fecha');setEditValue((imputados.length===0?c.delegacion_fecha:imputados[0].delegacion_fecha)||'')}}
+                              style={{padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:(imputados.length===0?c.delegacion_fecha:imputados[0].delegacion_fecha)?'#1E293B':'#94a3b8',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
+                              <span>{(imputados.length===0?c.delegacion_fecha:imputados[0].delegacion_fecha) || 'Clic para agregar...'}</span>
+                              <span style={{fontSize:11,color:'#94a3b8'}}>✏</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  ):(
-                    <button className="btn-secondary" style={{fontSize:12,marginTop:4}} onClick={()=>{setEditField('nuevo_imputado');setEditValue('')}}>+ Agregar imputado</button>
-                  )}
-                </div>
+
+                    <div style={{gridColumn:'1/-1',marginTop:4}}>
+                      <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Correo de notificación</div>
+                      <select
+                        style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:(imputados.length===0?c.correo_notificacion:imputados[0].correo_notificacion)?'#1E293B':'#94a3b8',background:'#fff',cursor:'pointer',...f}}
+                        value={(imputados.length===0?c.correo_notificacion:imputados[0].correo_notificacion)||''}
+                        onChange={e=>imputados.length===0?updateField('correo_notificacion', e.target.value):actualizarCampoImputado(imputados[0].id,'correo_notificacion', e.target.value)}>
+                        <option value="">Seleccionar correo...</option>
+                        <option value="JOBREGONABOGADO@GMAIL.COM">JOBREGONABOGADO@GMAIL.COM</option>
+                        <option value="NOTIFICACION.DEFENSAPENAL@GMAIL.COM">NOTIFICACION.DEFENSAPENAL@GMAIL.COM</option>
+                      </select>
+                    </div>
+                  </>
+                ) : (
+                  <div style={{gridColumn:'1/-1',display:'flex',flexDirection:'column',gap:12}}>
+                    {imputados.map((imp,idx)=>(
+                      <ImputadoDatosCard
+                        key={imp.id}
+                        imp={imp}
+                        numero={idx+1}
+                        causaId={c.id}
+                        ruc={c.ruc}
+                        cautelares={cautelares.filter(ct=>ct.imputado_id===imp.id)}
+                        registrarActividad={registrarActividad}
+                        onUpdateCampo={(field,value)=>actualizarCampoImputado(imp.id, field, value)}
+                        onDelitoChange={(v)=>actualizarDelitosImputado(imp.id, v)}
+                        onGuardarCautelar={async(form)=>{
+                          const{data,error}=await supabase.from('cautelares_causa').insert({causa_id:c.id,imputado_id:imp.id,tipo:form.tipo,fecha_inicio:form.fecha_inicio,fecha_termino:form.fecha_termino||null,frecuencia:form.tipo==='Firma'?form.frecuencia:null}).select().single()
+                          if(!error&&data){setCautelares(prev=>[...prev,data]);if(registrarActividad)registrarActividad('accion',`Agregó cautelar "${form.tipo}" a ${imp.nombre||'imputado'} en RUC ${c.ruc}`)}
+                        }}
+                        onActualizarCautelar={async(id,campos)=>{
+                          await supabase.from('cautelares_causa').update(campos).eq('id',id)
+                          setCautelares(prev=>prev.map(x=>x.id===id?{...x,...campos}:x))
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
 
               </div>
             )}
+
             {activeTab==='imputado'&&(
               <div>
                 {imputados.map((imp,idx)=>(
@@ -3146,17 +4250,9 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
             {activeTab==='teoria'&&(
               <TeoriaDelCaso
                 causaId={c.id} ruc={c.ruc} session={session} registrarActividad={registrarActividad}
+                carpetaRef={c.carpeta_ref} onUpdateCarpetaRef={(v)=>updateField('carpeta_ref',v)}
                 onAccion={() => marcarAccion(c.id)} // ✅ actualiza semáforo
               />
-            )}
-            {activeTab==='carpeta'&&(
-              <div>
-                <Field label="Referencia carpeta física" value={c.carpeta_ref} editable editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField('carpeta_ref',editValue)}/>
-                <div style={{marginTop:16}}><CarpetaOneDrive ruc={c.ruc}/></div>
-                <div style={{marginTop:28,paddingTop:24,borderTop:'1px solid #f1f5f9'}}>
-                  <DocumentosGuardados causaId={c.id} email={session?.user?.email||''} onAccion={()=>marcarAccion(c.id)}/>
-                </div>
-              </div>
             )}
             {esTitular && activeTab==='honorarios'&&(
               <HonorariosTab causaId={c.id} ruc={c.ruc} email={session?.user?.email||''} registrarActividad={registrarActividad} onAccion={()=>marcarAccion(c.id)}/>
@@ -3323,6 +4419,12 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
           <div style={{width:220}}>
             <SearchableSelect value={filterDelito} onChange={v=>setFilterDelito(v)} options={DELITOS_CATALOGO} placeholder="Todos los delitos" isDelito={true}/>
           </div>
+          <select style={{width:'auto',minWidth:150,padding:'11px 14px',border:'none',borderRadius:14,fontSize:13,color:'#1E293B',background:'#fff',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}} value={filterRegimen} onChange={e=>setFilterRegimen(e.target.value)}>
+            <option value="">RPA / Adulto</option>
+            <option value="ADULTO">Solo Adulto</option>
+            <option value="RPA">Solo RPA</option>
+            <option value="MIXTO">Mixta (RPA y Adulto)</option>
+          </select>
           {hayFiltrosActivos && <button className="btn-secondary" style={{fontSize:12,color:'#dc2626',border:'none',boxShadow:'0 1px 2px rgba(15,23,42,0.06)'}} onClick={limpiarFiltros}>✕ Limpiar</button>}
           <span style={{fontSize:12,color:'#94a3b8',fontWeight:500,...f}}>{filtered.length} resultado{filtered.length!==1?'s':''}</span>
           <button className="btn-primary" style={{borderRadius:14}} onClick={()=>setShowNuevaCausa(true)}>+ Nueva causa</button>
@@ -3333,32 +4435,38 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
           <div style={{textAlign:'center',padding:60,color:'#94a3b8',fontSize:14,...f}}>Cargando causas...</div>
         ):(
           <div style={{background:'#fff',border:'none',borderRadius:20,boxShadow:'0 1px 2px rgba(15,23,42,0.06)',padding:8,overflowX:'auto'}}>
-            <table style={{width:'100%',borderCollapse:'collapse'}}>
-              <thead>
-                <tr style={{border:'none',background:'transparent'}}>
-                  {[{key:'ruc',label:'RUC'},{key:'rit',label:'RIT'},{key:'tribunal',label:'Tribunal'},{key:'imputado',label:'Imputado'},{key:'delito',label:'Delito'}].map(col=>(
-                    <th key={col.key} className="sort-col" onClick={()=>handleSort(col.key)} style={{padding:'16px 20px 12px',textAlign:'left',fontSize:10,fontWeight:700,color:sortCol===col.key?'#2563eb':'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,...f}}>{col.label}<SortIcon col={col.key}/></th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((c)=>(
-                  <tr key={c.id} className="row-hover" onClick={()=>openCausa(c)} style={{border:'none',background:'#fff'}}>
-                    <td style={{padding:'14px 20px',fontSize:12,fontWeight:700,color:'#1E293B',borderRadius:'14px 0 0 14px',...f}}>{c.ruc}</td>
-                    <td style={{padding:'14px 20px',fontSize:12,color:'#94a3b8',fontWeight:500,...f}}>
-                      {/* ✅ Semáforo como tag visible en la lista — solo causas vigentes */}
-                      <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
-                        <SemaforoTag updated_at={c.updated_at} estado={c.estado} />
-                        <span>{c.rit||'—'}</span>
-                      </div>
-                    </td>
-                    <td style={{padding:'12px 16px',fontSize:12,color:'#475569',fontWeight:500,...f}}>{c.tribunal}</td>
-                    <td style={{padding:'12px 16px',...f}}><div style={{maxWidth:210,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:13,color:'#1E293B',fontWeight:500}}>{c.imputado}</div></td>
-                    <td style={{padding:'14px 20px',borderRadius:'0 14px 14px 0',...f}}><div style={{maxWidth:180,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:12,color:'#64748b'}}>{(c.delito||'').replace(/\|/g,', ')||'—'}</div></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            {/* Encabezado — solo en pantalla ancha */}
+            <div className="hide-mobile" style={{display:'grid',gridTemplateColumns:'140px 110px 140px 1fr 1fr'}}>
+              {[{key:'ruc',label:'RUC'},{key:'rit',label:'RIT'},{key:'tribunal',label:'Tribunal'},{key:'imputado',label:'Imputado'},{key:'delito',label:'Delito'}].map(col=>(
+                <div key={col.key} className="sort-col" onClick={()=>handleSort(col.key)} style={{padding:'16px 20px 12px',textAlign:'left',fontSize:10,fontWeight:700,color:sortCol===col.key?'#2563eb':'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,...f}}>{col.label}<SortIcon col={col.key}/></div>
+              ))}
+            </div>
+            {filtered.map((c)=>(
+              <div key={c.id} className="row-hover causa-row" onClick={()=>openCausa(c)} style={{borderRadius:14}}>
+                {/* Fila ancha (PC/tablet) — misma info y orden de siempre */}
+                <div className="causa-col-desktop" style={{display:'grid',gridTemplateColumns:'140px 110px 140px 1fr 1fr'}}>
+                  <div style={{padding:'14px 20px',fontSize:12,fontWeight:700,color:'#1E293B',...f}}>{c.ruc}</div>
+                  <div style={{padding:'14px 20px',fontSize:12,color:'#94a3b8',fontWeight:500,...f}}>
+                    <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+                      <SemaforoTag updated_at={c.updated_at} estado={c.estado} />
+                      <span>{c.rit||'—'}</span>
+                    </div>
+                  </div>
+                  <div style={{padding:'12px 16px',fontSize:12,color:'#475569',fontWeight:500,...f}}>{c.tribunal}</div>
+                  <div style={{padding:'12px 16px',...f}}><div style={{maxWidth:210,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:13,color:'#1E293B',fontWeight:500}}>{c.imputado}</div></div>
+                  <div style={{padding:'14px 20px',...f}}><div style={{maxWidth:180,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:12,color:'#64748b'}}>{(c.delito||'').replace(/\|/g,', ')||'—'}</div></div>
+                </div>
+                {/* Tarjeta condensada — solo en celular: RUC + estado, luego RIT/Tribunal, luego imputado */}
+                <div className="causa-row-mobile" style={{padding:'12px 14px'}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8}}>
+                    <span style={{fontSize:13,fontWeight:700,color:'#1E293B',...f}}>{c.ruc}</span>
+                    <SemaforoTag updated_at={c.updated_at} estado={c.estado} />
+                  </div>
+                  <div style={{fontSize:11,color:'#94a3b8',marginTop:3,...f}}>{c.rit||'—'} · {c.tribunal||'—'}</div>
+                  <div style={{fontSize:11,color:'#64748b',marginTop:2,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',...f}}>{c.imputado}</div>
+                </div>
+              </div>
+            ))}
             {filtered.length===0&&<div style={{textAlign:'center',padding:48,color:'#94a3b8',fontSize:14,...f}}>Sin resultados.</div>}
           </div>
         )}
@@ -3368,7 +4476,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
         <div style={{position:'fixed',top:0,left:0,width:'100%',height:'100%',background:'rgba(15,23,42,0.5)',display:'flex',alignItems:'flex-start',justifyContent:'center',paddingTop:'5vh',zIndex:200,backdropFilter:'blur(4px)'}} onClick={e=>e.target===e.currentTarget&&setShowNuevaCausa(false)}>
           <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:16,padding:32,width:540,maxWidth:'90vw',boxShadow:'0 24px 80px rgba(15,23,42,0.22)',maxHeight:'90vh',overflowY:'auto'}}>
             <div style={{fontSize:20,fontWeight:800,color:'#1E293B',marginBottom:24,...f}}>Nueva Causa</div>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+            <div className="grid2-mobile" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
               {/* RUC y RIT */}
               {[{key:'ruc',label:'RUC *',ph:'Ej: 2600123456-7',full:true},{key:'rit',label:'RIT',ph:'Ej: 1234-2026'}].map(field=>(
                 <div key={field.key} style={{gridColumn:field.full?'1/-1':'auto'}}>
@@ -3415,13 +4523,19 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                   value={nuevaCausa.imputado_domicilio}
                   onChange={e=>setNuevaCausa(p=>({...p,imputado_domicilio:e.target.value}))}/>
               </div>
-              {/* Fiscal y Cautelar */}
-              {[{key:'fiscal',label:'Fiscal',ph:'Nombre del fiscal'},{key:'cautelar',label:'Cautelar',ph:'Prisión preventiva...'}].map(field=>(
-                <div key={field.key}>
-                  <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>{field.label}</div>
-                  <input style={inp} placeholder={field.ph} value={nuevaCausa[field.key]} onChange={e=>setNuevaCausa(p=>({...p,[field.key]:e.target.value}))}/>
-                </div>
-              ))}
+              {/* Fiscal */}
+              <div>
+                <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Fiscal</div>
+                <input style={inp} placeholder="Nombre del fiscal" value={nuevaCausa.fiscal} onChange={e=>setNuevaCausa(p=>({...p,fiscal:e.target.value}))}/>
+              </div>
+              {/* Cautelar — ahora como dropdown, igual que en el detalle de la causa */}
+              <div>
+                <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Cautelar</div>
+                <select style={inp} value={nuevaCausa.cautelar} onChange={e=>setNuevaCausa(p=>({...p,cautelar:e.target.value}))}>
+                  <option value="">Seleccionar...</option>
+                  {TIPOS_CAUTELARES_TODAS.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
               <div style={{gridColumn:'1/-1'}}>
                 <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Centro Penal</div>
                 <SearchableSelect

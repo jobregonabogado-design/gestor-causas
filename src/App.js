@@ -4,6 +4,8 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Calendario from './pages/Calendario'
 import Escritos from './pages/Escritos'
+import CodigosLeyes from './pages/CodigosLeyes'
+import Contabilidad from './pages/Contabilidad'
 
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
@@ -27,6 +29,18 @@ const css = `
     .nav-email { display: none !important; }
     .nav-badge { display: none !important; }
     .nav-nombre { display: none !important; }
+  }
+  /* ✅ Responsive: en pantallas angostas (celular), la barra de arriba pasa a
+     2 filas en vez de forzar scroll horizontal de toda la página. */
+  .app-nav { flex-wrap: wrap; row-gap: 8px; }
+  .app-navlinks { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .app-navlinks::-webkit-scrollbar { display: none; }
+  @media (max-width: 760px) {
+    .app-nav { padding: 10px 14px !important; height: auto !important; }
+    .app-logo-sub { display: none !important; }
+    .app-navlinks { order: 3; width: 100%; }
+    .nav-link { padding: 7px 12px !important; font-size: 12px !important; white-space: nowrap; }
+    .alerta-btn, .alerta-btn-active { padding: 6px 10px !important; font-size: 11px !important; white-space: nowrap; }
   }
 `
 
@@ -512,20 +526,20 @@ export default function App() {
         />
       )}
 
-      <nav style={{ background:'rgba(255,255,255,0.92)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)', borderBottom:'1px solid #E2E8F0', padding:'0 32px', height:60, display:'flex', alignItems:'center', justifyContent:'space-between', position:'sticky', top:0, zIndex:100, boxShadow:'0 1px 2px rgba(15,23,42,0.03)' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-          <div style={{ width:36, height:36, background:'#1E293B', borderRadius:11, display:'flex', alignItems:'center', justifyContent:'center', fontSize:17, boxShadow:'0 6px 16px rgba(30,41,59,0.2)' }}>⚖</div>
+      <nav className="app-nav" style={{ background:'rgba(255,255,255,0.92)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)', borderBottom:'1px solid #E2E8F0', padding:'0 32px', height:60, display:'flex', alignItems:'center', justifyContent:'space-between', position:'sticky', top:0, zIndex:100, boxShadow:'0 1px 2px rgba(15,23,42,0.03)' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:10, order:1 }}>
+          <div style={{ width:36, height:36, background:'#1E293B', borderRadius:11, display:'flex', alignItems:'center', justifyContent:'center', fontSize:17, boxShadow:'0 6px 16px rgba(30,41,59,0.2)', flexShrink:0 }}>⚖</div>
           <div>
             <div style={{ fontFamily:'Inter,sans-serif', fontSize:15, fontWeight:800, color:'#1E293B', letterSpacing:'-0.5px' }}>LexOffice</div>
-            <div style={{ fontSize:9, color:'#94a3b8', letterSpacing:2, textTransform:'uppercase', fontWeight:500, marginTop:-1 }}>Gestión Penal</div>
+            <div className="app-logo-sub" style={{ fontSize:9, color:'#94a3b8', letterSpacing:2, textTransform:'uppercase', fontWeight:500, marginTop:-1 }}>Gestión Penal</div>
           </div>
         </div>
-        <div style={{ display:'flex', gap:4, background:'#F8F9FC', padding:'4px', borderRadius:12, border:'1px solid #E2E8F0' }}>
-          {[{id:'causas',label:'Causas'},{id:'calendario',label:'Calendario'},{id:'escritos',label:'Escritos'}].map(item => (
+        <div className="app-navlinks" style={{ display:'flex', gap:4, background:'#F8F9FC', padding:'4px', borderRadius:12, border:'1px solid #E2E8F0', order:2 }}>
+          {[{id:'causas',label:'Causas'},{id:'calendario',label:'Calendario'},{id:'escritos',label:'Escritos'},{id:'codigos',label:'Códigos y Leyes'}].map(item => (
             <button key={item.id} className={`nav-link${pagina===item.id?' active':''}`} onClick={() => setPagina(item.id)}>{item.label}</button>
           ))}
         </div>
-        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:10, order:3, flexShrink:0 }}>
           <button onClick={() => setShowAlerta(true)} className={alertaTotal > 0 ? 'alerta-btn-active' : 'alerta-btn'}>
             🔔 Alerta
             {alertaTotal > 0 && (
@@ -555,6 +569,11 @@ export default function App() {
                       )}
                     </button>
                   )}
+                  {esTitular && (
+                    <button onClick={() => { setShowUserMenu(false); setPagina('contabilidad') }} style={{ width:'100%', textAlign:'left', background:'none', border:'none', borderTop:'1px solid #F1F5F9', padding:'12px 16px', fontSize:13, cursor:'pointer', color:'#374151', fontFamily:"'Inter',sans-serif" }}>
+                      💰 Contabilidad
+                    </button>
+                  )}
                   <button onClick={handleSignOut} style={{ width:'100%', textAlign:'left', background:'none', border:'none', borderTop:'1px solid #F1F5F9', padding:'12px 16px', fontSize:13, cursor:'pointer', color:'#dc2626', fontWeight:600, fontFamily:"'Inter',sans-serif" }}>
                     ⏻ Salir
                   </button>
@@ -582,6 +601,12 @@ export default function App() {
         )}
         {pagina === 'escritos' && (
           <Escritos session={session} registrarActividad={registrarActividad} />
+        )}
+        {pagina === 'codigos' && (
+          <CodigosLeyes />
+        )}
+        {pagina === 'contabilidad' && esTitular && (
+          <Contabilidad />
         )}
       </div>
     </div>
