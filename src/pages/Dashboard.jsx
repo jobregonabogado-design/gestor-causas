@@ -18,7 +18,7 @@ import { TeoriaDelCaso } from './dashboard/teoria'
 import { PlazoCalculador } from './dashboard/plazo'
 import { calcularRegimenAlMomento, calcularVencimiento, parseFechaCL, diasRestantes, calcularSubestado } from './dashboard/utils'
 import { ImputadoDatosCard } from './dashboard/imputado-datos'
-import { CautelaresPanel, TIPOS_ABONO_DIRECTO, CAUTELAR_NOCTURNO, TIPOS_CAUTELARES_TODAS, diasEntreFechasCaut } from './dashboard/cautelares'
+import { CautelaresPanel, TIPOS_ABONO_DIRECTO, CAUTELAR_NOCTURNO, CAUTELAR_SENAME, TIPOS_CAUTELARES_TODAS, diasEntreFechasCaut } from './dashboard/cautelares'
 
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
@@ -91,7 +91,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
   const [showNuevaCausa,setShowNuevaCausa]=useState(false)
   const [showStats,setShowStats]=useState(false)
   const [grupoAbierto,setGrupoAbierto]=useState('') // '' | 'vigente' | 'terminada' — controla qué chips de subestado se muestran
-  const [nuevaCausa,setNuevaCausa]=useState({ruc:'',rit:'',tribunal:'',delito:'',imputado:'',imputado_rut:'',imputado_fecha_nac:'',imputado_domicilio:'',imputado_nacionalidad:'',fiscal:'',cautelar:'',centro_penal:'',plazo:'',fecha_inicio:'',dias_plazo:'',fecha_hechos:'',estado:'vigente'})
+  const [nuevaCausa,setNuevaCausa]=useState({ruc:'',rit:'',tribunal:'',delito:'',imputado:'',imputado_rut:'',imputado_fecha_nac:'',imputado_domicilio:'',imputado_nacionalidad:'',fiscal:'',cautelar:'',cautelar_fecha_inicio:'',centro_penal:'',plazo:'',fecha_inicio:'',dias_plazo:'',fecha_hechos:'',estado:'vigente'})
   const [rutBuscando,setRutBuscando]=useState(false)
   const [rutEncontrado,setRutEncontrado]=useState(null)
 
@@ -277,11 +277,12 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
     const { data, error } = await supabase.from('causas').insert(causaData).select().single()
     if (!error) {
       // Crear imputado automáticamente con los datos del RUT
+      let imputadoCreado = null
       if (nuevaCausa.imputado_rut || nuevaCausa.imputado) {
         const regAuto = (nuevaCausa.imputado_fecha_nac && nuevaCausa.fecha_hechos)
           ? calcularRegimenAlMomento(nuevaCausa.imputado_fecha_nac, nuevaCausa.fecha_hechos)
           : null
-        await supabase.from('imputados').insert({
+        const { data: impData } = await supabase.from('imputados').insert({
           causa_id: data.id,
           nombre: up(nuevaCausa.imputado) || '',
           rut: nuevaCausa.imputado_rut || '',
@@ -290,13 +291,28 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
           nacionalidad: up(nuevaCausa.imputado_nacionalidad) || '',
           regimen: regAuto || 'ADULTO',
           delitos: up(nuevaCausa.delito) || '',
+        }).select().single()
+        imputadoCreado = impData
+      }
+      // Si se seleccionó una cautelar con fecha (Prisión Preventiva, Internación
+      // Provisoria, Arresto Total o Sujeción a SENAME), se registra de una vez en
+      // el historial de cautelares — igual que se hace desde el panel de una causa
+      // ya creada, para que el conteo de días de abono empiece a correr desde hoy.
+      if (nuevaCausa.cautelar && nuevaCausa.cautelar_fecha_inicio &&
+          (TIPOS_ABONO_DIRECTO.includes(nuevaCausa.cautelar) || nuevaCausa.cautelar === CAUTELAR_SENAME)) {
+        await supabase.from('cautelares_causa').insert({
+          causa_id: data.id,
+          imputado_id: imputadoCreado?.id || null,
+          tipo: nuevaCausa.cautelar,
+          fecha_inicio: nuevaCausa.cautelar_fecha_inicio,
+          fecha_termino: null,
         })
       }
       setCausas(prev => [data, ...prev])
       setShowNuevaCausa(false)
       setRutEncontrado(null)
       if (registrarActividad) registrarActividad('accion', `Nueva causa: RUC ${causaData.ruc}`)
-      setNuevaCausa({ruc:'',rit:'',tribunal:'',delito:'',imputado:'',imputado_rut:'',imputado_fecha_nac:'',imputado_domicilio:'',imputado_nacionalidad:'',fiscal:'',cautelar:'',centro_penal:'',plazo:'',fecha_inicio:'',dias_plazo:'',fecha_hechos:'',estado:'vigente'})
+      setNuevaCausa({ruc:'',rit:'',tribunal:'',delito:'',imputado:'',imputado_rut:'',imputado_fecha_nac:'',imputado_domicilio:'',imputado_nacionalidad:'',fiscal:'',cautelar:'',cautelar_fecha_inicio:'',centro_penal:'',plazo:'',fecha_inicio:'',dias_plazo:'',fecha_hechos:'',estado:'vigente'})
     }
     setSaving(false)
   }
@@ -1160,13 +1176,29 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                 <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Fiscal</div>
                 <input style={inp} placeholder="Nombre del fiscal" value={nuevaCausa.fiscal} onChange={e=>setNuevaCausa(p=>({...p,fiscal:e.target.value}))}/>
               </div>
-              {/* Cautelar — ahora como dropdown, igual que en el detalle de la causa */}
-              <div>
+              {/* Cautelar — dropdown, igual que en el detalle de la causa */}
+              <div style={{gridColumn: (TIPOS_ABONO_DIRECTO.includes(nuevaCausa.cautelar) || nuevaCausa.cautelar === CAUTELAR_SENAME) ? '1/-1' : 'auto'}}>
                 <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Cautelar</div>
-                <select style={inp} value={nuevaCausa.cautelar} onChange={e=>setNuevaCausa(p=>({...p,cautelar:e.target.value}))}>
+                <select style={inp} value={nuevaCausa.cautelar} onChange={e=>setNuevaCausa(p=>({...p,cautelar:e.target.value, cautelar_fecha_inicio: p.cautelar_fecha_inicio || new Date().toISOString().slice(0,10)}))}>
                   <option value="">Seleccionar...</option>
                   {TIPOS_CAUTELARES_TODAS.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
+                {/* Igual que en el panel de Cautelares de una causa ya creada: si el tipo cuenta
+                    para el abono 1x1 (Prisión Preventiva / Internación Provisoria / Arresto
+                    Total) o es Sujeción a SENAME, se pide la fecha de inicio y se muestra el
+                    cálculo de días en vivo. */}
+                {(TIPOS_ABONO_DIRECTO.includes(nuevaCausa.cautelar) || nuevaCausa.cautelar === CAUTELAR_SENAME) && (
+                  <div style={{marginTop:10,padding:'12px 14px',background:'#F8F9FC',border:'1px solid #e2e8f0',borderRadius:10,display:'flex',alignItems:'center',gap:14,flexWrap:'wrap'}}>
+                    <div>
+                      <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Fecha de inicio</div>
+                      <input type="date" style={inp} value={nuevaCausa.cautelar_fecha_inicio} onChange={e=>setNuevaCausa(p=>({...p,cautelar_fecha_inicio:e.target.value}))}/>
+                    </div>
+                    <div style={{display:'flex',alignItems:'center',gap:8,paddingTop:16}}>
+                      <span style={{fontSize:16}}>🔒</span>
+                      <strong style={{...f}}>{diasEntreFechasCaut(nuevaCausa.cautelar_fecha_inicio, new Date().toISOString().slice(0,10))} días{nuevaCausa.cautelar === CAUTELAR_SENAME ? ' (SENAME, aparte)' : ' de abono'}</strong>
+                    </div>
+                  </div>
+                )}
               </div>
               <div style={{gridColumn:'1/-1'}}>
                 <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Centro Penal</div>
