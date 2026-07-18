@@ -1957,6 +1957,19 @@ function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, onAccion
     if (onAccion) onAccion()
   }
 
+  // ⚠️ Por regla general las diligencias de Fiscalía NO se eliminan (sirven
+  // como medio de prueba y argumento de alegatos). Esto es solo para corregir
+  // errores reales de carga: una lectura automática duplicada, un folio mal
+  // detectado, etc. — por eso pide confirmar dos veces antes de borrar.
+  const eliminarDiligencia = async (d) => {
+    if (!window.confirm(`¿Seguro que quieres eliminar esta diligencia?\n\n"${d.tipo}" — Folio ${d.folio}\n\nEsto NO se puede deshacer. Solo hazlo si es un error de carga (por ejemplo, quedó duplicada o el folio se leyó mal) — nunca para borrar una diligencia real.`)) return
+    if (!window.confirm('Confirma una segunda vez: ¿eliminar definitivamente esta diligencia?')) return
+    await supabase.from('diligencias_fiscalia').delete().eq('id', d.id)
+    setDiligencias(prev => prev.filter(x => x.id !== d.id))
+    if (registrarActividad) registrarActividad('accion', `Eliminó diligencia "${d.tipo}" (folio ${d.folio}) en RUC ${ruc} — corrección de error de carga`)
+    if (onAccion) onAccion()
+  }
+
   // ✅ Antes de guardar cualquier documento (comprobante o respuesta) desde las
   // tarjetas ya existentes, se pide confirmar el RUC que aparece en ese PDF.
   // Si no coincide con el RUC de esta causa, se avisa antes de subirlo — para
@@ -2064,6 +2077,10 @@ function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, onAccion
                 {avisoSeguimiento && (
                   <span style={{ fontSize:10, fontWeight:700, color:'#991b1b', ...f }}>⚠ {diasHabiles} días hábiles sin respuesta</span>
                 )}
+                <button onClick={()=>eliminarDiligencia(d)} title="Solo para corregir errores de carga (duplicados, folio mal leído, etc.)"
+                  style={{ fontSize:10, color:'#cbd5e1', background:'transparent', border:'none', cursor:'pointer', padding:0, marginTop:2, ...f }}>
+                  🗑 Eliminar
+                </button>
               </div>
             </div>
 
