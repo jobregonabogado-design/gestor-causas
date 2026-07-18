@@ -2558,6 +2558,7 @@ const CAUTELAR_SENAME = 'Sujeción a SENAME'
 const CAUTELAR_NOCTURNO = 'Arresto Nocturno'
 const TIPOS_CAUTELARES_ADULTO = ['Prisión Preventiva','Arresto Total',CAUTELAR_NOCTURNO,'Firma','Arraigo Nacional','Prohibición de acercarse a la víctima','Prohibición de acercarse a la víctima (VIF Art. 9)','Prohibición de portar armas']
 const TIPOS_CAUTELARES_RPA = ['Internación Provisoria','Arresto Total',CAUTELAR_NOCTURNO,CAUTELAR_SENAME,'Firma','Arraigo Nacional','Prohibición de acercarse a la víctima','Prohibición de acercarse a la víctima (VIF Art. 9)','Prohibición de portar armas']
+const TIPOS_CAUTELARES_TODAS = [...new Set([...TIPOS_CAUTELARES_ADULTO, ...TIPOS_CAUTELARES_RPA])]
 
 function diasEntreFechasCaut(inicio, fin) {
   if (!inicio || !fin) return 0
@@ -4439,13 +4440,19 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                   value={nuevaCausa.imputado_domicilio}
                   onChange={e=>setNuevaCausa(p=>({...p,imputado_domicilio:e.target.value}))}/>
               </div>
-              {/* Fiscal y Cautelar */}
-              {[{key:'fiscal',label:'Fiscal',ph:'Nombre del fiscal'},{key:'cautelar',label:'Cautelar',ph:'Prisión preventiva...'}].map(field=>(
-                <div key={field.key}>
-                  <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>{field.label}</div>
-                  <input style={inp} placeholder={field.ph} value={nuevaCausa[field.key]} onChange={e=>setNuevaCausa(p=>({...p,[field.key]:e.target.value}))}/>
-                </div>
-              ))}
+              {/* Fiscal */}
+              <div>
+                <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Fiscal</div>
+                <input style={inp} placeholder="Nombre del fiscal" value={nuevaCausa.fiscal} onChange={e=>setNuevaCausa(p=>({...p,fiscal:e.target.value}))}/>
+              </div>
+              {/* Cautelar — ahora como dropdown, igual que en el detalle de la causa */}
+              <div>
+                <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Cautelar</div>
+                <select style={inp} value={nuevaCausa.cautelar} onChange={e=>setNuevaCausa(p=>({...p,cautelar:e.target.value}))}>
+                  <option value="">Seleccionar...</option>
+                  {TIPOS_CAUTELARES_TODAS.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
               <div style={{gridColumn:'1/-1'}}>
                 <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Centro Penal</div>
                 <SearchableSelect
