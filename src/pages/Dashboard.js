@@ -1870,6 +1870,8 @@ function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, onAccion
   const [form, setForm] = useState({ tipo: TIPOS_DILIGENCIA[0], fecha_solicitud: new Date().toISOString().slice(0,10), folio:'', observacion:'' })
   const [guardando, setGuardando] = useState(false)
   const [respondiendoId, setRespondiendoId] = useState(null)
+  const [editandoDatosId, setEditandoDatosId] = useState(null)
+  const [formEdit, setFormEdit] = useState({ tipo:'', fecha_solicitud:'', folio:'', observacion:'' })
   const [formResp, setFormResp] = useState({ estado:'aprobada', fecha_respuesta:new Date().toISOString().slice(0,10), fecha_citacion:'', respuesta_detalle:'' })
   const [subiendoId, setSubiendoId] = useState(null) // id de la diligencia que está subiendo un archivo (comprobante o respuesta)
   const [analizandoPdf, setAnalizandoPdf] = useState(false)
@@ -1931,6 +1933,26 @@ function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, onAccion
   }
 
   const normalizarRuc = (r) => (r||'').replace(/[.\-\s]/g,'').toUpperCase()
+
+  // ✅ Corregir el folio, fecha, tipo u observación de una diligencia ya
+  // registrada — para cuando la lectura automática del PDF se equivoca
+  // (folio duplicado o mal leído), sin tener que borrar todo y perder el
+  // comprobante ya adjuntado.
+  const empezarEdicionDatos = (d) => {
+    setEditandoDatosId(d.id)
+    setFormEdit({ tipo: d.tipo, fecha_solicitud: d.fecha_solicitud, folio: d.folio, observacion: d.observacion || '' })
+  }
+
+  const guardarEdicionDatos = async (id) => {
+    if (!formEdit.folio.trim()) { alert('El folio no puede quedar vacío.'); return }
+    if (!formEdit.fecha_solicitud) return
+    const campos = { tipo: formEdit.tipo, fecha_solicitud: formEdit.fecha_solicitud, folio: formEdit.folio.toUpperCase(), observacion: formEdit.observacion || null }
+    await supabase.from('diligencias_fiscalia').update(campos).eq('id', id)
+    setDiligencias(prev => prev.map(d => d.id === id ? { ...d, ...campos } : d))
+    setEditandoDatosId(null)
+    if (registrarActividad) registrarActividad('accion', `Corrigió datos de una diligencia (folio ${formEdit.folio}) en RUC ${ruc}`)
+    if (onAccion) onAccion()
+  }
 
   const empezarRespuesta = (d) => {
     setRespondiendoId(d.id)
@@ -2077,14 +2099,46 @@ function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, onAccion
                 {avisoSeguimiento && (
                   <span style={{ fontSize:10, fontWeight:700, color:'#991b1b', ...f }}>⚠ {diasHabiles} días hábiles sin respuesta</span>
                 )}
-                <button onClick={()=>eliminarDiligencia(d)} title="Solo para corregir errores de carga (duplicados, folio mal leído, etc.)"
-                  style={{ fontSize:10, color:'#cbd5e1', background:'transparent', border:'none', cursor:'pointer', padding:0, marginTop:2, ...f }}>
-                  🗑 Eliminar
-                </button>
+                <div style={{display:'flex',gap:8}}>
+                  <button onClick={()=>empezarEdicionDatos(d)} style={{ fontSize:10, color:'#2563eb', background:'transparent', border:'none', cursor:'pointer', padding:0, marginTop:2, fontWeight:600, ...f }}>
+                    ✏ Editar
+                  </button>
+                  <button onClick={()=>eliminarDiligencia(d)} title="Solo para corregir errores de carga (duplicados, folio mal leído, etc.)"
+                    style={{ fontSize:10, color:'#cbd5e1', background:'transparent', border:'none', cursor:'pointer', padding:0, marginTop:2, ...f }}>
+                    🗑 Eliminar
+                  </button>
+                </div>
               </div>
             </div>
 
-            {d.observacion && (
+            {editandoDatosId === d.id ? (
+              <div style={{ marginTop:10, paddingTop:10, borderTop:'1px solid #e2e8f0' }}>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
+                  <div style={{ gridColumn:'1/-1' }}>
+                    <div style={{ fontSize:10, color:'#64748b', textTransform:'uppercase', letterSpacing:1.2, marginBottom:5, fontWeight:600, ...f }}>Tipo de diligencia</div>
+                    <select style={inp} value={formEdit.tipo} onChange={e=>setFormEdit(p=>({...p,tipo:e.target.value}))}>
+                      {TIPOS_DILIGENCIA.map(t=><option key={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <div style={{ fontSize:10, color:'#64748b', textTransform:'uppercase', letterSpacing:1.2, marginBottom:5, fontWeight:600, ...f }}>Fecha de la solicitud</div>
+                    <input type="date" style={inp} value={formEdit.fecha_solicitud} onChange={e=>setFormEdit(p=>({...p,fecha_solicitud:e.target.value}))}/>
+                  </div>
+                  <div>
+                    <div style={{ fontSize:10, color:'#dc2626', textTransform:'uppercase', letterSpacing:1.2, marginBottom:5, fontWeight:700, ...f }}>Folio *</div>
+                    <input style={{...inp,borderColor:'#fecaca'}} value={formEdit.folio} onChange={e=>setFormEdit(p=>({...p,folio:e.target.value}))}/>
+                  </div>
+                  <div style={{ gridColumn:'1/-1' }}>
+                    <div style={{ fontSize:10, color:'#64748b', textTransform:'uppercase', letterSpacing:1.2, marginBottom:5, fontWeight:600, ...f }}>Detalle de lo solicitado</div>
+                    <input style={inp} value={formEdit.observacion} onChange={e=>setFormEdit(p=>({...p,observacion:e.target.value}))}/>
+                  </div>
+                </div>
+                <div style={{ display:'flex', gap:8 }}>
+                  <button className="btn-primary" style={{ fontSize:12 }} onClick={()=>guardarEdicionDatos(d.id)}>✓ Guardar corrección</button>
+                  <button className="btn-secondary" style={{ fontSize:12 }} onClick={()=>setEditandoDatosId(null)}>Cancelar</button>
+                </div>
+              </div>
+            ) : d.observacion && (
               <div style={{ fontSize:12, color:'#64748b', marginTop:8, background:'#fff', border:'1px solid #e2e8f0', borderRadius:8, padding:'8px 10px', ...f }}>{d.observacion}</div>
             )}
 
