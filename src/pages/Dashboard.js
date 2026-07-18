@@ -2419,6 +2419,8 @@ function DocumentosGuardados({ causaId, ruc, email, registrarActividad, onAccion
   )
 }
 
+const CUENTAS_TRANSFERENCIA = ['1. Cuenta RUT Banco Estado','2. Chequera Electrónica Banco Estado','3. Cuenta Empresa Banco Estado','4. Cta. Corriente Banco Chile']
+
 // ─── HONORARIOS (solo Titular) — permite abonos parciales con saldo pendiente ─
 function HonorariosTab({ causaId, ruc, email, registrarActividad, onAccion }) {
   const [honorario, setHonorario] = useState(null)
@@ -2426,9 +2428,10 @@ function HonorariosTab({ causaId, ruc, email, registrarActividad, onAccion }) {
   const [editandoMonto, setEditandoMonto] = useState(false)
   const [montoTemp, setMontoTemp] = useState('')
   const [showForm, setShowForm] = useState(false)
-  const [nuevoAbono, setNuevoAbono] = useState({ monto:'', fecha:new Date().toISOString().slice(0,10), forma_pago:'Transferencia', observacion:'' })
+  const [nuevoAbono, setNuevoAbono] = useState({ monto:'', fecha:new Date().toISOString().slice(0,10), forma_pago:'Transferencia', cuenta_transferencia:CUENTAS_TRANSFERENCIA[0], observacion:'' })
   const [guardando, setGuardando] = useState(false)
   const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #E2E8F0', borderRadius:8, fontSize:13, color:'#1E293B', background:'#fff', ...f }
+  const usaTransferencia = nuevoAbono.forma_pago === 'Transferencia' || nuevoAbono.forma_pago === 'Transferencia + Efectivo'
 
   useEffect(() => { cargar() }, [causaId])
 
@@ -2455,8 +2458,12 @@ function HonorariosTab({ causaId, ruc, email, registrarActividad, onAccion }) {
     const monto = parseFloat(nuevoAbono.monto)
     if (!monto || monto <= 0) { alert('Ingresa un monto válido'); return }
     setGuardando(true)
-    await supabase.from('abonos_honorarios').insert({ causa_id: causaId, monto, fecha: nuevoAbono.fecha, forma_pago: nuevoAbono.forma_pago, observacion: nuevoAbono.observacion, registrado_por: email })
-    setNuevoAbono({ monto:'', fecha:new Date().toISOString().slice(0,10), forma_pago:'Transferencia', observacion:'' })
+    await supabase.from('abonos_honorarios').insert({
+      causa_id: causaId, monto, fecha: nuevoAbono.fecha, forma_pago: nuevoAbono.forma_pago,
+      cuenta_transferencia: usaTransferencia ? nuevoAbono.cuenta_transferencia : null,
+      observacion: nuevoAbono.observacion, registrado_por: email
+    })
+    setNuevoAbono({ monto:'', fecha:new Date().toISOString().slice(0,10), forma_pago:'Transferencia', cuenta_transferencia:CUENTAS_TRANSFERENCIA[0], observacion:'' })
     setShowForm(false)
     setGuardando(false)
     await cargar()
@@ -2507,7 +2514,7 @@ function HonorariosTab({ causaId, ruc, email, registrarActividad, onAccion }) {
         <div key={a.id} style={{ display:'flex', gap:12, alignItems:'center', padding:'12px 16px', background:'#F8F9FC', border:'1px solid #e2e8f0', borderRadius:10, marginBottom:8 }}>
           <div style={{ width:36, height:36, background:'#ecfdf5', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', color:'#059669', fontSize:15, fontWeight:700, flexShrink:0 }}>$</div>
           <div style={{ flex:1 }}>
-            <div style={{ fontSize:13, fontWeight:700, color:'#1E293B', ...f }}>{fmt(a.monto)} <span style={{fontWeight:400,color:'#94a3b8',fontSize:12}}>· {a.forma_pago}</span></div>
+            <div style={{ fontSize:13, fontWeight:700, color:'#1E293B', ...f }}>{fmt(a.monto)} <span style={{fontWeight:400,color:'#94a3b8',fontSize:12}}>· {a.forma_pago}{a.cuenta_transferencia?' · '+a.cuenta_transferencia:''}</span></div>
             <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>{a.fecha}{a.observacion?' · '+a.observacion:''} · registrado por {a.registrado_por}</div>
           </div>
           <button onClick={()=>eliminarAbono(a)} style={{ background:'transparent', border:'none', cursor:'pointer', fontSize:14, color:'#fca5a5' }}>✕</button>
@@ -2521,9 +2528,16 @@ function HonorariosTab({ causaId, ruc, email, registrarActividad, onAccion }) {
             <div><div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4,fontWeight:600,...f}}>Fecha</div><input type="date" style={inp} value={nuevoAbono.fecha} onChange={e=>setNuevoAbono(p=>({...p,fecha:e.target.value}))}/></div>
             <div><div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4,fontWeight:600,...f}}>Forma de pago</div>
               <select style={inp} value={nuevoAbono.forma_pago} onChange={e=>setNuevoAbono(p=>({...p,forma_pago:e.target.value}))}>
-                <option>Transferencia</option><option>Efectivo</option><option>Cheque</option><option>Tarjeta</option><option>Otro</option>
+                <option>Transferencia</option><option>Efectivo</option><option>Transferencia + Efectivo</option><option>Cheque</option><option>Tarjeta</option><option>Otro</option>
               </select>
             </div>
+            {usaTransferencia && (
+              <div><div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4,fontWeight:600,...f}}>Cuenta de transferencia</div>
+                <select style={inp} value={nuevoAbono.cuenta_transferencia} onChange={e=>setNuevoAbono(p=>({...p,cuenta_transferencia:e.target.value}))}>
+                  {CUENTAS_TRANSFERENCIA.map(c=><option key={c}>{c}</option>)}
+                </select>
+              </div>
+            )}
             <div><div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4,fontWeight:600,...f}}>Observación</div><input style={inp} placeholder="Opcional" value={nuevoAbono.observacion} onChange={e=>setNuevoAbono(p=>({...p,observacion:e.target.value}))}/></div>
           </div>
           <div style={{ display:'flex', gap:8 }}>
