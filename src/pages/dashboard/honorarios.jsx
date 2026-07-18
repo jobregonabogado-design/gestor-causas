@@ -1,6 +1,8 @@
 // Pestaña de Honorarios y Abonos dentro de una causa.
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
+import { f } from './primitives'
+import { CUENTAS_TRANSFERENCIA } from './documentos'
 
 export function HonorariosTab({ causaId, ruc, email, registrarActividad, onAccion }) {
   const [honorario, setHonorario] = useState(null)
@@ -131,12 +133,4 @@ export function HonorariosTab({ causaId, ruc, email, registrarActividad, onAccio
     </div>
   )
 }
-
-// ─── CAUTELARES — historial (no se borra), abono 1x1 y fórmula de arresto nocturno ─
-const TIPOS_ABONO_DIRECTO = ['Prisión Preventiva','Internación Provisoria','Arresto Total']
-const CAUTELAR_SENAME = 'Sujeción a SENAME'
-const CAUTELAR_NOCTURNO = 'Arresto Nocturno'
-const TIPOS_CAUTELARES_ADULTO = ['Prisión Preventiva','Arresto Total',CAUTELAR_NOCTURNO,'Firma','Arraigo Nacional','Prohibición de acercarse a la víctima','Prohibición de acercarse a la víctima (VIF Art. 9)','Prohibición de portar armas']
-const TIPOS_CAUTELARES_RPA = ['Internación Provisoria','Arresto Total',CAUTELAR_NOCTURNO,CAUTELAR_SENAME,'Firma','Arraigo Nacional','Prohibición de acercarse a la víctima','Prohibición de acercarse a la víctima (VIF Art. 9)','Prohibición de portar armas']
-const TIPOS_CAUTELARES_TODAS = [...new Set([...TIPOS_CAUTELARES_ADULTO, ...TIPOS_CAUTELARES_RPA])]
 

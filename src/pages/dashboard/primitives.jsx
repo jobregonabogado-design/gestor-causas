@@ -1,7 +1,7 @@
 // Componentes de UI pequeños y reutilizables del Dashboard: selector con
 // búsqueda, chips de delitos, badges de estado y el campo editable base.
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { estadoConfig, getBadgeConfig } from './utils'
+import { estadoConfig, getBadgeConfig, SUBESTADOS_VIGENTE, SUBESTADOS_TERMINADA, TRIBUNALES_CHILE, DELITOS_CATALOGO, CENTROS_PENALES } from './utils'
 
 export function SearchableSelect({ value, onChange, options, placeholder, isDelito }) {
   const [open, setOpen] = useState(false)
@@ -195,8 +195,8 @@ export function DelitoCard({ nombreImputado, value, onChange, options }) {
 }
 
 const TMAP = {'JG VINA DEL MAR':'JG VIÑA DEL MAR','JG CONCEPCION':'JG CONCEPCIÓN','JG VALPARAISO':'JG VALPARAÍSO','JG QUILPUE':'JG QUILPUÉ','JG CHILLAN':'JG CHILLÁN','JG AYSEN':'JG AYSÉN','JG CANETE':'JG CAÑETE','TOP CANETE':'TOP CAÑETE','13 JG DE STGO':'13 JG STGO','TOP SERENA':'TOP LA SERENA'}
-const normT = t => t ? (TMAP[t.trim()] || t.trim()) : t
-const f = { fontFamily:"'Inter',sans-serif" }
+export const normT = t => t ? (TMAP[t.trim()] || t.trim()) : t
+export const f = { fontFamily:"'Inter',sans-serif" }
 
 // ─── SEMÁFORO MEJORADO — solo causas vigentes ─────────────────────────────────
 const getSemaforo = (updated_at, estado) => {

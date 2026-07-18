@@ -1068,3 +1068,14 @@ export const CENTROS_PENALES = [
   "CENTRAL TELEFÓNICA - SANTIAGO",
   "ATENCIÓN PUBLICO SUBDEPARTAMENTO DE BIENESTAR - SANTIAGO",
 ]
+
+export function calcularEdadActual(fechaNac) {
+  if (!fechaNac) return null
+  const nac = new Date(fechaNac + 'T12:00:00')
+  if (isNaN(nac)) return null
+  const hoy = new Date()
+  let edad = hoy.getFullYear() - nac.getFullYear()
+  const m = hoy.getMonth() - nac.getMonth()
+  if (m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) edad--
+  return edad
+}

@@ -3,6 +3,15 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 
+export const TIPOS_DILIGENCIA = ['Declaración de imputado','Petición de carpeta','Entrevista con el fiscal','Reconstitución de escena','Careo','Otra diligencia']
+export const ESTADOS_DILIGENCIA = {
+  pendiente:    { label:'Pendiente de respuesta',   color:'#92400e', bg:'#fff7ed', border:'#fed7aa' },
+  aprobada:     { label:'Aprobada',                 color:'#065f46', bg:'#ecfdf5', border:'#a7f3d0' },
+  con_citacion: { label:'Con fecha de citación',     color:'#1e40af', bg:'#eff6ff', border:'#bfdbfe' },
+  rechazada:    { label:'Rechazada',                color:'#991b1b', bg:'#fef2f2', border:'#fecaca' },
+}
+
+let _pdfjsCargando = null
 function cargarPdfJs() {
   if (typeof window !== 'undefined' && window.pdfjsLib) return Promise.resolve(window.pdfjsLib)
   if (_pdfjsCargando) return _pdfjsCargando
@@ -21,7 +30,7 @@ function cargarPdfJs() {
   return _pdfjsCargando
 }
 
-async function extraerTextoPdf(file) {
+export async function extraerTextoPdf(file) {
   const pdfjsLib = await cargarPdfJs()
   const arrayBuffer = await file.arrayBuffer()
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise

@@ -1,7 +1,8 @@
 // Panel de Fallos de Referencia y Documentos Guardados dentro de una causa.
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
-import { parsearComprobanteFiscalia } from './diligencias'
+import { parsearComprobanteFiscalia, extraerTextoPdf } from './diligencias'
+import { f } from './primitives'
 
 export function FallosReferencia({ causaId, ruc, email, onAccion }) {
   const [fallos, setFallos] = useState([])
@@ -214,6 +215,6 @@ export function DocumentosGuardados({ causaId, ruc, email, registrarActividad, o
   )
 }
 
-const CUENTAS_TRANSFERENCIA = ['1. Cuenta RUT Banco Estado','2. Chequera Electrónica Banco Estado','3. Cuenta Empresa Banco Estado','4. Cta. Corriente Banco Chile']
+export const CUENTAS_TRANSFERENCIA = ['1. Cuenta RUT Banco Estado','2. Chequera Electrónica Banco Estado','3. Cuenta Empresa Banco Estado','4. Cta. Corriente Banco Chile']
 
 // ─── HONORARIOS (solo Titular) — permite abonos parciales con saldo pendiente ─

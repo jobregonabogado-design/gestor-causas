@@ -1,7 +1,7 @@
 // Tarjetas de Audiencia e Imputado usadas dentro de la lista de una causa.
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { DELITOS_CATALOGO, CENTROS_PENALES } from './utils'
+import { DELITOS_CATALOGO, CENTROS_PENALES, calcularEdadActual } from './utils'
 import { SearchableSelect, DelitosChips } from './primitives'
 
 export function AudienciaCard({ a, onUpdate }) {
@@ -250,33 +250,3 @@ export function ImputadoCard({ imp, idx, onUpdate, onDelete }) {
   )
 }
 
-// ─── TEORÍA DEL CASO ──────────────────────────────────────────────────────────
-const TC_SECCIONES = [
-  { key:'hechos',        icon:'📋', label:'Hechos del caso',       placeholder:'Describe los hechos relevantes: lugar, fecha, circunstancias, cronología de los eventos...' },
-  { key:'teoria_defensa',icon:'⚖️',  label:'Teoría y Defensa',      placeholder:'Calificación jurídica, tipo penal, elementos del delito, circunstancias modificatorias, estrategia de defensa, alegaciones, excepciones, jurisprudencia aplicable...' },
-  { key:'prueba',        icon:'🔍', label:'Prueba y testigos',      placeholder:'Lista de testigos, peritos, documentos, evidencias materiales, cadena de custodia...' },
-  { key:'fallos',        icon:'📄', label:'Fallos de referencia',   placeholder:null },
-  { key:'observaciones', icon:'📝', label:'Observaciones',          placeholder:'Notas de seguimiento, criterios del tribunal, pendientes...' },
-  { key:'carpeta',       icon:'📁', label:'Carpeta y Documentos',   placeholder:null },
-  { key:'diligencias',   icon:'📨', label:'Diligencias Fiscalía',   placeholder:null },
-]
-
-// ─── DILIGENCIAS ANTE FISCALÍA — declaración de imputado, petición de carpeta,
-// entrevista con el fiscal, etc. Cada una nace con un FOLIO (número de
-// seguimiento que entrega el portal de Fiscalía al momento de la solicitud —
-// obligatorio, hay que exigirlo siempre) y más adelante recibe una respuesta
-// por correo (aprobada, con fecha de citación, o rechazada con motivo). ──────
-const TIPOS_DILIGENCIA = ['Declaración de imputado','Petición de carpeta','Entrevista con el fiscal','Reconstitución de escena','Careo','Otra diligencia']
-const ESTADOS_DILIGENCIA = {
-  pendiente:    { label:'Pendiente de respuesta',   color:'#92400e', bg:'#fff7ed', border:'#fed7aa' },
-  aprobada:     { label:'Aprobada',                 color:'#065f46', bg:'#ecfdf5', border:'#a7f3d0' },
-  con_citacion: { label:'Con fecha de citación',     color:'#1e40af', bg:'#eff6ff', border:'#bfdbfe' },
-  rechazada:    { label:'Rechazada',                color:'#991b1b', bg:'#fef2f2', border:'#fecaca' },
-}
-
-// ─── LECTURA AUTOMÁTICA DEL COMPROBANTE DE FISCALÍA ──────────────────────────
-// Los PDF que entrega el portal "mi.Fiscalía en línea" tienen texto real (no
-// son una foto escaneada), así que se puede leer sin OCR. Se carga pdf.js
-// desde un CDN en tiempo de ejecución (no requiere agregar nada al
-// package.json ni tocar el proceso de build).
-let _pdfjsCargando = null
