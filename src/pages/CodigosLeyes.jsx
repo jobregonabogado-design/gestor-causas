@@ -19,6 +19,18 @@ function leerCache() {
   }
 }
 
+// Colores pastel generados dinámicamente (no una lista fija) — así, sin
+// importar cuántos códigos/leyes haya, cada tarjeta recibe un tono distinto
+// y nunca se repiten entre sí.
+function colorDeLey(idx, total) {
+  const hue = Math.round((360 / Math.max(total, 1)) * idx)
+  return {
+    bg: `hsl(${hue}, 70%, 96%)`,
+    border: `hsl(${hue}, 55%, 85%)`,
+    text: `hsl(${hue}, 55%, 30%)`,
+  }
+}
+
 export default function CodigosLeyes() {
   const [lista, setLista] = useState([])
   const [loading, setLoading] = useState(true)
@@ -90,30 +102,39 @@ export default function CodigosLeyes() {
             No hay códigos ni leyes cargados todavía, y no hay ninguna versión guardada en este dispositivo. Conéctate a internet al menos una vez para descargarlos.
           </div>
         ) : (
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(220px, 1fr))', gap:16 }}>
-            {lista.map(c => (
-              <div key={c.id} style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:16, overflow:'hidden', boxShadow:'0 1px 3px rgba(15,23,42,0.06)', display:'flex', flexDirection:'column' }}>
-                <div style={{ background:'linear-gradient(135deg,#1E293B,#334155)', color:'#fff', padding:'20px 16px', minHeight:76, display:'flex', alignItems:'center' }}>
-                  <div style={{ fontSize:14, fontWeight:800, lineHeight:1.35 }}>{c.titulo}</div>
-                </div>
-                <div style={{ padding:14, display:'flex', flexDirection:'column', gap:8, flex:1 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(230px, 1fr))', gap:16 }}>
+            {lista.map((c, idx) => {
+              const col = colorDeLey(idx, lista.length)
+              return (
+                <div key={c.id} style={{ position:'relative' }}>
+                  <a
+                    href={c.fuente_url || undefined}
+                    target={c.fuente_url ? '_blank' : undefined}
+                    rel="noreferrer"
+                    style={{
+                      display:'flex', alignItems:'center', gap:10, textDecoration:'none',
+                      background:col.bg, border:`1px solid ${col.border}`, borderRadius:16, padding:'20px 18px',
+                      minHeight:76, cursor: c.fuente_url ? 'pointer' : 'default',
+                      transition:'transform 0.15s ease, box-shadow 0.15s ease',
+                    }}
+                    onMouseEnter={e=>{ if(c.fuente_url){ e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 6px 16px rgba(15,23,42,0.08)' } }}
+                    onMouseLeave={e=>{ e.currentTarget.style.transform='none'; e.currentTarget.style.boxShadow='none' }}
+                    onClick={e=>{ if(!c.fuente_url) e.preventDefault() }}
+                  >
+                    <div style={{ fontSize:14, fontWeight:700, color:col.text, lineHeight:1.35 }}>{c.titulo}</div>
+                  </a>
                   {tieneTextoCargado(c) && (
                     <button onClick={()=>setSeleccionId(c.id)}
-                      style={{ fontFamily:"'Inter',sans-serif", background:'#F8F9FC', border:'1px solid #e2e8f0', borderRadius:8, padding:'9px 12px', fontSize:12, fontWeight:600, color:'#374151', cursor:'pointer' }}>
-                      📄 Ver texto cargado
+                      style={{ position:'absolute', bottom:8, right:8, fontFamily:"'Inter',sans-serif", background:'#fff', border:'1px solid #e2e8f0', borderRadius:8, padding:'5px 10px', fontSize:10, fontWeight:600, color:'#374151', cursor:'pointer' }}>
+                      📄 Texto
                     </button>
                   )}
-                  {c.fuente_url ? (
-                    <a href={c.fuente_url} target="_blank" rel="noreferrer"
-                      style={{ fontFamily:"'Inter',sans-serif", textAlign:'center', background:'#1E293B', color:'#fff', borderRadius:8, padding:'10px 12px', fontSize:12, fontWeight:700, textDecoration:'none' }}>
-                      Ver en BCN/LeyChile ↗
-                    </a>
-                  ) : (
-                    <div style={{ textAlign:'center', fontSize:11, color:'#cbd5e1', padding:'10px 12px' }}>Enlace por confirmar</div>
+                  {!c.fuente_url && (
+                    <div style={{ fontSize:10, color:'#cbd5e1', marginTop:6, textAlign:'center' }}>Enlace por confirmar</div>
                   )}
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>
