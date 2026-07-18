@@ -31,11 +31,16 @@ const CSS = `
   .chip-btn:hover { transform:translateY(-1px); box-shadow:0 3px 10px rgba(15,23,42,0.08); }
   .caut-header { transition:filter 0.2s ease; }
   .caut-header:hover { filter:brightness(1.08); }
+  .causa-row { border-bottom:1px solid #f1f5f9; }
+  .causa-row:last-child { border-bottom:none; }
+  .causa-row-mobile { display:none; }
   @media (max-width: 640px) {
     .stats-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 8px !important; }
     .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .hide-mobile { display: none !important; }
     .grid2-mobile { grid-template-columns: 1fr !important; }
+    .causa-col-desktop { display: none !important; }
+    .causa-row-mobile { display: block !important; }
   }
 `
 
@@ -4359,32 +4364,38 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
           <div style={{textAlign:'center',padding:60,color:'#94a3b8',fontSize:14,...f}}>Cargando causas...</div>
         ):(
           <div style={{background:'#fff',border:'none',borderRadius:20,boxShadow:'0 1px 2px rgba(15,23,42,0.06)',padding:8,overflowX:'auto'}}>
-            <table style={{width:'100%',borderCollapse:'collapse'}}>
-              <thead>
-                <tr style={{border:'none',background:'transparent'}}>
-                  {[{key:'ruc',label:'RUC'},{key:'rit',label:'RIT'},{key:'tribunal',label:'Tribunal'},{key:'imputado',label:'Imputado'},{key:'delito',label:'Delito'}].map(col=>(
-                    <th key={col.key} className="sort-col" onClick={()=>handleSort(col.key)} style={{padding:'16px 20px 12px',textAlign:'left',fontSize:10,fontWeight:700,color:sortCol===col.key?'#2563eb':'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,...f}}>{col.label}<SortIcon col={col.key}/></th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((c)=>(
-                  <tr key={c.id} className="row-hover" onClick={()=>openCausa(c)} style={{border:'none',background:'#fff'}}>
-                    <td style={{padding:'14px 20px',fontSize:12,fontWeight:700,color:'#1E293B',borderRadius:'14px 0 0 14px',...f}}>{c.ruc}</td>
-                    <td style={{padding:'14px 20px',fontSize:12,color:'#94a3b8',fontWeight:500,...f}}>
-                      {/* ✅ Semáforo como tag visible en la lista — solo causas vigentes */}
-                      <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
-                        <SemaforoTag updated_at={c.updated_at} estado={c.estado} />
-                        <span>{c.rit||'—'}</span>
-                      </div>
-                    </td>
-                    <td style={{padding:'12px 16px',fontSize:12,color:'#475569',fontWeight:500,...f}}>{c.tribunal}</td>
-                    <td style={{padding:'12px 16px',...f}}><div style={{maxWidth:210,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:13,color:'#1E293B',fontWeight:500}}>{c.imputado}</div></td>
-                    <td style={{padding:'14px 20px',borderRadius:'0 14px 14px 0',...f}}><div style={{maxWidth:180,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:12,color:'#64748b'}}>{(c.delito||'').replace(/\|/g,', ')||'—'}</div></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            {/* Encabezado — solo en pantalla ancha */}
+            <div className="hide-mobile" style={{display:'grid',gridTemplateColumns:'140px 110px 140px 1fr 1fr'}}>
+              {[{key:'ruc',label:'RUC'},{key:'rit',label:'RIT'},{key:'tribunal',label:'Tribunal'},{key:'imputado',label:'Imputado'},{key:'delito',label:'Delito'}].map(col=>(
+                <div key={col.key} className="sort-col" onClick={()=>handleSort(col.key)} style={{padding:'16px 20px 12px',textAlign:'left',fontSize:10,fontWeight:700,color:sortCol===col.key?'#2563eb':'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,...f}}>{col.label}<SortIcon col={col.key}/></div>
+              ))}
+            </div>
+            {filtered.map((c)=>(
+              <div key={c.id} className="row-hover causa-row" onClick={()=>openCausa(c)} style={{borderRadius:14}}>
+                {/* Fila ancha (PC/tablet) — misma info y orden de siempre */}
+                <div className="causa-col-desktop" style={{display:'grid',gridTemplateColumns:'140px 110px 140px 1fr 1fr'}}>
+                  <div style={{padding:'14px 20px',fontSize:12,fontWeight:700,color:'#1E293B',...f}}>{c.ruc}</div>
+                  <div style={{padding:'14px 20px',fontSize:12,color:'#94a3b8',fontWeight:500,...f}}>
+                    <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+                      <SemaforoTag updated_at={c.updated_at} estado={c.estado} />
+                      <span>{c.rit||'—'}</span>
+                    </div>
+                  </div>
+                  <div style={{padding:'12px 16px',fontSize:12,color:'#475569',fontWeight:500,...f}}>{c.tribunal}</div>
+                  <div style={{padding:'12px 16px',...f}}><div style={{maxWidth:210,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:13,color:'#1E293B',fontWeight:500}}>{c.imputado}</div></div>
+                  <div style={{padding:'14px 20px',...f}}><div style={{maxWidth:180,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:12,color:'#64748b'}}>{(c.delito||'').replace(/\|/g,', ')||'—'}</div></div>
+                </div>
+                {/* Tarjeta condensada — solo en celular: RUC + estado, luego RIT/Tribunal, luego imputado */}
+                <div className="causa-row-mobile" style={{padding:'12px 14px'}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8}}>
+                    <span style={{fontSize:13,fontWeight:700,color:'#1E293B',...f}}>{c.ruc}</span>
+                    <SemaforoTag updated_at={c.updated_at} estado={c.estado} />
+                  </div>
+                  <div style={{fontSize:11,color:'#94a3b8',marginTop:3,...f}}>{c.rit||'—'} · {c.tribunal||'—'}</div>
+                  <div style={{fontSize:11,color:'#64748b',marginTop:2,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',...f}}>{c.imputado}</div>
+                </div>
+              </div>
+            ))}
             {filtered.length===0&&<div style={{textAlign:'center',padding:48,color:'#94a3b8',fontSize:14,...f}}>Sin resultados.</div>}
           </div>
         )}
