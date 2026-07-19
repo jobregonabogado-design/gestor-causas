@@ -10,20 +10,20 @@ import Contabilidad from './pages/Contabilidad'
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Inter', system-ui, sans-serif; background: #F8F9FC; color: #1E293B; -webkit-font-smoothing: antialiased; }
+  body { font-family: 'Century Gothic','Inter', system-ui, sans-serif; background: #F8F9FC; color: #1E293B; -webkit-font-smoothing: antialiased; }
   ::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-track { background: #F8F9FC; } ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-  .nav-link { font-family:'Inter',sans-serif; font-size:13px; font-weight:500; padding:8px 18px; border-radius:10px; border:none; cursor:pointer; transition:all 0.25s cubic-bezier(0.4,0,0.2,1); background:transparent; color:#64748b; }
+  .nav-link { font-family:'Century Gothic','Inter',sans-serif; font-size:13px; font-weight:500; padding:8px 18px; border-radius:10px; border:none; cursor:pointer; transition:all 0.25s cubic-bezier(0.4,0,0.2,1); background:transparent; color:#64748b; }
   .nav-link:hover { background:#F1F5F9; color:#1E293B; }
   .nav-link.active { background:#1E293B; color:#fff; font-weight:600; box-shadow:0 8px 20px rgba(30,41,59,0.22); }
   .page-in { animation:pageIn 0.35s cubic-bezier(0.4,0,0.2,1) forwards; }
   @keyframes pageIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
-  .salir-btn { background:transparent; border:1.5px solid #E2E8F0; color:#64748b; border-radius:10px; padding:6px 16px; font-size:12px; font-family:'Inter',sans-serif; cursor:pointer; transition:all 0.25s; font-weight:500; }
+  .salir-btn { background:transparent; border:1.5px solid #E2E8F0; color:#64748b; border-radius:10px; padding:6px 16px; font-size:12px; font-family:'Century Gothic','Inter',sans-serif; cursor:pointer; transition:all 0.25s; font-weight:500; }
   .salir-btn:hover { border-color:#1E293B; color:#1E293B; background:#F8F9FC; }
   @keyframes slideIn { from{transform:translateX(100%);opacity:0} to{transform:translateX(0);opacity:1} }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.7} }
-  .alerta-btn { background:#fff; border:1.5px solid #E2E8F0; color:#64748b; border-radius:10px; padding:6px 14px; font-size:12px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:all 0.2s; font-family:'Inter',sans-serif; }
+  .alerta-btn { background:#fff; border:1.5px solid #E2E8F0; color:#64748b; border-radius:10px; padding:6px 14px; font-size:12px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:all 0.2s; font-family:'Century Gothic','Inter',sans-serif; }
   .alerta-btn:hover { border-color:#dc2626; color:#dc2626; background:#fef2f2; }
-  .alerta-btn-active { background:#dc2626; border:1.5px solid #dc2626; color:#fff; border-radius:10px; padding:6px 14px; font-size:12px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:6px; font-family:'Inter',sans-serif; animation:alertaPulse 1.4s infinite; }
+  .alerta-btn-active { background:#dc2626; border:1.5px solid #dc2626; color:#fff; border-radius:10px; padding:6px 14px; font-size:12px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:6px; font-family:'Century Gothic','Inter',sans-serif; animation:alertaPulse 1.4s infinite; }
   @keyframes alertaPulse { 0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,0.45)} 50%{box-shadow:0 0 0 7px rgba(220,38,38,0)} }
   @media (max-width: 640px) {
     .nav-email { display: none !important; }
@@ -44,7 +44,7 @@ const css = `
   }
 `
 
-const f = { fontFamily:"'Inter',sans-serif" }
+const f = { fontFamily:"'Century Gothic','Inter',sans-serif" }
 
 // ─── Helpers de plazo (mismo criterio que Dashboard) ─────────────────────────
 function parseFechaCL(str) {
@@ -113,7 +113,7 @@ function PanelActividad({ onClose, onVerCausa }) {
   return (
     <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', justifyContent:'flex-end' }}>
       <div style={{ position:'absolute', inset:0, background:'rgba(15,23,42,0.35)', backdropFilter:'blur(2px)' }} onClick={onClose}/>
-      <div style={{ position:'relative', width:520, background:'#fff', height:'100vh', overflowY:'auto', boxShadow:'-16px 0 48px rgba(15,23,42,0.12)', animation:'slideIn 0.3s ease', fontFamily:"'Inter',sans-serif" }}>
+      <div style={{ position:'relative', width:520, background:'#fff', height:'100vh', overflowY:'auto', boxShadow:'-16px 0 48px rgba(15,23,42,0.12)', animation:'slideIn 0.3s ease', fontFamily:"'Century Gothic','Inter',sans-serif" }}>
         <div style={{ background:'#1E293B', padding:'24px 24px 20px', position:'sticky', top:0, zIndex:10 }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
             <div>
@@ -124,7 +124,7 @@ function PanelActividad({ onClose, onVerCausa }) {
           </div>
           <div style={{ display:'flex', gap:6 }}>
             {['hoy','semana','mes'].map(opcion => (
-              <button key={opcion} onClick={() => setFiltro(opcion)} style={{ padding:'6px 16px', borderRadius:20, fontSize:11, fontWeight:600, border:'none', cursor:'pointer', textTransform:'uppercase', letterSpacing:0.5, background: filtro===opcion ? '#fff' : 'rgba(255,255,255,0.1)', color: filtro===opcion ? '#1E293B' : '#94a3b8', fontFamily:"'Inter',sans-serif", transition:'all 0.2s' }}>
+              <button key={opcion} onClick={() => setFiltro(opcion)} style={{ padding:'6px 16px', borderRadius:20, fontSize:11, fontWeight:600, border:'none', cursor:'pointer', textTransform:'uppercase', letterSpacing:0.5, background: filtro===opcion ? '#fff' : 'rgba(255,255,255,0.1)', color: filtro===opcion ? '#1E293B' : '#94a3b8', fontFamily:"'Century Gothic','Inter',sans-serif", transition:'all 0.2s' }}>
                 {opcion === 'hoy' ? 'Hoy' : opcion === 'semana' ? '7 días' : '30 días'}
               </button>
             ))}
@@ -172,7 +172,7 @@ function PanelActividad({ onClose, onVerCausa }) {
                             <div style={{ fontSize:11, color:'#94a3b8', marginTop:1 }}>{new Date(a.created_at).toLocaleString('es-CL')}</div>
                           </div>
                           {ruc && onVerCausa && (
-                            <button onClick={() => onVerCausa(ruc)} style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:7, padding:'5px 10px', fontSize:11, color:'#1e40af', cursor:'pointer', fontWeight:600, flexShrink:0, fontFamily:"'Inter',sans-serif" }}>→ Ver causa</button>
+                            <button onClick={() => onVerCausa(ruc)} style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:7, padding:'5px 10px', fontSize:11, color:'#1e40af', cursor:'pointer', fontWeight:600, flexShrink:0, fontFamily:"'Century Gothic','Inter',sans-serif" }}>→ Ver causa</button>
                           )}
                         </div>
                       )
@@ -197,7 +197,7 @@ function PanelActividad({ onClose, onVerCausa }) {
                   <div style={{ fontSize:11, color:'#94a3b8', marginTop:2 }}>{a.email} · {new Date(a.created_at).toLocaleString('es-CL')}</div>
                 </div>
                 {ruc && onVerCausa && (
-                  <button onClick={() => onVerCausa(ruc)} style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:7, padding:'5px 10px', fontSize:11, color:'#1e40af', cursor:'pointer', fontWeight:600, flexShrink:0, fontFamily:"'Inter',sans-serif" }}>→ Ver causa</button>
+                  <button onClick={() => onVerCausa(ruc)} style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:7, padding:'5px 10px', fontSize:11, color:'#1e40af', cursor:'pointer', fontWeight:600, flexShrink:0, fontFamily:"'Century Gothic','Inter',sans-serif" }}>→ Ver causa</button>
                 )}
               </div>
             )
@@ -227,7 +227,7 @@ function PanelAlertas({ onClose, esTitular, alertaCounts, tareas, audienciasProx
   return (
     <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', justifyContent:'flex-end' }}>
       <div style={{ position:'absolute', inset:0, background:'rgba(15,23,42,0.35)', backdropFilter:'blur(2px)' }} onClick={onClose}/>
-      <div style={{ position:'relative', width:480, background:'#fff', height:'100vh', overflowY:'auto', boxShadow:'-16px 0 48px rgba(15,23,42,0.12)', animation:'slideIn 0.3s ease', fontFamily:"'Inter',sans-serif" }}>
+      <div style={{ position:'relative', width:480, background:'#fff', height:'100vh', overflowY:'auto', boxShadow:'-16px 0 48px rgba(15,23,42,0.12)', animation:'slideIn 0.3s ease', fontFamily:"'Century Gothic','Inter',sans-serif" }}>
         <div style={{ background:'#dc2626', padding:'24px 24px 20px', position:'sticky', top:0, zIndex:10 }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
             <div>
@@ -252,7 +252,7 @@ function PanelAlertas({ onClose, esTitular, alertaCounts, tareas, audienciasProx
                       <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>{a.tribunal || '—'}{a.sala?' · Sala '+a.sala:''}</div>
                     </div>
                     {a.ruc && onVerCausa && (
-                      <button onClick={()=>onVerCausa(a.ruc)} style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:7, padding:'5px 10px', fontSize:11, color:'#1e40af', cursor:'pointer', fontWeight:600, flexShrink:0, fontFamily:"'Inter',sans-serif" }}>→ Ver causa</button>
+                      <button onClick={()=>onVerCausa(a.ruc)} style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:7, padding:'5px 10px', fontSize:11, color:'#1e40af', cursor:'pointer', fontWeight:600, flexShrink:0, fontFamily:"'Century Gothic','Inter',sans-serif" }}>→ Ver causa</button>
                     )}
                   </div>
                 )
@@ -291,8 +291,8 @@ function PanelAlertas({ onClose, esTitular, alertaCounts, tareas, audienciasProx
                 onChange={e=>setNuevaTarea(e.target.value)}
                 placeholder="Encargar algo al equipo..."
                 onKeyDown={e=>{ if(e.key==='Enter') handleAgregar() }}
-                style={{ flex:1, padding:'9px 12px', border:'1.5px solid #E2E8F0', borderRadius:8, fontSize:13, fontFamily:"'Inter',sans-serif", color:'#1E293B' }}/>
-              <button onClick={handleAgregar} disabled={guardando||!nuevaTarea.trim()} style={{ background:'#dc2626', color:'#fff', border:'none', borderRadius:8, padding:'9px 16px', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif", flexShrink:0 }}>{guardando?'...':'+ Agregar'}</button>
+                style={{ flex:1, padding:'9px 12px', border:'1.5px solid #E2E8F0', borderRadius:8, fontSize:13, fontFamily:"'Century Gothic','Inter',sans-serif", color:'#1E293B' }}/>
+              <button onClick={handleAgregar} disabled={guardando||!nuevaTarea.trim()} style={{ background:'#dc2626', color:'#fff', border:'none', borderRadius:8, padding:'9px 16px', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:"'Century Gothic','Inter',sans-serif", flexShrink:0 }}>{guardando?'...':'+ Agregar'}</button>
             </div>
           )}
 
@@ -335,7 +335,7 @@ function TareaToast({ tarea, onClose }) {
     return () => clearTimeout(t)
   }, [])
   return (
-    <div style={{ position:'fixed', bottom:24, right:24, zIndex:2000, background:'#fff', border:'1.5px solid #fecaca', borderRadius:14, padding:'14px 18px', minWidth:300, maxWidth:380, boxShadow:'0 16px 40px rgba(15,23,42,0.14)', animation:'slideIn 0.3s ease', fontFamily:"'Inter',sans-serif" }}>
+    <div style={{ position:'fixed', bottom:24, right:24, zIndex:2000, background:'#fff', border:'1.5px solid #fecaca', borderRadius:14, padding:'14px 18px', minWidth:300, maxWidth:380, boxShadow:'0 16px 40px rgba(15,23,42,0.14)', animation:'slideIn 0.3s ease', fontFamily:"'Century Gothic','Inter',sans-serif" }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12 }}>
         <div style={{ display:'flex', gap:10, alignItems:'flex-start' }}>
           <span style={{ fontSize:22 }}>🔔</span>
@@ -358,6 +358,7 @@ export default function App() {
   const [userRol, setUserRol] = useState(null)
   const [showPanel, setShowPanel] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [showStatsCausas, setShowStatsCausas] = useState(false)
   const [solicitudesPendientes, setSolicitudesPendientes] = useState(0)
   // ✅ Estado para causa seleccionada desde el calendario
   const [causaDesdeCalendario, setCausaDesdeCalendario] = useState(null)
@@ -478,7 +479,7 @@ export default function App() {
     <div style={{ minHeight:'100vh', background:'#F8F9FC', display:'flex', alignItems:'center', justifyContent:'center' }}>
       <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:14 }}>
         <div style={{ width:44, height:44, borderRadius:14, background:'#1E293B', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, boxShadow:'0 12px 32px rgba(30,41,59,0.18)' }}>⚖</div>
-        <div style={{ fontFamily:'Inter,sans-serif', color:'#94a3b8', fontSize:13, letterSpacing:1.5, textTransform:'uppercase', fontWeight:500 }}>Cargando...</div>
+        <div style={{ fontFamily:"'Century Gothic','Inter',sans-serif", color:'#94a3b8', fontSize:13, letterSpacing:1.5, textTransform:'uppercase', fontWeight:500 }}>Cargando...</div>
       </div>
     </div>
   )
@@ -530,7 +531,7 @@ export default function App() {
         <div style={{ display:'flex', alignItems:'center', gap:10, order:1 }}>
           <div style={{ width:36, height:36, background:'#1E293B', borderRadius:11, display:'flex', alignItems:'center', justifyContent:'center', fontSize:17, boxShadow:'0 6px 16px rgba(30,41,59,0.2)', flexShrink:0 }}>⚖</div>
           <div>
-            <div style={{ fontFamily:'Inter,sans-serif', fontSize:15, fontWeight:800, color:'#1E293B', letterSpacing:'-0.5px' }}>LexOffice</div>
+            <div style={{ fontFamily:"'Century Gothic','Inter',sans-serif", fontSize:15, fontWeight:800, color:'#1E293B', letterSpacing:'-0.5px' }}>LexOffice</div>
             <div className="app-logo-sub" style={{ fontSize:9, color:'#94a3b8', letterSpacing:2, textTransform:'uppercase', fontWeight:500, marginTop:-1 }}>Gestión Penal</div>
           </div>
         </div>
@@ -549,32 +550,35 @@ export default function App() {
           <div style={{ position:'relative' }}>
             <div onClick={() => setShowUserMenu(v => !v)} style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', padding:'4px 8px', borderRadius:10, background: showUserMenu ? '#F8F9FC' : 'transparent', transition:'background 0.15s' }}>
               <div style={{ width:29, height:29, borderRadius:'50%', background: esTitular ? '#1E293B' : '#7c3aed', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:11, fontWeight:700, flexShrink:0 }}>{session.user.email?.[0]?.toUpperCase()}</div>
-              <span className='nav-nombre' style={{ fontSize:12, color:'#64748b', fontFamily:'Inter,sans-serif' }}>{userRol?.nombre || session.user.email}</span>
+              <span className='nav-nombre' style={{ fontSize:12, color:'#64748b', fontFamily:"'Century Gothic','Inter',sans-serif" }}>{userRol?.nombre || session.user.email}</span>
               <span style={{ fontSize:10, color:'#94a3b8', transform: showUserMenu?'rotate(180deg)':'none', transition:'transform 0.15s' }}>▾</span>
             </div>
             {showUserMenu && (
               <>
                 <div onClick={() => setShowUserMenu(false)} style={{ position:'fixed', inset:0, zIndex:150 }}/>
-                <div style={{ position:'absolute', top:'calc(100% + 8px)', right:0, background:'#fff', border:'1px solid #E2E8F0', borderRadius:12, boxShadow:'0 12px 32px rgba(15,23,42,0.14)', minWidth:200, zIndex:151, overflow:'hidden', fontFamily:"'Inter',sans-serif" }}>
+                <div style={{ position:'absolute', top:'calc(100% + 8px)', right:0, background:'#fff', border:'1px solid #E2E8F0', borderRadius:12, boxShadow:'0 12px 32px rgba(15,23,42,0.14)', minWidth:200, zIndex:151, overflow:'hidden', fontFamily:"'Century Gothic','Inter',sans-serif" }}>
                   <div style={{ padding:'12px 16px', borderBottom:'1px solid #F1F5F9' }}>
                     <span style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:0.5, padding:'4px 12px', borderRadius:20, background: esTitular ? '#1E293B' : '#F1F5F9', color: esTitular ? '#fff' : '#64748b', border: esTitular ? 'none' : '1px solid #E2E8F0' }}>
                       {esTitular ? '⚖ Titular' : '👤 Asistente'}
                     </span>
                   </div>
                   {esTitular && (
-                    <button onClick={() => { setShowUserMenu(false); setShowPanel(true) }} style={{ width:'100%', textAlign:'left', background:'none', border:'none', padding:'12px 16px', fontSize:13, cursor:'pointer', color: solicitudesPendientes > 0 ? '#dc2626' : '#374151', display:'flex', alignItems:'center', justifyContent:'space-between', fontFamily:"'Inter',sans-serif" }}>
+                    <button onClick={() => { setShowUserMenu(false); setShowPanel(true) }} style={{ width:'100%', textAlign:'left', background:'none', border:'none', padding:'12px 16px', fontSize:13, cursor:'pointer', color: solicitudesPendientes > 0 ? '#dc2626' : '#374151', display:'flex', alignItems:'center', justifyContent:'space-between', fontFamily:"'Century Gothic','Inter',sans-serif" }}>
                       <span>👁 Control</span>
                       {solicitudesPendientes > 0 && (
                         <span style={{ background:'#dc2626', color:'#fff', borderRadius:'50%', width:16, height:16, fontSize:9, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center' }}>{solicitudesPendientes}</span>
                       )}
                     </button>
                   )}
+                  <button onClick={() => { setShowUserMenu(false); setPagina('causas'); setShowStatsCausas(v => !v) }} style={{ width:'100%', textAlign:'left', background:'none', border:'none', borderTop:'1px solid #F1F5F9', padding:'12px 16px', fontSize:13, cursor:'pointer', color: showStatsCausas ? '#2563eb' : '#374151', fontFamily:"'Century Gothic','Inter',sans-serif" }}>
+                    📊 Estadísticas
+                  </button>
                   {esTitular && (
-                    <button onClick={() => { setShowUserMenu(false); setPagina('contabilidad') }} style={{ width:'100%', textAlign:'left', background:'none', border:'none', borderTop:'1px solid #F1F5F9', padding:'12px 16px', fontSize:13, cursor:'pointer', color:'#374151', fontFamily:"'Inter',sans-serif" }}>
+                    <button onClick={() => { setShowUserMenu(false); setPagina('contabilidad') }} style={{ width:'100%', textAlign:'left', background:'none', border:'none', borderTop:'1px solid #F1F5F9', padding:'12px 16px', fontSize:13, cursor:'pointer', color:'#374151', fontFamily:"'Century Gothic','Inter',sans-serif" }}>
                       💰 Contabilidad
                     </button>
                   )}
-                  <button onClick={handleSignOut} style={{ width:'100%', textAlign:'left', background:'none', border:'none', borderTop:'1px solid #F1F5F9', padding:'12px 16px', fontSize:13, cursor:'pointer', color:'#dc2626', fontWeight:600, fontFamily:"'Inter',sans-serif" }}>
+                  <button onClick={handleSignOut} style={{ width:'100%', textAlign:'left', background:'none', border:'none', borderTop:'1px solid #F1F5F9', padding:'12px 16px', fontSize:13, cursor:'pointer', color:'#dc2626', fontWeight:600, fontFamily:"'Century Gothic','Inter',sans-serif" }}>
                     ⏻ Salir
                   </button>
                 </div>
@@ -593,6 +597,8 @@ export default function App() {
             registrarActividad={registrarActividad}
             causaInicial={causaDesdeCalendario}
             onCausaInicialUsada={() => setCausaDesdeCalendario(null)}
+            showStats={showStatsCausas}
+            setShowStats={setShowStatsCausas}
           />
         )}
         {/* ✅ Calendario recibe onVerCausa para navegar */}

@@ -143,7 +143,7 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
   const nuevaDiligenciaFileRef = useRef(null)
   const comprobanteInputRef = useRef(null)
   const respuestaInputRef = useRef(null)
-  const f = { fontFamily:"'Inter',sans-serif" }
+  const f = { fontFamily:"'Century Gothic','Inter',sans-serif" }
   const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:'#1E293B', background:'#fff', ...f }
 
   useEffect(() => { cargar() }, [causaId])

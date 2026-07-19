@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { supabase } from '../lib/supabase'
 
-const f = { fontFamily:"'Inter',sans-serif" }
+const f = { fontFamily:"'Century Gothic','Inter',sans-serif" }
 const fmt = (n) => '$' + (n || 0).toLocaleString('es-CL')
 
 // ─── Carga SheetJS (xlsx) desde un CDN en tiempo de ejecución — mismo enfoque
@@ -93,6 +94,9 @@ export default function Contabilidad() {
 
   const totalAnual = ingresosPorMes.reduce((s, v) => s + v, 0)
 
+  // Mismos datos de ingresosPorMes, formateados para el gráfico (nombre corto de mes)
+  const chartIngresos = useMemo(() => MESES.map((m, i) => ({ mes: m.slice(0, 3), monto: ingresosPorMes[i] })), [ingresosPorMes])
+
   const exportarExcel = async () => {
     setExportando(true)
     try {
@@ -129,10 +133,26 @@ export default function Contabilidad() {
         <div style={{ fontSize:20, fontWeight:800, color:'#1E293B', letterSpacing:'-0.4px', marginBottom:4 }}>Contabilidad</div>
         <div style={{ fontSize:12, color:'#94a3b8', marginBottom:20 }}>Visible solo para el titular · información agregada de todas las causas</div>
 
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(170px, 1fr))', gap:16, marginBottom:20 }}>
+          {[
+            { label:'Por Cobrar', icon:'📄', num:fmt(totalPorCobrar), accent:'#dc2626' },
+            { label:`Abonos ${MESES[mesFiltro]}`, icon:'💵', num:fmt(totalAbonosDelMes), accent:'#059669' },
+            { label:`Ingresos ${anioFiltro}`, icon:'📈', num:fmt(totalAnual), accent:'#2563eb' },
+          ].map(st => (
+            <div key={st.label} style={{ textAlign:'left', background:'#fff', border:'none', borderRadius:20, padding:'20px 22px', boxShadow:'0 1px 3px rgba(15,23,42,0.06)' }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:10 }}>
+                <div style={{ fontSize:11, fontWeight:600, letterSpacing:0.5, color:'#94a3b8', ...f }}>{st.label}</div>
+                <div style={{ fontSize:16 }}>{st.icon}</div>
+              </div>
+              <div style={{ fontSize:26, fontWeight:800, color:st.accent, lineHeight:1, letterSpacing:'-1px', ...f }}>{st.num}</div>
+            </div>
+          ))}
+        </div>
+
         <div style={{ display:'flex', gap:4, background:'#fff', padding:4, borderRadius:12, border:'1px solid #E2E8F0', marginBottom:20, width:'fit-content' }}>
           {[['cobrar','Cuentas por Cobrar'],['abonos','Abonos'],['ingresos','Ingresos Percibidos']].map(([k,l]) => (
             <button key={k} onClick={()=>setTab(k)}
-              style={{ fontFamily:"'Inter',sans-serif", fontSize:13, fontWeight: tab===k?600:500, padding:'8px 18px', borderRadius:10, border:'none', cursor:'pointer',
+              style={{ fontFamily:"'Century Gothic','Inter',sans-serif", fontSize:13, fontWeight: tab===k?600:500, padding:'8px 18px', borderRadius:10, border:'none', cursor:'pointer',
                 background: tab===k?'#1E293B':'transparent', color: tab===k?'#fff':'#64748b' }}>{l}</button>
           ))}
         </div>
@@ -161,10 +181,10 @@ export default function Contabilidad() {
           <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:16, padding:20 }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, flexWrap:'wrap', gap:10 }}>
               <div style={{ display:'flex', gap:8 }}>
-                <select value={mesFiltro} onChange={e=>setMesFiltro(Number(e.target.value))} style={{ padding:'8px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, fontFamily:"'Inter',sans-serif" }}>
+                <select value={mesFiltro} onChange={e=>setMesFiltro(Number(e.target.value))} style={{ padding:'8px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, fontFamily:"'Century Gothic','Inter',sans-serif" }}>
                   {MESES.map((m,i) => <option key={m} value={i}>{m}</option>)}
                 </select>
-                <select value={anioFiltro} onChange={e=>setAnioFiltro(Number(e.target.value))} style={{ padding:'8px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, fontFamily:"'Inter',sans-serif" }}>
+                <select value={anioFiltro} onChange={e=>setAnioFiltro(Number(e.target.value))} style={{ padding:'8px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, fontFamily:"'Century Gothic','Inter',sans-serif" }}>
                   {[hoy.getFullYear(), hoy.getFullYear()-1, hoy.getFullYear()-2].map(a => <option key={a} value={a}>{a}</option>)}
                 </select>
               </div>
@@ -193,12 +213,27 @@ export default function Contabilidad() {
         {tab === 'ingresos' && (
           <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:16, padding:20 }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
-              <select value={anioFiltro} onChange={e=>setAnioFiltro(Number(e.target.value))} style={{ padding:'8px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, fontFamily:"'Inter',sans-serif" }}>
+              <select value={anioFiltro} onChange={e=>setAnioFiltro(Number(e.target.value))} style={{ padding:'8px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, fontFamily:"'Century Gothic','Inter',sans-serif" }}>
                 {[hoy.getFullYear(), hoy.getFullYear()-1, hoy.getFullYear()-2].map(a => <option key={a} value={a}>{a}</option>)}
               </select>
               <div style={{ fontSize:20, fontWeight:800, color:'#1E293B' }}>Total {anioFiltro}: {fmt(totalAnual)}</div>
             </div>
             <div style={{ fontSize:11, color:'#94a3b8', marginBottom:14 }}>Ingresos efectivamente percibidos por mes (base para Boletas de Honorarios y F22 — confirma tasas y tratamiento con tu contador).</div>
+
+            {totalAnual > 0 && (
+              <div style={{ marginBottom:20 }}>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={chartIngresos} margin={{ left:0, right:8, top:8, bottom:0 }}>
+                    <CartesianGrid vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="mes" tick={{ fontSize:11, fill:'#94a3b8' }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize:10, fill:'#94a3b8' }} axisLine={false} tickLine={false} width={0} />
+                    <Tooltip cursor={{ fill:'#F8F9FC' }} contentStyle={{ background:'#fff', border:'none', boxShadow:'0 4px 16px rgba(15,23,42,0.10)', borderRadius:10, fontSize:12 }} formatter={(v) => [fmt(v), 'Ingresos']} />
+                    <Bar dataKey="monto" radius={[6,6,0,0]} fill="#2563eb" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+
             {MESES.map((m,i) => (
               <div key={m} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 14px', borderBottom:'1px solid #f1f5f9' }}>
                 <div style={{ fontSize:13, color:'#475569' }}>{m}</div>

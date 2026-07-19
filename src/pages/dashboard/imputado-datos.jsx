@@ -10,7 +10,7 @@ export function ImputadoDatosCard({ imp, numero, causaId, ruc, cautelares, esTit
   const [expanded, setExpanded] = useState(false)
   const [editField, setEditField] = useState(null)
   const [editValue, setEditValue] = useState('')
-  const f = { fontFamily:"'Inter',sans-serif" }
+  const f = { fontFamily:"'Century Gothic','Inter',sans-serif" }
 
   // Resumen — visible aunque la tarjeta esté colapsada, para no tener que abrirla
   // solo para ver lo esencial. Texto plano, sin emojis.

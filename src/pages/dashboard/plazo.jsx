@@ -14,7 +14,7 @@ export function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudie
   const [guardandoEdit, setGuardandoEdit] = useState(false)
   const [eliminandoId, setEliminandoId] = useState(null)
   const [motivoEliminar, setMotivoEliminar] = useState('')
-  const f = { fontFamily:"'Inter',sans-serif" }
+  const f = { fontFamily:"'Century Gothic','Inter',sans-serif" }
   const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:'#1E293B', background:'#fff', ...f }
   const TIPO_PROXIMA = 'Aumento próxima audiencia'
   const TIPOS_AUDIENCIA_PLAZO = ['Formalización','Control de detención + Formalización','Ampliación de plazo',TIPO_PROXIMA,'Reapertura de investigación']

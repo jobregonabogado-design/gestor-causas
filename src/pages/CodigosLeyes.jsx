@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 
-const f = { fontFamily:"'Inter',sans-serif" }
+const f = { fontFamily:"'Century Gothic','Inter',sans-serif" }
 const CACHE_KEY = 'lexoffice_codigos_leyes_cache_v1'
 
 // ─── Guardado local (funciona sin internet) ──────────────────────────────────
@@ -92,7 +92,7 @@ export default function CodigosLeyes() {
             </div>
           </div>
           <button onClick={actualizar} disabled={actualizando}
-            style={{ fontFamily:"'Inter',sans-serif", background:'#fff', border:'1.5px solid #e5e7eb', borderRadius:10, padding:'8px 18px', fontSize:13, fontWeight:600, cursor:'pointer', color:'#374151' }}>
+            style={{ fontFamily:"'Century Gothic','Inter',sans-serif", background:'#fff', border:'1.5px solid #e5e7eb', borderRadius:10, padding:'8px 18px', fontSize:13, fontWeight:600, cursor:'pointer', color:'#374151' }}>
             {actualizando ? 'Actualizando…' : '↻ Actualizar'}
           </button>
         </div>
@@ -125,7 +125,7 @@ export default function CodigosLeyes() {
                   </a>
                   {tieneTextoCargado(c) && (
                     <button onClick={()=>setSeleccionId(c.id)}
-                      style={{ position:'absolute', bottom:8, right:8, fontFamily:"'Inter',sans-serif", background:'#fff', border:'1px solid #e2e8f0', borderRadius:8, padding:'5px 10px', fontSize:10, fontWeight:600, color:'#374151', cursor:'pointer' }}>
+                      style={{ position:'absolute', bottom:8, right:8, fontFamily:"'Century Gothic','Inter',sans-serif", background:'#fff', border:'1px solid #e2e8f0', borderRadius:8, padding:'5px 10px', fontSize:10, fontWeight:600, color:'#374151', cursor:'pointer' }}>
                       📄 Texto
                     </button>
                   )}
