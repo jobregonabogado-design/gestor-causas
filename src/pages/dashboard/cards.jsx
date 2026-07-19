@@ -95,7 +95,7 @@ function formatearTiempoCondena(anos, meses, dias) {
   return partes.slice(0,-1).join(', ') + ' y ' + partes[partes.length-1]
 }
 
-export function ImputadoCard({ imp, idx, cautelares, esTitular, onUpdate, onDelete, onGuardarCondena, onVaciarCondena }) {
+export function ImputadoCard({ imp, idx, totalImputados, cautelares, esTitular, isMobile, onUpdate, onDelete, onGuardarCondena, onVaciarCondena }) {
   const [editField, setEditField] = useState(null)
   const [editValue, setEditValue] = useState('')
   const f = { fontFamily:"'Century Gothic','Inter',sans-serif" }
@@ -214,13 +214,22 @@ export function ImputadoCard({ imp, idx, cautelares, esTitular, onUpdate, onDele
   return (
     <div style={{background:'#F8F9FC',border:'1.5px solid #e2e8f0',borderRadius:14,padding:'18px 20px',marginBottom:14}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
-        <div style={{display:'flex',alignItems:'center',gap:10}}>
-          <div style={{width:30,height:30,background:'linear-gradient(135deg,#2563eb,#1d4ed8)',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:13,fontWeight:700,...f}}>{idx+1}</div>
-          <div style={{fontSize:14,fontWeight:700,color:'#1E293B',...f}}>{imp.nombre||'Sin nombre'}</div>
+        <div style={{display:'flex',alignItems:'center',gap:8,minWidth:0}}>
+          {/* El numerito solo sirve para distinguir coimputados — con 1 solo
+              imputado no aporta nada y solo satura, así que se oculta. */}
+          {totalImputados > 1 && (
+            <div style={{width:20,height:20,background:'linear-gradient(135deg,#2563eb,#1d4ed8)',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:11,fontWeight:700,flexShrink:0,...f}}>{idx+1}</div>
+          )}
+          <div style={{fontSize:14,fontWeight:700,color:'#1E293B',minWidth:0,...f}}>{imp.nombre||'Sin nombre'}</div>
         </div>
         <button onClick={onDelete} style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:7,padding:'5px 12px',fontSize:11,color:'#dc2626',cursor:'pointer',fontWeight:600,...f}}>✕ Eliminar</button>
       </div>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+      <details className="seccion-plegable" open={!isMobile} style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,padding:'12px 14px'}}>
+        <summary style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,fontWeight:700,display:'flex',justifyContent:'space-between',alignItems:'center',...f}}>
+          Datos personales
+          <span className="seccion-chevron" style={{fontSize:12}}>▾</span>
+        </summary>
+        <div className="grid2-mobile" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginTop:10}}>
         <Field2 label="Nombre completo" field="nombre"/>
         <Field2 label="RUT" field="rut"/>
         <Field2 label="Nacionalidad" field="nacionalidad"/>
@@ -251,7 +260,8 @@ export function ImputadoCard({ imp, idx, cautelares, esTitular, onUpdate, onDele
         </div>
         <Field2 label="Domicilio" field="domicilio" />
         <Field2 label="Otros antecedentes" field="otros_antecedentes"/>
-      </div>
+        </div>
+      </details>
       {/* Delitos imputados a esta persona (puede diferir entre coimputados) */}
       <div style={{marginTop:12}}>
         <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Delitos imputados a esta persona</div>

@@ -49,7 +49,7 @@ const leyenda = [
 const TIPOS = ["JUICIO ORAL","ABREVIADO","APJO","REV PP","AUMENTO PLAZO","CIERRE","ENTREVISTA","DECLARACION","FORMALIZACION","CAUTELA DE GARANTIAS","APELACIÓN CAUTELAR","SCP","OTRO"]
 
 
-function AudienciaEditCard({ a, onDelete, onUpdate, f }) {
+function AudienciaEditCard({ a, onDelete, onUpdate, f, isMobile }) {
   const [editing, setEditing] = useState(false)
   const [motivo, setMotivo] = useState('')
   const [form, setForm] = useState({ fecha:a.fecha||'', hora:a.hora||'', tipo:a.tipo||'', tribunal:a.tribunal||'', sala:a.sala||'', imputado:a.imputado||'' })
@@ -70,7 +70,7 @@ function AudienciaEditCard({ a, onDelete, onUpdate, f }) {
   if (editing) return (
     <div style={{background:'#f0f7ff',border:'1.5px solid #2563eb',borderRadius:12,padding:16,marginBottom:8}}>
       <div style={{fontSize:12,fontWeight:700,color:'#2563eb',marginBottom:12,...f}}>✏ Editar audiencia</div>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:10}}>
+      <div style={{display:'grid',gridTemplateColumns:isMobile?'1fr':'1fr 1fr',gap:8,marginBottom:10}}>
         {[{key:'fecha',label:'Fecha',type:'date'},{key:'hora',label:'Hora',type:'time'},{key:'tipo',label:'Tipo',type:'text'},{key:'tribunal',label:'Tribunal',type:'text'},{key:'sala',label:'Sala',type:'text'},{key:'imputado',label:'Imputado',type:'text'}].map(field=>(
           <div key={field.key}>
             <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4,fontWeight:600,...f}}>{field.label}</div>
@@ -94,6 +94,7 @@ function AudienciaEditCard({ a, onDelete, onUpdate, f }) {
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
         <span style={{fontSize:11,fontWeight:700,color:c.text,background:c.bg,padding:'3px 8px',borderRadius:20,border:`1px solid ${c.border}`,...f}}>{a.tipo}</span>
         <div style={{display:'flex',gap:6,alignItems:'center'}}>
+          <span style={{fontSize:12,fontWeight:700,color:'#1E293B',...f}}>📅 {(()=>{const p=(a.fecha||'').split('-');return p.length===3?`${p[2]}-${MESES[parseInt(p[1],10)-1]?.substring(0,3)||p[1]}`:(a.fecha||'—')})()}</span>
           <span style={{fontSize:12,fontWeight:600,color:'#475569',...f}}>🕐 {a.hora}</span>
           <button onClick={()=>setEditing(true)} style={{background:'#f0f7ff',border:'1px solid #bfdbfe',borderRadius:6,padding:'3px 8px',fontSize:10,color:'#2563eb',cursor:'pointer',fontWeight:600,...f}}>✏</button>
           <button onClick={()=>onDelete(a.id)} style={{background:'transparent',border:'none',cursor:'pointer',fontSize:14,color:'#fca5a5',padding:'2px 4px'}}>✕</button>
@@ -118,6 +119,15 @@ export default function Calendario({ onVerCausa }) {
   const [anio, setAnio] = useState(hoy.getFullYear())
   const [selDia, setSelDia] = useState(null)
   const [vistaLista, setVistaLista] = useState(typeof window !== 'undefined' && window.innerWidth < 640)
+  // Mismo criterio de "celular" que Dashboard.jsx — se usa para que la vista
+  // Lista se muestre como tarjetas (igual que en el panel lateral del
+  // calendario) en vez de una tabla ancha que obliga a hacer scroll horizontal.
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' && window.innerWidth < 640)
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 640)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
   const [filtroTipo, setFiltroTipo] = useState("")
   const [audiencias, setAudiencias] = useState([])
   const [loading, setLoading] = useState(true)
@@ -330,7 +340,7 @@ export default function Calendario({ onVerCausa }) {
                             <span style={{fontSize:11,color:'#60a5fa'}}>→ ver causa</span>
                           </div>
                         )}
-                        <AudienciaEditCard key={i} a={a} onDelete={deleteAudiencia} onUpdate={async(updated,motivo)=>{
+                        <AudienciaEditCard key={i} a={a} isMobile={isMobile} onDelete={deleteAudiencia} onUpdate={async(updated,motivo)=>{
                           const historial = a.notas ? a.notas + `\n[${new Date().toLocaleDateString('es-CL')}] Modificado: ${motivo}` : `[${new Date().toLocaleDateString('es-CL')}] Modificado: ${motivo}`
                           const{error}=await supabase.from("audiencias").update({...updated,notas:historial}).eq("id",a.id)
                           if(!error)setAudiencias(prev=>prev.map(x=>x.id===a.id?{...x,...updated,notas:historial}:x))
@@ -369,6 +379,28 @@ export default function Calendario({ onVerCausa }) {
                 </div>
               )}
             </div>
+          </div>
+        ):isMobile?(
+          /* En celular: tarjetas (mismo componente que el panel lateral del calendario,
+             con edición e historial incluidos) en vez de una tabla ancha con scroll horizontal. */
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {audDelMes.map((a,i)=>(
+              <div key={i}>
+                {a.ruc && onVerCausa && (
+                  <div onClick={()=>irACausa(a.ruc)}
+                    style={{fontSize:12,color:'#2563eb',cursor:'pointer',marginBottom:6,display:'inline-flex',alignItems:'center',gap:6,background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:8,padding:'4px 12px',fontWeight:600,...f}}>
+                    🔗 <span style={{fontWeight:600}}>{a.ruc}</span>
+                    <span style={{fontSize:11,color:'#60a5fa'}}>→ ver causa</span>
+                  </div>
+                )}
+                <AudienciaEditCard a={a} isMobile={isMobile} onDelete={deleteAudiencia} onUpdate={async(updated,motivo)=>{
+                  const historial = a.notas ? a.notas + `\n[${new Date().toLocaleDateString('es-CL')}] Modificado: ${motivo}` : `[${new Date().toLocaleDateString('es-CL')}] Modificado: ${motivo}`
+                  const{error}=await supabase.from("audiencias").update({...updated,notas:historial}).eq("id",a.id)
+                  if(!error)setAudiencias(prev=>prev.map(x=>x.id===a.id?{...x,...updated,notas:historial}:x))
+                }} f={f}/>
+              </div>
+            ))}
+            {audDelMes.length===0&&<div style={{padding:40,textAlign:"center",color:"#94a3b8",fontSize:14,background:"#fff",borderRadius:16,border:"1px solid #e2e8f0",...f}}>Sin audiencias en {MESES[mes]} {anio}</div>}
           </div>
         ):(
           <div style={{background:"#fff",borderRadius:16,border:"1px solid #e2e8f0",overflowX:"auto",WebkitOverflowScrolling:"touch",boxShadow:"0 1px 8px rgba(15,23,42,0.06)"}}>
@@ -412,11 +444,11 @@ export default function Calendario({ onVerCausa }) {
 
       {/* Modal nueva audiencia */}
       {showForm&&(
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.4)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:200,backdropFilter:"blur(3px)"}}
+        <div style={{position:"fixed",top:0,left:0,width:"100%",height:"100%",background:"rgba(0,0,0,0.4)",display:"flex",alignItems:"flex-start",justifyContent:"center",overflowY:"auto",paddingTop:isMobile?"4vh":"8vh",paddingBottom:"4vh",zIndex:200,backdropFilter:"blur(3px)"}}
           onClick={e=>e.target===e.currentTarget&&setShowForm(false)}>
-          <div style={{background:"#fff",border:"1px solid #eaecf4",borderRadius:14,padding:32,width:520,maxWidth:"90vw",boxShadow:"0 20px 60px rgba(15,23,42,0.18)",maxHeight:"90vh",overflowY:"auto"}}>
+          <div style={{background:"#fff",border:"1px solid #eaecf4",borderRadius:14,padding:isMobile?20:32,width:520,maxWidth:"90vw",boxShadow:"0 20px 60px rgba(15,23,42,0.18)"}}>
             <div style={{fontFamily:"'Plus Jakarta Sans',serif",fontSize:20,fontWeight:700,color:"#1E293B",marginBottom:22}}>Nueva Audiencia</div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:12}}>
               <div><div style={{fontSize:10,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1.2,marginBottom:5,...f}}>Fecha *</div><input type="date" style={inp} value={nueva.fecha} onChange={e=>setNueva(p=>({...p,fecha:e.target.value}))}/></div>
               <div><div style={{fontSize:10,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1.2,marginBottom:5,...f}}>Hora</div><input type="time" style={inp} value={nueva.hora} onChange={e=>setNueva(p=>({...p,hora:e.target.value}))}/></div>
               <div style={{gridColumn:"1/-1"}}><div style={{fontSize:10,color:"#9ca3af",textTransform:"uppercase",letterSpacing:1.2,marginBottom:5,...f}}>Tipo *</div>

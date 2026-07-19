@@ -6,7 +6,7 @@ import { SearchableSelect, DelitoCard, Field } from './primitives'
 import { DELITOS_CATALOGO, CENTROS_PENALES, calcularEdadActual } from './utils'
 import { CautelaresPanel, TIPOS_ABONO_DIRECTO, CAUTELAR_NOCTURNO, diasEntreFechasCaut } from './cautelares'
 
-export function ImputadoDatosCard({ imp, numero, causaId, ruc, cautelares, esTitular, registrarActividad, onUpdateCampo, onDelitoChange, onGuardarCautelar, onActualizarCautelar, onEliminarCautelar }) {
+export function ImputadoDatosCard({ imp, numero, causaId, ruc, cautelares, esTitular, isMobile, registrarActividad, onUpdateCampo, onDelitoChange, onGuardarCautelar, onActualizarCautelar, onEliminarCautelar }) {
   const [expanded, setExpanded] = useState(false)
   const [editField, setEditField] = useState(null)
   const [editValue, setEditValue] = useState('')
@@ -84,6 +84,7 @@ export function ImputadoDatosCard({ imp, numero, causaId, ruc, cautelares, esTit
 
           {/* Cautelar Personal */}
           <CautelaresPanel
+            isMobile={isMobile}
             causaId={causaId}
             ruc={ruc}
             cautelares={cautelares}

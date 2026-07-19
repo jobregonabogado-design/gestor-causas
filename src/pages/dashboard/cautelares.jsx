@@ -38,13 +38,14 @@ export function calcularTotalAbono(cautelares, hoyISO = new Date().toISOString()
   }, 0)
 }
 
-export function CautelaresPanel({ causaId, cautelares, esRPA, onGuardar, onActualizar, onEliminar, esTitular, registrarActividad, ruc, nombreImputado }) {
+export function CautelaresPanel({ causaId, cautelares, esRPA, onGuardar, onActualizar, onEliminar, esTitular, registrarActividad, ruc, nombreImputado, isMobile }) {
   const hoyISO = new Date().toISOString().slice(0,10)
   const TIPOS = esRPA ? TIPOS_CAUTELARES_RPA : TIPOS_CAUTELARES_ADULTO
   const [expanded,setExpanded] = useState(true) // la casilla queda visible; al abrir se ve el detalle
   const [form,setForm] = useState({ tipo:TIPOS[0], fecha_inicio:hoyISO, fecha_termino:'', frecuencia:'Mensual' })
   const [guardando,setGuardando] = useState(false)
   const [fechaCalc,setFechaCalc] = useState(hoyISO) // calculadora ad-hoc, no se guarda
+  const [showCalc,setShowCalc] = useState(false) // la calculadora se abre en una ventana chica, no ocupa espacio fijo
   const [nocturnoEdit,setNocturnoEdit] = useState({}) // {id: {bruto, calculado}} temporal por fila
   // ✅ No se borran las cautelares por defecto (queda el historial) — solo se
   // pueden corregir errores editando tipo/fechas. Eliminar de forma definitiva
@@ -140,7 +141,7 @@ export function CautelaresPanel({ causaId, cautelares, esRPA, onGuardar, onActua
       </div>
 
       {expanded && (
-        <div style={{background:'#fff',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',borderRadius:'0 0 14px 14px',padding:'14px 16px 12px'}}>
+        <div style={{background:'#fff',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',borderRadius:'0 0 14px 14px',padding:isMobile?'10px 12px 10px':'14px 16px 12px'}}>
 
           {cautelares.length===0 && <p style={{fontSize:13,color:'#94a3b8',marginBottom:8,...f}}>Sin cautelares registradas todavía.</p>}
 
@@ -242,22 +243,38 @@ export function CautelaresPanel({ causaId, cautelares, esRPA, onGuardar, onActua
             )
           })}
 
-          {/* Calculadora — solo aparece si hay al menos una cautelar que otorgue abono (directo o nocturno) */}
+          {/* Calculadora — botón que abre una ventana chica encima de la página, en vez de
+              ocupar espacio fijo siempre. Solo aparece si hay al menos una cautelar que
+              otorgue abono (directo o nocturno). No guarda nada, es solo una previsualización. */}
           {cautelares.some(ct => TIPOS_ABONO_DIRECTO.includes(ct.tipo) || ct.tipo === CAUTELAR_NOCTURNO) && (
             <div style={{padding:'10px 0', borderTop: cautelares.length>0 ? '1px solid #f1f5f9' : 'none'}}>
-              <div style={{fontSize:11,color:'#64748b',marginBottom:8,...f}}>🧮 Previsualizar abono a otra fecha (no guarda nada)</div>
-              <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
-                <input type="date" style={{padding:'7px 10px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}} value={fechaCalc} onChange={e=>setFechaCalc(e.target.value)}/>
-                {fechaCalc !== hoyISO && (
-                  <button onClick={()=>setFechaCalc(hoyISO)} style={{fontSize:11,color:'#2563eb',background:'none',border:'none',cursor:'pointer',fontWeight:600,...f}}>↺ Volver a hoy</button>
-                )}
-                <span style={{fontSize:12,color:'#475569',...f}}>
-                  Abono proyectado: <strong>{cautelares.reduce((s,ct)=>{
-                    if (TIPOS_ABONO_DIRECTO.includes(ct.tipo)) return s + diasEntreFechasCaut(ct.fecha_inicio, ct.fecha_termino || fechaCalc)
-                    if (ct.tipo===CAUTELAR_NOCTURNO && ct.sumado_a_abono) return s + (parseFloat(ct.abono_nocturno_calculado)||0)
-                    return s
-                  },0)} días</strong>
-                </span>
+              <button onClick={()=>setShowCalc(true)} style={{fontSize:12,color:'#2563eb',background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:8,padding:'6px 12px',cursor:'pointer',fontWeight:600,...f}}>🧮 Calcular abono a otra fecha</button>
+            </div>
+          )}
+
+          {showCalc && (
+            <div style={{position:'fixed',inset:0,background:'rgba(15,23,42,0.4)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:300,backdropFilter:'blur(2px)'}}
+              onClick={e=>e.target===e.currentTarget&&setShowCalc(false)}>
+              <div style={{background:'#fff',borderRadius:16,padding:20,width:340,maxWidth:'90vw',boxShadow:'0 20px 60px rgba(15,23,42,0.2)'}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+                  <div style={{fontSize:13,fontWeight:700,color:'#1E293B',...f}}>🧮 Abono a otra fecha</div>
+                  <button onClick={()=>setShowCalc(false)} style={{background:'transparent',border:'none',cursor:'pointer',fontSize:16,color:'#94a3b8'}}>✕</button>
+                </div>
+                <div style={{fontSize:11,color:'#94a3b8',marginBottom:12,...f}}>Solo es una previsualización — no guarda nada.</div>
+                <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                  <input type="date" style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}} value={fechaCalc} onChange={e=>setFechaCalc(e.target.value)}/>
+                  {fechaCalc !== hoyISO && (
+                    <button onClick={()=>setFechaCalc(hoyISO)} style={{fontSize:11,color:'#2563eb',background:'none',border:'none',cursor:'pointer',fontWeight:600,alignSelf:'flex-start',...f}}>↺ Volver a hoy</button>
+                  )}
+                  <div style={{background:'#F8F9FC',borderRadius:10,padding:'12px 14px',fontSize:13,color:'#475569',...f}}>
+                    Abono proyectado: <strong style={{color:'#1E293B',fontSize:16}}>{cautelares.reduce((s,ct)=>{
+                      if (TIPOS_ABONO_DIRECTO.includes(ct.tipo)) return s + diasEntreFechasCaut(ct.fecha_inicio, ct.fecha_termino || fechaCalc)
+                      if (ct.tipo===CAUTELAR_NOCTURNO && ct.sumado_a_abono) return s + (parseFloat(ct.abono_nocturno_calculado)||0)
+                      return s
+                    },0)} días</strong>
+                  </div>
+                </div>
+                <button className="btn-primary" style={{width:'100%',marginTop:14,fontSize:13}} onClick={()=>setShowCalc(false)}>OK, cerrar</button>
               </div>
             </div>
           )}

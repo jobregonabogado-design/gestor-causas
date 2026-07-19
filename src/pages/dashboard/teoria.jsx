@@ -17,7 +17,7 @@ const TC_SECCIONES = [
   { key:'diligencias',   icon:'📨', label:'Diligencias Fiscalía',   placeholder:null },
 ]
 
-export function TeoriaDelCaso({ causaId, ruc, session, registrarActividad, onAccion, carpetaRef, onUpdateCarpetaRef }) {
+export function TeoriaDelCaso({ causaId, ruc, session, registrarActividad, onAccion, carpetaRef, onUpdateCarpetaRef, isMobile }) {
   const [teoria, setTeoria] = useState(null)
   const [form, setForm] = useState({ hechos:'', teoria_defensa:'', prueba:'', observaciones:'' })
   const [historial, setHistorial] = useState([])
@@ -85,25 +85,40 @@ export function TeoriaDelCaso({ causaId, ruc, session, registrarActividad, onAcc
   if (loading) return <div style={{ textAlign:'center', padding:40, color:'#94a3b8', fontSize:13, ...f }}>Cargando teoría del caso...</div>
 
   return (
-    <div style={{ display:'grid', gridTemplateColumns:'200px 1fr', gap:0, minHeight:500, border:'1px solid #E2E8F0', borderRadius:14, overflow:'hidden' }}>
-      <div style={{ background:'#F8F9FC', borderRight:'1px solid #E2E8F0', padding:'20px 0' }}>
-        <div style={{ fontSize:9, color:'#94a3b8', textTransform:'uppercase', letterSpacing:2, fontWeight:700, padding:'0 16px 12px', ...f }}>Secciones</div>
-        {TC_SECCIONES.map(s => {
-          const tieneContenido = (form[s.key]||'').trim().length > 0
-          return (
-            <button key={s.key} onClick={() => setSeccionActiva(s.key)}
-              style={{ width:'100%', textAlign:'left', padding:'10px 16px', background: seccionActiva===s.key ? '#1E293B' : 'transparent', border:'none', borderLeft: seccionActiva===s.key ? '3px solid #1E293B' : '3px solid transparent', cursor:'pointer', display:'flex', alignItems:'center', gap:8, transition:'all 0.2s ease' }}>
-              <span style={{ fontSize:13, opacity: seccionActiva===s.key ? 1 : 0.6 }}>{s.icon}</span>
-              <div style={{ flex:1 }}>
-                <div style={{ fontSize:11, fontWeight: seccionActiva===s.key ? 600 : 400, color: seccionActiva===s.key ? '#fff' : '#64748b', ...f, lineHeight:1.3, textTransform:'uppercase', letterSpacing:0.5 }}>{s.label}</div>
-                {tieneContenido && <div style={{ width:5, height:5, borderRadius:'50%', background: seccionActiva===s.key ? '#fff' : '#1E293B', marginTop:3 }}/>}
-              </div>
-            </button>
-          )
-        })}
-      </div>
+    <div style={{ display:'grid', gridTemplateColumns:isMobile?'1fr':'200px 1fr', gap:0, minHeight:500, border:'1px solid #E2E8F0', borderRadius:14, overflow:'hidden' }}>
+      {isMobile ? (
+        // En celular, el panel lateral fijo de 200px no cabe — pasa a ser un
+        // menú desplegable arriba, con el contenido de la sección abajo en
+        // una sola columna, igual que hicimos con la franja de pestañas.
+        <div style={{ background:'#F8F9FC', borderBottom:'1px solid #E2E8F0', padding:'12px 16px' }}>
+          <select value={seccionActiva} onChange={e=>setSeccionActiva(e.target.value)}
+            style={{width:'100%',padding:'10px 12px',border:'1.5px solid #e2e8f0',borderRadius:10,fontSize:13,fontWeight:600,color:'#1E293B',background:'#fff',...f}}>
+            {TC_SECCIONES.map(s => {
+              const tieneContenido = (form[s.key]||'').trim().length > 0
+              return <option key={s.key} value={s.key}>{s.icon} {s.label}{tieneContenido?' ●':''}</option>
+            })}
+          </select>
+        </div>
+      ) : (
+        <div style={{ background:'#F8F9FC', borderRight:'1px solid #E2E8F0', padding:'20px 0' }}>
+          <div style={{ fontSize:9, color:'#94a3b8', textTransform:'uppercase', letterSpacing:2, fontWeight:700, padding:'0 16px 12px', ...f }}>Secciones</div>
+          {TC_SECCIONES.map(s => {
+            const tieneContenido = (form[s.key]||'').trim().length > 0
+            return (
+              <button key={s.key} onClick={() => setSeccionActiva(s.key)}
+                style={{ width:'100%', textAlign:'left', padding:'10px 16px', background: seccionActiva===s.key ? '#1E293B' : 'transparent', border:'none', borderLeft: seccionActiva===s.key ? '3px solid #1E293B' : '3px solid transparent', cursor:'pointer', display:'flex', alignItems:'center', gap:8, transition:'all 0.2s ease' }}>
+                <span style={{ fontSize:13, opacity: seccionActiva===s.key ? 1 : 0.6 }}>{s.icon}</span>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontSize:11, fontWeight: seccionActiva===s.key ? 600 : 400, color: seccionActiva===s.key ? '#fff' : '#64748b', ...f, lineHeight:1.3, textTransform:'uppercase', letterSpacing:0.5 }}>{s.label}</div>
+                  {tieneContenido && <div style={{ width:5, height:5, borderRadius:'50%', background: seccionActiva===s.key ? '#fff' : '#1E293B', marginTop:3 }}/>}
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      )}
       <div style={{ display:'flex', flexDirection:'column', background:'#fff' }}>
-        <div style={{ padding:'16px 20px', borderBottom:'1px solid #E2E8F0', display:'flex', justifyContent:'space-between', alignItems:'center', background:'#F8F9FC' }}>
+        <div style={{ padding:isMobile?'12px 14px':'16px 20px', borderBottom:'1px solid #E2E8F0', display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:8, background:'#F8F9FC' }}>
           <div>
             <div style={{ fontSize:15, fontWeight:700, color:'#1E293B', ...f }}>{seccionActual?.icon} {seccionActual?.label}</div>
             {esSeccionTexto && (
@@ -145,7 +160,7 @@ export function TeoriaDelCaso({ causaId, ruc, session, registrarActividad, onAcc
             })}
           </div>
         )}
-        <div className="tc-section" style={{ flex:1, padding:'20px' }}>
+        <div className="tc-section" style={{ flex:1, padding:isMobile?'14px':'20px' }}>
           {seccionActiva === 'fallos' ? (
             <FallosReferencia causaId={causaId} ruc={ruc} email={session?.user?.email || ''} onAccion={onAccion} />
           ) : seccionActiva === 'carpeta' ? (

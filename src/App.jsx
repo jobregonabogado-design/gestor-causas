@@ -358,6 +358,12 @@ export default function App() {
   const [userRol, setUserRol] = useState(null)
   const [showPanel, setShowPanel] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' && window.innerWidth < 640)
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 640)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
   const [showStatsCausas, setShowStatsCausas] = useState(false)
   const [solicitudesPendientes, setSolicitudesPendientes] = useState(0)
   // ✅ Estado para causa seleccionada desde el calendario
@@ -556,7 +562,11 @@ export default function App() {
             {showUserMenu && (
               <>
                 <div onClick={() => setShowUserMenu(false)} style={{ position:'fixed', inset:0, zIndex:150 }}/>
-                <div style={{ position:'absolute', top:'calc(100% + 8px)', right:0, background:'#fff', border:'1px solid #E2E8F0', borderRadius:12, boxShadow:'0 12px 32px rgba(15,23,42,0.14)', minWidth:200, zIndex:151, overflow:'hidden', fontFamily:"'Century Gothic','Inter',sans-serif" }}>
+                <div style={isMobile
+                  // En celular, el menú se ancla a la ventana (no al botón) para que nunca
+                  // se salga de la pantalla, sin importar dónde quede el botón "J".
+                  ? { position:'fixed', top:56, right:12, left:12, background:'#fff', border:'1px solid #E2E8F0', borderRadius:12, boxShadow:'0 12px 32px rgba(15,23,42,0.14)', zIndex:151, overflow:'hidden', fontFamily:"'Century Gothic','Inter',sans-serif" }
+                  : { position:'absolute', top:'calc(100% + 8px)', right:0, background:'#fff', border:'1px solid #E2E8F0', borderRadius:12, boxShadow:'0 12px 32px rgba(15,23,42,0.14)', minWidth:200, zIndex:151, overflow:'hidden', fontFamily:"'Century Gothic','Inter',sans-serif" }}>
                   <div style={{ padding:'12px 16px', borderBottom:'1px solid #F1F5F9' }}>
                     <span style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:0.5, padding:'4px 12px', borderRadius:20, background: esTitular ? '#1E293B' : '#F1F5F9', color: esTitular ? '#fff' : '#64748b', border: esTitular ? 'none' : '1px solid #E2E8F0' }}>
                       {esTitular ? '⚖ Titular' : '👤 Asistente'}

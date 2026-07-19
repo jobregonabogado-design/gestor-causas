@@ -141,8 +141,8 @@ export function DelitosChips({ value, onChange, options }) {
       {lista.length > 0 && (
         <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginBottom:10 }}>
           {lista.map((d, i) => (
-            <div key={i} style={{ display:'flex', alignItems:'center', gap:7, background:'#fef2f2', border:'1px solid #fecaca', borderRadius:8, padding:'5px 9px', maxWidth:'100%' }}>
-              <span style={{ fontSize:11, color:'#991b1b', fontWeight:600, ...f }}>{d}</span>
+            <div key={i} title={d} style={{ display:'flex', alignItems:'center', gap:7, background:'#fef2f2', border:'1px solid #fecaca', borderRadius:8, padding:'5px 9px', maxWidth:'100%', minWidth:0 }}>
+              <span style={{ fontSize:11, color:'#991b1b', fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:280, ...f }}>{d}</span>
               <button onClick={() => quitar(i)} style={{ background:'transparent', border:'none', cursor:'pointer', color:'#fca5a5', fontSize:12, padding:0, flexShrink:0 }}>✕</button>
             </div>
           ))}
@@ -357,9 +357,9 @@ export function Field({ label, value, editable, editField, setEditField, editVal
           <button className="btn-secondary" style={{padding:'8px 12px',fontSize:12,flexShrink:0,border:'none',borderRadius:14,boxShadow:'0 1px 2px rgba(15,23,42,0.06)'}} onClick={()=>setEditField(null)}>✗</button>
         </div>
       ) : (
-        <div className={editable?'fld':''} onClick={()=>{if(editable){setEditField(label);setEditValue(value||'')}}}
-          style={{ padding:'11px 14px', border:'none', borderRadius:14, fontSize:13, color:value?'#1E293B':'#94a3b8', minHeight:38, display:'flex', alignItems:'center', justifyContent:'space-between', cursor:editable?'pointer':'default', background:'#fff', boxShadow:'0 1px 2px rgba(15,23,42,0.06)', ...f }}>
-          <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1}}>{value||(editable?'Clic para agregar...':'—')}</span>
+        <div className={editable?'fld':''} onClick={()=>{if(editable){setEditField(label);setEditValue(value||'')}}} title={value||''}
+          style={{ padding:'11px 14px', border:'none', borderRadius:14, fontSize:13, color:value?'#1E293B':'#94a3b8', minHeight:38, display:'flex', alignItems:'center', justifyContent:'space-between', cursor:editable?'pointer':'default', background:'#fff', boxShadow:'0 1px 2px rgba(15,23,42,0.06)', maxWidth:'100%', minWidth:0, ...f }}>
+          <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:'1 1 0%',minWidth:0}}>{value||(editable?'Clic para agregar...':'—')}</span>
           {editable && <span style={{fontSize:11,color:'#94a3b8',flexShrink:0,marginLeft:8}}>✏</span>}
         </div>
       )}

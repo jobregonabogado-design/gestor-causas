@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { f } from './primitives'
 import { calcularVencimiento, calcularSubestado, diasRestantes } from './utils'
 
-export function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudiencia, onEditarAudiencia, onEliminarAudiencia }) {
+export function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudiencia, onEditarAudiencia, onEliminarAudiencia, isMobile }) {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ fecha_audiencia:'', tipo_audiencia:'Formalización', dias_plazo:'', observacion:'', fecha_proxima_audiencia:'' })
   const [guardando, setGuardando] = useState(false)
@@ -114,19 +114,29 @@ export function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudie
 
   return (
     <div>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,marginBottom:20}}>
-        <div style={{background:'#eff6ff',border:'1.5px solid #bfdbfe',borderRadius:12,padding:'14px 16px',textAlign:'center'}}>
-          <div style={{fontSize:28,fontWeight:900,color:'#2563eb',letterSpacing:'-1px',...f}}>{activos.length}</div>
-          <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1,marginTop:4,fontWeight:600,...f}}>Audiencias vigentes</div>
+      {/* En celular, las 3 tarjetas de resumen se apilan una debajo de otra (fila
+          horizontal: valor a la izquierda, etiqueta a la derecha) en vez de ir
+          las 3 apretadas lado a lado — la de Vencimiento en particular tiene 3
+          líneas de texto y quedaba muy chica para leer. */}
+      <div style={isMobile?{display:'flex',flexDirection:'column',gap:8,marginBottom:20}:{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,marginBottom:20}}>
+        <div style={isMobile
+          ?{background:'#eff6ff',border:'1.5px solid #bfdbfe',borderRadius:12,padding:'12px 16px',display:'flex',justifyContent:'space-between',alignItems:'center'}
+          :{background:'#eff6ff',border:'1.5px solid #bfdbfe',borderRadius:12,padding:'14px 16px',textAlign:'center'}}>
+          <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1,fontWeight:600,order:isMobile?0:1,marginTop:isMobile?0:4,...f}}>Audiencias vigentes</div>
+          <div style={{fontSize:28,fontWeight:900,color:'#2563eb',letterSpacing:'-1px',order:isMobile?1:0,...f}}>{activos.length}</div>
         </div>
-        <div style={{background:'#fffbeb',border:'1.5px solid #fde68a',borderRadius:12,padding:'14px 16px',textAlign:'center'}}>
-          <div style={{fontSize:28,fontWeight:900,color:'#d97706',letterSpacing:'-1px',...f}}>{diasTotal}</div>
-          <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1,marginTop:4,fontWeight:600,...f}}>Días corridos totales</div>
+        <div style={isMobile
+          ?{background:'#fffbeb',border:'1.5px solid #fde68a',borderRadius:12,padding:'12px 16px',display:'flex',justifyContent:'space-between',alignItems:'center'}
+          :{background:'#fffbeb',border:'1.5px solid #fde68a',borderRadius:12,padding:'14px 16px',textAlign:'center'}}>
+          <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1,fontWeight:600,order:isMobile?0:1,marginTop:isMobile?0:4,...f}}>Días corridos totales</div>
+          <div style={{fontSize:28,fontWeight:900,color:'#d97706',letterSpacing:'-1px',order:isMobile?1:0,...f}}>{diasTotal}</div>
         </div>
-        <div style={{background:subestado==='vencido'?'#fef2f2':subestado==='proximo'?'#fffbeb':'#f0fdf4',border:`1.5px solid ${subestado==='vencido'?'#fecaca':subestado==='proximo'?'#fde68a':'#a7f3d0'}`,borderRadius:12,padding:'14px 16px',textAlign:'center'}}>
-          <div style={{fontSize:13,fontWeight:800,color:subestado==='vencido'?'#dc2626':subestado==='proximo'?'#d97706':'#059669',...f}}>{vencFinal || '—'}</div>
+        <div style={isMobile
+          ?{background:subestado==='vencido'?'#fef2f2':subestado==='proximo'?'#fffbeb':'#f0fdf4',border:`1.5px solid ${subestado==='vencido'?'#fecaca':subestado==='proximo'?'#fde68a':'#a7f3d0'}`,borderRadius:12,padding:'12px 16px'}
+          :{background:subestado==='vencido'?'#fef2f2':subestado==='proximo'?'#fffbeb':'#f0fdf4',border:`1.5px solid ${subestado==='vencido'?'#fecaca':subestado==='proximo'?'#fde68a':'#a7f3d0'}`,borderRadius:12,padding:'14px 16px',textAlign:'center'}}>
+          <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1,fontWeight:600,...f}}>Vencimiento</div>
+          <div style={{fontSize:isMobile?16:13,fontWeight:800,marginTop:isMobile?4:0,color:subestado==='vencido'?'#dc2626':subestado==='proximo'?'#d97706':'#059669',...f}}>{vencFinal || '—'}</div>
           {diff !== null && <div style={{fontSize:11,fontWeight:600,marginTop:4,color:subestado==='vencido'?'#dc2626':subestado==='proximo'?'#d97706':'#64748b',...f}}>{subestado==='vencido' ? `Venció hace ${Math.abs(diff)} días` : subestado==='proximo' ? `⚠️ Vence en ${diff} días` : `Faltan ${diff} días`}</div>}
-          <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1,marginTop:2,fontWeight:600,...f}}>Vencimiento</div>
         </div>
       </div>
       <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:10,fontWeight:600,...f}}>Historial de audiencias de plazo</div>
@@ -197,7 +207,34 @@ export function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudie
           </div>
         )
 
-        return (
+        // En celular la fila se apila vertical (número/tipo, fecha, plazo, botones)
+        // en vez de ir todo horizontal, porque no cabía y se salía del cuadro.
+        return isMobile ? (
+          <div key={a.id} style={{padding:'14px 16px',background:'#F8F9FC',border:'1px solid #e2e8f0',borderRadius:10,marginBottom:8}}>
+            <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>
+              <div style={{width:26,height:26,background:'#1E293B',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:11,fontWeight:700,flexShrink:0}}>{posEnActivos+1}</div>
+              <div style={{fontSize:13,fontWeight:600,color:'#1E293B',...f}}>{a.tipo_audiencia||'Audiencia'}</div>
+            </div>
+            <div style={{fontSize:12,color:'#94a3b8',marginBottom:2,...f}}>📅 {a.fecha_audiencia}{a.fecha_proxima_audiencia?` → próxima: ${a.fecha_proxima_audiencia}`:''}</div>
+            {a.observacion&&<div style={{fontSize:12,color:'#64748b',marginBottom:2,...f}}>{a.observacion}</div>}
+            <div style={{display:'flex',gap:14,alignItems:'center',marginTop:8,padding:'8px 10px',background:'#fff',borderRadius:8}}>
+              <div style={{fontSize:15,fontWeight:800,color:'#2563eb',...f}}>+{a.dias_plazo}d</div>
+              <div>
+                <div style={{fontSize:11,color:'#94a3b8',...f}}>Vence: {vencAcum||'—'}</div>
+                <div style={{fontSize:10,color:'#94a3b8',...f}}>Acum. {diasAcum}d</div>
+              </div>
+            </div>
+            {a.historial && (
+              <div style={{marginTop:6,paddingTop:6,borderTop:'1px solid #e2e8f0'}}>
+                {a.historial.split('\n').map((h,idx)=><div key={idx} style={{fontSize:10,color:'#94a3b8',...f}}>📝 {h}</div>)}
+              </div>
+            )}
+            <div style={{display:'flex',gap:8,marginTop:10}}>
+              <button onClick={()=>empezarEdicion(a)} style={{flex:1,background:'#faf5ff',border:'1px solid #ddd6fe',borderRadius:6,padding:'6px 8px',fontSize:11,color:'#5b21b6',cursor:'pointer',fontWeight:600,...f}}>✏ Corregir</button>
+              <button onClick={()=>{setEliminandoId(a.id);setMotivoEliminar('')}} style={{flex:1,background:'#fef2f2',border:'1px solid #fecaca',borderRadius:6,padding:'6px 8px',fontSize:11,color:'#dc2626',cursor:'pointer',fontWeight:600,...f}}>✕ Eliminar</button>
+            </div>
+          </div>
+        ) : (
           <div key={a.id} style={{display:'flex',gap:12,alignItems:'center',padding:'14px 16px',background:'#F8F9FC',border:'1px solid #e2e8f0',borderRadius:10,marginBottom:8}}>
             <div style={{width:30,height:30,background:'#1E293B',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:12,fontWeight:700,flexShrink:0}}>{posEnActivos+1}</div>
             <div style={{flex:1}}>

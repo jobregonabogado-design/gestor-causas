@@ -51,11 +51,21 @@ const CSS = `
   .causa-row { border-bottom:1px solid #f1f5f9; }
   .causa-row:last-child { border-bottom:none; }
   .causa-row-mobile { display:none; }
+  /* Secciones plegables (con <details>/<summary>) — usadas para achicar la
+     ficha de una causa en celular sin perder ningún dato ni función, solo
+     colapsando lo que no estás mirando en ese momento. */
+  .seccion-plegable summary { cursor:pointer; list-style:none; }
+  .seccion-plegable summary::-webkit-details-marker { display:none; }
+  .seccion-plegable .seccion-chevron { transition:transform 0.2s ease; display:inline-block; }
+  .seccion-plegable[open] .seccion-chevron { transform:rotate(180deg); }
   @media (max-width: 640px) {
     .stats-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 8px !important; }
     .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .hide-mobile { display: none !important; }
-    .grid2-mobile { grid-template-columns: 1fr !important; }
+    .grid2-mobile { grid-template-columns: minmax(0,1fr) !important; }
+    /* Red de seguridad: en celular, ningún bloque puede forzar la página a ser
+       más ancha que la pantalla — el texto largo se corta en vez de empujar. */
+    .seccion-plegable, .seccion-plegable > summary { max-width: 100%; }
     .causa-col-desktop { display: none !important; }
     .causa-row-mobile { display: block !important; }
   }
@@ -90,6 +100,16 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
   const [saving,setSaving]=useState(false)
   const [showNuevaCausa,setShowNuevaCausa]=useState(false)
   const [showFiltros,setShowFiltros]=useState(false)
+  // ✅ Mismo criterio que Calendario.jsx para detectar celular — se usa para
+  // achicar los gráficos de Estadísticas (ancho de etiquetas y alto) en vez
+  // de ocultarlos, así no se pierde funcionalidad (clic para filtrar sigue
+  // funcionando igual, solo se ve más compacto).
+  const [isMobile,setIsMobile]=useState(typeof window!=='undefined' && window.innerWidth<640)
+  useEffect(()=>{
+    const onResize=()=>setIsMobile(window.innerWidth<640)
+    window.addEventListener('resize',onResize)
+    return ()=>window.removeEventListener('resize',onResize)
+  },[])
   const [grupoAbierto,setGrupoAbierto]=useState('') // '' | 'vigente' | 'terminada' — controla qué chips de subestado se muestran
   const [nuevaCausa,setNuevaCausa]=useState({ruc:'',rit:'',tribunal:'',delito:'',imputados:[{nombre:'',rut:'',fecha_nac:'',domicilio:'',nacionalidad:'',delito:'',centro_penal:'',cautelar:'',cautelar_fecha_inicio:''}],fiscal:'',plazo:'',fecha_inicio:'',dias_plazo:'',fecha_hechos:'',estado:'vigente',subestado:''})
   const [rutBuscando,setRutBuscando]=useState({})
@@ -495,13 +515,14 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
   const chartDelitos=useMemo(()=>{
     const map={}
     filtered.forEach(c=>{(c.delito||'').split('|').map(d=>d.trim()).filter(Boolean).forEach(d=>{ if(!map[d]) map[d]=0; map[d]++ })})
-    return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,12).map(([nombreCompleto,value])=>({name:nombreCompleto.substring(0,28),nombreCompleto,value}))
-  },[filtered])
+    // En celular se resume a los 6 más frecuentes para que las barras no queden apretadas
+    return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,isMobile?6:12).map(([nombreCompleto,value])=>({name:nombreCompleto.substring(0,isMobile?16:28),nombreCompleto,value}))
+  },[filtered,isMobile])
   const chartTribunales=useMemo(()=>{
     const map={}
     filtered.forEach(c=>{if(c.tribunal){map[c.tribunal]=(map[c.tribunal]||0)+1}})
-    return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,15).map(([name,value])=>({name,value}))
-  },[filtered])
+    return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,isMobile?6:15).map(([name,value])=>({name,value}))
+  },[filtered,isMobile])
   // 📊 Resultados en causas terminadas — para tu % de rendimiento (condena preso/libre,
   // absoluciones, salidas alternativas). Respeta los mismos filtros de arriba.
   const chartResultados=useMemo(()=>{
@@ -573,14 +594,31 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
               </div>
             </div>
           </div>
-          <div style={{background:'#fff',display:'flex',overflowX:'auto',padding:'0 20px'}}>
-            {[['datos','Datos'],['imputado','Imputado'],['plazo','Plazo'],['audiencias','Audiencias'],['top','Juicio Oral'],['teoria','⚖️ Teoría del Caso'],...(esTitular?[['honorarios','💰 Honorarios']]:[])].map(([k,l])=>(
-              <button key={k} className="tab-btn" onClick={()=>setActiveTab(k)} style={{padding:'13px 16px',fontSize:13,fontWeight:activeTab===k?600:400,color:activeTab===k?'#1E293B':'#94a3b8',borderBottom:`2px solid ${activeTab===k?'#1E293B':'transparent'}`,whiteSpace:'nowrap',marginBottom:0}}>{l}</button>
-            ))}
-          </div>
-          <div style={{background:'#fff',padding:28,borderRadius:'0 0 20px 20px'}}>
+          {(() => {
+            const tabsList = [['datos','Datos'],['imputado','Imputado'],['plazo','Plazo'],['audiencias','Audiencias'],['top','Juicio Oral'],['teoria','⚖️ Teoría del Caso'],...(esTitular?[['honorarios','💰 Honorarios']]:[])]
+            if (isMobile) {
+              // En celular, la franja de pestañas pasa a ser un menú desplegable real
+              // (no solo letra más chica) — eliges una y se abre esa parte específica.
+              return (
+                <div style={{background:'#fff',padding:'10px 16px'}}>
+                  <select value={activeTab} onChange={e=>setActiveTab(e.target.value)}
+                    style={{width:'100%',padding:'10px 12px',border:'1.5px solid #e2e8f0',borderRadius:10,fontSize:13,fontWeight:600,color:'#1E293B',background:'#F8F9FC',...f}}>
+                    {tabsList.map(([k,l])=>(<option key={k} value={k}>{l}</option>))}
+                  </select>
+                </div>
+              )
+            }
+            return (
+              <div style={{background:'#fff',display:'flex',overflowX:'auto',padding:'0 20px'}}>
+                {tabsList.map(([k,l])=>(
+                  <button key={k} className="tab-btn" onClick={()=>setActiveTab(k)} style={{padding:'13px 16px',fontSize:13,fontWeight:activeTab===k?600:400,color:activeTab===k?'#1E293B':'#94a3b8',borderBottom:`2px solid ${activeTab===k?'#1E293B':'transparent'}`,whiteSpace:'nowrap',marginBottom:0}}>{l}</button>
+                ))}
+              </div>
+            )
+          })()}
+          <div style={{background:'#fff',padding:isMobile?16:28,borderRadius:'0 0 20px 20px'}}>
             {activeTab==='datos'&&(
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+              <div className="grid2-mobile" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
                 {/* 1. Imputado(s) — con el botón de agregar en la esquina derecha, junto al label */}
                 <div style={{gridColumn:'1/-1',marginBottom:2}}>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6,gap:10}}>
@@ -649,10 +687,10 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                 {/* 2. Corte de Apelaciones — se calcula sola según el tribunal. Va justo
                     debajo de Imputado y antes de Tribunal, como pidió Joaquín. */}
                 <div style={{gridColumn:'1/-1',marginBottom:2}}>
-                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6,gap:10}}>
-                    <div style={{display:'flex',alignItems:'center',gap:8,padding:'8px 14px',border:'none',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',borderRadius:20,fontSize:12,color: getCorteApelaciones(c.tribunal) ? '#1E293B' : '#94a3b8',background:'#fff',fontWeight:600,...f}}>
-                      <span>⚖</span>
-                      <span>{getCorteApelaciones(c.tribunal) || 'Selecciona un tribunal'}</span>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6,gap:10,flexWrap:'wrap'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:8,padding:'8px 14px',border:'none',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',borderRadius:20,fontSize:12,color: getCorteApelaciones(c.tribunal) ? '#1E293B' : '#94a3b8',background:'#fff',fontWeight:600,minWidth:0,maxWidth:'100%',...f}}>
+                      <span style={{flexShrink:0}}>⚖</span>
+                      <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',minWidth:0}}>{getCorteApelaciones(c.tribunal) || 'Selecciona un tribunal'}</span>
                     </div>
                     <button onClick={async()=>{
                       const{data,error}=await supabase.from('apelaciones_corte').insert({causa_id:c.id}).select().single()
@@ -673,7 +711,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                               setApelaciones(prev=>prev.filter(x=>x.id!==apel.id))
                             }} style={{background:'transparent',border:'none',cursor:'pointer',fontSize:12,color:'#dc2626',...f}}>✕ Eliminar</button>
                           </div>
-                          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+                          <div className="grid2-mobile" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
                             <Field label="Rol Corte" value={apel.rol_corte} editable fieldKey={`rol_corte_${apel.id}`} editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={async()=>{await supabase.from('apelaciones_corte').update({rol_corte:editValue}).eq('id',apel.id);setApelaciones(prev=>prev.map(x=>x.id===apel.id?{...x,rol_corte:editValue}:x));setEditField(null)}}/>
                             <Field label="Sala" value={apel.sala_corte} editable fieldKey={`sala_corte_${apel.id}`} editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={async()=>{await supabase.from('apelaciones_corte').update({sala_corte:editValue}).eq('id',apel.id);setApelaciones(prev=>prev.map(x=>x.id===apel.id?{...x,sala_corte:editValue}:x));setEditField(null)}}/>
                             <div style={{gridColumn:'1/-1'}}>
@@ -703,12 +741,15 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                 {/* ── Datos de la causa: Tribunal, RIT, Fiscal y las fechas — agrupados en un
                      solo panel (en vez de casillas sueltas), para que se lea de un vistazo y
                      quede fijo arriba, sin importar cuánto crezcan las tarjetas de imputado. ── */}
-                <div style={{gridColumn:'1/-1',border:'1px solid #e2e8f0',borderRadius:16,padding:'18px 20px',background:'#F8F9FC'}}>
-                  <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.3,fontWeight:700,marginBottom:14,...f}}>Datos de la causa</div>
+                <details className="seccion-plegable" open={!isMobile} style={{gridColumn:'1/-1',border:'1px solid #e2e8f0',borderRadius:16,padding:'18px 20px',background:'#F8F9FC'}}>
+                  <summary style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.3,fontWeight:700,marginBottom:14,display:'flex',justifyContent:'space-between',alignItems:'center',...f}}>
+                    Datos de la causa
+                    <span className="seccion-chevron" style={{fontSize:12}}>▾</span>
+                  </summary>
 
                   <Field label="Tribunal" value={c.tribunal} editable full fieldKey="tribunal" editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField('tribunal',editValue)}/>
 
-                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginTop:2}}>
+                  <div className="grid2-mobile" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginTop:2}}>
                     {[{key:'rit',label:'RIT JG',editable:true},{key:'fiscal',label:'Fiscal a cargo',editable:true}].map(field=>(
                       <Field key={field.key} label={field.label} value={c[field.key]} editable={field.editable} full={field.full} fieldKey={field.key} editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField(field.key,editValue)}/>
                     ))}
@@ -764,14 +805,19 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                       )}
                     </div>
                   </div>
-                </div>
+                </details>
 
                 {/* ── Todo lo que puede variar por imputado: Centro Penal, Cautelar Personal,
                      Delito(s), Delegación de Poder y Correo de notificación. Con 1 imputado se
                      ve igual que siempre (campos sueltos); con 2+, cada uno tiene su propia
                      tarjeta colapsable con toda su información agrupada, numerada. ── */}
                 {imputados.length <= 1 ? (
-                  <>
+                  <details className="seccion-plegable" open={!isMobile} style={{gridColumn:'1/-1',border:'1px solid #e2e8f0',borderRadius:16,padding:'18px 20px',background:'#F8F9FC',marginTop:2}}>
+                    <summary style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.3,fontWeight:700,marginBottom:14,display:'flex',justifyContent:'space-between',alignItems:'center',...f}}>
+                      Custodia, Cautelares, Delitos y Notificación
+                      <span className="seccion-chevron" style={{fontSize:12}}>▾</span>
+                    </summary>
+                    <div className="grid2-mobile" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
                     {imputados.length === 0 ? (
                       <Field label="Centro Penal" value={c.centro_penal} editable fieldKey="centro_penal" editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField('centro_penal',editValue)}/>
                     ) : (
@@ -779,6 +825,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                     )}
 
                     <CautelaresPanel
+                      isMobile={isMobile}
                       causaId={c.id}
                       ruc={c.ruc}
                       cautelares={cautelares}
@@ -824,7 +871,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
 
                     <div style={{gridColumn:'1/-1',marginTop:8}}>
                       <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:8,fontWeight:600,...f}}>Delegación de Poder</div>
-                      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+                      <div className="grid2-mobile" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
                         <Field label="Abogado delegado" value={imputados.length===0?c.delegacion_abogado:imputados[0].delegacion_abogado} editable fieldKey="delegacion_abogado" editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>{imputados.length===0?updateField('delegacion_abogado',editValue):actualizarCampoImputado(imputados[0].id,'delegacion_abogado',editValue);setEditField(null)}}/>
                         <div>
                           <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Fecha de delegación</div>
@@ -858,12 +905,14 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                         <option value="NOTIFICACION.DEFENSAPENAL@GMAIL.COM">NOTIFICACION.DEFENSAPENAL@GMAIL.COM</option>
                       </select>
                     </div>
-                  </>
+                    </div>
+                  </details>
                 ) : (
                   <div style={{gridColumn:'1/-1',display:'flex',flexDirection:'column',gap:12}}>
                     {imputados.map((imp,idx)=>(
                       <ImputadoDatosCard
                         key={imp.id}
+                        isMobile={isMobile}
                         imp={imp}
                         numero={idx+1}
                         causaId={c.id}
@@ -895,7 +944,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
             {activeTab==='imputado'&&(
               <div>
                 {imputados.map((imp,idx)=>(
-                  <ImputadoCard key={imp.id} imp={imp} idx={idx} cautelares={cautelares.filter(ct=>ct.imputado_id===imp.id)} esTitular={esTitular} onGuardarCondena={(campos,motivo)=>actualizarCondenaImputado(imp.id,campos,motivo)} onVaciarCondena={()=>vaciarCondenaImputado(imp.id)} onUpdate={async(field,value)=>{
+                  <ImputadoCard key={imp.id} imp={imp} idx={idx} totalImputados={imputados.length} cautelares={cautelares.filter(ct=>ct.imputado_id===imp.id)} esTitular={esTitular} isMobile={isMobile} onGuardarCondena={(campos,motivo)=>actualizarCondenaImputado(imp.id,campos,motivo)} onVaciarCondena={()=>vaciarCondenaImputado(imp.id)} onUpdate={async(field,value)=>{
                     // Los delitos van sincronizados con el agregado de la causa
                     if (field === 'delitos') { await actualizarDelitosImputado(imp.id, value); return }
                     // Centro Penal ("Recinto penitenciario" en esta pestaña) usa la misma
@@ -951,7 +1000,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
               </div>
             )}
             {activeTab==='plazo'&&(
-              <PlazoCalculador causaId={c.id} plazoActual={c.plazo} aumentos={aumentos}
+              <PlazoCalculador causaId={c.id} plazoActual={c.plazo} aumentos={aumentos} isMobile={isMobile}
                 onGuardarAudiencia={async(form)=>{
                 const diasNum = parseInt(form.dias_plazo) || 0
                 const{data,error}=await supabase.from('aumentos_plazo').insert({causa_id:c.id,fecha_audiencia:form.fecha_audiencia,tipo_audiencia:form.tipo_audiencia,dias_plazo:diasNum,dias_aumento:diasNum,observacion:form.observacion||'',fecha_proxima_audiencia:form.fecha_proxima_audiencia||null}).select().single()
@@ -1023,7 +1072,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                 {audiencias.length===0&&<p style={{color:'#94a3b8',fontSize:13,marginBottom:14,...f}}>Sin audiencias registradas.</p>}
                 {showAudForm&&(
                   <div style={{background:'#F8F9FC',border:'1.5px solid #e2e8f0',borderRadius:12,padding:16,marginBottom:14}}>
-                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:12}}>
+                    <div className="grid2-mobile" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:12}}>
                       {[{key:'fecha',label:'Fecha',type:'date'},{key:'hora',label:'Hora',type:'time'},{key:'tipo',label:'Tipo',ph:'Formalización, APJO, JO...'},{key:'tribunal',label:'Tribunal',ph:'Ej: 4 JG STGO'},{key:'sala',label:'Sala',ph:'Ej: 903'},{key:'resultado',label:'Resultado',ph:'Resultado'},{key:'notas',label:'Observaciones',ph:'Notas'}].map(field=>(
                         <div key={field.key}><div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>{field.label}</div><input type={field.type||'text'} style={inp} placeholder={field.ph} value={nuevaAud[field.key]} onChange={e=>setNuevaAud(p=>({...p,[field.key]:e.target.value}))}/></div>
                       ))}
@@ -1045,7 +1094,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                   <button onClick={()=>updateField('tiene_top',!c.tiene_top)} style={{background:c.tiene_top?'#faf5ff':'#fff',color:c.tiene_top?'#7c3aed':'#64748b',border:`1.5px solid ${c.tiene_top?'#ddd6fe':'#e2e8f0'}`,borderRadius:8,padding:'7px 18px',fontSize:12,cursor:'pointer',fontWeight:600,...f}}>{c.tiene_top?'Desactivar':'Activar JO'}</button>
                 </div>
                 {c.tiene_top&&(
-                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+                  <div className="grid2-mobile" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
                     {[{key:'tribunal_top',label:'Tribunal TOP'},{key:'rit_top',label:'RIT Juicio Oral'}].map(field=>(
                       <Field key={field.key} label={field.label} value={c[field.key]} editable fieldKey={field.key} editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField(field.key,editValue)}/>
                     ))}
@@ -1058,10 +1107,11 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                 causaId={c.id} ruc={c.ruc} session={session} registrarActividad={registrarActividad}
                 carpetaRef={c.carpeta_ref} onUpdateCarpetaRef={(v)=>updateField('carpeta_ref',v)}
                 onAccion={() => marcarAccion(c.id)} // ✅ actualiza semáforo
+                isMobile={isMobile}
               />
             )}
             {esTitular && activeTab==='honorarios'&&(
-              <HonorariosTab causaId={c.id} ruc={c.ruc} email={session?.user?.email||''} registrarActividad={registrarActividad} onAccion={()=>marcarAccion(c.id)}/>
+              <HonorariosTab causaId={c.id} ruc={c.ruc} email={session?.user?.email||''} registrarActividad={registrarActividad} onAccion={()=>marcarAccion(c.id)} esTitular={esTitular} isMobile={isMobile}/>
             )}
           </div>
           </div>
@@ -1150,16 +1200,16 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
               </div>
             </div>
             <div style={{fontSize:11,color:'#93c5fd',marginBottom:20,...f}}>💡 Haz clic en un delito o tribunal del gráfico para filtrar la lista por ese valor.</div>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:32}}>
-              <div className="hide-mobile">
+            <div className="grid2-mobile" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:32}}>
+              <div>
                 <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:16,fontWeight:700,...f}}>Top Delitos</div>
                 {chartDelitos.length===0 ? (
                   <div style={{textAlign:'center',padding:'60px 0',color:'#94a3b8',fontSize:13,...f}}>Sin datos para estos filtros.</div>
                 ) : (
-                <ResponsiveContainer width="100%" height={320}>
-                  <BarChart data={chartDelitos} layout="vertical" margin={{left:8,right:24,top:4,bottom:4}}>
-                    <XAxis type="number" tick={{fontSize:10,fill:'#94a3b8'}} axisLine={false} tickLine={false}/>
-                    <YAxis type="category" dataKey="name" tick={{fontSize:9,fill:'#64748b'}} width={140} axisLine={false} tickLine={false}/>
+                <ResponsiveContainer width="100%" height={isMobile?240:320}>
+                  <BarChart data={chartDelitos} layout="vertical" margin={{left:isMobile?0:8,right:isMobile?12:24,top:4,bottom:4}}>
+                    <XAxis type="number" tick={{fontSize:9,fill:'#94a3b8'}} axisLine={false} tickLine={false}/>
+                    <YAxis type="category" dataKey="name" tick={{fontSize:9,fill:'#64748b'}} width={isMobile?76:140} axisLine={false} tickLine={false}/>
                     <Tooltip contentStyle={{background:'#fff',border:'none',boxShadow:'0 4px 16px rgba(15,23,42,0.10)',borderRadius:10,fontSize:12}} formatter={(v,n,entry)=>[v+' causas',entry.payload.nombreCompleto]}/>
                     <Bar dataKey="value" radius={[0,6,6,0]} cursor="pointer" onClick={(data)=>setFilterDelito(prev=>prev===data.nombreCompleto?'':data.nombreCompleto)}>
                       {chartDelitos.map((d,i)=><Cell key={i} fill={COLORS[i%COLORS.length]} stroke={filterDelito===d.nombreCompleto?'#1E293B':'none'} strokeWidth={filterDelito===d.nombreCompleto?2:0}/>)}
@@ -1173,10 +1223,10 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                 {chartTribunales.length===0 ? (
                   <div style={{textAlign:'center',padding:'60px 0',color:'#94a3b8',fontSize:13,...f}}>Sin datos para estos filtros.</div>
                 ) : (
-                <ResponsiveContainer width="100%" height={320}>
-                  <BarChart data={chartTribunales} layout="vertical" margin={{left:8,right:24,top:4,bottom:4}}>
-                    <XAxis type="number" tick={{fontSize:10,fill:'#94a3b8'}} axisLine={false} tickLine={false}/>
-                    <YAxis type="category" dataKey="name" tick={{fontSize:9,fill:'#64748b'}} width={110} axisLine={false} tickLine={false}/>
+                <ResponsiveContainer width="100%" height={isMobile?240:320}>
+                  <BarChart data={chartTribunales} layout="vertical" margin={{left:isMobile?0:8,right:isMobile?12:24,top:4,bottom:4}}>
+                    <XAxis type="number" tick={{fontSize:9,fill:'#94a3b8'}} axisLine={false} tickLine={false}/>
+                    <YAxis type="category" dataKey="name" tick={{fontSize:9,fill:'#64748b'}} width={isMobile?68:110} axisLine={false} tickLine={false}/>
                     <Tooltip contentStyle={{background:'#fff',border:'none',boxShadow:'0 4px 16px rgba(15,23,42,0.10)',borderRadius:10,fontSize:12}}/>
                     <Bar dataKey="value" radius={[0,6,6,0]} cursor="pointer" onClick={(data)=>setFilterTribunal(prev=>prev===data.name?'':data.name)}>
                       {chartTribunales.map((d,i)=><Cell key={i} fill={COLORS[i%COLORS.length]} stroke={filterTribunal===d.name?'#1E293B':'none'} strokeWidth={filterTribunal===d.name?2:0}/>)}
@@ -1336,7 +1386,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                   autorelleno independiente), nombre, fecha de nacimiento
                   (con edad en vivo), nacionalidad y domicilio. */}
               {nuevaCausa.imputados.map((imp, idx) => (
-                <div key={idx} style={{gridColumn:'1/-1', display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, ...(idx>0 ? {borderTop:'1px dashed #e2e8f0', paddingTop:16, marginTop:2} : {})}}>
+                <div key={idx} className="grid2-mobile" style={{gridColumn:'1/-1', display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, ...(idx>0 ? {borderTop:'1px dashed #e2e8f0', paddingTop:16, marginTop:2} : {})}}>
                   {nuevaCausa.imputados.length > 1 && (
                     <div style={{gridColumn:'1/-1', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
                       <div style={{fontSize:12, fontWeight:700, color:'#1E293B', ...f}}>Imputado {idx+1}</div>
@@ -1447,7 +1497,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
               </div>
               <div style={{gridColumn:'1/-1',background:'#f0fdf4',border:'1.5px solid #a7f3d0',borderRadius:12,padding:16}}>
                 <div style={{fontSize:11,fontWeight:700,color:'#059669',marginBottom:14,...f}}>⏱ Cálculo de plazo ACD</div>
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+                <div className="grid2-mobile" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
                   <div><div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Fecha inicio</div><input type="date" style={inp} value={nuevaCausa.fecha_inicio} onChange={e=>setNuevaCausa(p=>({...p,fecha_inicio:e.target.value}))}/></div>
                   <div><div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Días plazo</div><input type="number" style={inp} placeholder="Ej: 210" value={nuevaCausa.dias_plazo} onChange={e=>setNuevaCausa(p=>({...p,dias_plazo:e.target.value}))}/></div>
                 </div>
