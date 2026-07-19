@@ -143,6 +143,13 @@ export const TRIBUNALES_CHILE = [
   'UNIDAD ESPECIALIZADA RPA',
 ]
 
+// Nombre exacto del tribunal al que se sincroniza automáticamente una causa
+// cuando al menos un imputado queda con régimen RPA (menor de edad al momento
+// de los hechos). Si la causa tiene imputados mayores y menores a la vez, el
+// menor "arrastra" al mayor solo en cuanto al nombre del tribunal — la ley
+// aplicable sigue siendo la de cada imputado por separado.
+export const TRIBUNAL_RPA = 'UNIDAD ESPECIALIZADA RPA'
+
 export const CORTE_APELACIONES = {
   "1 JG STGO": "CORTE DE APELACIONES DE SANTIAGO",
   "2 JG STGO": "CORTE DE APELACIONES DE SANTIAGO",

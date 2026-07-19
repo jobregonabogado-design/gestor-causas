@@ -16,7 +16,7 @@ import { FallosReferencia, DocumentosGuardados } from './dashboard/documentos'
 import { HonorariosTab } from './dashboard/honorarios'
 import { TeoriaDelCaso } from './dashboard/teoria'
 import { PlazoCalculador } from './dashboard/plazo'
-import { calcularRegimenAlMomento, calcularVencimiento, parseFechaCL, diasRestantes, calcularSubestado, calcularEdadActual } from './dashboard/utils'
+import { calcularRegimenAlMomento, calcularVencimiento, parseFechaCL, diasRestantes, calcularSubestado, calcularEdadActual, TRIBUNAL_RPA } from './dashboard/utils'
 import { ImputadoDatosCard } from './dashboard/imputado-datos'
 import { CautelaresPanel, TIPOS_ABONO_DIRECTO, TIPOS_DETENCION_PENAL, CAUTELAR_NOCTURNO, CAUTELAR_SENAME, TIPOS_CAUTELARES_TODAS, diasEntreFechasCaut } from './dashboard/cautelares'
 
@@ -257,10 +257,35 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
   // ✅ Genérica — usada por Delegación de Poder y Correo de notificación cuando
   // hay varios imputados y cada uno puede tener datos distintos.
   const actualizarCampoImputado = async (impId, field, valor) => {
-    await supabase.from('imputados').update({ [field]: valor }).eq('id', impId)
-    setImputados(prev => prev.map(x => x.id === impId ? { ...x, [field]: valor } : x))
+    const updateData = { [field]: valor }
+    // Calcular régimen automático al guardar fecha_nacimiento — mismo criterio
+    // que en la pestaña Imputado, para que quede sincronizado en los 2 caminos.
+    if (field === 'fecha_nacimiento' && valor) {
+      const fechaHechos = selectedCausa?.fecha_hechos
+      if (fechaHechos) {
+        const regAuto = calcularRegimenAlMomento(valor, fechaHechos)
+        if (regAuto) updateData.regimen = regAuto
+      }
+    }
+    await supabase.from('imputados').update(updateData).eq('id', impId)
+    setImputados(prev => prev.map(x => x.id === impId ? { ...x, ...updateData } : x))
+    if (updateData.regimen === 'RPA') await sincronizarTribunalRPA(selectedCausa.id, selectedCausa.tribunal, selectedCausa.ruc)
     const imp = imputados.find(x => x.id === impId)
     if (registrarActividad) registrarActividad('accion', `Actualizó datos de ${imp?.nombre || 'imputado'} en RUC ${selectedCausa.ruc}`)
+  }
+
+  // ✅ Si un imputado queda con régimen RPA (menor de edad al momento de los
+  // hechos), el tribunal de la causa se sincroniza automáticamente a "UNIDAD
+  // ESPECIALIZADA RPA" — aunque haya coimputados mayores de edad en la misma
+  // causa (el menor "arrastra" al mayor solo en el nombre del tribunal, no en
+  // la ley aplicable a cada uno). No revierte el tribunal si luego el régimen
+  // cambia — esa corrección queda a criterio manual del titular.
+  const sincronizarTribunalRPA = async (causaId, tribunalActual, rucRef) => {
+    if (tribunalActual === TRIBUNAL_RPA) return
+    await supabase.from('causas').update({ tribunal: TRIBUNAL_RPA, updated_at: new Date() }).eq('id', causaId)
+    setCausas(prev => prev.map(x => x.id === causaId ? { ...x, tribunal: TRIBUNAL_RPA } : x))
+    setSelectedCausa(prev => prev && prev.id === causaId ? { ...prev, tribunal: TRIBUNAL_RPA } : prev)
+    if (registrarActividad) registrarActividad('accion', `Tribunal sincronizado automáticamente a "${TRIBUNAL_RPA}" por tener un imputado RPA en RUC ${rucRef || ''}`)
   }
 
   const updateField=async(field,value)=>{
@@ -277,10 +302,13 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
       const u={...selectedCausa,[field]:value,updated_at:new Date().toISOString()}
       setSelectedCausa(u);setCausas(prev=>prev.map(c=>c.id===u.id?u:c))
       if (registrarActividad) registrarActividad('accion', `Editó campo "${field}" en RUC ${selectedCausa.ruc}`)
-      // Al guardar fecha_hechos → recalcular régimen de cada imputado
+      // Al guardar fecha_hechos → recalcular régimen de cada imputado. Siempre
+      // recalcula (no es "sticky") porque puede que el imputado ya tuviera el
+      // valor por defecto 'ADULTO' asignado al crear la causa sin fecha_hechos
+      // todavía — si no se recalcula acá, se queda mal para siempre.
       if (field === 'fecha_hechos') {
         const nuevosImputados = await Promise.all(imputados.map(async imp => {
-          if (!imp.fecha_nacimiento || imp.regimen) return imp // No sobreescribir si ya tiene régimen
+          if (!imp.fecha_nacimiento) return imp
           const regAuto = calcularRegimenAlMomento(imp.fecha_nacimiento, value)
           if (regAuto) {
             await supabase.from('imputados').update({ regimen: regAuto }).eq('id', imp.id)
@@ -289,6 +317,9 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
           return imp
         }))
         setImputados(nuevosImputados)
+        if (nuevosImputados.some(imp => imp.regimen === 'RPA')) {
+          await sincronizarTribunalRPA(selectedCausa.id, u.tribunal, selectedCausa.ruc)
+        }
       }
     }
     setEditField(null);setSaving(false)
@@ -371,7 +402,14 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
       })
     })
     const delitoAgregado = delitosAcumulados.join('|')
-    const causaData = { ruc:up(nuevaCausa.ruc), rit:up(nuevaCausa.rit), tribunal:up(nuevaCausa.tribunal), delito:up(delitoAgregado), imputado:up(nombresImputados), fiscal:up(nuevaCausa.fiscal), cautelar:'', centro_penal:'', plazo:up(plazoFinal), estado:nuevaCausa.estado, subestado:subestadoAuto, fecha_hechos: nuevaCausa.fecha_hechos || null }
+    // ✅ Si algún imputado queda RPA (menor de edad al momento de los hechos), el
+    // tribunal se fija directo en "Unidad Especializada RPA" — mismo criterio que
+    // sincronizarTribunalRPA para causas ya creadas (el menor arrastra al mayor
+    // solo en el nombre del tribunal, no en la ley aplicable a cada uno).
+    const hayImputadoRPA = nuevaCausa.imputados.some(imp =>
+      imp.fecha_nac && nuevaCausa.fecha_hechos && calcularRegimenAlMomento(imp.fecha_nac, nuevaCausa.fecha_hechos) === 'RPA'
+    )
+    const causaData = { ruc:up(nuevaCausa.ruc), rit:up(nuevaCausa.rit), tribunal: hayImputadoRPA ? TRIBUNAL_RPA : up(nuevaCausa.tribunal), delito:up(delitoAgregado), imputado:up(nombresImputados), fiscal:up(nuevaCausa.fiscal), cautelar:'', centro_penal:'', plazo:up(plazoFinal), estado:nuevaCausa.estado, subestado:subestadoAuto, fecha_hechos: nuevaCausa.fecha_hechos || null }
     const { data, error } = await supabase.from('causas').insert(causaData).select().single()
     if (!error) {
       // Crear un imputado por cada entrada del arreglo que tenga al menos nombre o
@@ -878,6 +916,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                     }
                     await supabase.from('imputados').update(updateData).eq('id',imp.id)
                     setImputados(prev=>prev.map(x=>x.id===imp.id?{...x,...updateData}:x))
+                    if (updateData.regimen === 'RPA') await sincronizarTribunalRPA(c.id, c.tribunal, c.ruc)
                     // Sincronizar datos personales en TODAS las causas con el mismo RUT
                     const camposPersonales = ['nombre','nacionalidad','domicilio','fecha_nacimiento','otros_antecedentes']
                     if (camposPersonales.includes(field) && imp.rut) {
