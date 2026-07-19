@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../lib/supabase'
 import {
   estadoConfig, SUBESTADOS_VIGENTE, SUBESTADOS_TERMINADA, getBadgeConfig,
@@ -1162,9 +1163,18 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
         )}
       </div>
 
+      {/* ✅ Ejemplo de animación con Framer Motion (ya estaba en package.json, no
+          se agregó nada nuevo) — el fondo se desvanece y la tarjeta entra con un
+          leve deslizamiento hacia arriba, en vez de aparecer de golpe. */}
+      <AnimatePresence>
       {showNuevaCausa&&(
-        <div style={{position:'fixed',top:0,left:0,width:'100%',height:'100%',background:'rgba(15,23,42,0.5)',display:'flex',alignItems:'flex-start',justifyContent:'center',paddingTop:'5vh',zIndex:200,backdropFilter:'blur(4px)'}} onClick={e=>e.target===e.currentTarget&&setShowNuevaCausa(false)}>
-          <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:16,padding:32,width:540,maxWidth:'90vw',boxShadow:'0 24px 80px rgba(15,23,42,0.22)',maxHeight:'90vh',overflowY:'auto'}}>
+        <motion.div
+          initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} transition={{duration:0.2}}
+          style={{position:'fixed',top:0,left:0,width:'100%',height:'100%',background:'rgba(15,23,42,0.5)',display:'flex',alignItems:'flex-start',justifyContent:'center',paddingTop:'5vh',zIndex:200,backdropFilter:'blur(4px)'}} onClick={e=>e.target===e.currentTarget&&setShowNuevaCausa(false)}>
+          <motion.div
+            initial={{opacity:0,y:24,scale:0.98}} animate={{opacity:1,y:0,scale:1}} exit={{opacity:0,y:12,scale:0.98}}
+            transition={{duration:0.25,ease:[0.16,1,0.3,1]}}
+            style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:16,padding:32,width:540,maxWidth:'90vw',boxShadow:'0 24px 80px rgba(15,23,42,0.22)',maxHeight:'90vh',overflowY:'auto'}}>
             <div style={{fontSize:20,fontWeight:800,color:'#1E293B',marginBottom:24,...f}}>Nueva Causa</div>
             <div className="grid2-mobile" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
               {/* RUC y RIT */}
@@ -1331,9 +1341,10 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
               <button className="btn-primary" onClick={saveCausa} disabled={saving||!nuevaCausa.ruc||nuevaCausa.imputados.some(imp=>(TIPOS_ABONO_DIRECTO.includes(imp.cautelar)||imp.cautelar===CAUTELAR_SENAME)&&!imp.cautelar_fecha_inicio)}>{saving?'Guardando...':'Guardar causa'}</button>
               <button className="btn-secondary" onClick={()=>setShowNuevaCausa(false)}>Cancelar</button>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </div>
   )
 }
