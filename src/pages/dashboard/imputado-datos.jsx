@@ -50,6 +50,32 @@ export function ImputadoDatosCard({ imp, numero, causaId, ruc, cautelares, regis
 
       {expanded && (
         <div style={{padding:'0 16px 16px', borderTop:'1px solid #f1f5f9', display:'flex', flexDirection:'column', gap:16}}>
+          {/* Fecha de nacimiento — con edad en vivo, igual que en la tarjeta de un solo imputado */}
+          <div style={{marginTop:14}}>
+            <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Fecha de nacimiento</div>
+            {editField==='fecha_nacimiento'?(
+              <div style={{display:'flex',gap:6}}>
+                <input type="date" style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}}
+                  value={editValue} onChange={e=>setEditValue(e.target.value)}
+                  onKeyDown={e=>{if(e.key==='Enter'){onUpdateCampo('fecha_nacimiento',editValue);setEditField(null)}if(e.key==='Escape')setEditField(null)}} autoFocus/>
+                <button className="btn-primary" style={{padding:'8px 14px',fontSize:12}} onClick={()=>{onUpdateCampo('fecha_nacimiento',editValue);setEditField(null)}}>✓</button>
+                <button className="btn-secondary" style={{padding:'8px 12px',fontSize:12}} onClick={()=>setEditField(null)}>✗</button>
+              </div>
+            ):(
+              <div className="fld" onClick={()=>{setEditField('fecha_nacimiento');setEditValue(imp.fecha_nacimiento||'')}}
+                style={{padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:imp.fecha_nacimiento?'#1E293B':'#94a3b8',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
+                <span>
+                  {imp.fecha_nacimiento || 'Clic para agregar...'}
+                  {imp.fecha_nacimiento && (() => {
+                    const edad = calcularEdadActual(imp.fecha_nacimiento)
+                    return edad !== null ? <span style={{marginLeft:8,fontSize:11,color:'#1E293B',fontWeight:600,background:'#eff6ff',padding:'1px 7px',borderRadius:10}}>{edad} AÑOS HOY</span> : null
+                  })()}
+                </span>
+                <span style={{fontSize:11,color:'#94a3b8'}}>✏</span>
+              </div>
+            )}
+          </div>
+
           {/* Centro Penal */}
           <div style={{marginTop:14}}>
             <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Centro Penal</div>

@@ -15,7 +15,7 @@ import { FallosReferencia, DocumentosGuardados } from './dashboard/documentos'
 import { HonorariosTab } from './dashboard/honorarios'
 import { TeoriaDelCaso } from './dashboard/teoria'
 import { PlazoCalculador } from './dashboard/plazo'
-import { calcularRegimenAlMomento, calcularVencimiento, parseFechaCL, diasRestantes, calcularSubestado } from './dashboard/utils'
+import { calcularRegimenAlMomento, calcularVencimiento, parseFechaCL, diasRestantes, calcularSubestado, calcularEdadActual } from './dashboard/utils'
 import { ImputadoDatosCard } from './dashboard/imputado-datos'
 import { CautelaresPanel, TIPOS_ABONO_DIRECTO, CAUTELAR_NOCTURNO, CAUTELAR_SENAME, TIPOS_CAUTELARES_TODAS, diasEntreFechasCaut } from './dashboard/cautelares'
 
@@ -90,9 +90,9 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
   const [showNuevaCausa,setShowNuevaCausa]=useState(false)
   const [showStats,setShowStats]=useState(false)
   const [grupoAbierto,setGrupoAbierto]=useState('') // '' | 'vigente' | 'terminada' — controla qué chips de subestado se muestran
-  const [nuevaCausa,setNuevaCausa]=useState({ruc:'',rit:'',tribunal:'',delito:'',imputado:'',imputado_rut:'',imputado_fecha_nac:'',imputado_domicilio:'',imputado_nacionalidad:'',fiscal:'',cautelar:'',cautelar_fecha_inicio:'',centro_penal:'',plazo:'',fecha_inicio:'',dias_plazo:'',fecha_hechos:'',estado:'vigente'})
-  const [rutBuscando,setRutBuscando]=useState(false)
-  const [rutEncontrado,setRutEncontrado]=useState(null)
+  const [nuevaCausa,setNuevaCausa]=useState({ruc:'',rit:'',tribunal:'',delito:'',imputados:[{nombre:'',rut:'',fecha_nac:'',domicilio:'',nacionalidad:'',delito:'',centro_penal:'',cautelar:'',cautelar_fecha_inicio:''}],fiscal:'',plazo:'',fecha_inicio:'',dias_plazo:'',fecha_hechos:'',estado:'vigente',subestado:''})
+  const [rutBuscando,setRutBuscando]=useState({})
+  const [rutEncontrado,setRutEncontrado]=useState({})
 
   useEffect(()=>{ loadCausas() },[])
 
@@ -179,6 +179,15 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
   const actualizarCentroPenalImputado = async (impId, valor) => {
     await supabase.from('imputados').update({ lugar_detencion: valor }).eq('id', impId)
     setImputados(prev => prev.map(x => x.id === impId ? { ...x, lugar_detencion: valor } : x))
+    // Con un solo imputado, se sincroniza de vuelta a causas.centro_penal — mismo
+    // patrón que ya usa actualizarDelitosImputado, para que el dato no quede huérfano
+    // si el imputado se llega a eliminar más adelante.
+    if (imputados.length <= 1) {
+      await supabase.from('causas').update({ centro_penal: valor }).eq('id', selectedCausa.id)
+      const u = { ...selectedCausa, centro_penal: valor }
+      setSelectedCausa(u)
+      setCausas(prev => prev.map(c => c.id === u.id ? u : c))
+    }
     const imp = imputados.find(x => x.id === impId)
     if (registrarActividad) registrarActividad('accion', `Actualizó centro penal de ${imp?.nombre || 'imputado'} en RUC ${selectedCausa.ruc}`)
   }
@@ -236,15 +245,18 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
     setNuevaAud({fecha:'',hora:'',tipo:'',tribunal:selectedCausa?.tribunal||'',sala:'',resultado:'',notas:''});setShowAudForm(false);setSaving(false)
   }
 
-  const buscarRutNuevaCausa = async (rut) => {
+  // ✅ Ahora recibe el índice del imputado dentro del arreglo nuevaCausa.imputados,
+  // porque Nueva Causa puede tener más de uno — cada uno busca y autorrellena
+  // por separado, sin pisar a los demás.
+  const buscarRutNuevaCausa = async (rut, idx) => {
     if (!rut || rut.length < 6) return
-    setRutBuscando(true)
+    setRutBuscando(prev => ({ ...prev, [idx]: true }))
     const rutNorm = rut.replace(/[.\-\s]/g,'').toUpperCase()
     const { data } = await supabase.from('imputados').select('*').limit(500)
-    setRutBuscando(false)
+    setRutBuscando(prev => ({ ...prev, [idx]: false }))
     if (!data) return
     const coincidencias = data.filter(d => d.rut && d.rut.replace(/[.\-\s]/g,'').toUpperCase() === rutNorm)
-    if (coincidencias.length === 0) { setRutEncontrado(null); return }
+    if (coincidencias.length === 0) { setRutEncontrado(prev => ({ ...prev, [idx]: false })); return }
     // Tomar el más completo
     const campos = ['nombre','nacionalidad','domicilio','fecha_nacimiento']
     const masCompleto = coincidencias.reduce((mejor, actual) => {
@@ -252,16 +264,30 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
       const pActual = campos.filter(c => actual[c] && actual[c].trim()).length
       return pActual > pMejor ? actual : mejor
     })
-    setRutEncontrado(masCompleto)
-    // Autorrellenar campos
+    setRutEncontrado(prev => ({ ...prev, [idx]: true }))
+    // Autorrellenar solo el imputado buscado, dejando los demás intactos
     setNuevaCausa(p => ({
       ...p,
-      imputado: masCompleto.nombre || p.imputado,
-      imputado_rut: rut,
-      imputado_fecha_nac: masCompleto.fecha_nacimiento || p.imputado_fecha_nac,
-      imputado_domicilio: masCompleto.domicilio || p.imputado_domicilio,
-      imputado_nacionalidad: masCompleto.nacionalidad || p.imputado_nacionalidad,
+      imputados: p.imputados.map((imp, i) => i !== idx ? imp : {
+        ...imp,
+        nombre: masCompleto.nombre || imp.nombre,
+        rut,
+        fecha_nac: masCompleto.fecha_nacimiento || imp.fecha_nac,
+        domicilio: masCompleto.domicilio || imp.domicilio,
+        nacionalidad: masCompleto.nacionalidad || imp.nacionalidad,
+      }),
     }))
+  }
+
+  // ✅ Actualiza un campo de un imputado específico dentro del arreglo de Nueva Causa
+  const actualizarImputadoNuevaCausa = (idx, campo, valor) => {
+    setNuevaCausa(p => ({ ...p, imputados: p.imputados.map((imp, i) => i === idx ? { ...imp, [campo]: valor } : imp) }))
+  }
+  const agregarImputadoNuevaCausa = () => {
+    setNuevaCausa(p => ({ ...p, imputados: [...p.imputados, { nombre:'', rut:'', fecha_nac:'', domicilio:'', nacionalidad:'', delito:'', centro_penal:'', cautelar:'', cautelar_fecha_inicio:'' }] }))
+  }
+  const quitarImputadoNuevaCausa = (idx) => {
+    setNuevaCausa(p => ({ ...p, imputados: p.imputados.filter((_, i) => i !== idx) }))
   }
 
   const saveCausa = async () => {
@@ -270,48 +296,65 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
     setSaving(true)
     let plazoFinal = nuevaCausa.plazo
     if (nuevaCausa.fecha_inicio && nuevaCausa.dias_plazo) plazoFinal = 'VENCE ' + calcularVencimiento(nuevaCausa.fecha_inicio, nuevaCausa.dias_plazo)
-    const subestadoAuto = calcularSubestado(plazoFinal)
+    const subestadoAuto = nuevaCausa.subestado || calcularSubestado(plazoFinal)
     const up = (v) => typeof v === 'string' ? corregirOrtografia(v.toUpperCase()) : v
-    const causaData = { ruc:up(nuevaCausa.ruc), rit:up(nuevaCausa.rit), tribunal:up(nuevaCausa.tribunal), delito:up(nuevaCausa.delito), imputado:up(nuevaCausa.imputado), fiscal:up(nuevaCausa.fiscal), cautelar:up(nuevaCausa.cautelar), centro_penal:up(nuevaCausa.centro_penal), plazo:up(plazoFinal), estado:nuevaCausa.estado, subestado:subestadoAuto, fecha_hechos: nuevaCausa.fecha_hechos || null }
+    const nombresImputados = nuevaCausa.imputados.map(i => i.nombre).filter(Boolean).join('|')
+    // Delito(s) agregado de la causa = unión sin duplicados de los delitos de
+    // todos los imputados — mismo criterio que usa actualizarDelitosImputado
+    // en el detalle, para que búsqueda/tabla/gráfico de estadísticas funcionen igual.
+    const delitosAcumulados = []
+    nuevaCausa.imputados.forEach(imp => {
+      (imp.delito || '').split('|').map(d => d.trim()).filter(Boolean).forEach(d => {
+        if (!delitosAcumulados.includes(d)) delitosAcumulados.push(d)
+      })
+    })
+    const delitoAgregado = delitosAcumulados.join('|')
+    const causaData = { ruc:up(nuevaCausa.ruc), rit:up(nuevaCausa.rit), tribunal:up(nuevaCausa.tribunal), delito:up(delitoAgregado), imputado:up(nombresImputados), fiscal:up(nuevaCausa.fiscal), cautelar:'', centro_penal:'', plazo:up(plazoFinal), estado:nuevaCausa.estado, subestado:subestadoAuto, fecha_hechos: nuevaCausa.fecha_hechos || null }
     const { data, error } = await supabase.from('causas').insert(causaData).select().single()
     if (!error) {
-      // Crear imputado automáticamente con los datos del RUT
-      let imputadoCreado = null
-      if (nuevaCausa.imputado_rut || nuevaCausa.imputado) {
-        const regAuto = (nuevaCausa.imputado_fecha_nac && nuevaCausa.fecha_hechos)
-          ? calcularRegimenAlMomento(nuevaCausa.imputado_fecha_nac, nuevaCausa.fecha_hechos)
+      // Crear un imputado por cada entrada del arreglo que tenga al menos nombre o
+      // RUT. Delito(s), Centro Penal y Cautelar son todos por imputado desde el
+      // formulario — cada coimputado puede enfrentar cargos distintos, estar en
+      // un recinto distinto y tener una medida cautelar distinta. El régimen
+      // (ADULTO/RPA) también se calcula por separado, según la fecha de
+      // nacimiento de cada uno.
+      for (const imp of nuevaCausa.imputados) {
+        if (!imp.rut && !imp.nombre) continue
+        const regAuto = (imp.fecha_nac && nuevaCausa.fecha_hechos)
+          ? calcularRegimenAlMomento(imp.fecha_nac, nuevaCausa.fecha_hechos)
           : null
         const { data: impData } = await supabase.from('imputados').insert({
           causa_id: data.id,
-          nombre: up(nuevaCausa.imputado) || '',
-          rut: nuevaCausa.imputado_rut || '',
-          fecha_nacimiento: nuevaCausa.imputado_fecha_nac || null,
-          domicilio: up(nuevaCausa.imputado_domicilio) || '',
-          nacionalidad: up(nuevaCausa.imputado_nacionalidad) || '',
+          nombre: up(imp.nombre) || '',
+          rut: imp.rut || '',
+          fecha_nacimiento: imp.fecha_nac || null,
+          domicilio: up(imp.domicilio) || '',
+          nacionalidad: up(imp.nacionalidad) || '',
           regimen: regAuto || 'ADULTO',
-          delitos: up(nuevaCausa.delito) || '',
+          delitos: up(imp.delito) || '',
+          lugar_detencion: up(imp.centro_penal) || '',
         }).select().single()
-        imputadoCreado = impData
-      }
-      // Si se seleccionó una cautelar con fecha (Prisión Preventiva, Internación
-      // Provisoria, Arresto Total o Sujeción a SENAME), se registra de una vez en
-      // el historial de cautelares — igual que se hace desde el panel de una causa
-      // ya creada, para que el conteo de días de abono empiece a correr desde hoy.
-      if (nuevaCausa.cautelar && nuevaCausa.cautelar_fecha_inicio &&
-          (TIPOS_ABONO_DIRECTO.includes(nuevaCausa.cautelar) || nuevaCausa.cautelar === CAUTELAR_SENAME)) {
-        await supabase.from('cautelares_causa').insert({
-          causa_id: data.id,
-          imputado_id: imputadoCreado?.id || null,
-          tipo: nuevaCausa.cautelar,
-          fecha_inicio: nuevaCausa.cautelar_fecha_inicio,
-          fecha_termino: null,
-        })
+        // Si este imputado tiene una cautelar con fecha (Prisión Preventiva,
+        // Internación Provisoria, Arresto Total o Sujeción a SENAME), se
+        // registra de una vez en su historial de cautelares — igual que se
+        // hace desde el panel de una causa ya creada, para que el conteo de
+        // días de abono empiece a correr desde hoy.
+        if (impData && imp.cautelar && imp.cautelar_fecha_inicio &&
+            (TIPOS_ABONO_DIRECTO.includes(imp.cautelar) || imp.cautelar === CAUTELAR_SENAME)) {
+          await supabase.from('cautelares_causa').insert({
+            causa_id: data.id,
+            imputado_id: impData.id,
+            tipo: imp.cautelar,
+            fecha_inicio: imp.cautelar_fecha_inicio,
+            fecha_termino: null,
+          })
+        }
       }
       setCausas(prev => [data, ...prev])
       setShowNuevaCausa(false)
-      setRutEncontrado(null)
+      setRutEncontrado({})
       if (registrarActividad) registrarActividad('accion', `Nueva causa: RUC ${causaData.ruc}`)
-      setNuevaCausa({ruc:'',rit:'',tribunal:'',delito:'',imputado:'',imputado_rut:'',imputado_fecha_nac:'',imputado_domicilio:'',imputado_nacionalidad:'',fiscal:'',cautelar:'',cautelar_fecha_inicio:'',centro_penal:'',plazo:'',fecha_inicio:'',dias_plazo:'',fecha_hechos:'',estado:'vigente'})
+      setNuevaCausa({ruc:'',rit:'',tribunal:'',delito:'',imputados:[{nombre:'',rut:'',fecha_nac:'',domicilio:'',nacionalidad:'',delito:'',centro_penal:'',cautelar:'',cautelar_fecha_inicio:''}],fiscal:'',plazo:'',fecha_inicio:'',dias_plazo:'',fecha_hechos:'',estado:'vigente',subestado:''})
     }
     setSaving(false)
   }
@@ -1131,84 +1174,8 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                   <input style={inp} placeholder={field.ph} value={nuevaCausa[field.key]} onChange={e=>setNuevaCausa(p=>({...p,[field.key]:e.target.value}))}/>
                 </div>
               ))}
-              {/* RUT del imputado con autorelleno */}
-              <div style={{gridColumn:'1/-1'}}>
-                <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>RUT del imputado</div>
-                <div style={{display:'flex',gap:8}}>
-                  <input style={{...inp,flex:1}} placeholder="Ej: 12345678-9"
-                    value={nuevaCausa.imputado_rut}
-                    onChange={e=>setNuevaCausa(p=>({...p,imputado_rut:e.target.value}))}
-                    onBlur={e=>buscarRutNuevaCausa(e.target.value)}
-                    onKeyDown={e=>e.key==='Enter'&&buscarRutNuevaCausa(nuevaCausa.imputado_rut)}
-                  />
-                  {rutBuscando && <span style={{fontSize:12,color:'#94a3b8',alignSelf:'center',...f}}>Buscando...</span>}
-                  {rutEncontrado && <span style={{fontSize:12,color:'#065f46',alignSelf:'center',fontWeight:600,...f}}>✓ Datos encontrados</span>}
-                </div>
-              </div>
-              {/* Datos del imputado */}
-              <div style={{gridColumn:'1/-1'}}>
-                <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Nombre completo *</div>
-                <input style={inp} placeholder="Nombre completo del imputado"
-                  value={nuevaCausa.imputado}
-                  onChange={e=>setNuevaCausa(p=>({...p,imputado:e.target.value}))}/>
-              </div>
-              <div>
-                <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Fecha de nacimiento</div>
-                <input type="date" style={inp}
-                  value={nuevaCausa.imputado_fecha_nac}
-                  onChange={e=>setNuevaCausa(p=>({...p,imputado_fecha_nac:e.target.value}))}/>
-              </div>
-              <div>
-                <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Nacionalidad</div>
-                <input style={inp} placeholder="Ej: CHILENO"
-                  value={nuevaCausa.imputado_nacionalidad}
-                  onChange={e=>setNuevaCausa(p=>({...p,imputado_nacionalidad:e.target.value}))}/>
-              </div>
-              <div style={{gridColumn:'1/-1'}}>
-                <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Domicilio</div>
-                <input style={inp} placeholder="Domicilio del imputado"
-                  value={nuevaCausa.imputado_domicilio}
-                  onChange={e=>setNuevaCausa(p=>({...p,imputado_domicilio:e.target.value}))}/>
-              </div>
-              {/* Fiscal */}
-              <div>
-                <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Fiscal</div>
-                <input style={inp} placeholder="Nombre del fiscal" value={nuevaCausa.fiscal} onChange={e=>setNuevaCausa(p=>({...p,fiscal:e.target.value}))}/>
-              </div>
-              {/* Cautelar — dropdown, igual que en el detalle de la causa */}
-              <div style={{gridColumn: (TIPOS_ABONO_DIRECTO.includes(nuevaCausa.cautelar) || nuevaCausa.cautelar === CAUTELAR_SENAME) ? '1/-1' : 'auto'}}>
-                <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Cautelar</div>
-                <select style={inp} value={nuevaCausa.cautelar} onChange={e=>setNuevaCausa(p=>({...p,cautelar:e.target.value, cautelar_fecha_inicio: p.cautelar_fecha_inicio || new Date().toISOString().slice(0,10)}))}>
-                  <option value="">Seleccionar...</option>
-                  {TIPOS_CAUTELARES_TODAS.map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
-                {/* Igual que en el panel de Cautelares de una causa ya creada: si el tipo cuenta
-                    para el abono 1x1 (Prisión Preventiva / Internación Provisoria / Arresto
-                    Total) o es Sujeción a SENAME, se pide la fecha de inicio y se muestra el
-                    cálculo de días en vivo. */}
-                {(TIPOS_ABONO_DIRECTO.includes(nuevaCausa.cautelar) || nuevaCausa.cautelar === CAUTELAR_SENAME) && (
-                  <div style={{marginTop:10,padding:'12px 14px',background:'#F8F9FC',border:'1px solid #e2e8f0',borderRadius:10,display:'flex',alignItems:'center',gap:14,flexWrap:'wrap'}}>
-                    <div>
-                      <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Fecha de inicio</div>
-                      <input type="date" style={inp} value={nuevaCausa.cautelar_fecha_inicio} onChange={e=>setNuevaCausa(p=>({...p,cautelar_fecha_inicio:e.target.value}))}/>
-                    </div>
-                    <div style={{display:'flex',alignItems:'center',gap:8,paddingTop:16}}>
-                      <span style={{fontSize:16}}>🔒</span>
-                      <strong style={{...f}}>{diasEntreFechasCaut(nuevaCausa.cautelar_fecha_inicio, new Date().toISOString().slice(0,10))} días{nuevaCausa.cautelar === CAUTELAR_SENAME ? ' (SENAME, aparte)' : ' de abono'}</strong>
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div style={{gridColumn:'1/-1'}}>
-                <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Centro Penal</div>
-                <SearchableSelect
-                  value={nuevaCausa.centro_penal}
-                  onChange={v=>setNuevaCausa(p=>({...p,centro_penal:v}))}
-                  options={CENTROS_PENALES}
-                  placeholder="Buscar centro penal..."
-                  isDelito={false}
-                />
-              </div>
+              {/* Tribunal — agrupado arriba junto con RUC/RIT/Imputado, son los datos
+                  base de identificación de la causa. */}
               <div style={{gridColumn:'1/-1'}}>
                 <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Tribunal *</div>
                 <SearchableSelect
@@ -1219,13 +1186,114 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                   isDelito={false}
                 />
               </div>
+              {/* Imputado(s) — uno o más. Cada uno con su propio RUT (con
+                  autorelleno independiente), nombre, fecha de nacimiento
+                  (con edad en vivo), nacionalidad y domicilio. */}
+              {nuevaCausa.imputados.map((imp, idx) => (
+                <div key={idx} style={{gridColumn:'1/-1', display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, ...(idx>0 ? {borderTop:'1px dashed #e2e8f0', paddingTop:16, marginTop:2} : {})}}>
+                  {nuevaCausa.imputados.length > 1 && (
+                    <div style={{gridColumn:'1/-1', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                      <div style={{fontSize:12, fontWeight:700, color:'#1E293B', ...f}}>Imputado {idx+1}</div>
+                      {idx > 0 && (
+                        <button type="button" className="btn-secondary" style={{fontSize:11, padding:'4px 10px'}} onClick={()=>quitarImputadoNuevaCausa(idx)}>✕ Quitar</button>
+                      )}
+                    </div>
+                  )}
+                  <div style={{gridColumn:'1/-1'}}>
+                    <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>RUT del imputado</div>
+                    <div style={{display:'flex',gap:8}}>
+                      <input style={{...inp,flex:1}} placeholder="Ej: 12345678-9"
+                        value={imp.rut}
+                        onChange={e=>actualizarImputadoNuevaCausa(idx,'rut',e.target.value)}
+                        onBlur={e=>buscarRutNuevaCausa(e.target.value, idx)}
+                        onKeyDown={e=>e.key==='Enter'&&buscarRutNuevaCausa(imp.rut, idx)}
+                      />
+                      {rutBuscando[idx] && <span style={{fontSize:12,color:'#94a3b8',alignSelf:'center',...f}}>Buscando...</span>}
+                      {rutEncontrado[idx] && <span style={{fontSize:12,color:'#065f46',alignSelf:'center',fontWeight:600,...f}}>✓ Datos encontrados</span>}
+                    </div>
+                  </div>
+                  <div style={{gridColumn:'1/-1'}}>
+                    <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Nombre completo *</div>
+                    <input style={inp} placeholder="Nombre completo del imputado"
+                      value={imp.nombre}
+                      onChange={e=>actualizarImputadoNuevaCausa(idx,'nombre',e.target.value)}/>
+                  </div>
+                  <div>
+                    <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Fecha de nacimiento</div>
+                    <div style={{display:'flex',alignItems:'center',gap:8}}>
+                      <input type="date" style={inp}
+                        value={imp.fecha_nac}
+                        onChange={e=>actualizarImputadoNuevaCausa(idx,'fecha_nac',e.target.value)}/>
+                      {imp.fecha_nac && (() => {
+                        const edad = calcularEdadActual(imp.fecha_nac)
+                        return edad !== null ? <span style={{flexShrink:0,fontSize:11,color:'#1E293B',fontWeight:600,background:'#eff6ff',padding:'4px 9px',borderRadius:10,...f}}>{edad} AÑOS HOY</span> : null
+                      })()}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Nacionalidad</div>
+                    <input style={inp} placeholder="Ej: CHILENO"
+                      value={imp.nacionalidad}
+                      onChange={e=>actualizarImputadoNuevaCausa(idx,'nacionalidad',e.target.value)}/>
+                  </div>
+                  <div style={{gridColumn:'1/-1'}}>
+                    <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Domicilio</div>
+                    <input style={inp} placeholder="Domicilio del imputado"
+                      value={imp.domicilio}
+                      onChange={e=>actualizarImputadoNuevaCausa(idx,'domicilio',e.target.value)}/>
+                  </div>
+                  {/* Centro Penal — por imputado, cada uno puede estar en un recinto distinto */}
+                  <div style={{gridColumn:'1/-1'}}>
+                    <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Centro Penal</div>
+                    <SearchableSelect
+                      value={imp.centro_penal}
+                      onChange={v=>actualizarImputadoNuevaCausa(idx,'centro_penal',v)}
+                      options={CENTROS_PENALES}
+                      placeholder="Buscar centro penal..."
+                      isDelito={false}
+                    />
+                  </div>
+                  {/* Cautelar — por imputado, cada uno puede tener una medida distinta */}
+                  <div style={{gridColumn: (TIPOS_ABONO_DIRECTO.includes(imp.cautelar) || imp.cautelar === CAUTELAR_SENAME) ? '1/-1' : 'auto'}}>
+                    <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Cautelar</div>
+                    <select style={inp} value={imp.cautelar} onChange={e=>{
+                      const nuevoTipo = e.target.value
+                      setNuevaCausa(p=>({...p, imputados: p.imputados.map((x,i)=>i!==idx?x:{...x, cautelar:nuevoTipo, cautelar_fecha_inicio: x.cautelar_fecha_inicio || new Date().toISOString().slice(0,10)})}))
+                    }}>
+                      <option value="">Seleccionar...</option>
+                      {TIPOS_CAUTELARES_TODAS.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                    {(TIPOS_ABONO_DIRECTO.includes(imp.cautelar) || imp.cautelar === CAUTELAR_SENAME) && (
+                      <div style={{marginTop:10,padding:'12px 14px',background:'#F8F9FC',border:'1px solid #e2e8f0',borderRadius:10,display:'flex',alignItems:'center',gap:14,flexWrap:'wrap'}}>
+                        <div>
+                          <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Fecha de inicio *</div>
+                          <input type="date" style={{...inp, ...(imp.cautelar_fecha_inicio ? {} : {borderColor:'#fca5a5'})}} value={imp.cautelar_fecha_inicio} onChange={e=>actualizarImputadoNuevaCausa(idx,'cautelar_fecha_inicio',e.target.value)}/>
+                        </div>
+                        <div style={{display:'flex',alignItems:'center',gap:8,paddingTop:16}}>
+                          <span style={{fontSize:16}}>🔒</span>
+                          <strong style={{...f}}>{diasEntreFechasCaut(imp.cautelar_fecha_inicio, new Date().toISOString().slice(0,10))} días{imp.cautelar === CAUTELAR_SENAME ? ' (SENAME, aparte)' : ' de abono'}</strong>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  {/* Delito(s) — por imputado, cada coimputado puede enfrentar cargos distintos */}
+                  <div style={{gridColumn:'1/-1'}}>
+                    <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Delito(s) *</div>
+                    <DelitosChips
+                      value={imp.delito}
+                      onChange={v=>actualizarImputadoNuevaCausa(idx,'delito',v)}
+                      options={DELITOS_CATALOGO}
+                    />
+                  </div>
+                </div>
+              ))}
               <div style={{gridColumn:'1/-1'}}>
-                <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Delito(s) *</div>
-                <DelitosChips
-                  value={nuevaCausa.delito}
-                  onChange={v=>setNuevaCausa(p=>({...p,delito:v}))}
-                  options={DELITOS_CATALOGO}
-                />
+                <button type="button" className="btn-secondary" style={{fontSize:12}} onClick={agregarImputadoNuevaCausa}>+ Agregar otro imputado</button>
+              </div>
+              {/* Fiscal */}
+              <div>
+                <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Fiscal</div>
+                <input style={inp} placeholder="Nombre del fiscal" value={nuevaCausa.fiscal} onChange={e=>setNuevaCausa(p=>({...p,fiscal:e.target.value}))}/>
               </div>
               <div style={{gridColumn:'1/-1'}}>
                 <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Fecha de los hechos</div>
@@ -1240,10 +1308,27 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                 {nuevaCausa.fecha_inicio && nuevaCausa.dias_plazo && (<div style={{marginTop:10,padding:'10px 14px',background:'#fff',borderRadius:8,border:'1px solid #a7f3d0',display:'flex',alignItems:'center',gap:8}}><span style={{fontSize:16}}>📅</span><div><div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1,fontWeight:700,...f}}>Vencimiento calculado</div><div style={{fontSize:15,fontWeight:800,color:'#059669',...f}}>{calcularVencimiento(nuevaCausa.fecha_inicio, nuevaCausa.dias_plazo)}</div></div></div>)}
                 <div style={{marginTop:12}}><div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>O ingresa plazo manualmente</div><input style={inp} placeholder="VENCE DD-MM-YYYY" value={nuevaCausa.plazo} onChange={e=>setNuevaCausa(p=>({...p,plazo:e.target.value}))}/></div>
               </div>
-              <div style={{gridColumn:'1/-1'}}><div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Estado</div><select style={inp} value={nuevaCausa.estado} onChange={e=>setNuevaCausa(p=>({...p,estado:e.target.value}))}>{Object.entries(estadoConfig).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}</select></div>
+              <div>
+                <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Estado</div>
+                <select style={inp} value={nuevaCausa.estado} onChange={e=>setNuevaCausa(p=>({...p,estado:e.target.value,subestado:''}))}>
+                  <option value="vigente">{estadoConfig.vigente.label}</option>
+                  <option value="terminada">{estadoConfig.terminada.label}</option>
+                </select>
+              </div>
+              <div>
+                {/* Subestado — opcional. Si no se elige, se calcula solo según el plazo
+                    (vencido / por vencer) al guardar, igual que antes. Útil para dejar la
+                    causa ya en "Juicio Oral", "APJO", etc. desde que se crea, sin tener que
+                    editarla después en el detalle. */}
+                <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Subestado (opcional)</div>
+                <select style={inp} value={nuevaCausa.subestado} onChange={e=>setNuevaCausa(p=>({...p,subestado:e.target.value}))}>
+                  <option value="">Se calcula solo según el plazo</option>
+                  {(nuevaCausa.estado==='terminada'?SUBESTADOS_TERMINADA:SUBESTADOS_VIGENTE).map(s=><option key={s} value={s}>{estadoConfig[s].label}</option>)}
+                </select>
+              </div>
             </div>
             <div style={{display:'flex',gap:10,marginTop:24}}>
-              <button className="btn-primary" onClick={saveCausa} disabled={saving||!nuevaCausa.ruc}>{saving?'Guardando...':'Guardar causa'}</button>
+              <button className="btn-primary" onClick={saveCausa} disabled={saving||!nuevaCausa.ruc||nuevaCausa.imputados.some(imp=>(TIPOS_ABONO_DIRECTO.includes(imp.cautelar)||imp.cautelar===CAUTELAR_SENAME)&&!imp.cautelar_fecha_inicio)}>{saving?'Guardando...':'Guardar causa'}</button>
               <button className="btn-secondary" onClick={()=>setShowNuevaCausa(false)}>Cancelar</button>
             </div>
           </div>
