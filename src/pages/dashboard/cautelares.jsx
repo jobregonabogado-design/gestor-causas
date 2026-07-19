@@ -4,6 +4,12 @@ import { useState } from 'react'
 import { f } from './primitives'
 
 export const TIPOS_ABONO_DIRECTO = ['Prisión Preventiva','Internación Provisoria','Arresto Total']
+// ✅ Subconjunto que implica que la persona está privada de libertad en un
+// centro penal — a diferencia de TIPOS_ABONO_DIRECTO, deja fuera "Arresto
+// Total" (no es un recinto) y a CAUTELAR_SENAME (es un centro del SENAME,
+// no un "Centro Penal"). Se usa para mostrar/ocultar Centro Penal en la
+// pestaña Imputado automáticamente, según qué cautelar tenga la persona.
+export const TIPOS_DETENCION_PENAL = ['Prisión Preventiva','Internación Provisoria']
 export const CAUTELAR_SENAME = 'Sujeción a SENAME'
 export const CAUTELAR_NOCTURNO = 'Arresto Nocturno'
 export const TIPOS_CAUTELARES_ADULTO = ['Prisión Preventiva','Arresto Total',CAUTELAR_NOCTURNO,'Firma','Arraigo Nacional','Prohibición de acercarse a la víctima','Prohibición de acercarse a la víctima (VIF Art. 9)','Prohibición de portar armas']
@@ -17,19 +23,11 @@ export function diasEntreFechasCaut(inicio, fin) {
   return Math.max(0, Math.round((b-a)/(1000*60*60*24)))
 }
 
-export function CautelaresPanel({ causaId, cautelares, esRPA, onGuardar, onActualizar, registrarActividad, ruc, nombreImputado }) {
-  const hoyISO = new Date().toISOString().slice(0,10)
-  const TIPOS = esRPA ? TIPOS_CAUTELARES_RPA : TIPOS_CAUTELARES_ADULTO
-  const [expanded,setExpanded] = useState(true) // la casilla queda visible; al abrir se ve el detalle
-  const [form,setForm] = useState({ tipo:TIPOS[0], fecha_inicio:hoyISO, fecha_termino:'', frecuencia:'Mensual' })
-  const [guardando,setGuardando] = useState(false)
-  const [fechaCalc,setFechaCalc] = useState(hoyISO) // calculadora ad-hoc, no se guarda
-  const [nocturnoEdit,setNocturnoEdit] = useState({}) // {id: {bruto, calculado}} temporal por fila
-
-  // ✅ Abono total EN VIVO — SOLO cuenta Prisión Preventiva / Internación Provisoria /
-  // Arresto Total (y Arresto Nocturno ya sumado explícitamente). Sujeción a SENAME
-  // NUNCA suma acá — se cuenta aparte, para no duplicar el cómputo 1x1.
-  const totalAbono = cautelares.reduce((sum,ct)=>{
+// ✅ Abono total EN VIVO de un imputado — misma fórmula que usa CautelaresPanel,
+// exportada para reutilizarla también en el cálculo de fecha de término de
+// condena (pestaña Imputado), sin duplicar el criterio en dos lugares.
+export function calcularTotalAbono(cautelares, hoyISO = new Date().toISOString().slice(0,10)) {
+  return (cautelares || []).reduce((sum,ct) => {
     if (TIPOS_ABONO_DIRECTO.includes(ct.tipo)) {
       return sum + diasEntreFechasCaut(ct.fecha_inicio, ct.fecha_termino || hoyISO)
     }
@@ -37,7 +35,28 @@ export function CautelaresPanel({ causaId, cautelares, esRPA, onGuardar, onActua
       return sum + (parseFloat(ct.abono_nocturno_calculado)||0)
     }
     return sum
-  },0)
+  }, 0)
+}
+
+export function CautelaresPanel({ causaId, cautelares, esRPA, onGuardar, onActualizar, onEliminar, esTitular, registrarActividad, ruc, nombreImputado }) {
+  const hoyISO = new Date().toISOString().slice(0,10)
+  const TIPOS = esRPA ? TIPOS_CAUTELARES_RPA : TIPOS_CAUTELARES_ADULTO
+  const [expanded,setExpanded] = useState(true) // la casilla queda visible; al abrir se ve el detalle
+  const [form,setForm] = useState({ tipo:TIPOS[0], fecha_inicio:hoyISO, fecha_termino:'', frecuencia:'Mensual' })
+  const [guardando,setGuardando] = useState(false)
+  const [fechaCalc,setFechaCalc] = useState(hoyISO) // calculadora ad-hoc, no se guarda
+  const [nocturnoEdit,setNocturnoEdit] = useState({}) // {id: {bruto, calculado}} temporal por fila
+  // ✅ No se borran las cautelares por defecto (queda el historial) — solo se
+  // pueden corregir errores editando tipo/fechas. Eliminar de forma definitiva
+  // es exclusivo del titular, para no acumular datos erróneos sueltos.
+  const [editandoId,setEditandoId] = useState(null)
+  const [editForm,setEditForm] = useState({ tipo:'', fecha_inicio:'', fecha_termino:'' })
+  const [motivoEdit,setMotivoEdit] = useState('')
+
+  // ✅ Abono total EN VIVO — SOLO cuenta Prisión Preventiva / Internación Provisoria /
+  // Arresto Total (y Arresto Nocturno ya sumado explícitamente). Sujeción a SENAME
+  // NUNCA suma acá — se cuenta aparte, para no duplicar el cómputo 1x1.
+  const totalAbono = calcularTotalAbono(cautelares, hoyISO)
 
   // Días de SENAME — solo informativo, no entra al abono 1x1
   const totalDiasSename = cautelares.reduce((sum,ct)=>{
@@ -57,6 +76,25 @@ export function CautelaresPanel({ causaId, cautelares, esRPA, onGuardar, onActua
     const fecha = window.prompt(`¿Hasta qué fecha estuvo vigente "${ct.tipo}"? (formato AAAA-MM-DD)`, hoyISO)
     if (!fecha) return
     await onActualizar(ct.id, { fecha_termino: fecha })
+  }
+
+  const iniciarEdicion = (ct) => {
+    setEditandoId(ct.id)
+    setEditForm({ tipo: ct.tipo, fecha_inicio: ct.fecha_inicio || '', fecha_termino: ct.fecha_termino || '' })
+    setMotivoEdit('')
+  }
+
+  const guardarEdicion = async () => {
+    if (!editForm.fecha_inicio) return
+    if (!motivoEdit.trim()) { alert('Ingresa el motivo de la corrección — queda registrado para tener trazabilidad.'); return }
+    await onActualizar(editandoId, { tipo: editForm.tipo, fecha_inicio: editForm.fecha_inicio, fecha_termino: editForm.fecha_termino || null }, motivoEdit.trim())
+    setEditandoId(null)
+  }
+
+  const eliminarCautelar = async (ct) => {
+    const motivo = window.prompt(`¿Eliminar DEFINITIVAMENTE la cautelar "${ct.tipo}" (desde ${ct.fecha_inicio})? Esta acción no se puede deshacer.\n\nIngresa el motivo de la eliminación:`)
+    if (motivo === null || !motivo.trim()) return
+    await onEliminar(ct.id, motivo.trim())
   }
 
   const calcularNocturno = (ct) => {
@@ -115,8 +153,34 @@ export function CautelaresPanel({ causaId, cautelares, esRPA, onGuardar, onActua
             const diasDirecto = esDirecto ? diasEntreFechasCaut(ct.fecha_inicio, ct.fecha_termino||hoyISO) : 0
             const diasSename = esSename ? diasEntreFechasCaut(ct.fecha_inicio, ct.fecha_termino||hoyISO) : 0
             const calcLocal = nocturnoEdit[ct.id]
+            const editando = editandoId === ct.id
             return (
               <div key={ct.id} style={{padding:'10px 0', borderBottom: idx<cautelares.length-1 ? '1px solid #f1f5f9' : 'none'}}>
+                {editando ? (
+                  <div style={{background:'#F8F9FC',border:'1px solid #e2e8f0',borderRadius:10,padding:10}}>
+                    <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
+                      <select style={{flex:'1 1 200px',minWidth:160,padding:'7px 9px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:12,color:'#1E293B',background:'#fff',...f}} value={editForm.tipo} onChange={e=>setEditForm(p=>({...p,tipo:e.target.value}))}>
+                        {TIPOS.map(t=><option key={t}>{t}</option>)}
+                      </select>
+                      <div style={{display:'flex',flexDirection:'column',gap:2}}>
+                        <label style={{fontSize:9,color:'#94a3b8',...f}}>Inicio</label>
+                        <input type="date" style={{padding:'6px 8px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:12,color:'#1E293B',background:'#fff',...f}} value={editForm.fecha_inicio} onChange={e=>setEditForm(p=>({...p,fecha_inicio:e.target.value}))}/>
+                      </div>
+                      <div style={{display:'flex',flexDirection:'column',gap:2}}>
+                        <label style={{fontSize:9,color:'#94a3b8',...f}}>Término (opcional)</label>
+                        <input type="date" style={{padding:'6px 8px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:12,color:'#1E293B',background:'#fff',...f}} value={editForm.fecha_termino} onChange={e=>setEditForm(p=>({...p,fecha_termino:e.target.value}))}/>
+                      </div>
+                    </div>
+                    <div style={{marginTop:8}}>
+                      <div style={{fontSize:9,color:'#dc2626',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4,fontWeight:700,...f}}>Motivo de la corrección *</div>
+                      <input style={{width:'100%',padding:'7px 9px',border:'1.5px solid #fecaca',borderRadius:8,fontSize:12,color:'#1E293B',background:'#fff',...f}} placeholder="Ej: Error de tipeo en la fecha, tipo mal seleccionado..." value={motivoEdit} onChange={e=>setMotivoEdit(e.target.value)}/>
+                    </div>
+                    <div style={{display:'flex',gap:8,marginTop:8}}>
+                      <button onClick={guardarEdicion} disabled={!editForm.fecha_inicio} style={{background:'#1E293B',color:'#fff',border:'none',borderRadius:7,padding:'7px 14px',fontSize:12,cursor:'pointer',fontWeight:600,...f}}>✓ Guardar</button>
+                      <button onClick={()=>setEditandoId(null)} style={{background:'#fff',border:'1.5px solid #e2e8f0',borderRadius:7,padding:'7px 12px',fontSize:12,cursor:'pointer',...f}}>✗ Cancelar</button>
+                    </div>
+                  </div>
+                ) : (
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:6}}>
                   <div>
                     <div style={{fontSize:13,fontWeight:600,color:'#1E293B',display:'flex',alignItems:'center',gap:6,flexWrap:'wrap',...f}}>
@@ -129,22 +193,29 @@ export function CautelaresPanel({ causaId, cautelares, esRPA, onGuardar, onActua
                       {ct.frecuencia?` · ${ct.frecuencia}`:''}
                     </div>
                   </div>
-                  {vigente && <button onClick={()=>cerrarCautelar(ct)} style={{fontSize:11,color:'#dc2626',background:'transparent',border:'none',cursor:'pointer',fontWeight:600,...f}}>Cerrar / cambiar</button>}
+                  <div style={{display:'flex',gap:10,flexShrink:0,alignItems:'center'}}>
+                    {vigente && <button onClick={()=>cerrarCautelar(ct)} style={{fontSize:11,color:'#dc2626',background:'transparent',border:'none',cursor:'pointer',fontWeight:600,...f}}>Cerrar / cambiar</button>}
+                    <button onClick={()=>iniciarEdicion(ct)} style={{fontSize:11,color:'#2563eb',background:'transparent',border:'none',cursor:'pointer',fontWeight:600,...f}}>✏ Editar</button>
+                    {/* Eliminar de forma definitiva — solo el titular, para no acumular
+                        registros erróneos sueltos sin perder el historial por defecto. */}
+                    {esTitular && <button onClick={()=>eliminarCautelar(ct)} style={{fontSize:11,color:'#94a3b8',background:'transparent',border:'none',cursor:'pointer',fontWeight:600,...f}}>🗑 Eliminar</button>}
+                  </div>
                 </div>
+                )}
 
-                {esDirecto && (
+                {!editando && esDirecto && (
                   <div style={{marginTop:6,fontSize:12,color:'#1E293B',...f}}>
                     📐 Abono 1×1: <strong>{diasDirecto} días</strong>{vigente?' (a hoy, sigue corriendo)':''}
                   </div>
                 )}
 
-                {esSename && (
+                {!editando && esSename && (
                   <div style={{marginTop:6,fontSize:12,color:'#92400e',...f}}>
                     {diasSename} días de Sujeción a SENAME{vigente?' (a hoy, sigue corriendo)':''} — no otorgan abono 2×1, se llevan aparte.
                   </div>
                 )}
 
-                {esNocturno && (
+                {!editando && esNocturno && (
                   <div style={{marginTop:6,fontSize:12,color:'#64748b',display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',...f}}>
                     <span>Arresto nocturno (informativo): <strong>{ct.fecha_termino ? diasEntreFechasCaut(ct.fecha_inicio,ct.fecha_termino) : diasEntreFechasCaut(ct.fecha_inicio,fechaCalc)}</strong> días</span>
                     {ct.sumado_a_abono ? (
@@ -160,6 +231,11 @@ export function CautelaresPanel({ causaId, cautelares, esRPA, onGuardar, onActua
                         )}
                       </>
                     )}
+                  </div>
+                )}
+                {!editando && ct.historial && (
+                  <div style={{marginTop:6,paddingTop:6,borderTop:'1px solid #e2e8f0'}}>
+                    {ct.historial.split('\n').map((h,i)=><div key={i} style={{fontSize:10,color:'#94a3b8',...f}}>📝 {h}</div>)}
                   </div>
                 )}
               </div>

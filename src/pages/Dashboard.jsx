@@ -18,7 +18,7 @@ import { TeoriaDelCaso } from './dashboard/teoria'
 import { PlazoCalculador } from './dashboard/plazo'
 import { calcularRegimenAlMomento, calcularVencimiento, parseFechaCL, diasRestantes, calcularSubestado, calcularEdadActual } from './dashboard/utils'
 import { ImputadoDatosCard } from './dashboard/imputado-datos'
-import { CautelaresPanel, TIPOS_ABONO_DIRECTO, CAUTELAR_NOCTURNO, CAUTELAR_SENAME, TIPOS_CAUTELARES_TODAS, diasEntreFechasCaut } from './dashboard/cautelares'
+import { CautelaresPanel, TIPOS_ABONO_DIRECTO, TIPOS_DETENCION_PENAL, CAUTELAR_NOCTURNO, CAUTELAR_SENAME, TIPOS_CAUTELARES_TODAS, diasEntreFechasCaut } from './dashboard/cautelares'
 
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
@@ -177,6 +177,67 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
   // ✅ Centro Penal por imputado — usa la misma columna "lugar_detencion" que ya
   // existe en imputados (la que se usa en la pestaña Imputado cuando está detenido),
   // así no hace falta ninguna migración nueva en Supabase.
+  // ✅ "Detenido / En libertad" (pestaña Imputado) se calcula solo, a partir de
+  // si la persona tiene una cautelar VIGENTE (sin fecha de término) de Prisión
+  // Preventiva o Internación Provisoria — así no hace falta marcarlo a mano, y
+  // Centro Penal aparece automáticamente ahí cuando corresponde. Se llama cada
+  // vez que se agrega, cierra o quita una cautelar de un imputado.
+  const sincronizarDetencionImputado = async (impId) => {
+    const { data } = await supabase.from('cautelares_causa').select('tipo, fecha_termino').eq('imputado_id', impId)
+    const detenido = (data || []).some(ct => TIPOS_DETENCION_PENAL.includes(ct.tipo) && !ct.fecha_termino)
+    await supabase.from('imputados').update({ esta_detenido: detenido }).eq('id', impId)
+    setImputados(prev => prev.map(x => x.id === impId ? { ...x, esta_detenido: detenido } : x))
+  }
+
+  // ✅ Eliminar una cautelar de forma DEFINITIVA — a propósito no existe botón
+  // para esto salvo para el titular (CautelaresPanel ya filtra por esTitular
+  // antes de mostrar el botón). Por defecto las cautelares nunca se borran,
+  // solo se editan o se cierran, para mantener el historial.
+  const eliminarCautelarDefinitivo = async (id, impId, motivo) => {
+    const cautelar = cautelares.find(x => x.id === id)
+    await supabase.from('cautelares_causa').delete().eq('id', id)
+    setCautelares(prev => prev.filter(x => x.id !== id))
+    if (impId) await sincronizarDetencionImputado(impId)
+    if (registrarActividad) registrarActividad('accion', `Eliminó definitivamente la cautelar "${cautelar?.tipo||''}" (desde ${cautelar?.fecha_inicio||'—'}) en RUC ${selectedCausa?.ruc}. Motivo: ${motivo}`)
+  }
+
+  // ✅ Igual patrón que ya usa la pestaña Plazo para corregir audiencias: se
+  // arma una línea de historial con fecha, quién lo hizo y el motivo, y se
+  // concatena al historial anterior de esa misma cautelar (queda visible en
+  // la tarjeta, no solo en el log de actividad general).
+  const actualizarCautelarConMotivo = async (id, campos, motivo) => {
+    const anterior = cautelares.find(x => x.id === id)
+    const lineaHistorial = `[${new Date().toLocaleString('es-CL')}] Corregido por ${session?.user?.email||'usuario'}. Motivo: ${motivo}. Antes era: ${anterior?.tipo||'—'}, ${anterior?.fecha_inicio||'—'}${anterior?.fecha_termino?' hasta '+anterior.fecha_termino:''}.`
+    const nuevoHistorial = anterior?.historial ? anterior.historial + '\n' + lineaHistorial : lineaHistorial
+    const camposFinales = { ...campos, historial: nuevoHistorial }
+    await supabase.from('cautelares_causa').update(camposFinales).eq('id', id)
+    setCautelares(prev => prev.map(x => x.id === id ? { ...x, ...camposFinales } : x))
+  }
+
+  // ✅ Condena — mismo patrón de historial con motivo que Cautelares/Plazo.
+  // Solo pide motivo si ya había una condena cargada antes (motivo === '' en
+  // la primera carga, porque no hay nada previo que corregir).
+  const actualizarCondenaImputado = async (impId, campos, motivo) => {
+    let camposFinales = campos
+    if (motivo) {
+      const anterior = imputados.find(x => x.id === impId)
+      const lineaHistorial = `[${new Date().toLocaleString('es-CL')}] Corregido por ${session?.user?.email||'usuario'}. Motivo: ${motivo}. Antes era: ${anterior?.condena_tipo||'—'}, ${anterior?.condena_fecha_inicio||'—'}, ${anterior?.condena_anos||0}a ${anterior?.condena_meses||0}m ${anterior?.condena_dias||0}d.`
+      const nuevoHistorial = anterior?.condena_historial ? anterior.condena_historial + '\n' + lineaHistorial : lineaHistorial
+      camposFinales = { ...campos, condena_historial: nuevoHistorial }
+    }
+    await supabase.from('imputados').update(camposFinales).eq('id', impId)
+    setImputados(prev => prev.map(x => x.id === impId ? { ...x, ...camposFinales } : x))
+    if (registrarActividad) registrarActividad('accion', `${motivo ? 'Corrigió' : 'Registró'} la condena de un imputado en RUC ${selectedCausa?.ruc}${motivo ? ': ' + motivo : ''}`)
+  }
+
+  const vaciarCondenaImputado = async (impId) => {
+    if (!window.confirm('¿Vaciar por completo los datos de Condena de este imputado? Esta acción no se puede deshacer.')) return
+    const campos = { condena_fecha_inicio: null, condena_tipo: null, condena_anos: null, condena_meses: null, condena_dias: null }
+    await supabase.from('imputados').update(campos).eq('id', impId)
+    setImputados(prev => prev.map(x => x.id === impId ? { ...x, ...campos } : x))
+    if (registrarActividad) registrarActividad('accion', `Vació los datos de Condena de un imputado en RUC ${selectedCausa?.ruc}`)
+  }
+
   const actualizarCentroPenalImputado = async (impId, valor) => {
     await supabase.from('imputados').update({ lugar_detencion: valor }).eq('id', impId)
     setImputados(prev => prev.map(x => x.id === impId ? { ...x, lugar_detencion: valor } : x))
@@ -334,6 +395,9 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
           regimen: regAuto || 'ADULTO',
           delitos: up(imp.delito) || '',
           lugar_detencion: up(imp.centro_penal) || '',
+          // Detenido automáticamente si la cautelar elegida es Prisión Preventiva
+          // o Internación Provisoria — igual criterio que sincronizarDetencionImputado.
+          esta_detenido: TIPOS_DETENCION_PENAL.includes(imp.cautelar),
         }).select().single()
         // Si este imputado tiene una cautelar con fecha (Prisión Preventiva,
         // Internación Provisoria, Arresto Total o Sujeción a SENAME), se
@@ -681,15 +745,19 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                       ruc={c.ruc}
                       cautelares={cautelares}
                       esRPA={imputados.some(i=>i.regimen==='RPA')}
+                      esTitular={esTitular}
                       registrarActividad={registrarActividad}
                       onGuardar={async(form)=>{
                         const{data,error}=await supabase.from('cautelares_causa').insert({causa_id:c.id,imputado_id:imputados[0]?.id||null,tipo:form.tipo,fecha_inicio:form.fecha_inicio,fecha_termino:form.fecha_termino||null,frecuencia:form.tipo==='Firma'?form.frecuencia:null}).select().single()
                         if(!error&&data){setCautelares(prev=>[...prev,data]);if(registrarActividad)registrarActividad('accion',`Agregó cautelar "${form.tipo}" en RUC ${c.ruc}`)}
+                        if(imputados[0]?.id) await sincronizarDetencionImputado(imputados[0].id)
                       }}
-                      onActualizar={async(id,campos)=>{
-                        await supabase.from('cautelares_causa').update(campos).eq('id',id)
-                        setCautelares(prev=>prev.map(x=>x.id===id?{...x,...campos}:x))
+                      onActualizar={async(id,campos,motivo)=>{
+                        if (motivo) { await actualizarCautelarConMotivo(id, campos, motivo) }
+                        else { await supabase.from('cautelares_causa').update(campos).eq('id',id); setCautelares(prev=>prev.map(x=>x.id===id?{...x,...campos}:x)) }
+                        if(imputados[0]?.id) await sincronizarDetencionImputado(imputados[0].id)
                       }}
+                      onEliminar={(id,motivo)=>eliminarCautelarDefinitivo(id, imputados[0]?.id, motivo)}
                     />
 
                     <div style={{gridColumn:'1/-1',marginBottom:2}}>
@@ -763,17 +831,21 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                         causaId={c.id}
                         ruc={c.ruc}
                         cautelares={cautelares.filter(ct=>ct.imputado_id===imp.id)}
+                        esTitular={esTitular}
                         registrarActividad={registrarActividad}
-                        onUpdateCampo={(field,value)=>actualizarCampoImputado(imp.id, field, value)}
+                        onUpdateCampo={(field,value)=>field==='lugar_detencion'?actualizarCentroPenalImputado(imp.id, value):actualizarCampoImputado(imp.id, field, value)}
                         onDelitoChange={(v)=>actualizarDelitosImputado(imp.id, v)}
                         onGuardarCautelar={async(form)=>{
                           const{data,error}=await supabase.from('cautelares_causa').insert({causa_id:c.id,imputado_id:imp.id,tipo:form.tipo,fecha_inicio:form.fecha_inicio,fecha_termino:form.fecha_termino||null,frecuencia:form.tipo==='Firma'?form.frecuencia:null}).select().single()
                           if(!error&&data){setCautelares(prev=>[...prev,data]);if(registrarActividad)registrarActividad('accion',`Agregó cautelar "${form.tipo}" a ${imp.nombre||'imputado'} en RUC ${c.ruc}`)}
+                          await sincronizarDetencionImputado(imp.id)
                         }}
-                        onActualizarCautelar={async(id,campos)=>{
-                          await supabase.from('cautelares_causa').update(campos).eq('id',id)
-                          setCautelares(prev=>prev.map(x=>x.id===id?{...x,...campos}:x))
+                        onActualizarCautelar={async(id,campos,motivo)=>{
+                          if (motivo) { await actualizarCautelarConMotivo(id, campos, motivo) }
+                          else { await supabase.from('cautelares_causa').update(campos).eq('id',id); setCautelares(prev=>prev.map(x=>x.id===id?{...x,...campos}:x)) }
+                          await sincronizarDetencionImputado(imp.id)
                         }}
+                        onEliminarCautelar={(id,motivo)=>eliminarCautelarDefinitivo(id, imp.id, motivo)}
                       />
                     ))}
                   </div>
@@ -785,11 +857,15 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
             {activeTab==='imputado'&&(
               <div>
                 {imputados.map((imp,idx)=>(
-                  <ImputadoCard key={imp.id} imp={imp} idx={idx} onUpdate={async(field,value)=>{
+                  <ImputadoCard key={imp.id} imp={imp} idx={idx} cautelares={cautelares.filter(ct=>ct.imputado_id===imp.id)} esTitular={esTitular} onGuardarCondena={(campos,motivo)=>actualizarCondenaImputado(imp.id,campos,motivo)} onVaciarCondena={()=>vaciarCondenaImputado(imp.id)} onUpdate={async(field,value)=>{
                     // Los delitos van sincronizados con el agregado de la causa
                     if (field === 'delitos') { await actualizarDelitosImputado(imp.id, value); return }
+                    // Centro Penal ("Recinto penitenciario" en esta pestaña) usa la misma
+                    // función que en la pestaña Datos, para que quede sincronizado igual
+                    // en los 3 caminos posibles de edición.
+                    if (field === 'lugar_detencion') { await actualizarCentroPenalImputado(imp.id, value); return }
                     // Campos que NO deben convertirse a mayúsculas
-                    const camposSinUpper = ['fecha_nacimiento','fecha_detencion','rut']
+                    const camposSinUpper = ['fecha_nacimiento','fecha_detencion','rut','condena_fecha_inicio']
                     if (typeof value === 'string' && !camposSinUpper.includes(field)) value = value.toUpperCase()
                     // Calcular régimen automático al guardar fecha_nacimiento
                     let updateData = {[field]:value}

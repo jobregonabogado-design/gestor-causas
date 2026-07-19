@@ -133,6 +133,7 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
   const [respondiendoId, setRespondiendoId] = useState(null)
   const [editandoDatosId, setEditandoDatosId] = useState(null)
   const [formEdit, setFormEdit] = useState({ tipo:'', fecha_solicitud:'', folio:'', observacion:'' })
+  const [motivoEditDatos, setMotivoEditDatos] = useState('')
   const [formResp, setFormResp] = useState({ estado:'aprobada', fecha_respuesta:new Date().toISOString().slice(0,10), fecha_citacion:'', respuesta_detalle:'' })
   const [subiendoId, setSubiendoId] = useState(null) // id de la diligencia que está subiendo un archivo (comprobante o respuesta)
   const [analizandoPdf, setAnalizandoPdf] = useState(false)
@@ -202,16 +203,21 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
   const empezarEdicionDatos = (d) => {
     setEditandoDatosId(d.id)
     setFormEdit({ tipo: d.tipo, fecha_solicitud: d.fecha_solicitud, folio: d.folio, observacion: d.observacion || '' })
+    setMotivoEditDatos('')
   }
 
   const guardarEdicionDatos = async (id) => {
     if (!formEdit.folio.trim()) { alert('El folio no puede quedar vacío.'); return }
     if (!formEdit.fecha_solicitud) return
-    const campos = { tipo: formEdit.tipo, fecha_solicitud: formEdit.fecha_solicitud, folio: formEdit.folio.toUpperCase(), observacion: formEdit.observacion || null }
+    if (!motivoEditDatos.trim()) { alert('Ingresa el motivo de la corrección — queda registrado para tener trazabilidad.'); return }
+    const anterior = diligencias.find(d => d.id === id)
+    const lineaHistorial = `[${new Date().toLocaleString('es-CL')}] Corregido por ${email||'usuario'}. Motivo: ${motivoEditDatos.trim()}. Antes era: ${anterior?.tipo||'—'}, ${anterior?.fecha_solicitud||'—'}, folio ${anterior?.folio||'—'}.`
+    const nuevoHistorial = anterior?.historial ? anterior.historial + '\n' + lineaHistorial : lineaHistorial
+    const campos = { tipo: formEdit.tipo, fecha_solicitud: formEdit.fecha_solicitud, folio: formEdit.folio.toUpperCase(), observacion: formEdit.observacion || null, historial: nuevoHistorial }
     await supabase.from('diligencias_fiscalia').update(campos).eq('id', id)
     setDiligencias(prev => prev.map(d => d.id === id ? { ...d, ...campos } : d))
     setEditandoDatosId(null)
-    if (registrarActividad) registrarActividad('accion', `Corrigió datos de una diligencia (folio ${formEdit.folio}) en RUC ${ruc}`)
+    if (registrarActividad) registrarActividad('accion', `Corrigió datos de una diligencia (folio ${formEdit.folio}) en RUC ${ruc}: ${motivoEditDatos.trim()}`)
     if (onAccion) onAccion()
   }
 
@@ -393,6 +399,10 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
                     <div style={{ fontSize:10, color:'#64748b', textTransform:'uppercase', letterSpacing:1.2, marginBottom:5, fontWeight:600, ...f }}>Detalle de lo solicitado</div>
                     <input style={inp} value={formEdit.observacion} onChange={e=>setFormEdit(p=>({...p,observacion:e.target.value}))}/>
                   </div>
+                  <div style={{ gridColumn:'1/-1' }}>
+                    <div style={{ fontSize:10, color:'#dc2626', textTransform:'uppercase', letterSpacing:1.2, marginBottom:5, fontWeight:700, ...f }}>Motivo de la corrección *</div>
+                    <input style={{...inp,borderColor:'#fecaca'}} placeholder="Ej: Folio mal leído del PDF, fecha incorrecta..." value={motivoEditDatos} onChange={e=>setMotivoEditDatos(e.target.value)}/>
+                  </div>
                 </div>
                 <div style={{ display:'flex', gap:8 }}>
                   <button className="btn-primary" style={{ fontSize:12 }} onClick={()=>guardarEdicionDatos(d.id)}>✓ Guardar corrección</button>
@@ -401,6 +411,11 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
               </div>
             ) : d.observacion && (
               <div style={{ fontSize:12, color:'#64748b', marginTop:8, background:'#fff', border:'1px solid #e2e8f0', borderRadius:8, padding:'8px 10px', ...f }}>{d.observacion}</div>
+            )}
+            {editandoDatosId !== d.id && d.historial && (
+              <div style={{marginTop:6,paddingTop:6,borderTop:'1px solid #e2e8f0'}}>
+                {d.historial.split('\n').map((h,i)=><div key={i} style={{fontSize:10,color:'#94a3b8',...f}}>📝 {h}</div>)}
+              </div>
             )}
 
             {/* Comprobante y respuesta — adjuntar / ver PDF, cada uno con verificación de RUC al subir */}

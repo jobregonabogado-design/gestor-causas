@@ -1,8 +1,9 @@
 // Tarjetas de Audiencia e Imputado usadas dentro de la lista de una causa.
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { DELITOS_CATALOGO, CENTROS_PENALES, calcularEdadActual } from './utils'
+import { DELITOS_CATALOGO, CENTROS_PENALES, calcularEdadActual, calcularFechaTerminoCondena } from './utils'
 import { SearchableSelect, DelitosChips } from './primitives'
+import { calcularTotalAbono } from './cautelares'
 
 export function AudienciaCard({ a, onUpdate }) {
   const [editing, setEditing] = useState(false)
@@ -82,11 +83,54 @@ export function AudienciaCard({ a, onUpdate }) {
   )
 }
 
-export function ImputadoCard({ imp, idx, onUpdate, onDelete }) {
+// ✅ Muestra solo las unidades que corresponden — "5 años y 1 día" en vez de
+// "5a 0m 1d" — para que se lea igual a como se dicta la condena en la práctica.
+function formatearTiempoCondena(anos, meses, dias) {
+  const partes = []
+  if (anos) partes.push(`${anos} ${anos===1?'año':'años'}`)
+  if (meses) partes.push(`${meses} ${meses===1?'mes':'meses'}`)
+  if (dias) partes.push(`${dias} ${dias===1?'día':'días'}`)
+  if (partes.length === 0) return '—'
+  if (partes.length === 1) return partes[0]
+  return partes.slice(0,-1).join(', ') + ' y ' + partes[partes.length-1]
+}
+
+export function ImputadoCard({ imp, idx, cautelares, esTitular, onUpdate, onDelete, onGuardarCondena, onVaciarCondena }) {
   const [editField, setEditField] = useState(null)
   const [editValue, setEditValue] = useState('')
   const f = { fontFamily:"'Inter',sans-serif" }
   const inp = { width:'100%', padding:'8px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:'#1E293B', background:'#fff', ...f }
+  // ✅ Mismo cálculo de abono que usa la pestaña Datos (Cautelares), para
+  // descontarlo de la condena sin duplicar el criterio.
+  const totalAbono = calcularTotalAbono(cautelares)
+  const condenaCompleta = imp.condena_fecha_inicio && (imp.condena_anos || imp.condena_meses || imp.condena_dias)
+
+  // ✅ Condena: modo lectura una vez cargada, con "Editar" que pide motivo
+  // (igual patrón que Cautelares/Plazo) — salvo la primera vez que se
+  // ingresa, que no pide motivo porque no hay nada previo que corregir.
+  const [editandoCondena, setEditandoCondena] = useState(false)
+  const [condenaForm, setCondenaForm] = useState({ fecha_inicio:'', tipo:'efectiva', anos:'', meses:'', dias:'' })
+  const [motivoCondena, setMotivoCondena] = useState('')
+  const mostrarFormCondena = editandoCondena || !condenaCompleta
+
+  const iniciarEdicionCondena = () => {
+    setCondenaForm({ fecha_inicio: imp.condena_fecha_inicio||'', tipo: imp.condena_tipo||'efectiva', anos: imp.condena_anos??'', meses: imp.condena_meses??'', dias: imp.condena_dias??'' })
+    setMotivoCondena('')
+    setEditandoCondena(true)
+  }
+
+  const guardarCondena = async () => {
+    if (condenaCompleta && !motivoCondena.trim()) { alert('Ingresa el motivo de la corrección — queda registrado para tener trazabilidad.'); return }
+    const campos = {
+      condena_fecha_inicio: condenaForm.fecha_inicio || null,
+      condena_tipo: condenaForm.tipo,
+      condena_anos: condenaForm.anos===''?null:parseInt(condenaForm.anos),
+      condena_meses: condenaForm.meses===''?null:parseInt(condenaForm.meses),
+      condena_dias: condenaForm.dias===''?null:parseInt(condenaForm.dias),
+    }
+    await onGuardarCondena(campos, condenaCompleta ? motivoCondena.trim() : '')
+    setEditandoCondena(false)
+  }
 
   const normRut = (r) => (r||'').replace(/[.\-\s]/g,'').toUpperCase()
 
@@ -243,6 +287,87 @@ export function ImputadoCard({ imp, idx, onUpdate, onDelete }) {
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginTop:8}}>
             <Field2 label="Recinto penitenciario" field="lugar_detencion"/>
             <Field2 label="Fecha de detención" field="fecha_detencion"/>
+          </div>
+        )}
+      </div>
+
+      {/* ✅ Condena — inicio + tipo (efectiva/sustitutiva) + tiempo (años/meses/
+          días), descontando el abono ya registrado en Cautelares. La fecha de
+          término se calcula sola, aparte, siempre en días corridos. Una vez
+          cargada, corregirla pide motivo (igual que Cautelares); vaciarla del
+          todo es solo para el titular. */}
+      <div style={{marginTop:14,background:'#F8F9FC',border:'1.5px solid #e2e8f0',borderRadius:10,padding:14}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+          <div style={{fontSize:13,fontWeight:600,color:'#1E293B',...f}}>⚖️ Condena</div>
+          {condenaCompleta && !editandoCondena && (
+            <div style={{display:'flex',gap:10}}>
+              <button onClick={iniciarEdicionCondena} style={{fontSize:11,color:'#2563eb',background:'transparent',border:'none',cursor:'pointer',fontWeight:600,...f}}>✏ Editar</button>
+              {esTitular && <button onClick={()=>onVaciarCondena()} style={{fontSize:11,color:'#94a3b8',background:'transparent',border:'none',cursor:'pointer',fontWeight:600,...f}}>🗑 Vaciar Condena</button>}
+            </div>
+          )}
+        </div>
+
+        {mostrarFormCondena ? (
+          <>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+              <div>
+                <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:5,fontWeight:600,...f}}>Tipo de condena</div>
+                <select style={inp} value={condenaForm.tipo} onChange={e=>setCondenaForm(p=>({...p,tipo:e.target.value}))}>
+                  <option value="efectiva">Efectiva</option>
+                  <option value="sustitutiva">Pena sustitutiva</option>
+                </select>
+              </div>
+              <div>
+                <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:5,fontWeight:600,...f}}>{condenaForm.tipo==='sustitutiva' ? 'Inicio pena sustitutiva' : 'Inicio condena efectiva'}</div>
+                <input type="date" style={inp} value={condenaForm.fecha_inicio} onChange={e=>setCondenaForm(p=>({...p,fecha_inicio:e.target.value}))}/>
+              </div>
+              <div style={{gridColumn:'1/-1'}}>
+                <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:5,fontWeight:600,...f}}>Tiempo de condena</div>
+                <div style={{display:'flex',gap:6}}>
+                  <input type="number" min="0" placeholder="Años" style={inp} value={condenaForm.anos} onChange={e=>setCondenaForm(p=>({...p,anos:e.target.value}))}/>
+                  <input type="number" min="0" max="11" placeholder="Meses" style={inp} value={condenaForm.meses} onChange={e=>setCondenaForm(p=>({...p,meses:e.target.value}))}/>
+                  <input type="number" min="0" placeholder="Días" style={inp} value={condenaForm.dias} onChange={e=>setCondenaForm(p=>({...p,dias:e.target.value}))}/>
+                </div>
+              </div>
+              {condenaCompleta && (
+                <div style={{gridColumn:'1/-1'}}>
+                  <div style={{fontSize:10,color:'#dc2626',textTransform:'uppercase',letterSpacing:1.2,marginBottom:5,fontWeight:700,...f}}>Motivo de la corrección *</div>
+                  <input style={{...inp,borderColor:'#fecaca'}} placeholder="Ej: Se corrigió el tiempo de condena tras la sentencia definitiva..." value={motivoCondena} onChange={e=>setMotivoCondena(e.target.value)}/>
+                </div>
+              )}
+            </div>
+            <div style={{display:'flex',gap:8,marginTop:10}}>
+              <button className="btn-primary" style={{fontSize:12}} onClick={guardarCondena}>✓ Guardar</button>
+              {condenaCompleta && <button className="btn-secondary" style={{fontSize:12}} onClick={()=>setEditandoCondena(false)}>Cancelar</button>}
+            </div>
+          </>
+        ) : (
+          <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+            <div style={{padding:'10px 14px',background:'#fff',borderRadius:8,border:'1px solid #e2e8f0'}}>
+              <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1,fontWeight:700,...f}}>{imp.condena_tipo==='sustitutiva' ? 'Pena sustitutiva desde' : 'Condena efectiva desde'}</div>
+              <div style={{fontSize:14,fontWeight:700,color:'#1E293B',...f}}>{imp.condena_fecha_inicio} · {formatearTiempoCondena(imp.condena_anos, imp.condena_meses, imp.condena_dias)}</div>
+            </div>
+            <div style={{padding:'10px 14px',background:'#fff',borderRadius:8,border:'1px solid #e2e8f0',display:'flex',alignItems:'center',gap:10}}>
+              <span style={{fontSize:18}}>🔒</span>
+              <div>
+                <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1,fontWeight:700,...f}}>Abono (Cautelares)</div>
+                <div style={{fontSize:16,fontWeight:800,color:'#1E293B',...f}}>{totalAbono} días</div>
+              </div>
+            </div>
+            <div style={{padding:'10px 14px',background:'#fff',borderRadius:8,border:'1px solid #e2e8f0',display:'flex',alignItems:'center',gap:10}}>
+              <span style={{fontSize:18}}>📅</span>
+              <div>
+                <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1,fontWeight:700,...f}}>Fecha de término de condena</div>
+                <div style={{fontSize:16,fontWeight:800,color:'#1E293B',...f}}>{calcularFechaTerminoCondena(imp.condena_fecha_inicio, imp.condena_anos, imp.condena_meses, imp.condena_dias, totalAbono)}</div>
+                <div style={{fontSize:10,color:'#94a3b8',marginTop:2,...f}}>Días corridos, ya descontado el abono</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {imp.condena_historial && (
+          <div style={{marginTop:10,paddingTop:8,borderTop:'1px solid #e2e8f0'}}>
+            {imp.condena_historial.split('\n').map((h,i)=><div key={i} style={{fontSize:10,color:'#94a3b8',...f}}>📝 {h}</div>)}
           </div>
         )}
       </div>

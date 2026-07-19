@@ -10,6 +10,7 @@ export const estadoConfig = {
   plazo_vigente:     { label:'PLAZO VIGENTE',           color:'#065f46', bg:'#ecfdf5', border:'#a7f3d0' },
   apjo:              { label:'APJO',                    color:'#5b21b6', bg:'#f5f3ff', border:'#ddd6fe' },
   juicio_oral:       { label:'JUICIO ORAL',             color:'#9f1239', bg:'#fff1f2', border:'#fecdd3' },
+  cumpliendo_condena:{ label:'CUMPLIENDO CONDENA',      color:'#991b1b', bg:'#fef2f2', border:'#fecaca' },
   // Subestados TERMINADA
   renuncia:          { label:'RENUNCIA',                color:'#475569', bg:'#F8F9FC', border:'#e2e8f0' },
   revocacion:        { label:'REVOCACIÓN',              color:'#475569', bg:'#F8F9FC', border:'#e2e8f0' },
@@ -19,13 +20,15 @@ export const estadoConfig = {
   dnp:               { label:'DNP',                      color:'#475569', bg:'#F8F9FC', border:'#e2e8f0' },
   scp:               { label:'SALIDA ALTERNATIVA SCP',  color:'#065f46', bg:'#ecfdf5', border:'#a7f3d0' },
   salida_ar:         { label:'SALIDA ALTERNATIVA AR',   color:'#065f46', bg:'#ecfdf5', border:'#a7f3d0' },
+  // Subestado compartido — puede darse tanto en causas Vigentes como Terminadas
+  orden_detencion:   { label:'ORDEN DE DETENCIÓN (OD)', color:'#c2410c', bg:'#fff7ed', border:'#fdba74' },
   // Estados principales
   terminada:         { label:'TERMINADA',               color:'#475569', bg:'#F8F9FC', border:'#e2e8f0' },
   vigente:           { label:'VIGENTE',                 color:'#065f46', bg:'#ecfdf5', border:'#a7f3d0' },
 }
 
-export const SUBESTADOS_VIGENTE = ['plazo_vigente','proximo','vencido','apjo','juicio_oral']
-export const SUBESTADOS_TERMINADA = ['renuncia','revocacion','condena_preso','condena_libertad','absuelto','dnp','scp','salida_ar']
+export const SUBESTADOS_VIGENTE = ['plazo_vigente','proximo','vencido','apjo','juicio_oral','cumpliendo_condena','orden_detencion']
+export const SUBESTADOS_TERMINADA = ['renuncia','revocacion','condena_preso','condena_libertad','absuelto','dnp','scp','salida_ar','orden_detencion']
 
 export function getBadgeConfig(estado, subestado) {
   if (subestado && estadoConfig[subestado]) return estadoConfig[subestado]
@@ -1095,6 +1098,22 @@ export function calcularVencimiento(fechaInicio, diasPlazo) {
   const inicio = new Date(fechaInicio + 'T12:00:00')
   inicio.setDate(inicio.getDate() + parseInt(diasPlazo))
   return inicio.toLocaleDateString('es-CL', { day:'2-digit', month:'2-digit', year:'numeric' })
+}
+
+// ✅ Fecha de término de condena — siempre en días corridos. Primero suma el
+// tiempo de condena (años/meses/días, como se dicta en la práctica) en forma
+// calendario a la fecha de inicio, y DESPUÉS resta los días de abono ya
+// registrados en Cautelares (Prisión Preventiva/Internación Provisoria/
+// Arresto Total/Arresto Nocturno sumado) — mismo criterio que usa la
+// calculadora de plazo para "VENCE".
+export function calcularFechaTerminoCondena(fechaInicio, anos, meses, dias, abonoDias) {
+  if (!fechaInicio) return null
+  const fecha = new Date(fechaInicio + 'T12:00:00')
+  if (isNaN(fecha)) return null
+  fecha.setFullYear(fecha.getFullYear() + (parseInt(anos) || 0))
+  fecha.setMonth(fecha.getMonth() + (parseInt(meses) || 0))
+  fecha.setDate(fecha.getDate() + (parseInt(dias) || 0) - (parseInt(abonoDias) || 0))
+  return fecha.toLocaleDateString('es-CL', { day:'2-digit', month:'2-digit', year:'numeric' })
 }
 
 export function parseFechaCL(str) {
