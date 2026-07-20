@@ -15,6 +15,7 @@ import { DiligenciasFiscalia, parsearComprobanteFiscalia } from './dashboard/dil
 import { FallosReferencia, DocumentosGuardados } from './dashboard/documentos'
 import { HonorariosTab } from './dashboard/honorarios'
 import { TeoriaDelCaso } from './dashboard/teoria'
+import { BotonResumenImprimible } from './dashboard/resumen'
 import { PlazoCalculador } from './dashboard/plazo'
 import { calcularRegimenAlMomento, calcularVencimiento, parseFechaCL, diasRestantes, calcularSubestado, calcularEdadActual, TRIBUNAL_RPA } from './dashboard/utils'
 import { ImputadoDatosCard } from './dashboard/imputado-datos'
@@ -59,6 +60,29 @@ const CSS = `
   .seccion-plegable summary::-webkit-details-marker { display:none; }
   .seccion-plegable .seccion-chevron { transition:transform 0.2s ease; display:inline-block; }
   .seccion-plegable[open] .seccion-chevron { transform:rotate(180deg); }
+  /* ✅ Resumen imprimible de una causa — al imprimir, se oculta todo menos el
+     contenido del resumen (el resto de la app no debe salir en el PDF/papel).
+     El modal (.resumen-overlay/.resumen-imprimible) se renderiza con un
+     Portal de React directo a <body> — a propósito, para que NUNCA quede
+     anidado dentro de ".detail-enter" ni de ningún ".no-imprimir": si
+     quedara adentro, ocultar ese contenedor se llevaría el contenido
+     imprimible con él sin importar qué CSS se le ponga al modal. Gracias a
+     eso, acá se puede ocultar con total tranquilidad TODO lo demás,
+     incluyendo ".detail-enter" completo (que si no se oculta, sigue
+     reservando su alto de min-height:100vh aunque esté con
+     visibility:hidden, empujando el resumen a la página 2 o 3). */
+  @media print {
+    body * { visibility:hidden; }
+    .resumen-imprimible, .resumen-imprimible * { visibility:visible; }
+    /* .app-shell (App.jsx) también tiene min-height:100vh — sigue
+       reservando una pantalla completa de espacio en blanco antes del
+       resumen aunque esté oculta con visibility, empujando el contenido
+       real a la página 2. .detail-enter queda igual por si acaso. */
+    .app-shell, .detail-enter { display:none !important; }
+    .resumen-overlay { position:static !important; inset:auto !important; background:none !important; overflow:visible !important; padding:0 !important; z-index:auto !important; }
+    .resumen-imprimible { position:static !important; width:100%; max-width:100%; margin:0 !important; box-shadow:none !important; }
+    .no-imprimir { display:none !important; }
+  }
   @media (max-width: 640px) {
     .stats-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 8px !important; }
     .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -561,7 +585,10 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
       <div style={{background:'#F8F9FC',minHeight:'100vh',...f}} className="detail-enter">
         <style>{CSS}</style>
         <div style={{maxWidth:1060,margin:'0 auto',padding:'24px 28px'}}>
-          <button className="btn-secondary" onClick={()=>setView('list')} style={{marginBottom:20,fontSize:13,border:'none',borderRadius:14,boxShadow:'0 1px 2px rgba(15,23,42,0.06)'}}>← Volver</button>
+          <div className="no-imprimir" style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20,flexWrap:'wrap',gap:10}}>
+            <button className="btn-secondary" onClick={()=>setView('list')} style={{fontSize:13,border:'none',borderRadius:14,boxShadow:'0 1px 2px rgba(15,23,42,0.06)'}}>← Volver</button>
+            <BotonResumenImprimible causa={c} imputados={imputados} audiencias={audiencias} aumentos={aumentos} cautelares={cautelares} esTitular={esTitular}/>
+          </div>
           <div style={{background:'#fff',borderRadius:20,boxShadow:'0 1px 3px rgba(15,23,42,0.06)'}}>
           <div style={{padding:'28px 28px 20px',borderRadius:'20px 20px 0 0'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:12}}>

@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { parsearComprobanteFiscalia, extraerTextoPdf } from './diligencias'
 import { f } from './primitives'
+import { BotonImprimirDocumentos } from './resumen'
 
 export function FallosReferencia({ causaId, ruc, email, onAccion }) {
   const [fallos, setFallos] = useState([])
@@ -53,6 +54,9 @@ export function FallosReferencia({ causaId, ruc, email, onAccion }) {
 
   return (
     <div>
+      <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:10 }}>
+        <BotonImprimirDocumentos items={fallos}/>
+      </div>
       <div onDragOver={e => { e.preventDefault(); setDrag(true) }} onDragLeave={() => setDrag(false)} onDrop={onDrop} onClick={() => inputRef.current?.click()}
         style={{ border: `2px dashed ${drag ? '#2563eb' : '#e2e8f0'}`, borderRadius: 12, padding: '28px 20px', textAlign: 'center', background: drag ? '#eff6ff' : '#F8F9FC', cursor: 'pointer', transition: 'all 0.2s', marginBottom: 16 }}>
         <input ref={inputRef} type="file" accept=".pdf" multiple style={{ display:'none' }} onChange={e => Array.from(e.target.files).forEach(f => subirArchivo(f))}/>
@@ -189,8 +193,16 @@ export function DocumentosGuardados({ causaId, ruc, email, registrarActividad, o
 
   return (
     <div>
-      <div style={{ fontSize:13, fontWeight:700, color:'#1E293B', marginBottom:4, ...f }}>Documentos guardados en la app</div>
-      <div style={{ fontSize:11, color:'#94a3b8', marginBottom:14, ...f }}>Solo lo que subas acá explícitamente. El resto del Drive queda solo enlazado, sin ocupar espacio.</div>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:10, marginBottom:4 }}>
+        <div>
+          <div style={{ fontSize:13, fontWeight:700, color:'#1E293B', ...f }}>Documentos guardados en la app</div>
+          <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>Solo lo que subas acá explícitamente. El resto del Drive queda solo enlazado, sin ocupar espacio.</div>
+        </div>
+        <div style={{ flexShrink:0 }}>
+          <BotonImprimirDocumentos items={docs}/>
+        </div>
+      </div>
+      <div style={{ marginBottom:14 }}/>
       <div onDragOver={e => { e.preventDefault(); setDrag(true) }} onDragLeave={() => setDrag(false)} onDrop={onDrop} onClick={() => inputRef.current?.click()}
         style={{ border: `2px dashed ${drag ? '#2563eb' : '#e2e8f0'}`, borderRadius: 12, padding: '24px 20px', textAlign: 'center', background: drag ? '#eff6ff' : '#F8F9FC', cursor: 'pointer', transition: 'all 0.2s', marginBottom: 16 }}>
         <input ref={inputRef} type="file" multiple style={{ display:'none' }} onChange={e => Array.from(e.target.files).forEach(f => subirArchivo(f))}/>

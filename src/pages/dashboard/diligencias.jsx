@@ -2,6 +2,7 @@
 // comprobantes (PDF/imagen con OCR) y cálculo de plazos hábiles.
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
+import { BotonImprimirLista } from './resumen'
 
 export const TIPOS_DILIGENCIA = ['Declaración de imputado','Petición de carpeta','Entrevista con el fiscal','Reconstitución de escena','Careo','Otra diligencia']
 export const ESTADOS_DILIGENCIA = {
@@ -338,6 +339,14 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
 
   return (
     <div>
+      <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:8 }} className="no-imprimir">
+        <BotonImprimirLista ruc={ruc} titulo="Diligencias de Fiscalía" items={diligencias} renderItem={(d)=> (
+          <div style={{fontSize:12,color:'#475569'}}>
+            <strong style={{color:'#1E293B'}}>{d.tipo}</strong> — solicitada el {d.fecha_solicitud}{d.folio ? ` · Folio ${d.folio}` : ''}
+            {d.estado === 'pendiente' ? ' · Pendiente de respuesta' : ` · Respondida el ${d.fecha_respuesta || '—'}${d.estado === 'con_citacion' && d.fecha_citacion ? ` · Cita el ${d.fecha_citacion}` : ''}`}
+          </div>
+        )}/>
+      </div>
       <div style={{ fontSize:12, color:'#94a3b8', marginBottom:16, lineHeight:1.6, ...f }}>
         Cada solicitud a Fiscalía (declaración, petición de carpeta, entrevista con el fiscal, etc.) entrega un <strong>folio de seguimiento</strong> al momento de ingresarla — exígelo siempre y regístralo aquí. Días después llega la respuesta por correo: aprobada, con fecha de citación, o rechazada con motivo.
       </div>

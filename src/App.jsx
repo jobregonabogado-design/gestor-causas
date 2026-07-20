@@ -517,7 +517,7 @@ export default function App() {
   }
 
   return (
-    <div style={{ background:'#F8F9FC', minHeight:'100vh' }}>
+    <div className="app-shell" style={{ background:'#F8F9FC', minHeight:'100vh' }}>
       <style>{css}</style>
       {notifTarea && <TareaToast tarea={notifTarea} onClose={() => setNotifTarea(null)} />}
       {showPanel && <PanelActividad onClose={() => { setShowPanel(false); setSolicitudesPendientes(0) }} onVerCausa={irACausaPorRuc} />}
