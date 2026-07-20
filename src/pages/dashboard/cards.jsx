@@ -237,7 +237,7 @@ export function ImputadoCard({ imp, idx, totalImputados, cautelares, esTitular, 
           <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:5,fontWeight:600,...f}}>Fecha de nacimiento</div>
           {editField==='fecha_nacimiento'?(
             <div style={{display:'flex',gap:6}}>
-              <input type="date" style={inp} value={editValue} onChange={e=>setEditValue(e.target.value)}
+              <input type="date" style={inp} value={editValue} onChange={e=>{setEditValue(e.target.value);if(e.target.value)onUpdate('fecha_nacimiento',e.target.value)}}
                 onKeyDown={e=>{if(e.key==='Enter'){onUpdate('fecha_nacimiento',editValue);setEditField(null)}if(e.key==='Escape')setEditField(null)}} autoFocus/>
               <button style={{background:'#1E293B',color:'#fff',border:'none',borderRadius:7,padding:'7px 12px',fontSize:12,cursor:'pointer',...f}} onClick={()=>{onUpdate('fecha_nacimiento',editValue);setEditField(null)}}>✓</button>
               <button style={{background:'#fff',border:'1.5px solid #e2e8f0',borderRadius:7,padding:'7px 10px',fontSize:12,cursor:'pointer',...f}} onClick={()=>setEditField(null)}>✗</button>
