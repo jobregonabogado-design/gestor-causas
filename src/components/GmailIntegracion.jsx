@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { loginGmail, isGmailConnected, logoutGmail, fetchNotificacionesPJUD, exchangeCodeForToken } from '../lib/gmail'
 import { supabase } from '../lib/supabase'
 
-const f = { fontFamily:"'Century Gothic','Inter',sans-serif" }
+const f = { fontFamily:"'Manrope','Inter',sans-serif" }
 
 export default function GmailIntegracion({ onImportComplete }) {
   const [conectado, setConectado] = useState(isGmailConnected())

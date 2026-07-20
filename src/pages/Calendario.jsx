@@ -4,6 +4,7 @@ import GmailIntegracion from '../components/GmailIntegracion'
 
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap');
   .cal-day { transition: background 0.2s ease, outline 0.2s ease; cursor: pointer; }
   .cal-day:hover { background: #f8faff !important; }
   .aud-card { transition: box-shadow 0.25s ease, transform 0.25s ease; }
@@ -12,11 +13,11 @@ const CSS = `
   .nav-btn:hover { background: #f1f5f9 !important; }
   .tag-pill { transition: background 0.2s ease, border-color 0.2s ease; cursor: pointer; }
   .tag-pill:hover { opacity: 0.85; }
-  .btn-blue { font-family:'Century Gothic','Inter',sans-serif; background:#1E293B; color:#fff; border:none; border-radius:10px; padding:9px 20px; font-size:13px; font-weight:600; cursor:pointer; transition:background 0.25s ease, box-shadow 0.25s ease; box-shadow:0 2px 8px rgba(30,58,95,0.2); }
+  .btn-blue { font-family:'Manrope','Inter',sans-serif; background:#1E293B; color:#fff; border:none; border-radius:10px; padding:9px 20px; font-size:13px; font-weight:600; cursor:pointer; transition:background 0.25s ease, box-shadow 0.25s ease; box-shadow:0 2px 8px rgba(30,58,95,0.2); text-transform:uppercase; letter-spacing:0.3px; }
   .btn-blue:hover { background:#1e40af; box-shadow:0 4px 16px rgba(30,58,95,0.3); }
-  .btn-out { font-family:'Century Gothic','Inter',sans-serif; background:#fff; color:#374151; border:1.5px solid #e5e7eb; border-radius:10px; padding:8px 18px; font-size:13px; font-weight:500; cursor:pointer; transition:border-color 0.25s ease, color 0.25s ease, background 0.25s ease; }
+  .btn-out { font-family:'Manrope','Inter',sans-serif; background:#fff; color:#374151; border:1.5px solid #e5e7eb; border-radius:10px; padding:8px 18px; font-size:13px; font-weight:500; cursor:pointer; transition:border-color 0.25s ease, color 0.25s ease, background 0.25s ease; text-transform:uppercase; letter-spacing:0.3px; }
   .btn-out:hover { border-color:#93c5fd; color:#1E293B; background:#f8faff; }
-  input,select,textarea { font-family:'Century Gothic','Inter',sans-serif !important; text-transform:uppercase; }
+  input,select,textarea { font-family:'Manrope','Inter',sans-serif !important; text-transform:uppercase; }
   input:focus,select:focus,textarea:focus { outline:none; border-color:#93c5fd !important; box-shadow:0 0 0 3px rgba(37,99,235,0.08); }
 `
 
@@ -34,7 +35,7 @@ function tipoColor(tipo) {
 
 const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"]
 const DIAS = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"]
-const f = { fontFamily:"'Century Gothic','Inter', sans-serif" }
+const f = { fontFamily:"'Manrope','Inter', sans-serif" }
 
 const leyenda = [
   { label:"Juicio Oral", color:"#e11d48" },
@@ -248,7 +249,7 @@ export default function Calendario({ onVerCausa }) {
           </div>
           <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
             <button className="btn-blue" onClick={()=>setShowForm(true)}>+ Nueva audiencia</button>
-            <button onClick={handleGmailToggle} style={{background:showGmail?'#1E293B':'#fff',color:showGmail?'#fff':'#475569',border:'1.5px solid #e2e8f0',borderRadius:8,padding:'8px 16px',fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:"'Century Gothic','Inter',sans-serif",transition:'all 0.2s'}}>
+            <button onClick={handleGmailToggle} style={{background:showGmail?'#1E293B':'#fff',color:showGmail?'#fff':'#475569',border:'1.5px solid #e2e8f0',borderRadius:8,padding:'8px 16px',fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:"'Manrope','Inter',sans-serif",transition:'all 0.2s',textTransform:'uppercase',letterSpacing:0.3}}>
               📧 Gmail
             </button>
             <button onClick={()=>setVistaLista(!vistaLista)} className="btn-out"

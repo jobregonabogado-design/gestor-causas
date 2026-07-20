@@ -192,7 +192,7 @@ export function TeoriaDelCaso({ causaId, ruc, session, registrarActividad, onAcc
             <DiligenciasFiscalia causaId={causaId} ruc={ruc} email={session?.user?.email || ''} registrarActividad={registrarActividad} onAccion={onAccion} />
           ) : (
             <textarea value={form[seccionActiva] || ''} onChange={e => handleChange(seccionActiva, e.target.value)} placeholder={seccionActual?.placeholder}
-              style={{ width:'100%', height:'100%', minHeight:360, border:'none', outline:'none', resize:'none', fontSize:14, lineHeight:1.8, color:'#1E293B', background:'transparent', fontFamily:"'Century Gothic','Inter',sans-serif", padding:0 }}/>
+              style={{ width:'100%', height:'100%', minHeight:360, border:'none', outline:'none', resize:'none', fontSize:14, lineHeight:1.8, color:'#1E293B', background:'transparent', fontFamily:"'Manrope','Inter',sans-serif", padding:0 }}/>
           )}
         </div>
       </div>

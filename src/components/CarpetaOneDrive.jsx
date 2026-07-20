@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-const f = { fontFamily: "'Century Gothic','Inter', sans-serif" }
+const f = { fontFamily: "'Manrope','Inter', sans-serif" }
 
 export default function CarpetaOneDrive({ ruc }) {
   const [copiado, setCopiado] = useState(false)

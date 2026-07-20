@@ -14,7 +14,7 @@ export function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudie
   const [guardandoEdit, setGuardandoEdit] = useState(false)
   const [eliminandoId, setEliminandoId] = useState(null)
   const [motivoEliminar, setMotivoEliminar] = useState('')
-  const f = { fontFamily:"'Century Gothic','Inter',sans-serif" }
+  const f = { fontFamily:"'Manrope','Inter',sans-serif" }
   const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:'#1E293B', background:'#fff', ...f }
   const TIPO_PROXIMA = 'Aumento próxima audiencia'
   const TIPOS_AUDIENCIA_PLAZO = ['Formalización','Control de detención + Formalización','Ampliación de plazo',TIPO_PROXIMA,'Reapertura de investigación']
@@ -120,20 +120,20 @@ export function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudie
           líneas de texto y quedaba muy chica para leer. */}
       <div style={isMobile?{display:'flex',flexDirection:'column',gap:8,marginBottom:20}:{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,marginBottom:20}}>
         <div style={isMobile
-          ?{background:'#eff6ff',border:'1.5px solid #bfdbfe',borderRadius:12,padding:'12px 16px',display:'flex',justifyContent:'space-between',alignItems:'center'}
-          :{background:'#eff6ff',border:'1.5px solid #bfdbfe',borderRadius:12,padding:'14px 16px',textAlign:'center'}}>
+          ?{background:'#fafbff',border:'2px solid #93c5fd',borderRadius:12,padding:'12px 16px',display:'flex',justifyContent:'space-between',alignItems:'center'}
+          :{background:'#fafbff',border:'2px solid #93c5fd',borderRadius:12,padding:'14px 16px',textAlign:'center'}}>
           <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1,fontWeight:600,order:isMobile?0:1,marginTop:isMobile?0:4,...f}}>Audiencias vigentes</div>
           <div style={{fontSize:28,fontWeight:900,color:'#2563eb',letterSpacing:'-1px',order:isMobile?1:0,...f}}>{activos.length}</div>
         </div>
         <div style={isMobile
-          ?{background:'#fffbeb',border:'1.5px solid #fde68a',borderRadius:12,padding:'12px 16px',display:'flex',justifyContent:'space-between',alignItems:'center'}
-          :{background:'#fffbeb',border:'1.5px solid #fde68a',borderRadius:12,padding:'14px 16px',textAlign:'center'}}>
+          ?{background:'#fffefa',border:'2px solid #fcd34d',borderRadius:12,padding:'12px 16px',display:'flex',justifyContent:'space-between',alignItems:'center'}
+          :{background:'#fffefa',border:'2px solid #fcd34d',borderRadius:12,padding:'14px 16px',textAlign:'center'}}>
           <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1,fontWeight:600,order:isMobile?0:1,marginTop:isMobile?0:4,...f}}>Días corridos totales</div>
           <div style={{fontSize:28,fontWeight:900,color:'#d97706',letterSpacing:'-1px',order:isMobile?1:0,...f}}>{diasTotal}</div>
         </div>
         <div style={isMobile
-          ?{background:subestado==='vencido'?'#fef2f2':subestado==='proximo'?'#fffbeb':'#f0fdf4',border:`1.5px solid ${subestado==='vencido'?'#fecaca':subestado==='proximo'?'#fde68a':'#a7f3d0'}`,borderRadius:12,padding:'12px 16px'}
-          :{background:subestado==='vencido'?'#fef2f2':subestado==='proximo'?'#fffbeb':'#f0fdf4',border:`1.5px solid ${subestado==='vencido'?'#fecaca':subestado==='proximo'?'#fde68a':'#a7f3d0'}`,borderRadius:12,padding:'14px 16px',textAlign:'center'}}>
+          ?{background:subestado==='vencido'?'#fffafa':subestado==='proximo'?'#fffefa':'#fafffd',border:`2px solid ${subestado==='vencido'?'#fca5a5':subestado==='proximo'?'#fcd34d':'#86efac'}`,borderRadius:12,padding:'12px 16px'}
+          :{background:subestado==='vencido'?'#fffafa':subestado==='proximo'?'#fffefa':'#fafffd',border:`2px solid ${subestado==='vencido'?'#fca5a5':subestado==='proximo'?'#fcd34d':'#86efac'}`,borderRadius:12,padding:'14px 16px',textAlign:'center'}}>
           <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1,fontWeight:600,...f}}>Vencimiento</div>
           <div style={{fontSize:isMobile?16:13,fontWeight:800,marginTop:isMobile?4:0,color:subestado==='vencido'?'#dc2626':subestado==='proximo'?'#d97706':'#059669',...f}}>{vencFinal || '—'}</div>
           {diff !== null && <div style={{fontSize:11,fontWeight:600,marginTop:4,color:subestado==='vencido'?'#dc2626':subestado==='proximo'?'#d97706':'#64748b',...f}}>{subestado==='vencido' ? `Venció hace ${Math.abs(diff)} días` : subestado==='proximo' ? `⚠️ Vence en ${diff} días` : `Faltan ${diff} días`}</div>}

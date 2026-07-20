@@ -10,7 +10,7 @@ export function AudienciaCard({ a, onUpdate }) {
   const [motivo, setMotivo] = useState('')
   const [form, setForm] = useState({ fecha:a.fecha||'', hora:a.hora||'', tipo:a.tipo||'', resultado:a.resultado||'', tribunal:a.tribunal||'', sala:a.sala||'' })
   const [saving, setSaving] = useState(false)
-  const f = { fontFamily:"'Century Gothic','Inter',sans-serif" }
+  const f = { fontFamily:"'Manrope','Inter',sans-serif" }
   const inp = { width:'100%', padding:'7px 10px', border:'1.5px solid #e2e8f0', borderRadius:7, fontSize:12, color:'#1E293B', background:'#fff', ...f }
 
   const tipoColor = (tipo) => {
@@ -98,7 +98,7 @@ function formatearTiempoCondena(anos, meses, dias) {
 export function ImputadoCard({ imp, idx, totalImputados, cautelares, esTitular, isMobile, onUpdate, onDelete, onGuardarCondena, onVaciarCondena }) {
   const [editField, setEditField] = useState(null)
   const [editValue, setEditValue] = useState('')
-  const f = { fontFamily:"'Century Gothic','Inter',sans-serif" }
+  const f = { fontFamily:"'Manrope','Inter',sans-serif" }
   const inp = { width:'100%', padding:'8px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:'#1E293B', background:'#fff', ...f }
   // ✅ Mismo cálculo de abono que usa la pestaña Datos (Cautelares), para
   // descontarlo de la condena sin duplicar el criterio.

@@ -101,7 +101,7 @@ export function HonorariosTab({ causaId, ruc, email, registrarActividad, onAccio
       {/* En celular, las 3 tarjetas van apiladas (mismo criterio que Plazo) en vez
           de apretadas lado a lado. */}
       <div style={isMobile?{display:'flex',flexDirection:'column',gap:8,marginBottom:24}:{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:24 }}>
-        <div style={{ background:'#eff6ff', border:'1.5px solid #bfdbfe', borderRadius:12, padding:'14px 16px' }}>
+        <div style={{ background:'#fafbff', border:'2px solid #93c5fd', borderRadius:12, padding:'14px 16px' }}>
           <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1, marginBottom:6, fontWeight:600, ...f }}>Honorario pactado</div>
           {editandoMonto ? (
             <div style={{ display:'flex', gap:6 }}>
@@ -113,11 +113,11 @@ export function HonorariosTab({ causaId, ruc, email, registrarActividad, onAccio
             <div onClick={()=>{setEditandoMonto(true);setMontoTemp(String(montoTotal||''))}} style={{ fontSize:22, fontWeight:800, color:'#1e40af', cursor:'pointer', ...f }}>{fmt(montoTotal)} <span style={{fontSize:11,color:'#93c5fd'}}>✏</span></div>
           )}
         </div>
-        <div style={{ background:'#ecfdf5', border:'1.5px solid #a7f3d0', borderRadius:12, padding:'14px 16px' }}>
+        <div style={{ background:'#fafffd', border:'2px solid #86efac', borderRadius:12, padding:'14px 16px' }}>
           <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1, marginBottom:6, fontWeight:600, ...f }}>Total abonado</div>
           <div style={{ fontSize:22, fontWeight:800, color:'#059669', ...f }}>{fmt(totalAbonado)}</div>
         </div>
-        <div style={{ background: saldoPendiente>0?'#fef2f2':'#F8F9FC', border:`1.5px solid ${saldoPendiente>0?'#fecaca':'#e2e8f0'}`, borderRadius:12, padding:'14px 16px' }}>
+        <div style={{ background: saldoPendiente>0?'#fffafa':'#F8F9FC', border:`2px solid ${saldoPendiente>0?'#fca5a5':'#cbd5e1'}`, borderRadius:12, padding:'14px 16px' }}>
           <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1, marginBottom:6, fontWeight:600, ...f }}>Saldo pendiente</div>
           <div style={{ fontSize:22, fontWeight:800, color: saldoPendiente>0?'#dc2626':'#64748b', ...f }}>{fmt(saldoPendiente)}</div>
         </div>

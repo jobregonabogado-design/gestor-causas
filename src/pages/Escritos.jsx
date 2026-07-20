@@ -3,19 +3,20 @@ import { supabase } from '../lib/supabase'
 
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-  .btn-primary { font-family:'Century Gothic','Inter',sans-serif; background:#1E293B; color:#fff; border:none; border-radius:10px; padding:9px 20px; font-size:13px; font-weight:600; cursor:pointer; transition:background 0.25s ease, box-shadow 0.25s ease; box-shadow:0 2px 8px rgba(30,41,59,0.2); }
+  @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap');
+  .btn-primary { font-family:'Manrope','Inter',sans-serif; background:#1E293B; color:#fff; border:none; border-radius:10px; padding:9px 20px; font-size:13px; font-weight:600; cursor:pointer; transition:background 0.25s ease, box-shadow 0.25s ease; box-shadow:0 2px 8px rgba(30,41,59,0.2); text-transform:uppercase; letter-spacing:0.3px; }
   .btn-primary:hover { background:#0f172a; box-shadow:0 4px 16px rgba(30,41,59,0.3); }
-  .btn-secondary { font-family:'Century Gothic','Inter',sans-serif; background:#fff; color:#374151; border:1.5px solid #e5e7eb; border-radius:10px; padding:8px 18px; font-size:13px; font-weight:500; cursor:pointer; transition:border-color 0.25s ease, color 0.25s ease, background 0.25s ease; }
+  .btn-secondary { font-family:'Manrope','Inter',sans-serif; background:#fff; color:#374151; border:1.5px solid #e5e7eb; border-radius:10px; padding:8px 18px; font-size:13px; font-weight:500; cursor:pointer; transition:border-color 0.25s ease, color 0.25s ease, background 0.25s ease; text-transform:uppercase; letter-spacing:0.3px; }
   .btn-secondary:hover { border-color:#93c5fd; color:#1E293B; background:#F8F9FC; }
   .plantilla-card { transition:all 0.25s cubic-bezier(0.4,0,0.2,1); cursor:pointer; }
   .plantilla-card:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(15,23,42,0.1) !important; border-color:#93c5fd !important; }
   .causa-row { transition:background 0.2s ease; cursor:pointer; }
   .causa-row:hover { background:#F8F9FC !important; }
-  input,select,textarea { font-family:'Century Gothic','Inter',sans-serif !important; }
+  input,select,textarea { font-family:'Manrope','Inter',sans-serif !important; }
   input:focus,select:focus,textarea:focus { outline:none; border-color:#93c5fd !important; box-shadow:0 0 0 3px rgba(37,99,235,0.08); }
 `
 
-const f = { fontFamily:"'Century Gothic','Inter',sans-serif" }
+const f = { fontFamily:"'Manrope','Inter',sans-serif" }
 
 // ─── PLANTILLAS DE ESCRITOS ───────────────────────────────────────────────────
 // Cada plantilla recibe un objeto `d` con los datos ya fusionados (causa + imputado + abogado)

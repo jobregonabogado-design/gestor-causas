@@ -22,23 +22,24 @@ import { CautelaresPanel, TIPOS_ABONO_DIRECTO, TIPOS_DETENCION_PENAL, CAUTELAR_N
 
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap');
   .row-hover { transition:background 0.2s ease, border-color 0.2s ease; cursor:pointer; }
   .row-hover:hover { background:#f8faff !important; }
   .stat-card { transition:all 0.3s cubic-bezier(0.4,0,0.2,1); cursor:pointer; }
   .stat-card:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(15,23,42,0.10) !important; }
-  .tab-btn { transition:color 0.2s ease, border-color 0.2s ease; border:none; background:none; cursor:pointer; font-family:'Century Gothic','Inter',sans-serif; }
+  .tab-btn { transition:color 0.2s ease, border-color 0.2s ease; border:none; background:none; cursor:pointer; font-family:'Manrope','Inter',sans-serif; text-transform:uppercase; letter-spacing:0.3px; }
   .tab-btn:hover { color:#1E293B !important; }
   .fld { transition:border-color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease; }
   .fld:hover { border-color:#93c5fd !important; background:#fafcff !important; box-shadow:0 0 0 3px rgba(37,99,235,0.05) !important; }
   .sort-col { cursor:pointer; user-select:none; transition:color 0.2s ease; }
   .sort-col:hover { color:#1E293B !important; }
-  .btn-primary { font-family:'Century Gothic','Inter',sans-serif; background:#1E293B; color:#fff; border:none; border-radius:10px; padding:9px 20px; font-size:13px; font-weight:600; cursor:pointer; transition:background 0.25s ease, box-shadow 0.25s ease; box-shadow:0 2px 8px rgba(30,58,95,0.2); }
+  .btn-primary { font-family:'Manrope','Inter',sans-serif; background:#1E293B; color:#fff; border:none; border-radius:10px; padding:9px 20px; font-size:13px; font-weight:600; cursor:pointer; transition:background 0.25s ease, box-shadow 0.25s ease; box-shadow:0 2px 8px rgba(30,58,95,0.2); text-transform:uppercase; letter-spacing:0.3px; }
   .btn-primary:hover { background:#1e40af; box-shadow:0 4px 16px rgba(30,58,95,0.3); }
-  .btn-secondary { font-family:'Century Gothic','Inter',sans-serif; background:#fff; color:#374151; border:1.5px solid #e5e7eb; border-radius:10px; padding:8px 18px; font-size:13px; font-weight:500; cursor:pointer; transition:border-color 0.25s ease, color 0.25s ease, background 0.25s ease; }
+  .btn-secondary { font-family:'Manrope','Inter',sans-serif; background:#fff; color:#374151; border:1.5px solid #e5e7eb; border-radius:10px; padding:8px 18px; font-size:13px; font-weight:500; cursor:pointer; transition:border-color 0.25s ease, color 0.25s ease, background 0.25s ease; text-transform:uppercase; letter-spacing:0.3px; }
   .btn-secondary:hover { border-color:#93c5fd; color:#1E293B; background:#f8faff; }
   .detail-enter { animation:detailIn 0.3s cubic-bezier(0.4,0,0.2,1) forwards; }
   @keyframes detailIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
-  input,select,textarea { font-family:'Century Gothic','Inter',sans-serif !important; transition:border-color 0.25s ease, box-shadow 0.25s ease; text-transform:uppercase; }
+  input,select,textarea { font-family:'Manrope','Inter',sans-serif !important; transition:border-color 0.25s ease, box-shadow 0.25s ease; text-transform:uppercase; }
   input:focus,select:focus,textarea:focus { outline:none; border-color:#93c5fd !important; box-shadow:0 0 0 3px rgba(37,99,235,0.08) !important; }
   .tc-section textarea:focus { box-shadow: none !important; border-color: transparent !important; }
   @keyframes semaforo-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.6;transform:scale(1.2)} }
@@ -68,6 +69,9 @@ const CSS = `
     .seccion-plegable, .seccion-plegable > summary { max-width: 100%; }
     .causa-col-desktop { display: none !important; }
     .causa-row-mobile { display: block !important; }
+    /* Cada tarjeta ya trae su propio marco — se saca la línea divisoria extra
+       para que no queden dos bordes encimados. */
+    .causa-row { border-bottom: none !important; }
   }
 `
 
@@ -1333,14 +1337,15 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                   <div style={{padding:'14px 20px',textAlign:'center',...f}}><div style={{maxWidth:'100%',margin:'0 auto',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:13,color:'#1E293B',fontWeight:500}}>{c.imputado}</div></div>
                   <div style={{padding:'14px 20px',textAlign:'center',...f}}><div style={{maxWidth:280,margin:'0 auto',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:12,color:'#64748b'}}>{(c.delito||'').replace(/\|/g,', ')||'—'}</div></div>
                 </div>
-                {/* Tarjeta condensada — solo en celular: RUC + estado, luego RIT/Tribunal, luego imputado */}
-                <div className="causa-row-mobile" style={{padding:'12px 14px'}}>
+                {/* Tarjeta condensada — solo en celular: RUC + estado, luego RIT/Tribunal, luego imputado.
+                    Con borde propio para que se vea como una tarjeta enmarcada, no solo una fila. */}
+                <div className="causa-row-mobile" style={{padding:'12px 14px',margin:'6px 8px',background:c.estado==='vigente'?'#fafffd':'#F8F9FC',border:`2px solid ${c.estado==='vigente'?'#86efac':'#cbd5e1'}`,borderRadius:12}}>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8}}>
-                    <span style={{fontSize:13,fontWeight:700,color:'#1E293B',...f}}>{c.ruc}</span>
+                    <span style={{fontSize:13,fontWeight:700,color:'#0f172a',...f}}>{c.ruc}</span>
                     <SemaforoTag updated_at={c.updated_at} estado={c.estado} />
                   </div>
-                  <div style={{fontSize:11,color:'#94a3b8',marginTop:3,...f}}>{c.rit||'—'} · {c.tribunal||'—'}</div>
-                  <div style={{fontSize:11,color:'#64748b',marginTop:2,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',...f}}>{c.imputado}</div>
+                  <div style={{fontSize:12,fontWeight:600,color:'#475569',marginTop:4,...f}}>{c.rit||'—'} · {c.tribunal||'—'}</div>
+                  <div style={{fontSize:13,fontWeight:600,color:'#1E293B',marginTop:3,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',...f}}>{c.imputado}</div>
                 </div>
               </div>
             ))}

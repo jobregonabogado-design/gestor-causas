@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { supabase } from '../lib/supabase'
 
-const f = { fontFamily:"'Century Gothic','Inter',sans-serif" }
+const f = { fontFamily:"'Manrope','Inter',sans-serif" }
 const fmt = (n) => '$' + (n || 0).toLocaleString('es-CL')
 
 // ─── Carga SheetJS (xlsx) desde un CDN en tiempo de ejecución — mismo enfoque
@@ -152,7 +152,7 @@ export default function Contabilidad() {
         <div style={{ display:'flex', gap:4, background:'#fff', padding:4, borderRadius:12, border:'1px solid #E2E8F0', marginBottom:20, width:'fit-content' }}>
           {[['cobrar','Cuentas por Cobrar'],['abonos','Abonos'],['ingresos','Ingresos Percibidos']].map(([k,l]) => (
             <button key={k} onClick={()=>setTab(k)}
-              style={{ fontFamily:"'Century Gothic','Inter',sans-serif", fontSize:13, fontWeight: tab===k?600:500, padding:'8px 18px', borderRadius:10, border:'none', cursor:'pointer',
+              style={{ fontFamily:"'Manrope','Inter',sans-serif", fontSize:13, fontWeight: tab===k?600:500, padding:'8px 18px', borderRadius:10, border:'none', cursor:'pointer',
                 background: tab===k?'#1E293B':'transparent', color: tab===k?'#fff':'#64748b' }}>{l}</button>
           ))}
         </div>
@@ -181,10 +181,10 @@ export default function Contabilidad() {
           <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:16, padding:20 }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, flexWrap:'wrap', gap:10 }}>
               <div style={{ display:'flex', gap:8 }}>
-                <select value={mesFiltro} onChange={e=>setMesFiltro(Number(e.target.value))} style={{ padding:'8px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, fontFamily:"'Century Gothic','Inter',sans-serif" }}>
+                <select value={mesFiltro} onChange={e=>setMesFiltro(Number(e.target.value))} style={{ padding:'8px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, fontFamily:"'Manrope','Inter',sans-serif" }}>
                   {MESES.map((m,i) => <option key={m} value={i}>{m}</option>)}
                 </select>
-                <select value={anioFiltro} onChange={e=>setAnioFiltro(Number(e.target.value))} style={{ padding:'8px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, fontFamily:"'Century Gothic','Inter',sans-serif" }}>
+                <select value={anioFiltro} onChange={e=>setAnioFiltro(Number(e.target.value))} style={{ padding:'8px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, fontFamily:"'Manrope','Inter',sans-serif" }}>
                   {[hoy.getFullYear(), hoy.getFullYear()-1, hoy.getFullYear()-2].map(a => <option key={a} value={a}>{a}</option>)}
                 </select>
               </div>
@@ -213,7 +213,7 @@ export default function Contabilidad() {
         {tab === 'ingresos' && (
           <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:16, padding:20 }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
-              <select value={anioFiltro} onChange={e=>setAnioFiltro(Number(e.target.value))} style={{ padding:'8px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, fontFamily:"'Century Gothic','Inter',sans-serif" }}>
+              <select value={anioFiltro} onChange={e=>setAnioFiltro(Number(e.target.value))} style={{ padding:'8px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, fontFamily:"'Manrope','Inter',sans-serif" }}>
                 {[hoy.getFullYear(), hoy.getFullYear()-1, hoy.getFullYear()-2].map(a => <option key={a} value={a}>{a}</option>)}
               </select>
               <div style={{ fontSize:20, fontWeight:800, color:'#1E293B' }}>Total {anioFiltro}: {fmt(totalAnual)}</div>

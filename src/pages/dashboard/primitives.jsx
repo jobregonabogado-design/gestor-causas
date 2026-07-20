@@ -37,7 +37,7 @@ export function SearchableSelect({ value, onChange, options, placeholder, isDeli
           padding: '9px 12px', border: '1.5px solid #e2e8f0', borderRadius: 8,
           fontSize: 13, color: value ? '#1E293B' : '#94a3b8', background: '#fff',
           cursor: 'pointer', display: 'flex', justifyContent: 'space-between',
-          alignItems: 'center', minHeight: 38, fontFamily: "'Century Gothic','Inter',sans-serif",
+          alignItems: 'center', minHeight: 38, fontFamily: "'Manrope','Inter',sans-serif",
           transition: 'border-color 0.2s ease',
         }}
       >
@@ -63,7 +63,7 @@ export function SearchableSelect({ value, onChange, options, placeholder, isDeli
               style={{
                 width: '100%', padding: '6px 10px', border: '1.5px solid #e2e8f0',
                 borderRadius: 7, fontSize: 12, outline: 'none',
-                fontFamily: "'Century Gothic','Inter',sans-serif",
+                fontFamily: "'Manrope','Inter',sans-serif",
               }}
               onClick={e => e.stopPropagation()}
             />
@@ -72,13 +72,13 @@ export function SearchableSelect({ value, onChange, options, placeholder, isDeli
             {value && (
               <div
                 onClick={() => { onChange(''); setOpen(false); setQuery('') }}
-                style={{ padding: '8px 12px', fontSize: 12, color: '#94a3b8', cursor: 'pointer', borderBottom: '1px solid #F8F9FC', fontFamily: "'Century Gothic','Inter',sans-serif" }}
+                style={{ padding: '8px 12px', fontSize: 12, color: '#94a3b8', cursor: 'pointer', borderBottom: '1px solid #F8F9FC', fontFamily: "'Manrope','Inter',sans-serif" }}
               >
                 — Limpiar selección
               </div>
             )}
             {filtered.length === 0 && (
-              <div style={{ padding: '12px', fontSize: 12, color: '#94a3b8', textAlign: 'center', fontFamily: "'Century Gothic','Inter',sans-serif" }}>
+              <div style={{ padding: '12px', fontSize: 12, color: '#94a3b8', textAlign: 'center', fontFamily: "'Manrope','Inter',sans-serif" }}>
                 Sin resultados para "{query}"
               </div>
             )}
@@ -95,7 +95,7 @@ export function SearchableSelect({ value, onChange, options, placeholder, isDeli
                     color: isSelected ? '#1E293B' : '#374151',
                     fontWeight: isSelected ? 600 : 400,
                     borderBottom: '1px solid #F8F9FC',
-                    fontFamily: "'Century Gothic','Inter',sans-serif",
+                    fontFamily: "'Manrope','Inter',sans-serif",
                     display: 'flex', gap: 8, alignItems: 'flex-start',
                   }}
                   onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#f8faff' }}
@@ -107,7 +107,7 @@ export function SearchableSelect({ value, onChange, options, placeholder, isDeli
               )
             })}
             {filtered.length === 40 && (
-              <div style={{ padding: '6px 12px', fontSize: 11, color: '#94a3b8', textAlign: 'center', fontFamily: "'Century Gothic','Inter',sans-serif" }}>
+              <div style={{ padding: '6px 12px', fontSize: 11, color: '#94a3b8', textAlign: 'center', fontFamily: "'Manrope','Inter',sans-serif" }}>
                 Escribe para filtrar más resultados...
               </div>
             )}
@@ -124,7 +124,7 @@ export function DelitosChips({ value, onChange, options }) {
   const [adding, setAdding] = useState(false)
   const [temp, setTemp] = useState('')
   const lista = (value || '').split('|').map(s => s.trim()).filter(Boolean)
-  const f = { fontFamily:"'Century Gothic','Inter',sans-serif" }
+  const f = { fontFamily:"'Manrope','Inter',sans-serif" }
 
   const agregar = (nuevo) => {
     if (!nuevo || lista.includes(nuevo)) { setAdding(false); setTemp(''); return }
@@ -168,7 +168,7 @@ export function DelitosChips({ value, onChange, options }) {
 export function DelitoCard({ nombreImputado, value, onChange, options }) {
   const [expanded, setExpanded] = useState(true)
   const lista = (value || '').split('|').map(s => s.trim()).filter(Boolean)
-  const f = { fontFamily:"'Century Gothic','Inter',sans-serif" }
+  const f = { fontFamily:"'Manrope','Inter',sans-serif" }
   return (
     <div style={{flex:'1 1 360px', maxWidth:460, minWidth:260}}>
       {nombreImputado && (
@@ -196,7 +196,7 @@ export function DelitoCard({ nombreImputado, value, onChange, options }) {
 
 const TMAP = {'JG VINA DEL MAR':'JG VIÑA DEL MAR','JG CONCEPCION':'JG CONCEPCIÓN','JG VALPARAISO':'JG VALPARAÍSO','JG QUILPUE':'JG QUILPUÉ','JG CHILLAN':'JG CHILLÁN','JG AYSEN':'JG AYSÉN','JG CANETE':'JG CAÑETE','TOP CANETE':'TOP CAÑETE','13 JG DE STGO':'13 JG STGO','TOP SERENA':'TOP LA SERENA'}
 export const normT = t => t ? (TMAP[t.trim()] || t.trim()) : t
-export const f = { fontFamily:"'Century Gothic','Inter',sans-serif" }
+export const f = { fontFamily:"'Manrope','Inter',sans-serif" }
 
 // ─── SEMÁFORO MEJORADO — solo causas vigentes ─────────────────────────────────
 const getSemaforo = (updated_at, estado) => {
@@ -206,19 +206,21 @@ const getSemaforo = (updated_at, estado) => {
     label: 'SIN ACTIVIDAD', dias: null, pulsar: true
   }
   const dias = Math.max(0, Math.floor((new Date() - new Date(updated_at)) / (1000*60*60*24)))
+  // ✅ Etiquetas cortas — el color y el pulso ya avisan la urgencia, no hace
+  // falta escribir "sin revisar" ni "hace" para entenderlo de un vistazo.
   if (dias <= 2) return {
     color: '#065f46', bg: '#ecfdf5', border: '#6ee7b7',
-    label: dias === 0 ? 'HOY' : dias === 1 ? 'AYER' : `HACE ${dias} DÍAS`,
+    label: dias === 0 ? 'HOY' : dias === 1 ? 'AYER' : `${dias} DÍAS`,
     dias, pulsar: false
   }
   if (dias <= 6) return {
     color: '#92400e', bg: '#fff7ed', border: '#fed7aa',
-    label: `HACE ${dias} DÍAS`,
+    label: `${dias} DÍAS`,
     dias, pulsar: false
   }
   return {
     color: '#991b1b', bg: '#fef2f2', border: '#fecaca',
-    label: `${dias} DÍAS SIN REVISAR`,
+    label: `${dias} DÍAS`,
     dias, pulsar: true
   }
 }
