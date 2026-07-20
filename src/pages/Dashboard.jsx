@@ -328,8 +328,15 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
   // causa (el menor "arrastra" al mayor solo en el nombre del tribunal, no en
   // la ley aplicable a cada uno). No revierte el tribunal si luego el régimen
   // cambia — esa corrección queda a criterio manual del titular.
+  // ✅ Pide confirmación SIEMPRE antes de aplicar el cambio — un valor
+  // intermedio del selector de fecha (por ejemplo, la rueda de fecha en
+  // iPhone al desplazarse por los años) puede quedar guardado por accidente y
+  // gatillar esto sin que nadie se dé cuenta. Con esta confirmación, el
+  // tribunal nunca cambia en silencio.
   const sincronizarTribunalRPA = async (causaId, tribunalActual, rucRef) => {
     if (tribunalActual === TRIBUNAL_RPA) return
+    const confirmar = window.confirm(`⚠ Un imputado quedó en régimen RPA (menor de edad al momento de los hechos) en RUC ${rucRef || ''}.\n\nEsto cambiará el tribunal de esta causa a "${TRIBUNAL_RPA}" automáticamente.\n\nRevisa la fecha de nacimiento y la fecha de los hechos antes de confirmar. ¿Corresponde el cambio?`)
+    if (!confirmar) return
     await supabase.from('causas').update({ tribunal: TRIBUNAL_RPA, updated_at: new Date() }).eq('id', causaId)
     setCausas(prev => prev.map(x => x.id === causaId ? { ...x, tribunal: TRIBUNAL_RPA } : x))
     setSelectedCausa(prev => prev && prev.id === causaId ? { ...prev, tribunal: TRIBUNAL_RPA } : prev)
@@ -861,6 +868,31 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                       <Field label="Centro Penal" value={imputados[0].lugar_detencion} editable fieldKey="centro_penal" editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={async()=>{await actualizarCentroPenalImputado(imputados[0].id, editValue);setEditField(null)}}/>
                     )}
 
+                    {/* Fecha de detención — mismo campo "fecha_detencion" que en la pestaña
+                        Imputado (misma columna en la base de datos, sincronizado). Solo
+                        aplica si hay 1 imputado registrado y está privado de libertad. */}
+                    {imputados.length === 1 && imputados[0].esta_detenido && (
+                      <div>
+                        <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Fecha de detención</div>
+                        {editField==='fecha_detencion'?(
+                          <div style={{display:'flex',gap:6}}>
+                            <input type="date" style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}}
+                              value={editValue} onChange={e=>setEditValue(e.target.value)}
+                              onBlur={()=>{if(editValue)actualizarCampoImputado(imputados[0].id,'fecha_detencion',editValue)}}
+                              onKeyDown={e=>{if(e.key==='Enter'){actualizarCampoImputado(imputados[0].id,'fecha_detencion',editValue);setEditField(null)}if(e.key==='Escape')setEditField(null)}} autoFocus/>
+                            <button className="btn-primary" style={{padding:'8px 14px',fontSize:12}} onClick={()=>{actualizarCampoImputado(imputados[0].id,'fecha_detencion',editValue);setEditField(null)}}>✓</button>
+                            <button className="btn-secondary" style={{padding:'8px 12px',fontSize:12}} onClick={()=>setEditField(null)}>✗</button>
+                          </div>
+                        ):(
+                          <div className="fld" onClick={()=>{setEditField('fecha_detencion');setEditValue(imputados[0].fecha_detencion||'')}}
+                            style={{padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:imputados[0].fecha_detencion?'#1E293B':'#94a3b8',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
+                            <span>{imputados[0].fecha_detencion || 'Clic para agregar...'}</span>
+                            <span style={{fontSize:11,color:'#94a3b8'}}>✏</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     <CautelaresPanel
                       isMobile={isMobile}
                       causaId={c.id}
@@ -1045,10 +1077,13 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                 if(!error){
                   const nuevosAumentos=[...aumentos,data].sort((a,b)=>a.fecha_audiencia.localeCompare(b.fecha_audiencia))
                   setAumentos(nuevosAumentos)
+                  // ✅ El vencimiento vigente es el de la audiencia MÁS RECIENTE (por
+                  // fecha), calculado desde su propia fecha — no se encadena desde el
+                  // origen. "activos" ya queda ordenado por fecha_audiencia (ver el
+                  // .sort() más arriba), así que la última posición es la más reciente.
                   const activos=nuevosAumentos.filter(a=>!a.eliminado)
-                  const diasTotal=activos.reduce((s,a)=>s+(parseInt(a.dias_plazo)||0),0)
-                  const primera=activos[0]
-                  const nuevoVenc= primera ? 'VENCE '+calcularVencimiento(primera.fecha_audiencia,diasTotal) : ''
+                  const ultima=activos[activos.length-1]
+                  const nuevoVenc= ultima ? 'VENCE '+calcularVencimiento(ultima.fecha_audiencia,ultima.dias_plazo) : ''
                   const nuevoSub=calcularSubestado(nuevoVenc)
                   await supabase.from('causas').update({plazo:nuevoVenc,subestado:nuevoSub,updated_at:new Date()}).eq('id',c.id)
                   const u={...selectedCausa,plazo:nuevoVenc,subestado:nuevoSub,updated_at:new Date().toISOString()}
@@ -1066,9 +1101,8 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                   const nuevosAumentos=aumentos.map(a=>a.id===id?{...a,fecha_audiencia:form.fecha_audiencia,tipo_audiencia:form.tipo_audiencia,dias_plazo:diasNum,dias_aumento:diasNum,observacion:form.observacion||'',fecha_proxima_audiencia:form.fecha_proxima_audiencia||null,historial:nuevoHistorial}:a).sort((a,b)=>a.fecha_audiencia.localeCompare(b.fecha_audiencia))
                   setAumentos(nuevosAumentos)
                   const activos=nuevosAumentos.filter(a=>!a.eliminado)
-                  const diasTotal=activos.reduce((s,a)=>s+(parseInt(a.dias_plazo)||0),0)
-                  const primera=activos[0]
-                  const nuevoVenc = primera ? 'VENCE '+calcularVencimiento(primera.fecha_audiencia,diasTotal) : ''
+                  const ultima=activos[activos.length-1]
+                  const nuevoVenc = ultima ? 'VENCE '+calcularVencimiento(ultima.fecha_audiencia,ultima.dias_plazo) : ''
                   const nuevoSub=calcularSubestado(nuevoVenc)
                   await supabase.from('causas').update({plazo:nuevoVenc,subestado:nuevoSub,updated_at:new Date()}).eq('id',c.id)
                   const u={...selectedCausa,plazo:nuevoVenc,subestado:nuevoSub,updated_at:new Date().toISOString()}
@@ -1084,10 +1118,9 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                   const nuevosAumentos=aumentos.map(a=>a.id===id?{...a,eliminado:true,motivo_eliminacion:motivo,eliminado_por:session?.user?.email||'usuario',eliminado_en:new Date().toISOString()}:a)
                   setAumentos(nuevosAumentos)
                   const activos=nuevosAumentos.filter(a=>!a.eliminado)
-                  const diasTotal=activos.reduce((s,a)=>s+(parseInt(a.dias_plazo)||0),0)
-                  const primera=activos[0]
-                  const nuevoVenc = primera ? 'VENCE '+calcularVencimiento(primera.fecha_audiencia,diasTotal) : ''
-                  const nuevoSub = primera ? calcularSubestado(nuevoVenc) : null
+                  const ultima=activos[activos.length-1]
+                  const nuevoVenc = ultima ? 'VENCE '+calcularVencimiento(ultima.fecha_audiencia,ultima.dias_plazo) : ''
+                  const nuevoSub = ultima ? calcularSubestado(nuevoVenc) : null
                   await supabase.from('causas').update({plazo:nuevoVenc,subestado:nuevoSub,updated_at:new Date()}).eq('id',c.id)
                   const u={...selectedCausa,plazo:nuevoVenc,subestado:nuevoSub,updated_at:new Date().toISOString()}
                   setSelectedCausa(u);setCausas(prev=>prev.map(x=>x.id===u.id?u:x))

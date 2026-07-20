@@ -12,8 +12,9 @@ export const estadoConfig = {
   juicio_oral:       { label:'JUICIO ORAL',             color:'#9f1239', bg:'#fff1f2', border:'#fecdd3' },
   cumpliendo_condena:{ label:'CUMPLIENDO CONDENA',      color:'#991b1b', bg:'#fef2f2', border:'#fecaca' },
   // Subestados TERMINADA
-  renuncia:          { label:'RENUNCIA',                color:'#475569', bg:'#F8F9FC', border:'#e2e8f0' },
-  revocacion:        { label:'REVOCACIÓN',              color:'#475569', bg:'#F8F9FC', border:'#e2e8f0' },
+  renuncia:          { label:'RENUNCIA PATROCINIO Y PODER',    color:'#475569', bg:'#F8F9FC', border:'#e2e8f0' },
+  revocacion:        { label:'REVOCACIÓN PATROCINIO Y PODER',  color:'#475569', bg:'#F8F9FC', border:'#e2e8f0' },
+  revocacion_pena_sustitutiva: { label:'REVOCACIÓN PENA SUSTITUTIVA', color:'#991b1b', bg:'#fef2f2', border:'#fecaca' },
   condena_preso:     { label:'CONDENA — PRESO',         color:'#991b1b', bg:'#fef2f2', border:'#fecaca' },
   condena_libertad:  { label:'CONDENA — LIBERTAD',      color:'#92400e', bg:'#fff7ed', border:'#fed7aa' },
   absuelto:          { label:'ABSUELTO',                color:'#065f46', bg:'#ecfdf5', border:'#a7f3d0' },
@@ -27,8 +28,8 @@ export const estadoConfig = {
   vigente:           { label:'VIGENTE',                 color:'#065f46', bg:'#ecfdf5', border:'#a7f3d0' },
 }
 
-export const SUBESTADOS_VIGENTE = ['plazo_vigente','proximo','vencido','apjo','juicio_oral','cumpliendo_condena','orden_detencion']
-export const SUBESTADOS_TERMINADA = ['renuncia','revocacion','condena_preso','condena_libertad','absuelto','dnp','scp','salida_ar','orden_detencion']
+export const SUBESTADOS_VIGENTE = ['plazo_vigente','proximo','vencido','apjo','juicio_oral','cumpliendo_condena','orden_detencion','revocacion_pena_sustitutiva']
+export const SUBESTADOS_TERMINADA = ['renuncia','revocacion','revocacion_pena_sustitutiva','condena_preso','condena_libertad','absuelto','dnp','scp','salida_ar','orden_detencion']
 
 export function getBadgeConfig(estado, subestado) {
   if (subestado && estadoConfig[subestado]) return estadoConfig[subestado]
@@ -1138,8 +1139,12 @@ export function parseFechaCL(str) {
 export function diasRestantes(plazoStr) {
   const fecha = parseFechaCL(plazoStr)
   if (!fecha) return null
-  const hoy = new Date(); hoy.setHours(0,0,0,0)
-  return Math.ceil((fecha - hoy) / (1000*60*60*24))
+  // ✅ "fecha" queda parseada a las 12:00 (mediodía) en parseFechaCL — "hoy"
+  // se compara también al mediodía, no a medianoche, para que la resta dé un
+  // número exacto de días y no quede corrida en ±1 día según la hora del día
+  // en que se calcule (antes usaba medianoche acá vs mediodía allá).
+  const hoy = new Date(); hoy.setHours(12,0,0,0)
+  return Math.round((fecha - hoy) / (1000*60*60*24))
 }
 
 export function calcularSubestado(plazoStr) {

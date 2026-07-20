@@ -52,8 +52,11 @@ export function BotonResumenImprimible({ causa, imputados, audiencias, aumentos,
 
   const activos = (aumentos || []).filter(a => !a.eliminado)
   const diasTotal = activos.reduce((s, a) => s + (parseInt(a.dias_plazo) || 0), 0)
-  const primeraOrdenada = [...activos].sort((a, b) => a.fecha_audiencia.localeCompare(b.fecha_audiencia))[0]
-  const vencimientoTotal = primeraOrdenada ? calcularVencimiento(primeraOrdenada.fecha_audiencia, diasTotal) : null
+  // ✅ El vencimiento vigente es el de la audiencia MÁS RECIENTE (por fecha),
+  // calculado desde su propia fecha — no se encadena desde el origen. Mismo
+  // criterio que plazo.jsx. "diasTotal" queda solo como dato informativo.
+  const ultimaOrdenada = [...activos].sort((a, b) => a.fecha_audiencia.localeCompare(b.fecha_audiencia)).at(-1)
+  const vencimientoTotal = ultimaOrdenada ? calcularVencimiento(ultimaOrdenada.fecha_audiencia, ultimaOrdenada.dias_plazo) : null
   const subestadoCalc = calcularSubestado(vencimientoTotal)
 
   // ✅ Portal a document.body: el botón que abre este resumen vive dentro de

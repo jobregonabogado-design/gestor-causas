@@ -83,6 +83,32 @@ export function ImputadoDatosCard({ imp, numero, causaId, ruc, cautelares, esTit
             <SearchableSelect value={imp.lugar_detencion} onChange={(v)=>onUpdateCampo('lugar_detencion', v)} options={CENTROS_PENALES} placeholder="Buscar centro penal..." isDelito={false}/>
           </div>
 
+          {/* Fecha de detención — mismo campo "fecha_detencion" que en la pestaña
+              Imputado (misma columna en la base de datos, así que editarla acá o
+              allá queda siempre sincronizado). Distinta de "Fecha de los hechos"
+              y de la fecha de formalización: pueden ser 3 días distintos. */}
+          {imp.esta_detenido && (
+            <div style={{marginTop:14}}>
+              <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Fecha de detención</div>
+              {editField==='fecha_detencion'?(
+                <div style={{display:'flex',gap:6}}>
+                  <input type="date" style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}}
+                    value={editValue} onChange={e=>setEditValue(e.target.value)}
+                    onBlur={()=>{if(editValue)onUpdateCampo('fecha_detencion',editValue)}}
+                    onKeyDown={e=>{if(e.key==='Enter'){onUpdateCampo('fecha_detencion',editValue);setEditField(null)}if(e.key==='Escape')setEditField(null)}} autoFocus/>
+                  <button className="btn-primary" style={{padding:'8px 14px',fontSize:12}} onClick={()=>{onUpdateCampo('fecha_detencion',editValue);setEditField(null)}}>✓</button>
+                  <button className="btn-secondary" style={{padding:'8px 12px',fontSize:12}} onClick={()=>setEditField(null)}>✗</button>
+                </div>
+              ):(
+                <div className="fld" onClick={()=>{setEditField('fecha_detencion');setEditValue(imp.fecha_detencion||'')}}
+                  style={{padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:imp.fecha_detencion?'#1E293B':'#94a3b8',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
+                  <span>{imp.fecha_detencion || 'Clic para agregar...'}</span>
+                  <span style={{fontSize:11,color:'#94a3b8'}}>✏</span>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Cautelar Personal */}
           <CautelaresPanel
             isMobile={isMobile}

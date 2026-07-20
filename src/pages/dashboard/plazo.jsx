@@ -28,51 +28,33 @@ export function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudie
     return Math.round((b - a) / (1000*60*60*24))
   }
 
-  // "DD-MM-YYYY" (formato de calcularVencimiento) → "YYYY-MM-DD" (para poder restar fechas)
-  const aISO = (fechaDDMMYYYY) => {
-    if (!fechaDDMMYYYY) return null
-    const [d,m,y] = fechaDDMMYYYY.split('-')
-    return `${y}-${m}-${d}`
-  }
-
-  // Solo las audiencias NO eliminadas cuentan para el cálculo del vencimiento total
+  // Solo las audiencias NO eliminadas cuentan para el cálculo del vencimiento
   const activos = (aumentos || []).filter(a => !a.eliminado)
-  const activosOrdenados = [...activos].sort((a,b) => a.fecha_audiencia.localeCompare(b.fecha_audiencia))
 
-  const calcularVencimientoTotal = (auds) => {
+  // ✅ Cada audiencia calcula su PROPIO vencimiento desde su PROPIA fecha (no se
+  // encadena desde la audiencia de origen) — así lo pidió Joaquín explícitamente:
+  // "cada vez que se suma un plazo es desde la fecha de la audiencia que se está
+  // registrando... se debe nuevamente calcular la fecha de vencimiento" — el
+  // vencimiento VIGENTE es siempre el de la audiencia más reciente (por fecha).
+  // El total acumulado de días SÍ se sigue mostrando (Acum.), pero solo como
+  // registro histórico — ya no se usa para calcular la fecha de vencimiento.
+  const calcularVencimientoActual = (auds) => {
     if (!auds || auds.length === 0) return null
     const sorted = [...auds].sort((a,b) => a.fecha_audiencia.localeCompare(b.fecha_audiencia))
-    const diasTotal = auds.reduce((s,a) => s + (parseInt(a.dias_plazo)||0), 0)
-    return calcularVencimiento(sorted[0].fecha_audiencia, diasTotal)
+    const ultima = sorted[sorted.length - 1]
+    return calcularVencimiento(ultima.fecha_audiencia, ultima.dias_plazo)
   }
 
-  // ✅ CALIBRACIÓN: para "Aumento próxima audiencia" los días NO se cuentan desde la
-  // fecha de ESA audiencia puntual — se cuentan desde el VENCIMIENTO ACUMULADO hasta
-  // ese momento (la fórmula general es: vencimiento = primera_fecha + suma de TODOS
-  // los días). Si se contara desde la fecha de la audiencia, el resultado final no
-  // cae en la fecha real de la próxima audiencia, porque arrastra el desfase de
-  // todo lo acumulado antes. Contando desde el vencimiento acumulado, si no hay
-  // ningún desfase previo, el resultado coincide exactamente con la fecha pedida.
-  const vencimientoAntesDeNueva = calcularVencimientoTotal(activos) // acumulado de TODO lo que ya existe
-  const baseParaNueva = vencimientoAntesDeNueva ? aISO(vencimientoAntesDeNueva) : form.fecha_audiencia
-
-  // Vencimiento acumulado hasta (pero sin incluir) una audiencia dada — para corregir una ya existente
-  const obtenerVencimientoPrevio = (idActual) => {
-    const idx = activosOrdenados.findIndex(x => x.id === idActual)
-    if (idx <= 0) return null // es la primera (o no está en la lista): no hay "antes"
-    const anteriores = activosOrdenados.slice(0, idx)
-    const diasPrevios = anteriores.reduce((s,x) => s + (parseInt(x.dias_plazo)||0), 0)
-    return calcularVencimiento(anteriores[0].fecha_audiencia, diasPrevios)
-  }
-
-  // Días calculados automáticamente cuando el tipo es "Aumento próxima audiencia"
-  const diasCalculadosNuevo = form.tipo_audiencia === TIPO_PROXIMA ? diasEntreFechas(baseParaNueva, form.fecha_proxima_audiencia) : null
+  // ✅ Para "Aumento próxima audiencia": como cada audiencia ahora calcula su
+  // PROPIO vencimiento (fecha_audiencia + dias_plazo, sin encadenar con las
+  // anteriores), los días se calculan DIRECTO entre la fecha de ESTA audiencia
+  // y la fecha real conocida de la próxima — así, al aplicar la fórmula normal
+  // (fecha_audiencia + dias_plazo), el resultado cae exacto en la fecha pedida.
+  const diasCalculadosNuevo = form.tipo_audiencia === TIPO_PROXIMA ? diasEntreFechas(form.fecha_audiencia, form.fecha_proxima_audiencia) : null
   const diasFormNuevo = form.tipo_audiencia === TIPO_PROXIMA ? diasCalculadosNuevo : form.dias_plazo
   const vencimientoPreview = form.tipo_audiencia === TIPO_PROXIMA ? form.fecha_proxima_audiencia : (form.fecha_audiencia && diasFormNuevo ? calcularVencimiento(form.fecha_audiencia, diasFormNuevo) : '')
 
-  const vencimientoPrevioEdit = editandoId ? (obtenerVencimientoPrevio(editandoId) || (activosOrdenados.find(x=>x.id===editandoId)?.fecha_audiencia)) : null
-  const baseParaEdit = vencimientoPrevioEdit ? (vencimientoPrevioEdit.includes('-') && vencimientoPrevioEdit.length===10 && vencimientoPrevioEdit[4]==='-' ? vencimientoPrevioEdit : aISO(vencimientoPrevioEdit)) : formEdit.fecha_audiencia
-  const diasCalculadosEdit = formEdit.tipo_audiencia === TIPO_PROXIMA ? diasEntreFechas(baseParaEdit, formEdit.fecha_proxima_audiencia) : null
+  const diasCalculadosEdit = formEdit.tipo_audiencia === TIPO_PROXIMA ? diasEntreFechas(formEdit.fecha_audiencia, formEdit.fecha_proxima_audiencia) : null
 
   const handleGuardar = async () => {
     const diasFinal = form.tipo_audiencia === TIPO_PROXIMA ? diasCalculadosNuevo : parseInt(form.dias_plazo)
@@ -108,7 +90,7 @@ export function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudie
   }
 
   const diasTotal = activos.reduce((s,a) => s + (parseInt(a.dias_plazo)||0), 0)
-  const vencFinal = calcularVencimientoTotal(activos)
+  const vencFinal = calcularVencimientoActual(activos)
   const subestado = calcularSubestado(vencFinal)
   const diff = diasRestantes(vencFinal)
 
@@ -142,11 +124,14 @@ export function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudie
       <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:10,fontWeight:600,...f}}>Historial de audiencias de plazo</div>
       {(!aumentos||aumentos.length===0) && <p style={{color:'#94a3b8',fontSize:13,marginBottom:14,...f}}>Sin audiencias registradas.</p>}
       {aumentos && aumentos.map((a,i) => {
-        // El acumulado se calcula solo sobre las audiencias vigentes (no eliminadas), en orden de fecha
+        // "Acum." = solo un registro histórico de días sumados hasta esta audiencia
+        // (no eliminadas, en orden de fecha) — ya NO se usa para calcular el
+        // vencimiento. "Vence" es el vencimiento PROPIO de esta audiencia: su
+        // propia fecha + sus propios días, sin encadenar con las anteriores.
         const posEnActivos = activos.findIndex(x=>x.id===a.id)
         const audsHasta = posEnActivos >= 0 ? activos.slice(0,posEnActivos+1) : []
         const diasAcum = audsHasta.reduce((s,x)=>s+(parseInt(x.dias_plazo)||0),0)
-        const vencAcum = audsHasta.length ? calcularVencimiento(audsHasta[0].fecha_audiencia, diasAcum) : null
+        const vencPropio = a.fecha_audiencia && a.dias_plazo ? calcularVencimiento(a.fecha_audiencia, a.dias_plazo) : null
 
         // ─── Fila ELIMINADA: tachada, con el motivo visible (transparencia, no se oculta) ───
         if (a.eliminado) return (
@@ -220,7 +205,7 @@ export function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudie
             <div style={{display:'flex',gap:14,alignItems:'center',marginTop:8,padding:'8px 10px',background:'#fff',borderRadius:8}}>
               <div style={{fontSize:15,fontWeight:800,color:'#2563eb',...f}}>+{a.dias_plazo}d</div>
               <div>
-                <div style={{fontSize:11,color:'#94a3b8',...f}}>Vence: {vencAcum||'—'}</div>
+                <div style={{fontSize:11,color:'#94a3b8',...f}}>Vence: {vencPropio||"—"}</div>
                 <div style={{fontSize:10,color:'#94a3b8',...f}}>Acum. {diasAcum}d</div>
               </div>
             </div>
@@ -249,7 +234,7 @@ export function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudie
             </div>
             <div style={{textAlign:'right',marginRight:4}}>
               <div style={{fontSize:16,fontWeight:800,color:'#2563eb',...f}}>+{a.dias_plazo}d</div>
-              <div style={{fontSize:11,color:'#94a3b8',marginTop:2,...f}}>Vence: {vencAcum||'—'}</div>
+              <div style={{fontSize:11,color:'#94a3b8',marginTop:2,...f}}>Vence: {vencPropio||"—"}</div>
               <div style={{fontSize:10,color:'#94a3b8',...f}}>Acum. {diasAcum}d</div>
             </div>
             <div style={{display:'flex',flexDirection:'column',gap:4,flexShrink:0}}>

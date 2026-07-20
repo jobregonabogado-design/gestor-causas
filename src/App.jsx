@@ -60,8 +60,10 @@ function parseFechaCL(str) {
 function diasRestantes(plazoStr) {
   const fecha = parseFechaCL(plazoStr)
   if (!fecha) return null
-  const hoy = new Date(); hoy.setHours(0,0,0,0)
-  return Math.ceil((fecha - hoy) / (1000*60*60*24))
+  // ✅ Mismo ajuste que en utils.js: comparar al mediodía (igual que queda
+  // parseada "fecha") en vez de a medianoche, para no quedar ±1 día corrido.
+  const hoy = new Date(); hoy.setHours(12,0,0,0)
+  return Math.round((fecha - hoy) / (1000*60*60*24))
 }
 
 function PanelActividad({ onClose, onVerCausa }) {
