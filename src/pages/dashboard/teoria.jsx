@@ -183,7 +183,7 @@ export function TeoriaDelCaso({ causaId, ruc, session, registrarActividad, onAcc
                   </div>
                 )}
               </div>
-              <CarpetaOneDrive ruc={ruc} isMobile={isMobile}/>
+              <CarpetaOneDrive ruc={ruc}/>
               <div style={{ marginTop:28, paddingTop:24, borderTop:'1px solid #f1f5f9' }}>
                 <DocumentosGuardados causaId={causaId} ruc={ruc} email={session?.user?.email || ''} registrarActividad={registrarActividad} onAccion={onAccion}/>
               </div>
