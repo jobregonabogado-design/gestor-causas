@@ -17,7 +17,7 @@ import { HonorariosTab } from './dashboard/honorarios'
 import { TeoriaDelCaso } from './dashboard/teoria'
 import { BotonResumenImprimible } from './dashboard/resumen'
 import { PlazoCalculador } from './dashboard/plazo'
-import { calcularRegimenAlMomento, calcularVencimiento, parseFechaCL, diasRestantes, calcularSubestado, calcularEdadActual, TRIBUNAL_RPA } from './dashboard/utils'
+import { calcularRegimenAlMomento, calcularVencimiento, parseFechaCL, diasRestantes, calcularSubestado, calcularEdadActual, TRIBUNAL_RPA, normRut, normalizarBusqueda, formatearRut } from './dashboard/utils'
 import { ImputadoDatosCard } from './dashboard/imputado-datos'
 import { CautelaresPanel, TIPOS_ABONO_DIRECTO, TIPOS_DETENCION_PENAL, CAUTELAR_NOCTURNO, CAUTELAR_SENAME, TIPOS_CAUTELARES_TODAS, diasEntreFechasCaut } from './dashboard/cautelares'
 
@@ -409,11 +409,11 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
   const buscarRutNuevaCausa = async (rut, idx) => {
     if (!rut || rut.length < 6) return
     setRutBuscando(prev => ({ ...prev, [idx]: true }))
-    const rutNorm = rut.replace(/[.\-\s]/g,'').toUpperCase()
+    const rutNorm = normRut(rut)
     const { data } = await supabase.from('imputados').select('*').limit(500)
     setRutBuscando(prev => ({ ...prev, [idx]: false }))
     if (!data) return
-    const coincidencias = data.filter(d => d.rut && d.rut.replace(/[.\-\s]/g,'').toUpperCase() === rutNorm)
+    const coincidencias = data.filter(d => d.rut && normRut(d.rut) === rutNorm)
     if (coincidencias.length === 0) { setRutEncontrado(prev => ({ ...prev, [idx]: false })); return }
     // Tomar el más completo
     const campos = ['nombre','nacionalidad','domicilio','fecha_nacimiento']
@@ -491,7 +491,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
         const { data: impData } = await supabase.from('imputados').insert({
           causa_id: data.id,
           nombre: up(imp.nombre) || '',
-          rut: imp.rut || '',
+          rut: formatearRut(imp.rut) || '',
           fecha_nacimiento: imp.fecha_nac || null,
           domicilio: up(imp.domicilio) || '',
           nacionalidad: up(imp.nacionalidad) || '',
@@ -531,8 +531,10 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
   const tribunales=useMemo(()=>[...new Set(causas.map(c=>c.tribunal).filter(Boolean))].sort(),[causas])
   const filtered=useMemo(()=>{
     let list=causas.filter(c=>{
-      const s=search.toLowerCase()
-      const match=!s||[c.ruc,c.rit,c.imputado,c.delito,c.tribunal,c.fiscal].some(v=>v?.toLowerCase().includes(s))
+      // ✅ Sin distinguir tildes ni "ñ"/"n" — así buscar "avendano" o "trafico"
+      // encuentra "Avendaño" o "tráfico" aunque estén guardados con tilde/ñ.
+      const s=normalizarBusqueda(search)
+      const match=!s||[c.ruc,c.rit,c.imputado,c.delito,c.tribunal,c.fiscal].some(v=>v&&normalizarBusqueda(v).includes(s))
       // ✅ "Terminada" (general, sin subestado elegido) funciona como cola de pendientes:
       // solo muestra las terminadas que TODAVÍA no tienen subestado. Apenas se le pone
       // un subestado a una causa, desaparece de aquí y solo aparece en su subestado específico.
@@ -1049,10 +1051,10 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                     // Sincronizar datos personales en TODAS las causas con el mismo RUT
                     const camposPersonales = ['nombre','nacionalidad','domicilio','fecha_nacimiento','otros_antecedentes']
                     if (camposPersonales.includes(field) && imp.rut) {
-                      const rn = imp.rut.replace(/[.\s]/g,'').toUpperCase()
+                      const rn = normRut(imp.rut)
                       const { data: todos } = await supabase.from('imputados').select('id, rut').limit(500)
                       if (todos) {
-                        const mismoRut = todos.filter(d => d.rut && d.rut.replace(/[.\s]/g,'').toUpperCase() === rn && d.id !== imp.id)
+                        const mismoRut = todos.filter(d => d.rut && normRut(d.rut) === rn && d.id !== imp.id)
                         await Promise.all(mismoRut.map(d => supabase.from('imputados').update({ [field]: value }).eq('id', d.id)))
                       }
                     }

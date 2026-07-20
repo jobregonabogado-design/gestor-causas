@@ -1,7 +1,7 @@
 // Tarjetas de Audiencia e Imputado usadas dentro de la lista de una causa.
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
-import { DELITOS_CATALOGO, CENTROS_PENALES, calcularEdadActual, calcularFechaTerminoCondena, getBadgeConfig } from './utils'
+import { DELITOS_CATALOGO, CENTROS_PENALES, calcularEdadActual, calcularFechaTerminoCondena, getBadgeConfig, normRut, formatearRut } from './utils'
 import { SearchableSelect, DelitosChips } from './primitives'
 import { calcularTotalAbono } from './cautelares'
 
@@ -133,8 +133,6 @@ export function ImputadoCard({ imp, idx, totalImputados, cautelares, esTitular, 
     setEditandoCondena(false)
   }
 
-  const normRut = (r) => (r||'').replace(/[.\-\s]/g,'').toUpperCase()
-
   // ✅ "Causas asociadas al imputado" — busca en TODAS las causas si hay otro
   // imputado con el mismo RUT (persona repetida en distintas causas), para
   // no tener que acordarse manualmente ni buscar una por una. Se recalcula
@@ -212,10 +210,10 @@ export function ImputadoCard({ imp, idx, totalImputados, cautelares, esTitular, 
             style={inp}
             value={editValue}
             onChange={e=>setEditValue(e.target.value)}
-            onKeyDown={e=>{if(e.key==='Enter'){onUpdate(field,editValue);setEditField(null);if(field==='rut')buscarPorRut(editValue)}if(e.key==='Escape')setEditField(null)}}
+            onKeyDown={e=>{if(e.key==='Enter'){const v=field==='rut'?formatearRut(editValue):editValue;onUpdate(field,v);setEditField(null);if(field==='rut')buscarPorRut(v)}if(e.key==='Escape')setEditField(null)}}
             onBlur={()=>{ if(field==='rut' && editValue) buscarPorRut(editValue) }}
             autoFocus/>
-          <button style={{background:'#1E293B',color:'#fff',border:'none',borderRadius:7,padding:'7px 12px',fontSize:12,cursor:'pointer',...f}} onClick={()=>{onUpdate(field,editValue);setEditField(null);if(field==='rut')buscarPorRut(editValue)}}>✓</button>
+          <button style={{background:'#1E293B',color:'#fff',border:'none',borderRadius:7,padding:'7px 12px',fontSize:12,cursor:'pointer',...f}} onClick={()=>{const v=field==='rut'?formatearRut(editValue):editValue;onUpdate(field,v);setEditField(null);if(field==='rut')buscarPorRut(v)}}>✓</button>
           <button style={{background:'#fff',border:'1.5px solid #e2e8f0',borderRadius:7,padding:'7px 10px',fontSize:12,cursor:'pointer',...f}} onClick={()=>setEditField(null)}>✗</button>
         </div>
         )

@@ -1,7 +1,7 @@
 // Componentes de UI pequeños y reutilizables del Dashboard: selector con
 // búsqueda, chips de delitos, badges de estado y el campo editable base.
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { estadoConfig, getBadgeConfig, SUBESTADOS_VIGENTE, SUBESTADOS_TERMINADA, TRIBUNALES_CHILE, DELITOS_CATALOGO, CENTROS_PENALES } from './utils'
+import { estadoConfig, getBadgeConfig, SUBESTADOS_VIGENTE, SUBESTADOS_TERMINADA, TRIBUNALES_CHILE, DELITOS_CATALOGO, CENTROS_PENALES, normalizarBusqueda } from './utils'
 
 export function SearchableSelect({ value, onChange, options, placeholder, isDelito }) {
   const [open, setOpen] = useState(false)
@@ -16,10 +16,13 @@ export function SearchableSelect({ value, onChange, options, placeholder, isDeli
 
   const filtered = useMemo(() => {
     if (!query.trim()) return options.slice(0, 40)
-    const q = query.toUpperCase()
+    // ✅ Búsqueda sin distinguir tildes ni "ñ"/"n" — así "trafico" encuentra
+    // "TRÁFICO" y "avendano" encuentra "AVENDAÑO", sin tocar el texto
+    // guardado ni el catálogo (eso queda intacto, con tildes y todo).
+    const q = normalizarBusqueda(query)
     return options.filter(o => {
       const text = isDelito ? o.n : o
-      return text.toUpperCase().includes(q)
+      return normalizarBusqueda(text).includes(q)
     }).slice(0, 40)
   }, [query, options, isDelito])
 

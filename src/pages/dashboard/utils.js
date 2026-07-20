@@ -1155,4 +1155,44 @@ export function calcularSubestado(plazoStr) {
   return null
 }
 
+// ✅ Única función para normalizar un RUT (puntos, guion y espacios fuera,
+// mayúscula) — usada en TODO el código para comparar si dos RUT son "el
+// mismo", así una causa con "12.345.678-9" y otra con "123456789" (u otra
+// combinación de formato) se reconocen como la misma persona sin falla.
+// Antes había 4 versiones distintas repetidas por archivo — una de ellas no
+// sacaba el guion, y por eso a veces la corrección de un nombre no se
+// propagaba a todas las causas de esa persona.
+export function normRut(r) {
+  return (r || '').replace(/[.\-\s]/g, '').toUpperCase()
+}
+
+// ✅ Formato de guardado del RUT: solo números, guion y dígito verificador —
+// sin puntos, sin importar cómo se haya escrito. "12.345.678-9" y
+// "123456789" quedan guardados igual, como "12345678-9".
+export function formatearRut(r) {
+  const limpio = normRut(r)
+  if (!limpio) return limpio
+  if (limpio.includes('-')) return limpio
+  if (limpio.length < 2) return limpio
+  return limpio.slice(0, -1) + '-' + limpio.slice(-1)
+}
+
+// ✅ Quita tildes y trata "ñ" como "n" — SOLO para comparar en buscadores/
+// filtros (nunca para guardar ni mostrar texto tal cual), así buscar
+// "trafico" encuentra "TRÁFICO" y buscar "avendano" encuentra "AVENDAÑO".
+// OJO: normalize('NFD') descompone la "ñ" en "n" + tilde combinada, así que
+// hay que protegerla con un carácter reemplazo ANTES de sacar los acentos
+// del resto del texto (si no, el paso siguiente la afectaría igual que a
+// una vocal con tilde común).
+export function normalizarBusqueda(texto) {
+  if (!texto) return ''
+  const PH_N = '\u0001'
+  const PH_NMAY = '\u0002'
+  return texto
+    .replace(/\u00f1/g, PH_N).replace(/\u00d1/g, PH_NMAY)
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(new RegExp(PH_N, 'g'), 'n').replace(new RegExp(PH_NMAY, 'g'), 'N')
+    .toLowerCase()
+}
+
 
