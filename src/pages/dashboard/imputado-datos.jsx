@@ -56,7 +56,8 @@ export function ImputadoDatosCard({ imp, numero, causaId, ruc, cautelares, esTit
             {editField==='fecha_nacimiento'?(
               <div style={{display:'flex',gap:6}}>
                 <input type="date" style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}}
-                  value={editValue} onChange={e=>{setEditValue(e.target.value);if(e.target.value)onUpdateCampo('fecha_nacimiento',e.target.value)}}
+                  value={editValue} onChange={e=>setEditValue(e.target.value)}
+                  onBlur={()=>{if(editValue)onUpdateCampo('fecha_nacimiento',editValue)}}
                   onKeyDown={e=>{if(e.key==='Enter'){onUpdateCampo('fecha_nacimiento',editValue);setEditField(null)}if(e.key==='Escape')setEditField(null)}} autoFocus/>
                 <button className="btn-primary" style={{padding:'8px 14px',fontSize:12}} onClick={()=>{onUpdateCampo('fecha_nacimiento',editValue);setEditField(null)}}>✓</button>
                 <button className="btn-secondary" style={{padding:'8px 12px',fontSize:12}} onClick={()=>setEditField(null)}>✗</button>
@@ -114,7 +115,8 @@ export function ImputadoDatosCard({ imp, numero, causaId, ruc, cautelares, esTit
                 {editField==='delegacion_fecha'?(
                   <div style={{display:'flex',gap:6}}>
                     <input type="date" style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}}
-                      value={editValue} onChange={e=>{setEditValue(e.target.value);if(e.target.value)onUpdateCampo('delegacion_fecha',e.target.value)}}
+                      value={editValue} onChange={e=>setEditValue(e.target.value)}
+                      onBlur={()=>{if(editValue)onUpdateCampo('delegacion_fecha',editValue)}}
                       onKeyDown={e=>{if(e.key==='Enter'){onUpdateCampo('delegacion_fecha',editValue);setEditField(null)}if(e.key==='Escape')setEditField(null)}} autoFocus/>
                     <button className="btn-primary" style={{padding:'8px 14px',fontSize:12}} onClick={()=>{onUpdateCampo('delegacion_fecha',editValue);setEditField(null)}}>✓</button>
                     <button className="btn-secondary" style={{padding:'8px 12px',fontSize:12}} onClick={()=>setEditField(null)}>✗</button>

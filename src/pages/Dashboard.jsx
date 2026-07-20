@@ -723,7 +723,8 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                               {editField===`fecha_audiencia_corte_${apel.id}`?(
                                 <div style={{display:'flex',gap:6}}>
                                   <input type="date" style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}}
-                                    value={editValue} onChange={async e=>{setEditValue(e.target.value);if(e.target.value){await supabase.from('apelaciones_corte').update({fecha_audiencia_corte:e.target.value}).eq('id',apel.id);setApelaciones(prev=>prev.map(x=>x.id===apel.id?{...x,fecha_audiencia_corte:e.target.value}:x))}}} autoFocus/>
+                                    value={editValue} onChange={e=>setEditValue(e.target.value)}
+                                    onBlur={async()=>{if(editValue){await supabase.from('apelaciones_corte').update({fecha_audiencia_corte:editValue}).eq('id',apel.id);setApelaciones(prev=>prev.map(x=>x.id===apel.id?{...x,fecha_audiencia_corte:editValue}:x))}}} autoFocus/>
                                   <button className="btn-primary" style={{padding:'8px 14px',fontSize:12}} onClick={async()=>{await supabase.from('apelaciones_corte').update({fecha_audiencia_corte:editValue}).eq('id',apel.id);setApelaciones(prev=>prev.map(x=>x.id===apel.id?{...x,fecha_audiencia_corte:editValue}:x));setEditField(null)}}>✓</button>
                                   <button className="btn-secondary" style={{padding:'8px 12px',fontSize:12}} onClick={()=>setEditField(null)}>✗</button>
                                 </div>
@@ -796,11 +797,12 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                       <div style={{fontSize:9,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4,fontWeight:600,...f}}>Fecha de los hechos</div>
                       {editField==='fecha_hechos'?(
                         <div style={{display:'flex',gap:4}}>
-                          {/* ✅ Se guarda solo apenas eliges la fecha (onChange) — en celular, el
-                              selector nativo de fecha no siempre deja "tocar" bien un botón
-                              aparte para confirmar, y el guardado se perdía silenciosamente. */}
+                          {/* ✅ Se guarda solo al salir del campo (onBlur) — no en cada tecleo,
+                              porque si escribes la fecha a mano eso guardaría valores a medio
+                              escribir. Antes dependía solo del botón ✓ y el guardado a veces
+                              se perdía si no se tocaba aparte. */}
                           <input type="date" style={{width:'100%',padding:'7px 9px',border:'none',borderRadius:8,fontSize:11,color:'#1E293B',background:'#fff',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}}
-                            value={editValue} onChange={e=>{setEditValue(e.target.value);if(e.target.value)updateField('fecha_hechos',e.target.value)}}
+                            value={editValue} onChange={e=>setEditValue(e.target.value)}
                             onBlur={()=>{if(editValue)updateField('fecha_hechos',editValue)}}
                             onKeyDown={e=>{if(e.key==='Enter')updateField('fecha_hechos',editValue);if(e.key==='Escape')setEditField(null)}} autoFocus/>
                           <button className="btn-primary" style={{padding:'5px 9px',fontSize:10,borderRadius:8}} onClick={()=>updateField('fecha_hechos',editValue)}>✓</button>
@@ -886,7 +888,8 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                           {editField==='delegacion_fecha'?(
                             <div style={{display:'flex',gap:6}}>
                               <input type="date" style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}}
-                                value={editValue} onChange={e=>{setEditValue(e.target.value);if(e.target.value){imputados.length===0?updateField('delegacion_fecha',e.target.value):actualizarCampoImputado(imputados[0].id,'delegacion_fecha',e.target.value)}}}
+                                value={editValue} onChange={e=>setEditValue(e.target.value)}
+                                onBlur={()=>{if(editValue){imputados.length===0?updateField('delegacion_fecha',editValue):actualizarCampoImputado(imputados[0].id,'delegacion_fecha',editValue)}}}
                                 onKeyDown={e=>{if(e.key==='Enter'){imputados.length===0?updateField('delegacion_fecha',editValue):actualizarCampoImputado(imputados[0].id,'delegacion_fecha',editValue);setEditField(null)}if(e.key==='Escape')setEditField(null)}} autoFocus/>
                               <button className="btn-primary" style={{padding:'8px 14px',fontSize:12}} onClick={()=>{imputados.length===0?updateField('delegacion_fecha',editValue):actualizarCampoImputado(imputados[0].id,'delegacion_fecha',editValue);setEditField(null)}}>✓</button>
                               <button className="btn-secondary" style={{padding:'8px 12px',fontSize:12}} onClick={()=>setEditField(null)}>✗</button>
