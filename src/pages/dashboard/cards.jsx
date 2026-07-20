@@ -1,7 +1,7 @@
 // Tarjetas de Audiencia e Imputado usadas dentro de la lista de una causa.
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
-import { DELITOS_CATALOGO, CENTROS_PENALES, calcularEdadActual, calcularFechaTerminoCondena } from './utils'
+import { DELITOS_CATALOGO, CENTROS_PENALES, calcularEdadActual, calcularFechaTerminoCondena, getBadgeConfig } from './utils'
 import { SearchableSelect, DelitosChips } from './primitives'
 import { calcularTotalAbono } from './cautelares'
 
@@ -95,9 +95,10 @@ function formatearTiempoCondena(anos, meses, dias) {
   return partes.slice(0,-1).join(', ') + ' y ' + partes[partes.length-1]
 }
 
-export function ImputadoCard({ imp, idx, totalImputados, cautelares, esTitular, isMobile, onUpdate, onDelete, onGuardarCondena, onVaciarCondena }) {
+export function ImputadoCard({ imp, idx, totalImputados, cautelares, esTitular, isMobile, causaId, onAbrirCausaAsociada, onUpdate, onDelete, onGuardarCondena, onVaciarCondena }) {
   const [editField, setEditField] = useState(null)
   const [editValue, setEditValue] = useState('')
+  const [causasAsociadas, setCausasAsociadas] = useState([])
   const f = { fontFamily:"'Manrope','Inter',sans-serif" }
   const inp = { width:'100%', padding:'8px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:'#1E293B', background:'#fff', ...f }
   // ✅ Mismo cálculo de abono que usa la pestaña Datos (Cautelares), para
@@ -133,6 +134,23 @@ export function ImputadoCard({ imp, idx, totalImputados, cautelares, esTitular, 
   }
 
   const normRut = (r) => (r||'').replace(/[.\-\s]/g,'').toUpperCase()
+
+  // ✅ "Causas asociadas al imputado" — busca en TODAS las causas si hay otro
+  // imputado con el mismo RUT (persona repetida en distintas causas), para
+  // no tener que acordarse manualmente ni buscar una por una. Se recalcula
+  // solo cuando cambia el RUT de esta tarjeta (recién guardado o al cargar).
+  const cargarCausasAsociadas = async (rut) => {
+    if (!rut || rut.length < 6) { setCausasAsociadas([]); return }
+    const rutNorm = normRut(rut)
+    const { data } = await supabase.from('imputados').select('causa_id, rut').limit(1000)
+    if (!data) { setCausasAsociadas([]); return }
+    const idsAsociados = [...new Set(data.filter(d => d.rut && normRut(d.rut) === rutNorm && d.causa_id !== causaId).map(d => d.causa_id))]
+    if (idsAsociados.length === 0) { setCausasAsociadas([]); return }
+    const { data: causasData } = await supabase.from('causas').select('id, ruc, estado, subestado').in('id', idsAsociados)
+    setCausasAsociadas(causasData || [])
+  }
+
+  useEffect(() => { cargarCausasAsociadas(imp.rut) }, [imp.rut, causaId])
 
   const buscarPorRut = async (rut) => {
     if (!rut || rut.length < 6) return
@@ -263,6 +281,28 @@ export function ImputadoCard({ imp, idx, totalImputados, cautelares, esTitular, 
         <Field2 label="Otros antecedentes" field="otros_antecedentes"/>
         </div>
       </details>
+      {/* ✅ Causas asociadas al imputado — mismo RUT en otra(s) causa(s). Útil
+          para no tener que acordarse/buscar a mano cuando una persona ya
+          tiene otras causas registradas en el sistema. */}
+      {causasAsociadas.length > 0 && (
+        <div style={{marginTop:12,background:'#eff6ff',border:'1.5px solid #bfdbfe',borderRadius:10,padding:'12px 14px'}}>
+          <div style={{fontSize:10,color:'#1e40af',textTransform:'uppercase',letterSpacing:1.5,marginBottom:8,fontWeight:700,...f}}>
+            🔗 Causas asociadas al imputado ({causasAsociadas.length})
+          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:6}}>
+            {causasAsociadas.map(ca => {
+              const badge = getBadgeConfig(ca.estado, ca.subestado)
+              return (
+                <button key={ca.id} onClick={()=>onAbrirCausaAsociada && onAbrirCausaAsociada(ca.id)}
+                  style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,background:'#fff',border:'1px solid #bfdbfe',borderRadius:8,padding:'8px 12px',cursor:'pointer',fontSize:12,...f}}>
+                  <span style={{fontWeight:600,color:'#1e40af'}}>RUC {ca.ruc}</span>
+                  <span style={{fontSize:10,fontWeight:700,padding:'2px 9px',borderRadius:10,color:badge.color,background:badge.bg,border:`1px solid ${badge.border}`}}>{badge.label}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
       {/* Delitos imputados a esta persona (puede diferir entre coimputados) */}
       <div style={{marginTop:12}}>
         <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Delitos imputados a esta persona</div>

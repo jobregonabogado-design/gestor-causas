@@ -191,6 +191,16 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
     setAudiencias(a||[]);setAumentos(au||[]);setImputados(imp||[]);setApelaciones(apel||[]);setCautelares(caut||[])
   }
 
+  // ✅ Abrir otra causa desde adentro de la actual (ej. "Causas asociadas al
+  // imputado" por RUT) — reutiliza openCausa, buscando primero en lo que ya
+  // está cargado en pantalla antes de ir a la base de datos.
+  const abrirCausaAsociada = async (causaId) => {
+    const existente = causas.find(x => x.id === causaId)
+    if (existente) { await openCausa(existente); return }
+    const { data } = await supabase.from('causas').select('*').eq('id', causaId).single()
+    if (data) await openCausa(data)
+  }
+
   // ✅ Función central para marcar acción real — actualiza updated_at y semáforo
   const marcarAccion = useCallback(async (causaId) => {
     const ahora = new Date()
@@ -1014,7 +1024,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
             {activeTab==='imputado'&&(
               <div>
                 {imputados.map((imp,idx)=>(
-                  <ImputadoCard key={imp.id} imp={imp} idx={idx} totalImputados={imputados.length} cautelares={cautelares.filter(ct=>ct.imputado_id===imp.id)} esTitular={esTitular} isMobile={isMobile} onGuardarCondena={(campos,motivo)=>actualizarCondenaImputado(imp.id,campos,motivo)} onVaciarCondena={()=>vaciarCondenaImputado(imp.id)} onUpdate={async(field,value)=>{
+                  <ImputadoCard key={imp.id} imp={imp} idx={idx} totalImputados={imputados.length} cautelares={cautelares.filter(ct=>ct.imputado_id===imp.id)} esTitular={esTitular} isMobile={isMobile} causaId={c.id} onAbrirCausaAsociada={abrirCausaAsociada} onGuardarCondena={(campos,motivo)=>actualizarCondenaImputado(imp.id,campos,motivo)} onVaciarCondena={()=>vaciarCondenaImputado(imp.id)} onUpdate={async(field,value)=>{
                     // Los delitos van sincronizados con el agregado de la causa
                     if (field === 'delitos') { await actualizarDelitosImputado(imp.id, value); return }
                     // Centro Penal ("Recinto penitenciario" en esta pestaña) usa la misma
