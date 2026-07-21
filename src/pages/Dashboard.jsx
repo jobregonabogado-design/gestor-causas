@@ -638,6 +638,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                 <BadgeEditor
                   estado={c.estado}
                   subestado={c.subestado}
+                  isMobile={isMobile}
                   onChangeEstado={(e)=>updateField('estado',e)}
                   onChangeSubestado={(s)=>updateField('subestado',s||null)}
                 />

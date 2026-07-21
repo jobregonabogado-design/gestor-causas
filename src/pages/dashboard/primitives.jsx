@@ -263,7 +263,7 @@ export function Badge({ estado, subestado }) {
 }
 
 // Badge clickeable para el header de la causa
-export function BadgeEditor({ estado, subestado, onChangeEstado, onChangeSubestado }) {
+export function BadgeEditor({ estado, subestado, isMobile, onChangeEstado, onChangeSubestado }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   useEffect(() => {
@@ -291,9 +291,14 @@ export function BadgeEditor({ estado, subestado, onChangeEstado, onChangeSubesta
           <span style={{ width:5, height:5, borderRadius:'50%', background:c.color, flexShrink:0 }}/>{c.label}
         </span>
       )}
-      {/* Dropdown */}
+      {/* Dropdown — en celular se ancla por la IZQUIERDA al botón (no por la
+          derecha) y el ancho queda limitado al viewport, para que nunca se
+          salga de la pantalla si el botón está pegado al borde izquierdo
+          (como pasa en el detalle de una causa). */}
       {open && (
-        <div style={{ position:'absolute', top:'100%', right:0, zIndex:500, background:'#fff', border:'1.5px solid #bfdbfe', borderRadius:12, boxShadow:'0 8px 24px rgba(15,23,42,0.14)', marginTop:6, minWidth:220, overflow:'hidden' }}>
+        <div style={isMobile
+          ? { position:'absolute', top:'100%', left:0, zIndex:500, background:'#fff', border:'1.5px solid #bfdbfe', borderRadius:12, boxShadow:'0 8px 24px rgba(15,23,42,0.14)', marginTop:6, width:'max-content', maxWidth:'calc(100vw - 32px)', maxHeight:'70vh', overflowY:'auto' }
+          : { position:'absolute', top:'100%', right:0, zIndex:500, background:'#fff', border:'1.5px solid #bfdbfe', borderRadius:12, boxShadow:'0 8px 24px rgba(15,23,42,0.14)', marginTop:6, minWidth:220, overflow:'hidden' }}>
           {/* Cambiar estado principal */}
           <div style={{ padding:'8px 12px', fontSize:9, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, fontWeight:700, borderBottom:'1px solid #f1f5f9', ...f }}>Estado principal</div>
           {['vigente','terminada'].map(e => (
