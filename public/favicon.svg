@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 150">
+  <rect x="0" y="0" width="150" height="150" rx="24" fill="#1a1a2e"/>
+  <text x="20" y="78" font-family="'Cormorant Garamond', Georgia, serif" font-weight="500" font-size="46" fill="#d4af37" text-anchor="middle">J</text>
+  <text x="75" y="78" font-family="'Cormorant Garamond', Georgia, serif" font-weight="500" font-size="46" fill="#d4af37" text-anchor="middle">O</text>
+  <text x="130" y="78" font-family="'Cormorant Garamond', Georgia, serif" font-weight="500" font-size="46" fill="#d4af37" text-anchor="middle">A</text>
+  <rect x="14" y="94" width="122" height="1.8" fill="#d4af37"/>
+</svg>

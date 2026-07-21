@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import { LogoJOA } from '../components/Logo'
 
 // Mapa de usuarios → emails internos de Supabase
 const USUARIOS = {
@@ -170,10 +171,11 @@ export default function Login() {
 
       <div style={s.splash}>
         <div className="lg-splash-icon" style={{
-          width: 64, height: 64, borderRadius: 16, background: 'rgba(212,175,55,0.12)',
-          border: '1px solid rgba(212,175,55,0.35)', display: 'flex', alignItems: 'center',
-          justifyContent: 'center', fontSize: 32, marginBottom: 18,
-        }}>⚖️</div>
+          borderRadius: 16, border: '1px solid rgba(212,175,55,0.35)', marginBottom: 18, lineHeight: 0,
+          overflow: 'hidden',
+        }}>
+          <LogoJOA size={64} />
+        </div>
         <div className="lg-splash-title" style={{
           fontSize: isMobile ? 20 : 24, fontWeight: 800, color: '#fff', letterSpacing: 1,
           textTransform: 'uppercase', textAlign: 'center',
@@ -195,10 +197,11 @@ export default function Login() {
             }} />
             <div style={{ position: 'relative', zIndex: 1 }}>
               <div style={{
-                width: 56, height: 56, borderRadius: 14, background: 'rgba(212,175,55,0.12)',
-                border: '1px solid rgba(212,175,55,0.35)', display: 'flex', alignItems: 'center',
-                justifyContent: 'center', fontSize: 28, marginBottom: 28,
-              }}>⚖️</div>
+                borderRadius: 14, border: '1px solid rgba(212,175,55,0.35)', overflow: 'hidden',
+                lineHeight: 0, display: 'inline-block', marginBottom: 28,
+              }}>
+                <LogoJOA size={56} />
+              </div>
               <div style={{ fontSize: 24, fontWeight: 800, color: '#fff', letterSpacing: 0.5, lineHeight: 1.25, textTransform: 'uppercase' }}>
                 GESTOR DE<br />CAUSAS
               </div>
@@ -207,7 +210,7 @@ export default function Login() {
               </div>
             </div>
             <div style={{ position: 'relative', zIndex: 1, fontSize: 11, color: '#6b7280', letterSpacing: 0.5, textTransform: 'uppercase' }}>
-              ACCESO RESTRINGIDO · LEXOFFICE
+              ACCESO RESTRINGIDO · OBREGÓN Y ASOCIADOS
             </div>
           </div>
         )}
@@ -216,10 +219,10 @@ export default function Login() {
           {isMobile && (
             <div style={{ textAlign: 'center', marginBottom: 30 }}>
               <div style={{
-                width: 56, height: 56, borderRadius: 14, background: '#1a1a2e',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26,
-                margin: '0 auto 14px',
-              }}>⚖️</div>
+                borderRadius: 14, lineHeight: 0, display: 'inline-block', margin: '0 auto 14px',
+              }}>
+                <LogoJOA size={56} />
+              </div>
               <div style={{ fontSize: 19, fontWeight: 800, color: '#1a1a2e', letterSpacing: 0.5, textTransform: 'uppercase' }}>GESTOR DE CAUSAS</div>
               <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.3 }}>SISTEMA DE GESTIÓN LEGAL</div>
             </div>
@@ -279,7 +282,7 @@ export default function Login() {
 
           {isMobile && (
             <div style={{ textAlign: 'center', marginTop: 22, fontSize: 11, color: '#cbd5e1', textTransform: 'uppercase', letterSpacing: 0.3 }}>
-              ACCESO RESTRINGIDO · LEXOFFICE
+              ACCESO RESTRINGIDO · OBREGÓN Y ASOCIADOS
             </div>
           )}
         </div>
