@@ -93,7 +93,15 @@ function AudienciaEditCard({ a, onDelete, onUpdate, f, isMobile }) {
   return (
     <div className="aud-card" style={{background:'#fff',border:`1.5px solid ${c.border}`,borderRadius:12,padding:'14px 16px',boxShadow:'0 1px 4px rgba(15,23,42,0.05)',marginBottom:8}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
-        <span style={{fontSize:11,fontWeight:700,color:c.text,background:c.bg,padding:'3px 8px',borderRadius:20,border:`1px solid ${c.border}`,...f}}>{a.tipo}</span>
+        <div style={{display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}>
+          <span style={{fontSize:11,fontWeight:700,color:c.text,background:c.bg,padding:'3px 8px',borderRadius:20,border:`1px solid ${c.border}`,...f}}>{a.tipo}</span>
+          {/* ✅ Señal visible de que esta audiencia fue corregida SOLA por el
+              sistema (Gmail detectó que un correo reemplazaba una anterior) —
+              para que Joaquín esté atento por si hubo un error de lectura. */}
+          {a.corregida_en && (
+            <span title={`Se corrigió sola — antes era: ${a.corregida_de||'—'}`} style={{fontSize:10,fontWeight:700,color:'#065f46',background:'#ecfdf5',padding:'3px 8px',borderRadius:20,border:'1px solid #a7f3d0',...f}}>✓ Corregida</span>
+          )}
+        </div>
         <div style={{display:'flex',gap:6,alignItems:'center'}}>
           <span style={{fontSize:12,fontWeight:700,color:'#1E293B',...f}}>📅 {(()=>{const p=(a.fecha||'').split('-');return p.length===3?`${p[2]}-${MESES[parseInt(p[1],10)-1]?.substring(0,3)||p[1]}`:(a.fecha||'—')})()}</span>
           <span style={{fontSize:12,fontWeight:600,color:'#475569',...f}}>🕐 {a.hora}</span>
@@ -368,7 +376,7 @@ export default function Calendario({ onVerCausa }) {
                         <div key={i} className="aud-card" style={{display:"flex",gap:10,alignItems:"flex-start",background:"#fff",border:"1px solid #f1f5f9",borderRadius:12,padding:"12px 14px",boxShadow:"0 1px 3px rgba(15,23,42,0.05)"}}>
                           <div style={{minWidth:42,height:42,background:c.dot,borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:15,fontWeight:700,flexShrink:0,...f}}>{dia}</div>
                           <div style={{flex:1,minWidth:0}}>
-                            <div style={{fontSize:12,fontWeight:700,color:c.text,marginBottom:2,...f}}>{a.tipo}</div>
+                            <div style={{fontSize:12,fontWeight:700,color:c.text,marginBottom:2,...f}}>{a.tipo}{a.corregida_en&&<span title={`Corregida sola — antes: ${a.corregida_de||'—'}`} style={{marginLeft:5,color:'#059669'}}>✓</span>}</div>
                             <div style={{fontSize:12,color:"#374151",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",...f}}>{a.imputado||"—"}</div>
                             <div style={{fontSize:11,color:"#94a3b8",marginTop:2,...f}}>{a.tribunal||"—"} · {a.hora}</div>
                           </div>
@@ -427,7 +435,10 @@ export default function Calendario({ onVerCausa }) {
                       </td>
                       <td style={{padding:"11px 16px",fontSize:13,fontWeight:600,color:"#1e293b",...f}}>{a.fecha}</td>
                       <td style={{padding:"11px 16px",fontSize:13,color:"#475569",...f}}>{a.hora}</td>
-                      <td style={{padding:"11px 16px"}}><span style={{fontSize:11,padding:"3px 8px",borderRadius:20,background:c.bg,color:c.text,border:`1px solid ${c.border}`,fontWeight:600,...f}}>{a.tipo}</span></td>
+                      <td style={{padding:"11px 16px"}}>
+                        <span style={{fontSize:11,padding:"3px 8px",borderRadius:20,background:c.bg,color:c.text,border:`1px solid ${c.border}`,fontWeight:600,...f}}>{a.tipo}</span>
+                        {a.corregida_en&&<span title={`Corregida sola — antes: ${a.corregida_de||'—'}`} style={{marginLeft:6,fontSize:10,fontWeight:700,color:'#065f46',background:'#ecfdf5',padding:'3px 7px',borderRadius:20,border:'1px solid #a7f3d0',...f}}>✓</span>}
+                      </td>
                       <td style={{padding:"11px 16px",fontSize:13,color:"#374151",maxWidth:180,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",...f}}>{a.imputado||"—"}</td>
                       <td style={{padding:"11px 16px",fontSize:12,color:"#64748b",...f}}>{a.tribunal||"—"}</td>
                       <td style={{padding:"11px 16px",fontSize:12,color:"#64748b",...f}}>{a.sala||"—"}</td>

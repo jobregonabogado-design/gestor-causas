@@ -410,6 +410,16 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
     fecha = null
   }
 
+  // ✅ NUEVO: señal FUERTE de corrección — el documento dice explícitamente
+  // que corrige un error, o deja algo sin efecto (no solo palabras más
+  // débiles/ambiguas como "definitiva" o "nueva fecha" sueltas, que también
+  // pueden aparecer en una audiencia genuinamente distinta). Con esta señal
+  // Y solo cuando hay UNA única audiencia anterior de la misma causa/tipo
+  // (se revisa en GmailIntegracion.jsx), se aplica el cambio automático y
+  // solo se avisa — sin pedir que elijas. Si la señal es más débil, o hay
+  // más de una posible anterior, se sigue preguntando como antes.
+  const esCorreccionFuerte = /correcci[oó]n|corregi[r]?|error\s+en\s+la\s+transcripci[oó]n|dejar[aá]?\s+sin\s+efecto|deja\s+sin\s+efecto|queda\s+sin\s+efecto/i.test(cuerpo)
+
   // ═══════════════════════════════════════════════════════
   // PASO 2: Hora — se busca PRIMERO cerca de donde se encontró la fecha nueva
   // (para no confundirla con la "Hora inicio"/"Hora término" de la audiencia
@@ -509,7 +519,7 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
   // audiencia existente para esa causa) — GmailIntegracion.jsx lo usa para
   // buscar la audiencia anterior de esa misma causa y avisar que puede haber
   // quedado desactualizada, en vez de dejarla ahí sin decir nada.
-  return { fecha, hora, tipo, tribunal, sala, esReprogramacion: hayReprogramacion }
+  return { fecha, hora, tipo, tribunal, sala, esReprogramacion: hayReprogramacion, esCorreccionFuerte }
 }
 
 // Convierte año en palabras a número: "dos mil veintiséis" → 2026

@@ -198,7 +198,18 @@ export default function GmailIntegracion({ onImportComplete }) {
         }
         clavesProcesadas.add(clave)
 
-        const notaCorreccion = posiblesAnteriores.length > 0
+        // ✅ NUEVO: si la señal es FUERTE (el documento dice explícitamente
+        // que corrige un error o deja algo sin efecto) Y hay UNA sola
+        // audiencia anterior candidata (sin ambigüedad), se aplica el
+        // cambio solo — se borra la anterior y se avisa del cambio, sin
+        // pedir que elijas. Si la señal es más débil o hay ambigüedad
+        // (varias candidatas, o inconsistencia en la misma fecha), se
+        // sigue preguntando como antes.
+        const esCorreccionAutomatica = n.audiencia.esCorreccionFuerte && posiblesAnteriores.length === 0 && !!posibleReemplazo
+
+        const notaCorreccion = esCorreccionAutomatica
+          ? `✓ CORREGIDA AUTOMÁTICAMENTE: el correo indicó explícitamente que la audiencia del ${posibleReemplazo.fecha} (${posibleReemplazo.tipo||'—'}) quedaba corregida/sin efecto — se eliminó esa y se dejó esta con la fecha correcta.\n`
+          : posiblesAnteriores.length > 0
           ? `⚠ INCONSISTENCIA: ya existía(n) ${posiblesAnteriores.length} audiencia(s) para este RUC/fecha con tipo "${posiblesAnteriores.map(a=>a.tipo||'—').join(', ')}" y hora "${posiblesAnteriores.map(a=>a.hora||'—').join(', ')}". Esta se agregó como tipo "${n.audiencia.tipo||'—'}" y hora "${n.audiencia.hora||'—'}". Revisa cuál es la correcta y elimina la que sobre.\n`
           : posibleReemplazo
           ? `⚠ POSIBLE REPROGRAMACIÓN: el correo corrige/reprograma una audiencia — parece reemplazar la del ${posibleReemplazo.fecha} (${posibleReemplazo.tipo||'—'}). Revisa y elimina la anterior si corresponde.\n`
@@ -217,10 +228,21 @@ export default function GmailIntegracion({ onImportComplete }) {
           imputado: causa.imputado || '',
           resultado: '',
           notas: `${notaCorreccion}Importado automáticamente desde correo ${n.tipo}\nAsunto: ${n.asunto}\nFecha correo: ${new Date(n.fecha_correo).toLocaleDateString('es-CL')}`,
+          ...(esCorreccionAutomatica ? { corregida_en: new Date().toISOString(), corregida_de: `${posibleReemplazo.fecha} (${posibleReemplazo.tipo||'—'}, ${posibleReemplazo.hora||'sin hora'})` } : {}),
         }).select().single()
 
         if (!error && data) {
           claveExistente.add(clave)
+
+          // ✅ Se elimina la audiencia anterior AUTOMÁTICAMENTE (solo en el
+          // caso de señal fuerte + candidata única) — se revisa el error
+          // igual que en cualquier otro borrado, para no fallar en silencio.
+          let borradoOk = true
+          if (esCorreccionAutomatica) {
+            const { error: errBorrado } = await supabase.from('audiencias').delete().eq('id', posibleReemplazo.id)
+            if (errBorrado) borradoOk = false
+          }
+
           nuevosAgregados.push({
             id: data.id,
             ruc: rucLimpio,
@@ -232,7 +254,10 @@ export default function GmailIntegracion({ onImportComplete }) {
             asunto: n.asunto,
             origen: n.tipo,
             esPosibleCorreccion: posiblesAnteriores.length > 0,
-            audienciaAnterior: posibleReemplazo,
+            audienciaAnterior: esCorreccionAutomatica ? null : posibleReemplazo,
+            esCorreccionAutomatica,
+            corregidaDe: esCorreccionAutomatica ? posibleReemplazo : null,
+            fallóBorrarAnterior: esCorreccionAutomatica && !borradoOk,
           })
         } else if (error) {
           nuevosErrores.push({ ...n, motivo: error.message })
@@ -398,6 +423,18 @@ export default function GmailIntegracion({ onImportComplete }) {
                         style={{ background:'#dc2626', color:'#fff', border:'none', borderRadius:6, padding:'4px 10px', fontSize:10, cursor:'pointer', fontWeight:700, flexShrink:0, ...f }}>
                         Eliminar anterior
                       </button>
+                    </div>
+                  )}
+                  {/* ✅ NUEVO: el correo decía explícitamente que corregía/
+                      dejaba sin efecto una audiencia y solo había UNA candidata
+                      posible — se aplicó el cambio solo (se eliminó la
+                      anterior) y esto es solo un AVISO informativo, no pide
+                      que elijas nada. Igual queda marcada para que la revises
+                      con calma, por si el correo se leyó mal. */}
+                  {item.esCorreccionAutomatica && (
+                    <div style={{ fontSize:11, color:'#065f46', background:'#ecfdf5', border:'1px solid #a7f3d0', borderRadius:7, padding:'6px 8px', marginTop:6, fontWeight:600, ...f }}>
+                      ✓ CORREGIDA AUTOMÁTICAMENTE — el correo indicó que reemplazaba la audiencia del {item.corregidaDe?.fecha} ({item.corregidaDe?.tipo||'—'}, {item.corregidaDe?.hora||'sin hora'}); esa se eliminó y quedó esta con la fecha correcta. Revisa que esté bien.
+                      {item.fallóBorrarAnterior && <div style={{ color:'#dc2626', marginTop:4 }}>⚠ No se pudo eliminar la anterior — revisa el Calendario, puede que haya quedado duplicada.</div>}
                     </div>
                   )}
                 </div>
