@@ -122,6 +122,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
   const [aumentos,setAumentos]=useState([])
   const [apelaciones,setApelaciones]=useState([])
   const [cautelares,setCautelares]=useState([])
+  const [ordenesDetencion,setOrdenesDetencion]=useState([])
   const [imputados,setImputados]=useState([])
   const [showAudForm,setShowAudForm]=useState(false)
   const [nuevaAud,setNuevaAud]=useState({fecha:'',hora:'',tipo:'',tribunal:'',sala:'',resultado:'',notas:''})
@@ -181,14 +182,15 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
 
   const openCausa=async(c)=>{
     setSelectedCausa(c);setView('detail');setActiveTab('datos')
-    const[{data:a},{data:au},{data:imp},{data:apel},{data:caut}]=await Promise.all([
+    const[{data:a},{data:au},{data:imp},{data:apel},{data:caut},{data:ords}]=await Promise.all([
       supabase.from('audiencias').select('*').or(`causa_id.eq.${c.id},ruc.eq.${c.ruc}`).order('fecha',{ascending:false}),
       supabase.from('aumentos_plazo').select('*').eq('causa_id',c.id).order('fecha_audiencia',{ascending:true}),
       supabase.from('imputados').select('*').eq('causa_id',c.id).order('created_at',{ascending:true}),
       supabase.from('apelaciones_corte').select('*').eq('causa_id',c.id).order('created_at',{ascending:true}),
       supabase.from('cautelares_causa').select('*').eq('causa_id',c.id).order('fecha_inicio',{ascending:true}),
+      supabase.from('ordenes_detencion').select('*').eq('causa_id',c.id).order('fecha_orden',{ascending:true}),
     ])
-    setAudiencias(a||[]);setAumentos(au||[]);setImputados(imp||[]);setApelaciones(apel||[]);setCautelares(caut||[])
+    setAudiencias(a||[]);setAumentos(au||[]);setImputados(imp||[]);setApelaciones(apel||[]);setCautelares(caut||[]);setOrdenesDetencion(ords||[])
   }
 
   // ✅ Abrir otra causa desde adentro de la actual (ej. "Causas asociadas al
@@ -1044,7 +1046,23 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
             {activeTab==='imputado'&&(
               <div>
                 {imputados.map((imp,idx)=>(
-                  <ImputadoCard key={imp.id} imp={imp} idx={idx} totalImputados={imputados.length} cautelares={cautelares.filter(ct=>ct.imputado_id===imp.id)} esTitular={esTitular} isMobile={isMobile} causaId={c.id} onAbrirCausaAsociada={abrirCausaAsociada} onGuardarCondena={(campos,motivo)=>actualizarCondenaImputado(imp.id,campos,motivo)} onVaciarCondena={()=>vaciarCondenaImputado(imp.id)} onUpdate={async(field,value)=>{
+                  <ImputadoCard key={imp.id} imp={imp} idx={idx} totalImputados={imputados.length} cautelares={cautelares.filter(ct=>ct.imputado_id===imp.id)} ordenesDetencion={ordenesDetencion.filter(o=>o.imputado_id===imp.id)} esTitular={esTitular} isMobile={isMobile} causaId={c.id} onAbrirCausaAsociada={abrirCausaAsociada}
+                    onGuardarOrdenDetencion={async(form)=>{
+                      const{data,error}=await supabase.from('ordenes_detencion').insert({causa_id:c.id,imputado_id:imp.id,fecha_orden:form.fecha_orden,motivo:form.motivo}).select().single()
+                      if(!error&&data){setOrdenesDetencion(prev=>[...prev,data]);if(registrarActividad)registrarActividad('accion',`Agregó orden de detención (${form.fecha_orden}) a ${imp.nombre||'imputado'} en RUC ${c.ruc}`);await marcarAccion(c.id)}
+                    }}
+                    onActualizarOrdenDetencion={async(id,campos)=>{
+                      await supabase.from('ordenes_detencion').update(campos).eq('id',id)
+                      setOrdenesDetencion(prev=>prev.map(o=>o.id===id?{...o,...campos}:o))
+                      if(campos.fecha_levantamiento&&registrarActividad)registrarActividad('accion',`Dejó sin efecto una orden de detención (${campos.fecha_levantamiento}) de ${imp.nombre||'imputado'} en RUC ${c.ruc}`)
+                      await marcarAccion(c.id)
+                    }}
+                    onEliminarOrdenDetencion={async(id,motivo)=>{
+                      await supabase.from('ordenes_detencion').delete().eq('id',id)
+                      setOrdenesDetencion(prev=>prev.filter(o=>o.id!==id))
+                      if(registrarActividad)registrarActividad('accion',`Eliminó definitivamente una orden de detención de ${imp.nombre||'imputado'} en RUC ${c.ruc}. Motivo: ${motivo}`)
+                    }}
+                    onGuardarCondena={(campos,motivo)=>actualizarCondenaImputado(imp.id,campos,motivo)} onVaciarCondena={()=>vaciarCondenaImputado(imp.id)} onUpdate={async(field,value)=>{
                     // Los delitos van sincronizados con el agregado de la causa
                     if (field === 'delitos') { await actualizarDelitosImputado(imp.id, value); return }
                     // Centro Penal ("Recinto penitenciario" en esta pestaña) usa la misma

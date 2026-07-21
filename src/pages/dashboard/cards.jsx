@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { DELITOS_CATALOGO, CENTROS_PENALES, calcularEdadActual, calcularFechaTerminoCondena, getBadgeConfig, normRut, formatearRut } from './utils'
 import { SearchableSelect, DelitosChips } from './primitives'
 import { calcularTotalAbono } from './cautelares'
+import { OrdenesDetencionPanel } from './ordenes-detencion'
 
 export function AudienciaCard({ a, onUpdate }) {
   const [editing, setEditing] = useState(false)
@@ -95,7 +96,7 @@ function formatearTiempoCondena(anos, meses, dias) {
   return partes.slice(0,-1).join(', ') + ' y ' + partes[partes.length-1]
 }
 
-export function ImputadoCard({ imp, idx, totalImputados, cautelares, esTitular, isMobile, causaId, onAbrirCausaAsociada, onUpdate, onDelete, onGuardarCondena, onVaciarCondena }) {
+export function ImputadoCard({ imp, idx, totalImputados, cautelares, ordenesDetencion, esTitular, isMobile, causaId, onAbrirCausaAsociada, onUpdate, onDelete, onGuardarCondena, onVaciarCondena, onGuardarOrdenDetencion, onActualizarOrdenDetencion, onEliminarOrdenDetencion }) {
   const [editField, setEditField] = useState(null)
   const [editValue, setEditValue] = useState('')
   const [causasAsociadas, setCausasAsociadas] = useState([])
@@ -354,6 +355,20 @@ export function ImputadoCard({ imp, idx, totalImputados, cautelares, esTitular, 
             <Field2 label="Fecha de detención" field="fecha_detencion"/>
           </div>
         )}
+      </div>
+
+      {/* ✅ Orden de detención — distinto de "Privado de libertad" (esta es la
+          orden formal del tribunal; una causa puede tener varias a lo largo
+          del tiempo, o ninguna). Queda historial completo. */}
+      <div style={{marginTop:14}}>
+        <OrdenesDetencionPanel
+          ordenes={ordenesDetencion}
+          esTitular={esTitular}
+          isMobile={isMobile}
+          onGuardar={onGuardarOrdenDetencion}
+          onActualizar={onActualizarOrdenDetencion}
+          onEliminar={onEliminarOrdenDetencion}
+        />
       </div>
 
       {/* ✅ Condena — inicio + tipo (efectiva/sustitutiva) + tiempo (años/meses/
