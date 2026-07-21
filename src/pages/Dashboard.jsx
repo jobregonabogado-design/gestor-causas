@@ -529,6 +529,28 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
     setSaving(false)
   }
 
+  // ✅ NUEVO: eliminar una causa completa — no existía forma de hacerlo desde
+  // la app (solo se podían borrar registros sueltos como audiencias o
+  // cautelares). Es irreversible y borra TODO lo asociado (imputados,
+  // audiencias, diligencias, documentos, honorarios, etc. — todas las
+  // tablas tienen ON DELETE CASCADE), así que además de ser exclusivo del
+  // titular, pide escribir el RUC exacto para confirmar — no basta un
+  // simple "sí" como en otras eliminaciones, porque acá se pierde la causa
+  // completa, no un solo dato.
+  const eliminarCausa = async (c) => {
+    if (!esTitular) return
+    const escrito = window.prompt(`Esto elimina DEFINITIVAMENTE la causa RUC ${c.ruc} y TODO lo asociado (imputados, audiencias, diligencias, documentos, honorarios, etc.) — no se puede deshacer.\n\nPara confirmar, escribe exactamente el RUC "${c.ruc}":`)
+    if (escrito === null) return
+    if (escrito.trim() !== c.ruc) { alert('El RUC escrito no coincide — no se eliminó nada.'); return }
+    const motivo = window.prompt('Motivo de la eliminación (queda registrado en el historial de actividad):')
+    if (motivo === null || !motivo.trim()) { alert('Debes indicar un motivo — no se eliminó nada.'); return }
+    const { error } = await supabase.from('causas').delete().eq('id', c.id)
+    if (error) { alert('No se pudo eliminar la causa: ' + error.message); return }
+    setCausas(prev => prev.filter(x => x.id !== c.id))
+    setView('list')
+    if (registrarActividad) registrarActividad('accion', `Eliminó definitivamente la causa RUC ${c.ruc} (${(c.imputado||'').replace(/\|/g,' / ')}). Motivo: ${motivo.trim()}`)
+  }
+
   const handleSort=col=>{if(sortCol===col)setSortDir(d=>d==='asc'?'desc':'asc');else{setSortCol(col);setSortDir('asc')}}
   const tribunales=useMemo(()=>[...new Set(causas.map(c=>c.tribunal).filter(Boolean))].sort(),[causas])
   const filtered=useMemo(()=>{
@@ -620,7 +642,19 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
         <div style={{maxWidth:1060,margin:'0 auto',padding:'24px 28px'}}>
           <div className="no-imprimir" style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20,flexWrap:'wrap',gap:10}}>
             <button className="btn-secondary" onClick={()=>setView('list')} style={{fontSize:13,border:'none',borderRadius:14,boxShadow:'0 1px 2px rgba(15,23,42,0.06)'}}>← Volver</button>
-            <BotonResumenImprimible causa={c} imputados={imputados} audiencias={audiencias} aumentos={aumentos} cautelares={cautelares} esTitular={esTitular}/>
+            <div style={{display:'flex',gap:8,alignItems:'center'}}>
+              {/* ✅ Solo visible en las causas importadas del Excel (las que tienen
+                  "Excel fila..." en Carpeta y referencia) — a pedido de Joaquín, no
+                  quiere este botón disponible siempre en todas las causas, solo
+                  mientras revisa esta tanda para sacar las que no sirven. */}
+              {esTitular && (c.carpeta_ref||'').startsWith('Excel fila') && (
+                <button onClick={()=>eliminarCausa(c)} title="Elimina la causa completa y todo lo asociado — irreversible"
+                  style={{fontSize:12,fontWeight:600,background:'#fef2f2',color:'#dc2626',border:'1px solid #fecaca',borderRadius:14,padding:'9px 16px',cursor:'pointer',...f}}>
+                  🗑 Eliminar causa
+                </button>
+              )}
+              <BotonResumenImprimible causa={c} imputados={imputados} audiencias={audiencias} aumentos={aumentos} cautelares={cautelares} esTitular={esTitular}/>
+            </div>
           </div>
           <div style={{background:'#fff',borderRadius:20,boxShadow:'0 1px 3px rgba(15,23,42,0.06)'}}>
           <div style={{padding:'28px 28px 20px',borderRadius:'20px 20px 0 0'}}>
