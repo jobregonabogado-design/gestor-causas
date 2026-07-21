@@ -10,6 +10,11 @@ import { fechaDDMM, sanitizarNombreArchivo } from './utils'
 // pedido explícito de Joaquín, se sacan las que no son oficiales ("Declaración
 // de imputado", "Petición de carpeta", "Entrevista con el fiscal",
 // "Reconstitución de escena", "Careo", "Otra diligencia").
+// ✅ NUEVO: se agrega "Activar/Anular acreditación de representación" — no
+// sale en ese desplegable, pero es igual de oficial: es el "Detalle
+// Servicio" real que aparece impreso (con el sello de Fiscalía) en los
+// comprobantes de la gestión de causa del portal, y Joaquín confirmó que sí
+// lo usa.
 export const TIPOS_DILIGENCIA = [
   'Solicitud de diligencias de investigación',
   'Información específica sobre término de una causa',
@@ -22,6 +27,7 @@ export const TIPOS_DILIGENCIA = [
   'Solicitud de revisión de evidencia',
   'Aporte de antecedentes asociados a una causa',
   'Solicitud de documentos específicos de la causa',
+  'Activar/Anular acreditación de representación',
 ]
 export const ESTADOS_DILIGENCIA = {
   pendiente:    { label:'Pendiente de respuesta',   color:'#92400e', bg:'#fff7ed', border:'#fed7aa' },
@@ -70,6 +76,7 @@ export async function extraerTextoPdf(file) {
 // detalle real, que siempre queda visible en la observación).
 function adivinarTipoOficial(texto) {
   const t = (texto || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  if (t.includes('ACREDITA')) return 'Activar/Anular acreditación de representación'
   if (t.includes('COPIA') && t.includes('CARPETA')) return 'Solicitud de copia de la carpeta'
   if (t.includes('REVISION') && t.includes('CARPETA')) return 'Solicitud de revisión de la carpeta de investigación'
   if (t.includes('REVISION') && t.includes('EVIDENCIA')) return 'Solicitud de revisión de evidencia'
