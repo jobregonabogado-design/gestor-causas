@@ -39,11 +39,19 @@ export async function refreshAccessToken() {
   return false
 }
 
+// ✅ FIX: antes pedía response_type "token" (flujo implícito), que Google
+// NUNCA acompaña con un refresh_token — solo entrega un access_token que
+// vence en ~1 hora. Como no había refresh_token guardado, cada vez que se
+// vencía había que iniciar sesión desde cero, mostrando otra vez la pantalla
+// completa de "requiere acceso a tu cuenta". Con response_type "code" +
+// access_type "offline" sí se obtiene un refresh_token (la función de
+// Supabase que lo canjea ya estaba lista para esto, solo nunca se usaba).
 export function loginGmail() {
   const params = new URLSearchParams({
     client_id: CLIENT_ID,
     redirect_uri: REDIRECT_URI,
-    response_type: 'token',
+    response_type: 'code',
+    access_type: 'offline',
     scope: SCOPES,
     prompt: 'consent',
   })
@@ -64,14 +72,27 @@ export function logoutGmail() {
   localStorage.removeItem('gmail_auth_code')
 }
 
+// ✅ FIX: antes, al vencer el access_token (401), se cerraba la sesión de
+// Gmail directamente — sin siquiera intentar usar el refresh_token para
+// renovarlo solo, que es justo para lo que existe. Ahora primero intenta
+// renovar en silencio; solo si eso también falla, recién ahí pide iniciar
+// sesión de nuevo.
 async function gmailFetch(path, options = {}) {
-  const token = getGmailToken()
+  let token = getGmailToken()
   if (!token) throw new Error('No token')
-  const res = await fetch(`https://gmail.googleapis.com${path}`, {
+  const hacerFetch = (tok) => fetch(`https://gmail.googleapis.com${path}`, {
     ...options,
-    headers: { Authorization: `Bearer ${token}`, ...options.headers },
+    headers: { Authorization: `Bearer ${tok}`, ...options.headers },
   })
-  if (res.status === 401) { logoutGmail(); throw new Error('Token expirado') }
+  let res = await hacerFetch(token)
+  if (res.status === 401) {
+    const renovado = await refreshAccessToken()
+    if (renovado) {
+      token = getGmailToken()
+      res = await hacerFetch(token)
+    }
+    if (res.status === 401) { logoutGmail(); throw new Error('Token expirado') }
+  }
   if (!res.ok) throw new Error(`Error ${res.status}`)
   return res.json()
 }
@@ -378,7 +399,13 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
   // no hay que agregar nada — la fecha detectada sería la de la audiencia
   // anulada, no una nueva. Se descarta para que quede para revisión manual.
   const hayCancelacion = /dejar[aá]?\s+sin\s+efecto|deja\s+sin\s+efecto|queda\s+sin\s+efecto|se\s+suspende\s+la\s+audiencia|se\s+revoca\s+la\s+audiencia/i.test(cuerpo)
-  const hayReprogramacion = /reprogramaci[oó]n|reprograma[r]?|nueva\s+fecha|se\s+fija\s+nueva|definitiv[oa]/i.test(cuerpo)
+  // ✅ Se agregan "corregir"/"corrección"/"error en la transcripción" — antes
+  // solo reconocía "reprogramación"/"nueva fecha"/"definitiva", así que un
+  // correo como "se cometió un error en la transcripción de la fecha... se
+  // procede a corregir lo obrado" no quedaba marcado como corrección de una
+  // audiencia ya agendada, y la anterior (con la fecha vieja) nunca se
+  // detectaba como algo que revisar.
+  const hayReprogramacion = /reprogramaci[oó]n|reprograma[r]?|nueva\s+fecha|se\s+fija\s+nueva|definitiv[oa]|correcci[oó]n|corregi[r]?|error\s+en\s+la\s+transcripci[oó]n/i.test(cuerpo)
   if (hayCancelacion && !hayReprogramacion) {
     fecha = null
   }
@@ -477,7 +504,12 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
   const matchSala = matchSalaCerca || cuerpo.match(/Sala\s+([A-Z0-9\s,]{1,30}?)(?:\n|$)/i)
   if (matchSala) sala = matchSala[1].trim()
 
-  return { fecha, hora, tipo, tribunal, sala }
+  // ✅ NUEVO: se marca si el correo suena a corrección/reprogramación de una
+  // audiencia YA agendada (aunque la fecha nueva sea distinta a cualquier
+  // audiencia existente para esa causa) — GmailIntegracion.jsx lo usa para
+  // buscar la audiencia anterior de esa misma causa y avisar que puede haber
+  // quedado desactualizada, en vez de dejarla ahí sin decir nada.
+  return { fecha, hora, tipo, tribunal, sala, esReprogramacion: hayReprogramacion }
 }
 
 // Convierte año en palabras a número: "dos mil veintiséis" → 2026

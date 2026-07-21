@@ -11,6 +11,7 @@ export default function GmailIntegracion({ onImportComplete }) {
   const [agregados, setAgregados] = useState([])
   const [errores, setErrores] = useState([])
   const [sinCausa, setSinCausa] = useState([])
+  const [duplicados, setDuplicados] = useState([])
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -32,6 +33,7 @@ export default function GmailIntegracion({ onImportComplete }) {
     setAgregados([])
     setErrores([])
     setSinCausa([])
+    setDuplicados([])
 
     try {
       // 1. Obtener causas vigentes PRIMERO — solo procesamos correos de estas
@@ -102,6 +104,18 @@ export default function GmailIntegracion({ onImportComplete }) {
         causasPorRucNorm[normalizarRuc(c.ruc)] = c
       })
 
+      // ✅ NUEVO: todas las audiencias existentes agrupadas SOLO por RUC (sin
+      // fecha) — para poder encontrar "la audiencia anterior" cuando el
+      // correo corrige/reprograma y la fecha nueva es DISTINTA a cualquier
+      // audiencia ya guardada para esa causa (si no, nunca se detectaba,
+      // porque antes solo se comparaba RUC+fecha exactos).
+      const audienciasPorRuc = new Map()
+      ;(audienciasExistentes || []).forEach(a => {
+        const rn = normalizarRuc(a.ruc)
+        if (!audienciasPorRuc.has(rn)) audienciasPorRuc.set(rn, [])
+        audienciasPorRuc.get(rn).push(a)
+      })
+
       // Con el filtro previo, todas las notificaciones tienen causa vigente
       // sinCausaVigente ya no aplica — lo dejamos vacío
 
@@ -109,6 +123,7 @@ export default function GmailIntegracion({ onImportComplete }) {
       const nuevosErrores = []
       const sinCausaVigente = []
       const sinCausaVistos = new Set()
+      const nuevosDuplicados = []
 
       setProcesando(true)
 
@@ -137,20 +152,56 @@ export default function GmailIntegracion({ onImportComplete }) {
         }
 
         // Corroborar: clave con fecha+tipo+HORA (sin sala, por el motivo de arriba).
-        // Si ya existe exactamente esto, no se toca. Si no, se agrega — y si
-        // había algo distinto para el mismo RUC/fecha/tipo, se marca como
-        // inconsistencia para que la revises tú.
         const clave = `${rucNorm}-${n.audiencia.fecha}-${normalizarParaClave(n.audiencia.tipo)}-${normalizarParaClave(n.audiencia.hora)}`
-        if (claveExistente.has(clave) || clavesProcesadas.has(clave)) continue
-        clavesProcesadas.add(clave)
+        const yaExiste = claveExistente.has(clave)
 
         // ¿Ya existía algo con este mismo RUC+fecha (sin importar tipo/hora)?
-        // Si es así, es una inconsistencia real que hay que revisar a mano
-        // (puede ser que cambió la hora, o que cambió el tipo, o ambos).
         const claveBase = `${rucNorm}-${n.audiencia.fecha}`
         const posiblesAnteriores = clavesBaseExistentes.get(claveBase) || []
+
+        // ✅ Esta comparación se hace SIEMPRE, exista ya o no la audiencia
+        // nueva — antes solo corría al insertarla recién, así que una vez
+        // procesado un correo una vez, revisarlo de nuevo nunca detectaba un
+        // duplicado que hubiera quedado de una corrección anterior (ej. si
+        // ya tenías guardadas la del 31 Y la del 30 desde antes de este
+        // arreglo, "Revisar correos" ahora sí lo detecta igual).
+        let posibleReemplazo = null
+        if (n.audiencia.esReprogramacion && posiblesAnteriores.length === 0) {
+          const todasDeLaCausa = audienciasPorRuc.get(rucNorm) || []
+          const candidatas = todasDeLaCausa.filter(a =>
+            a.fecha !== n.audiencia.fecha && normalizarParaClave(a.tipo) === normalizarParaClave(n.audiencia.tipo)
+          )
+          if (candidatas.length === 1) posibleReemplazo = candidatas[0]
+        }
+
+        // Si ya estaba guardada (o ya se procesó en esta misma revisión), no
+        // se inserta de nuevo — pero si se detectó una posible duplicada/
+        // anterior, igual se avisa en su propio aviso.
+        if (yaExiste || clavesProcesadas.has(clave)) {
+          const claveDup = `dup-${clave}`
+          if (posibleReemplazo && !clavesProcesadas.has(claveDup)) {
+            clavesProcesadas.add(claveDup)
+            const actual = (audienciasExistentes || []).find(a =>
+              normalizarRuc(a.ruc) === rucNorm && a.fecha === n.audiencia.fecha &&
+              normalizarParaClave(a.tipo) === normalizarParaClave(n.audiencia.tipo) &&
+              normalizarParaClave(a.hora) === normalizarParaClave(n.audiencia.hora)
+            )
+            nuevosDuplicados.push({
+              id: actual?.id || null,
+              ruc: rucLimpio, imputado: causa.imputado, tipo: n.audiencia.tipo,
+              fecha: n.audiencia.fecha, hora: n.audiencia.hora,
+              tribunal: n.audiencia.tribunal || causa.tribunal, asunto: n.asunto, origen: n.tipo,
+              audienciaAnterior: posibleReemplazo,
+            })
+          }
+          continue
+        }
+        clavesProcesadas.add(clave)
+
         const notaCorreccion = posiblesAnteriores.length > 0
           ? `⚠ INCONSISTENCIA: ya existía(n) ${posiblesAnteriores.length} audiencia(s) para este RUC/fecha con tipo "${posiblesAnteriores.map(a=>a.tipo||'—').join(', ')}" y hora "${posiblesAnteriores.map(a=>a.hora||'—').join(', ')}". Esta se agregó como tipo "${n.audiencia.tipo||'—'}" y hora "${n.audiencia.hora||'—'}". Revisa cuál es la correcta y elimina la que sobre.\n`
+          : posibleReemplazo
+          ? `⚠ POSIBLE REPROGRAMACIÓN: el correo corrige/reprograma una audiencia — parece reemplazar la del ${posibleReemplazo.fecha} (${posibleReemplazo.tipo||'—'}). Revisa y elimina la anterior si corresponde.\n`
           : ''
 
         // ✅ FIX: incluye imputado y tribunal con fallback desde la causa
@@ -181,6 +232,7 @@ export default function GmailIntegracion({ onImportComplete }) {
             asunto: n.asunto,
             origen: n.tipo,
             esPosibleCorreccion: posiblesAnteriores.length > 0,
+            audienciaAnterior: posibleReemplazo,
           })
         } else if (error) {
           nuevosErrores.push({ ...n, motivo: error.message })
@@ -190,6 +242,7 @@ export default function GmailIntegracion({ onImportComplete }) {
       setAgregados(nuevosAgregados)
       setErrores(nuevosErrores)
       setSinCausa(sinCausaVigente)
+      setDuplicados(nuevosDuplicados)
 
       // ✅ Notificar al calendario para que recargue
       if (onImportComplete && nuevosAgregados.length > 0) {
@@ -204,10 +257,44 @@ export default function GmailIntegracion({ onImportComplete }) {
     setProcesando(false)
   }
 
+  // ✅ FIX: antes no se revisaba si el borrado fallaba (ej. permisos) — la
+  // tarjeta desaparecía de la pantalla igual, aunque el registro siguiera
+  // guardado en la base de datos (por eso seguía apareciendo en Calendario).
   const eliminarAudiencia = async (item) => {
     if (!window.confirm(`¿Eliminar audiencia ${item.tipo} del ${item.fecha}?`)) return
-    await supabase.from('audiencias').delete().eq('id', item.id)
+    const { error } = await supabase.from('audiencias').delete().eq('id', item.id)
+    if (error) { alert('No se pudo eliminar la audiencia: ' + error.message); return }
     setAgregados(prev => prev.filter(x => x.id !== item.id))
+    if (onImportComplete) onImportComplete()
+  }
+
+  // ✅ NUEVO: elimina la audiencia ANTERIOR detectada como posible
+  // reprogramación (no la que se acaba de agregar, sino la vieja con la
+  // fecha desactualizada) — deja la tarjeta de la nueva tal cual, solo
+  // saca el aviso una vez que ya se resolvió.
+  const eliminarAudienciaAnterior = async (item) => {
+    const anterior = item.audienciaAnterior
+    if (!anterior) return
+    if (!window.confirm(`¿Eliminar la audiencia anterior ${anterior.tipo||''} del ${anterior.fecha}? Esto es la que quedó desactualizada, no la que se acaba de agregar.`)) return
+    const { error } = await supabase.from('audiencias').delete().eq('id', anterior.id)
+    if (error) { alert('No se pudo eliminar la audiencia anterior: ' + error.message); return }
+    setAgregados(prev => prev.map(x => x.id === item.id ? { ...x, audienciaAnterior: null } : x))
+    if (onImportComplete) onImportComplete()
+  }
+
+  // ✅ NUEVO: mismo caso que arriba, pero para cuando la audiencia "nueva" ya
+  // estaba guardada de antes (por eso no aparece en "Agregadas") y recién al
+  // volver a revisar los correos se detecta que quedó una anterior sin
+  // eliminar — típicamente audiencias del 31/07 y 30/07 que ya existían las
+  // dos desde antes de este arreglo.
+  const eliminarDuplicadoAnterior = async (item) => {
+    const anterior = item.audienciaAnterior
+    if (!anterior) return
+    if (!window.confirm(`¿Eliminar la audiencia anterior ${anterior.tipo||''} del ${anterior.fecha}? Esto es la que quedó desactualizada.`)) return
+    const { error } = await supabase.from('audiencias').delete().eq('id', anterior.id)
+    if (error) { alert('No se pudo eliminar la audiencia anterior: ' + error.message); return }
+    setDuplicados(prev => prev.filter(x => x !== item))
+    if (onImportComplete) onImportComplete()
   }
 
   if (!conectado) return (
@@ -227,7 +314,7 @@ export default function GmailIntegracion({ onImportComplete }) {
     </div>
   )
 
-  const hayResultados = agregados.length > 0 || errores.length > 0 || sinCausa.length > 0
+  const hayResultados = agregados.length > 0 || errores.length > 0 || sinCausa.length > 0 || duplicados.length > 0
 
   return (
     <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:16, padding:28 }}>
@@ -299,11 +386,64 @@ export default function GmailIntegracion({ onImportComplete }) {
                       ⚠ INCONSISTENCIA: ya existía otra audiencia para este mismo RUC/fecha con otro tipo o hora — revisa cuál es la correcta y elimina la que sobre.
                     </div>
                   )}
+                  {/* ✅ NUEVO: el correo sonaba a corrección/reprogramación y se
+                      encontró UNA sola audiencia anterior de la misma causa y
+                      tipo, en otra fecha — probablemente quedó desactualizada.
+                      Se avisa con un botón directo para eliminarla, en vez de
+                      dejarla ahí sin decir nada. */}
+                  {item.audienciaAnterior && (
+                    <div style={{ fontSize:11, color:'#9a3412', background:'#fff7ed', border:'1px solid #fdba74', borderRadius:7, padding:'6px 8px', marginTop:6, fontWeight:600, ...f, display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, flexWrap:'wrap' }}>
+                      <span>⚠ Parece reemplazar la audiencia del {item.audienciaAnterior.fecha} ({item.audienciaAnterior.tipo||'—'}, {item.audienciaAnterior.hora||'sin hora'}) — ¿eliminarla?</span>
+                      <button onClick={() => eliminarAudienciaAnterior(item)}
+                        style={{ background:'#dc2626', color:'#fff', border:'none', borderRadius:6, padding:'4px 10px', fontSize:10, cursor:'pointer', fontWeight:700, flexShrink:0, ...f }}>
+                        Eliminar anterior
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <button onClick={() => eliminarAudiencia(item)}
                   style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:7, padding:'5px 12px', fontSize:11, color:'#dc2626', cursor:'pointer', fontWeight:600, flexShrink:0, ...f }}>
                   ✕ Eliminar
                 </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* BANNER: POSIBLES DUPLICADOS DE ANTES — el correo ya se había procesado
+          en una revisión anterior (por eso no aparece en "Agregadas"), pero
+          recién ahora se detecta que quedó una audiencia vieja sin eliminar. */}
+      {duplicados.length > 0 && (
+        <div style={{ background:'linear-gradient(135deg,#fff7ed,#fed7aa22)', border:'1.5px solid #fdba74', borderRadius:14, padding:'16px 20px', marginBottom:16 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:14 }}>
+            <div style={{ width:32, height:32, background:'linear-gradient(135deg,#f59e0b,#d97706)', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, flexShrink:0 }}>⚠️</div>
+            <div>
+              <div style={{ fontSize:14, fontWeight:700, color:'#9a3412', ...f }}>
+                {duplicados.length} audiencia{duplicados.length > 1 ? 's' : ''} con posible versión anterior sin eliminar
+              </div>
+              <div style={{ fontSize:11, color:'#c2410c', ...f }}>Ya estaban guardadas de una revisión anterior — recién ahora se detectó la anterior desactualizada.</div>
+            </div>
+          </div>
+          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+            {duplicados.map((item, i) => (
+              <div key={i} style={{ background:'#fff', border:'1px solid #fdba74', borderRadius:10, padding:'12px 16px' }}>
+                <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:4, flexWrap:'wrap' }}>
+                  <span style={{ fontSize:10, fontWeight:700, background: item.origen==='PJUD'?'#eff6ff':'#faf5ff', color: item.origen==='PJUD'?'#2563eb':'#7c3aed', border:`1px solid ${item.origen==='PJUD'?'#bfdbfe':'#ddd6fe'}`, padding:'2px 8px', borderRadius:20, textTransform:'uppercase', ...f }}>{item.origen}</span>
+                  <span style={{ fontSize:12, fontWeight:600, color:'#0f172a', ...f }}>{item.tipo}</span>
+                </div>
+                <div style={{ fontSize:12, color:'#64748b', ...f }}>
+                  RUC <span style={{ fontFamily:'monospace', fontWeight:600, color:'#0f172a' }}>{item.ruc}</span>
+                  {item.imputado && <span style={{ marginLeft:8 }}>· {item.imputado.split('|')[0]}</span>}
+                  <span style={{ marginLeft:8 }}>· Vigente: 📅 {item.fecha}{item.hora ? ` · 🕐 ${item.hora}` : ''}</span>
+                </div>
+                <div style={{ fontSize:11, color:'#9a3412', background:'#fff7ed', border:'1px solid #fdba74', borderRadius:7, padding:'6px 8px', marginTop:6, fontWeight:600, ...f, display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, flexWrap:'wrap' }}>
+                  <span>⚠ Parece que reemplaza a la audiencia del {item.audienciaAnterior.fecha} ({item.audienciaAnterior.tipo||'—'}, {item.audienciaAnterior.hora||'sin hora'}) — ¿eliminarla?</span>
+                  <button onClick={() => eliminarDuplicadoAnterior(item)}
+                    style={{ background:'#dc2626', color:'#fff', border:'none', borderRadius:6, padding:'4px 10px', fontSize:10, cursor:'pointer', fontWeight:700, flexShrink:0, ...f }}>
+                    Eliminar anterior
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -356,7 +496,7 @@ export default function GmailIntegracion({ onImportComplete }) {
       {/* RESUMEN FINAL */}
       {hayResultados && !cargando && (
         <div style={{ textAlign:'center', marginTop:8 }}>
-          <button onClick={() => { setAgregados([]); setErrores([]); setSinCausa([]) }}
+          <button onClick={() => { setAgregados([]); setErrores([]); setSinCausa([]); setDuplicados([]) }}
             style={{ background:'#fff', border:'1.5px solid #e2e8f0', borderRadius:8, padding:'7px 18px', fontSize:12, color:'#94a3b8', cursor:'pointer', ...f }}>
             Limpiar resultados
           </button>
