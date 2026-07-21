@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { loginGmail, isGmailConnected, logoutGmail, fetchNotificacionesPJUD, exchangeCodeForToken } from '../lib/gmail'
 import { supabase } from '../lib/supabase'
 import { fechaDDMM } from '../pages/dashboard/utils'
+import { ESTADOS_DILIGENCIA } from '../pages/dashboard/diligencias'
 
 const f = { fontFamily:"'Manrope','Inter',sans-serif" }
 
@@ -13,6 +14,11 @@ export default function GmailIntegracion({ onImportComplete }) {
   const [errores, setErrores] = useState([])
   const [sinCausa, setSinCausa] = useState([])
   const [duplicados, setDuplicados] = useState([])
+  // ✅ NUEVO: respuestas de Fiscalía detectadas en el correo, que calzan por
+  // folio con una diligencia "Pendiente de respuesta" — nunca se aplican
+  // solas, siempre se muestran para que Joaquín las revise y confirme.
+  const [respuestasDetectadas, setRespuestasDetectadas] = useState([])
+  const [aplicandoId, setAplicandoId] = useState(null)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -35,6 +41,7 @@ export default function GmailIntegracion({ onImportComplete }) {
     setErrores([])
     setSinCausa([])
     setDuplicados([])
+    setRespuestasDetectadas([])
 
     try {
       // 1. Obtener causas vigentes PRIMERO — solo procesamos correos de estas
@@ -62,6 +69,50 @@ export default function GmailIntegracion({ onImportComplete }) {
         const rucNorm = n.ruc?.replace(/[\s\-]/g, '').toLowerCase()
         return rucsVigentes.has(rucNorm)
       })
+
+      // 2.b ✅ NUEVO: buscar RESPUESTAS de Fiscalía a solicitudes ya
+      // ingresadas — se hace con la misma lista de correos ya descargada
+      // (sin llamadas extra a Gmail), matcheando por FOLIO contra las
+      // diligencias "Pendiente de respuesta" de causas vigentes. Nunca se
+      // aplica sola: solo se sugiere, y Joaquín confirma con un clic.
+      const causasPorId = Object.fromEntries(causasVigentes.map(c => [c.id, c]))
+      const { data: diligenciasPendientes } = await supabase
+        .from('diligencias_fiscalia')
+        .select('id, causa_id, tipo, folio, fecha_solicitud, estado')
+        .eq('estado', 'pendiente')
+        .in('causa_id', causasVigentes.map(c => c.id))
+
+      const normalizarFolio = (f) => (f || '').toString().replace(/\D/g, '')
+      const pendientesPorFolio = new Map()
+      ;(diligenciasPendientes || []).forEach(d => {
+        const fn = normalizarFolio(d.folio)
+        if (fn) pendientesPorFolio.set(fn, d)
+      })
+
+      const nuevasRespuestas = []
+      const foliosVistos = new Set()
+      for (const n of todasNotificaciones) {
+        const folioDetectado = normalizarFolio(n.respuestaFiscalia?.folio)
+        if (!folioDetectado || foliosVistos.has(folioDetectado)) continue
+        const diligencia = pendientesPorFolio.get(folioDetectado)
+        if (!diligencia) continue
+        foliosVistos.add(folioDetectado)
+        const causa = causasPorId[diligencia.causa_id]
+        nuevasRespuestas.push({
+          diligenciaId: diligencia.id,
+          tipoDiligencia: diligencia.tipo,
+          folio: diligencia.folio,
+          fechaSolicitud: diligencia.fecha_solicitud,
+          ruc: causa?.ruc || '',
+          imputado: causa?.imputado || '',
+          estado: n.respuestaFiscalia.estado,
+          fechaCitacion: n.respuestaFiscalia.fechaCitacion,
+          detalle: n.respuestaFiscalia.detalle,
+          fechaRespuestaEmail: n.fecha_correo ? n.fecha_correo.slice(0, 10) : new Date().toISOString().slice(0, 10),
+          asunto: n.asunto,
+        })
+      }
+      setRespuestasDetectadas(nuevasRespuestas)
 
       // 3. Corroborar contra lo que ya existe (RUC+fecha+tipo+HORA — la sala
       // se deja fuera de la comparación porque a veces se lee con espacios o
@@ -283,6 +334,27 @@ export default function GmailIntegracion({ onImportComplete }) {
     setProcesando(false)
   }
 
+  // ✅ NUEVO: aplica una respuesta de Fiscalía detectada por correo a la
+  // diligencia pendiente correspondiente (por folio) — siempre pide
+  // confirmación antes, ya que la lectura automática puede fallar (mismo
+  // criterio que el resto de las lecturas de correo de esta pantalla).
+  const aplicarRespuesta = async (item) => {
+    const etiquetaEstado = ESTADOS_DILIGENCIA[item.estado]?.label || item.estado
+    const detalleCita = item.estado === 'con_citacion' && item.fechaCitacion ? ` (cita el ${fechaDDMM(item.fechaCitacion)})` : ''
+    if (!window.confirm(`¿Marcar la diligencia "${item.tipoDiligencia}" (folio ${item.folio}) como "${etiquetaEstado}"${detalleCita}?\n\nRevisa que sea correcto — se detectó automáticamente del correo "${item.asunto}".`)) return
+    setAplicandoId(item.diligenciaId)
+    const { error } = await supabase.from('diligencias_fiscalia').update({
+      estado: item.estado,
+      fecha_respuesta: item.fechaRespuestaEmail,
+      fecha_citacion: item.estado === 'con_citacion' ? item.fechaCitacion : null,
+      respuesta_detalle: item.detalle || null,
+    }).eq('id', item.diligenciaId)
+    setAplicandoId(null)
+    if (error) { alert('No se pudo aplicar la respuesta: ' + error.message); return }
+    setRespuestasDetectadas(prev => prev.filter(x => x.diligenciaId !== item.diligenciaId))
+    if (onImportComplete) onImportComplete()
+  }
+
   // ✅ FIX: antes no se revisaba si el borrado fallaba (ej. permisos) — la
   // tarjeta desaparecía de la pantalla igual, aunque el registro siguiera
   // guardado en la base de datos (por eso seguía apareciendo en Calendario).
@@ -340,7 +412,7 @@ export default function GmailIntegracion({ onImportComplete }) {
     </div>
   )
 
-  const hayResultados = agregados.length > 0 || errores.length > 0 || sinCausa.length > 0 || duplicados.length > 0
+  const hayResultados = agregados.length > 0 || errores.length > 0 || sinCausa.length > 0 || duplicados.length > 0 || respuestasDetectadas.length > 0
 
   return (
     <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:16, padding:28 }}>
@@ -376,7 +448,53 @@ export default function GmailIntegracion({ onImportComplete }) {
       {!hayResultados && !cargando && (
         <div style={{ textAlign:'center', padding:'40px 20px', background:'#f8fafc', borderRadius:12, border:'1.5px dashed #e2e8f0' }}>
           <div style={{ fontSize:32, marginBottom:8 }}>📭</div>
-          <div style={{ fontSize:13, color:'#94a3b8', ...f }}>Haz clic en "Revisar correos" para importar automáticamente las audiencias notificadas</div>
+          <div style={{ fontSize:13, color:'#94a3b8', ...f }}>Haz clic en "Revisar correos" para importar automáticamente las audiencias notificadas y detectar respuestas de Fiscalía a solicitudes pendientes</div>
+        </div>
+      )}
+
+      {/* BANNER: RESPUESTAS DE FISCALÍA DETECTADAS — nunca se aplican solas,
+          siempre piden confirmación con "Aplicar respuesta". */}
+      {respuestasDetectadas.length > 0 && (
+        <div style={{ background:'linear-gradient(135deg,#eff6ff,#dbeafe)', border:'1.5px solid #bfdbfe', borderRadius:14, padding:'16px 20px', marginBottom:16 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:14 }}>
+            <div style={{ width:32, height:32, background:'linear-gradient(135deg,#2563eb,#1d4ed8)', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, flexShrink:0 }}>📨</div>
+            <div>
+              <div style={{ fontSize:14, fontWeight:700, color:'#1e40af', ...f }}>
+                {respuestasDetectadas.length} respuesta{respuestasDetectadas.length > 1 ? 's' : ''} de Fiscalía detectada{respuestasDetectadas.length > 1 ? 's' : ''}
+              </div>
+              <div style={{ fontSize:11, color:'#2563eb', ...f }}>Encontrada(s) por folio en una diligencia pendiente — revisa y confirma antes de aplicar.</div>
+            </div>
+          </div>
+          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+            {respuestasDetectadas.map((item, i) => (
+              <div key={i} style={{ background:'#fff', border:'1px solid #bfdbfe', borderRadius:10, padding:'12px 16px', display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12, flexWrap:'wrap' }}>
+                <div style={{ flex:1, minWidth:220 }}>
+                  <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:4, flexWrap:'wrap' }}>
+                    <span style={{ fontSize:12, fontWeight:600, color:'#0f172a', ...f }}>{item.tipoDiligencia}</span>
+                    <span style={{
+                      fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:20, textTransform:'uppercase', ...f,
+                      background: ESTADOS_DILIGENCIA[item.estado]?.bg, color: ESTADOS_DILIGENCIA[item.estado]?.color,
+                      border: `1px solid ${ESTADOS_DILIGENCIA[item.estado]?.border}`,
+                    }}>{ESTADOS_DILIGENCIA[item.estado]?.label || item.estado}</span>
+                  </div>
+                  <div style={{ fontSize:12, color:'#64748b', ...f }}>
+                    RUC <span style={{ fontFamily:'monospace', fontWeight:600, color:'#0f172a' }}>{item.ruc}</span>
+                    {item.imputado && <span style={{ marginLeft:8 }}>· {item.imputado.split('|')[0]}</span>}
+                    <span style={{ marginLeft:8 }}>· Folio <span style={{ fontFamily:'monospace' }}>{item.folio}</span></span>
+                  </div>
+                  <div style={{ fontSize:12, color:'#2563eb', fontWeight:500, marginTop:4, ...f }}>
+                    Solicitada el {fechaDDMM(item.fechaSolicitud)} · Respondida el {fechaDDMM(item.fechaRespuestaEmail)}
+                    {item.estado === 'con_citacion' && item.fechaCitacion ? ` · Cita el ${fechaDDMM(item.fechaCitacion)}` : ''}
+                  </div>
+                  {item.detalle && <div style={{ fontSize:11, color:'#64748b', marginTop:4, fontStyle:'italic', ...f }}>"{item.detalle}"</div>}
+                </div>
+                <button onClick={() => aplicarRespuesta(item)} disabled={aplicandoId === item.diligenciaId}
+                  style={{ background:'#2563eb', color:'#fff', border:'none', borderRadius:7, padding:'6px 14px', fontSize:11, cursor:'pointer', fontWeight:700, flexShrink:0, ...f }}>
+                  {aplicandoId === item.diligenciaId ? 'Aplicando...' : '✓ Aplicar respuesta'}
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -534,7 +652,7 @@ export default function GmailIntegracion({ onImportComplete }) {
       {/* RESUMEN FINAL */}
       {hayResultados && !cargando && (
         <div style={{ textAlign:'center', marginTop:8 }}>
-          <button onClick={() => { setAgregados([]); setErrores([]); setSinCausa([]); setDuplicados([]) }}
+          <button onClick={() => { setAgregados([]); setErrores([]); setSinCausa([]); setDuplicados([]); setRespuestasDetectadas([]) }}
             style={{ background:'#fff', border:'1.5px solid #e2e8f0', borderRadius:8, padding:'7px 18px', fontSize:12, color:'#94a3b8', cursor:'pointer', ...f }}>
             Limpiar resultados
           </button>

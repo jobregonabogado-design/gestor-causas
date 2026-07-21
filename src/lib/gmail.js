@@ -105,7 +105,12 @@ export async function fetchNotificacionesPJUD() {
     // con buscar correos que mencionen RUC o RIT — más amplio, pero igual de seguro.
     // ✅ FIX: 60 días se quedaba corto para audiencias/actas más antiguas
     // (ej. una del 28 de mayo, revisada bastante después). Se amplía a 150 días.
-    const query = 'newer_than:150d (RUC OR RIT OR "rol único" OR audiencia OR resolución OR resolucion OR notificación OR notificacion)'
+    // ✅ NUEVO: se agrega "from:siau@minpublico.cl" explícito — es la
+    // dirección desde donde llegan las respuestas a las solicitudes hechas
+    // por el portal (confirmado por Joaquín), y así nunca se pierde un
+    // correo de ahí aunque su texto no calce con ninguna de las palabras
+    // clave de abajo.
+    const query = 'newer_than:150d (RUC OR RIT OR "rol único" OR audiencia OR resolución OR resolucion OR notificación OR notificacion OR from:siau@minpublico.cl)'
     const data = await gmailFetch(`/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=150`)
     if (!data.messages) return []
 
@@ -227,6 +232,20 @@ async function parsearCorreo(msg) {
     audiencia = extraerAudienciaFiscalia(cuerpo, asunto)
   }
 
+  // ✅ NUEVO: además de detectar una CITACIÓN nueva (arriba), se intenta
+  // detectar si este correo es la RESPUESTA de Fiscalía a una solicitud ya
+  // ingresada (folio de seguimiento) — para poder avisar/completar la
+  // diligencia "Pendiente de respuesta" correspondiente en GmailIntegracion.jsx.
+  // ✅ Se restringe específicamente a "siau@minpublico.cl" (el sistema
+  // automático de solicitudes/SIAU, visto en el sello del comprobante de
+  // ingreso) — Joaquín confirmó que las respuestas llegan de ahí. Usar
+  // cualquier correo "@minpublico.cl" en general (como esFiscalia, usado
+  // arriba solo para audiencias/citaciones) traería también correos de
+  // funcionarios/fiscales a título personal que no son respuestas formales
+  // de una solicitud, generando falsos positivos.
+  const esSiau = /siau@minpublico/i.test(de)
+  const respuestaFiscalia = esSiau ? extraerRespuestaFiscalia(cuerpo, asunto) : null
+
   return {
     tipo: esFiscalia ? 'FISCALIA' : 'PJUD',
     ruc,
@@ -235,7 +254,74 @@ async function parsearCorreo(msg) {
     cuerpo: cuerpo.substring(0, 2000),
     fecha_correo: new Date(parseInt(msg.internalDate)).toISOString(),
     audiencia,
+    respuestaFiscalia,
   }
+}
+
+// ─── PARSER: RESPUESTA de una solicitud ya ingresada a Fiscalía ─────────────
+// A diferencia de extraerAudienciaFiscalia (que detecta una CITACIÓN nueva a
+// entrevista/declaración), esto detecta cuando Fiscalía CONTESTA una
+// solicitud que Joaquín ya ingresó por el portal — usa el mismo folio de
+// seguimiento del "Comprobante Ingreso Solicitud" para poder vincularla con
+// la diligencia "Pendiente de respuesta" correspondiente en la app.
+// Nunca se aplica sola — siempre se muestra para que Joaquín la revise y
+// confirme antes de guardar (misma lógica de "sugerir, no decidir sola" que
+// el resto de las lecturas automáticas de correo).
+function extraerRespuestaFiscalia(cuerpo, asunto) {
+  const textoCompleto = `${asunto}\n${cuerpo}`
+
+  // Folio: se busca primero explícito ("Folio N° XXXXX" / "folio: XXXXX");
+  // si no aparece etiquetado, se toma el número más largo del texto (mismo
+  // criterio ya probado en parsearComprobanteFiscalia de diligencias.jsx).
+  let folio = ''
+  const matchFolioEtiquetado = textoCompleto.match(/folio\s*(?:n[°º]?\s*)?:?\s*(\d{6,20})/i)
+  if (matchFolioEtiquetado) {
+    folio = matchFolioEtiquetado[1]
+  } else {
+    const numeros = (textoCompleto.match(/\b\d{8,20}\b/g) || []).sort((a, b) => b.length - a.length)
+    folio = numeros[0] || ''
+  }
+  if (!folio) return null // sin folio no hay con qué vincular la respuesta a una diligencia
+
+  // ¿Realmente suena a una respuesta/resolución de una solicitud? (no
+  // cualquier correo de Fiscalía que mencione un número largo por otra razón).
+  const pareceRespuesta = /solicitud|petici[oó]n|se\s+(?:informa|resuelve|responde|acoge|rechaza|deniega)|respuesta|resoluci[oó]n/i.test(textoCompleto)
+  if (!pareceRespuesta) return null
+
+  // Estado: rechazada tiene prioridad si aparece esa palabra explícita.
+  let estado = 'aprobada'
+  if (/rechaza|deniega|no\s+ha\s+lugar|improcedente|no\s+se\s+acoge/i.test(textoCompleto)) {
+    estado = 'rechazada'
+  }
+
+  // Fecha de citación (solo si no fue rechazada) — reusa el mismo patrón de
+  // fecha-en-prosa que ya usa extraerAudienciaFiscalia.
+  let fechaCitacion = null
+  if (estado !== 'rechazada') {
+    const meses = {enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,julio:7,agosto:8,septiembre:9,octubre:10,noviembre:11,diciembre:12}
+    const matches = [...textoCompleto.matchAll(/(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/gi)]
+    for (const m of matches) {
+      const mes = meses[m[2].toLowerCase()]
+      if (mes) {
+        const d = String(m[1]).padStart(2, '0')
+        const mm = String(mes).padStart(2, '0')
+        const posible = `${m[3]}-${mm}-${d}`
+        if (esFechaFuturaOReciente(posible)) { fechaCitacion = posible; break }
+      }
+    }
+    if (!fechaCitacion) {
+      const matchFechaNum = textoCompleto.match(/(\d{2})[\/\-](\d{2})[\/\-](\d{4})/)
+      if (matchFechaNum) fechaCitacion = `${matchFechaNum[3]}-${matchFechaNum[2]}-${matchFechaNum[1]}`
+    }
+    if (fechaCitacion) estado = 'con_citacion'
+  }
+
+  // Motivo/detalle (útil sobre todo si fue rechazada)
+  let detalle = ''
+  const matchMotivo = textoCompleto.match(/motivo[:\s]+([^\n.]{5,200})/i)
+  if (matchMotivo) detalle = matchMotivo[1].trim()
+
+  return { folio, estado, fechaCitacion, detalle }
 }
 
 // ─── PARSER PRINCIPAL PJUD ────────────────────────────────────────────────────
