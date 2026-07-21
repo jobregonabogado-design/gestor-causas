@@ -41,12 +41,19 @@ export function AudienciaCard({ a, onUpdate }) {
     <div style={{background:'#f0f7ff',border:'1.5px solid #2563eb',borderRadius:12,padding:16,marginBottom:10}}>
       <div style={{fontSize:12,fontWeight:700,color:'#2563eb',marginBottom:12,...f}}>✏ Editar audiencia</div>
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:10}}>
-        {[{key:'fecha',label:'Fecha',type:'date'},{key:'hora',label:'Hora',type:'time'},{key:'tipo',label:'Tipo',type:'text'},{key:'resultado',label:'Resultado',type:'text'},{key:'tribunal',label:'Tribunal',type:'text'},{key:'sala',label:'Sala',type:'text'}].map(field=>(
+        {[{key:'fecha',label:'Fecha',type:'date'},{key:'hora',label:'Hora',type:'time'},{key:'tipo',label:'Tipo',type:'text'},{key:'tribunal',label:'Tribunal',type:'text'},{key:'sala',label:'Sala',type:'text'}].map(field=>(
           <div key={field.key}>
             <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4,fontWeight:600,...f}}>{field.label}</div>
             <input type={field.type} style={inp} value={form[field.key]} onChange={e=>setForm(p=>({...p,[field.key]:e.target.value}))}/>
           </div>
         ))}
+      </div>
+      {/* ✅ El resultado queda aparte, con más espacio para escribir — no
+          siempre hace falta, pero cuando sí, da lugar a escribir algo
+          especial. Se muestra igual en el Resumen imprimible. */}
+      <div style={{marginBottom:10}}>
+        <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4,fontWeight:600,...f}}>Resultado de audiencia (opcional)</div>
+        <textarea style={{...inp,minHeight:64,resize:'vertical',lineHeight:1.5}} rows={3} placeholder="Escribe aquí cualquier detalle especial del resultado, si corresponde..." value={form.resultado} onChange={e=>setForm(p=>({...p,resultado:e.target.value}))}/>
       </div>
       <div style={{marginBottom:10}}>
         <div style={{fontSize:10,color:'#dc2626',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4,fontWeight:700,...f}}>Motivo de la modificación *</div>
@@ -72,7 +79,12 @@ export function AudienciaCard({ a, onUpdate }) {
         </div>
       </div>
       {a.tribunal&&<div style={{fontSize:12,color:'#64748b',marginBottom:2,...f}}>🏛 {a.tribunal}{a.sala?' · Sala '+a.sala:''}</div>}
-      {a.resultado&&<div style={{fontSize:12,color:'#475569',marginTop:4,...f}}>Resultado: {a.resultado}</div>}
+      {a.resultado&&(
+        <div style={{fontSize:12,color:'#1E293B',marginTop:6,background:'#fff',border:'1px solid #e2e8f0',borderRadius:8,padding:'8px 10px',whiteSpace:'pre-wrap',...f}}>
+          <span style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1,fontWeight:700,display:'block',marginBottom:3}}>Resultado de audiencia</span>
+          {a.resultado}
+        </div>
+      )}
       {notasLimpias&&<div style={{fontSize:12,color:'#94a3b8',marginTop:3,...f}}>{notasLimpias}</div>}
       {a.ruc&&<div style={{fontSize:10,color:'#94a3b8',marginTop:4,fontFamily:'monospace'}}>RUC: {a.ruc}</div>}
       {historial.length>0&&(

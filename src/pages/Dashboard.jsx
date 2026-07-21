@@ -1203,9 +1203,16 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                 {showAudForm&&(
                   <div style={{background:'#F8F9FC',border:'1.5px solid #e2e8f0',borderRadius:12,padding:16,marginBottom:14}}>
                     <div className="grid2-mobile" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:12}}>
-                      {[{key:'fecha',label:'Fecha',type:'date'},{key:'hora',label:'Hora',type:'time'},{key:'tipo',label:'Tipo',ph:'Formalización, APJO, JO...'},{key:'tribunal',label:'Tribunal',ph:'Ej: 4 JG STGO'},{key:'sala',label:'Sala',ph:'Ej: 903'},{key:'resultado',label:'Resultado',ph:'Resultado'},{key:'notas',label:'Observaciones',ph:'Notas'}].map(field=>(
+                      {[{key:'fecha',label:'Fecha',type:'date'},{key:'hora',label:'Hora',type:'time'},{key:'tipo',label:'Tipo',ph:'Formalización, APJO, JO...'},{key:'tribunal',label:'Tribunal',ph:'Ej: 4 JG STGO'},{key:'sala',label:'Sala',ph:'Ej: 903'},{key:'notas',label:'Observaciones',ph:'Notas'}].map(field=>(
                         <div key={field.key}><div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>{field.label}</div><input type={field.type||'text'} style={inp} placeholder={field.ph} value={nuevaAud[field.key]} onChange={e=>setNuevaAud(p=>({...p,[field.key]:e.target.value}))}/></div>
                       ))}
+                    </div>
+                    {/* ✅ El resultado queda aparte, con más espacio para escribir —
+                        se usa para dejar algo especial si la audiencia lo requiere
+                        (no siempre es necesario), y se muestra igual en el Resumen. */}
+                    <div style={{marginBottom:12}}>
+                      <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Resultado de audiencia (opcional)</div>
+                      <textarea style={{...inp,minHeight:70,resize:'vertical',lineHeight:1.5}} rows={3} placeholder="Escribe aquí cualquier detalle especial del resultado, si corresponde..." value={nuevaAud.resultado} onChange={e=>setNuevaAud(p=>({...p,resultado:e.target.value}))}/>
                     </div>
                     <div style={{display:'flex',gap:8}}><button className="btn-primary" onClick={saveAudiencia} disabled={saving}>{saving?'Guardando...':'Guardar'}</button><button className="btn-secondary" onClick={()=>setShowAudForm(false)}>Cancelar</button></div>
                   </div>

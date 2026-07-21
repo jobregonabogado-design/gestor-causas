@@ -3,7 +3,7 @@
 // en una vista limpia que se imprime con Cmd/Ctrl+P o "Guardar como PDF"
 // desde el propio diálogo de impresión del navegador — sin depender de
 // ninguna librería nueva.
-import { useState } from 'react'
+import { useState, Fragment } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from '../../lib/supabase'
 import { f } from './primitives'
@@ -140,18 +140,29 @@ export function BotonResumenImprimible({ causa, imputados, audiencias, aumentos,
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                 <thead>
                   <tr style={{ borderBottom: '1.5px solid #e2e8f0' }}>
-                    {['Fecha', 'Hora', 'Tipo', 'Tribunal', 'Resultado'].map(h => <th key={h} style={{ textAlign: 'left', padding: '6px 8px', color: '#64748b', fontWeight: 700 }}>{h}</th>)}
+                    {['Fecha', 'Hora', 'Tipo', 'Tribunal'].map(h => <th key={h} style={{ textAlign: 'left', padding: '6px 8px', color: '#64748b', fontWeight: 700 }}>{h}</th>)}
                   </tr>
                 </thead>
                 <tbody>
                   {[...audiencias].sort((a, b) => (a.fecha || '').localeCompare(b.fecha || '')).map((a, i) => (
-                    <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '6px 8px' }}>{fechaDDMM(a.fecha)}</td>
-                      <td style={{ padding: '6px 8px' }}>{a.hora || '—'}</td>
-                      <td style={{ padding: '6px 8px' }}>{a.tipo || '—'}</td>
-                      <td style={{ padding: '6px 8px' }}>{a.tribunal || '—'}{a.sala ? ' · Sala ' + a.sala : ''}</td>
-                      <td style={{ padding: '6px 8px' }}>{a.resultado || '—'}</td>
-                    </tr>
+                    <Fragment key={i}>
+                      <tr style={{ borderBottom: a.resultado ? 'none' : '1px solid #f1f5f9' }}>
+                        <td style={{ padding: '6px 8px' }}>{fechaDDMM(a.fecha)}</td>
+                        <td style={{ padding: '6px 8px' }}>{a.hora || '—'}</td>
+                        <td style={{ padding: '6px 8px' }}>{a.tipo || '—'}</td>
+                        <td style={{ padding: '6px 8px' }}>{a.tribunal || '—'}{a.sala ? ' · Sala ' + a.sala : ''}</td>
+                      </tr>
+                      {/* ✅ El resultado se pone en su propia fila ANCHA (colspan) en
+                          vez de una columna angosta más — así se lee completo aunque
+                          sea un texto largo, en vez de cortarse en la tabla. */}
+                      {a.resultado && (
+                        <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
+                          <td colSpan={4} style={{ padding: '0 8px 8px', fontSize: 11.5, color: '#475569', whiteSpace: 'pre-wrap' }}>
+                            <strong style={{ color: '#1E293B' }}>Resultado:</strong> {a.resultado}
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
