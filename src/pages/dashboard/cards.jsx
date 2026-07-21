@@ -184,10 +184,20 @@ export function ImputadoCard({ imp, idx, totalImputados, cautelares, esTitular, 
       if (Object.keys(cambios).length === 0) return
       if (c.id === imp.id) {
         // La tarjeta actual: pasa por onUpdate para que la pantalla se
-        // actualice al toque (y de paso guarda en la base igual que siempre).
+        // actualice al toque (y de paso guarda en la base igual que siempre,
+        // incluyendo "causas.imputado" de ESTA causa si cambió el nombre).
         for (const campo of Object.keys(cambios)) onUpdate(campo, cambios[campo])
       } else {
         await supabase.from('imputados').update(cambios).eq('id', c.id)
+        // ✅ "causas.imputado" de la OTRA causa también es una copia aparte —
+        // si se corrigió el nombre ahí, hay que recalcularla con el resto de
+        // los imputados de ESA causa (por si tiene coimputados), si no queda
+        // desactualizada en su lista de Causas y su pestaña Datos.
+        if (cambios.nombre) {
+          const otrosDeEsaCausa = data.filter(d => d.causa_id === c.causa_id)
+          const nombresActualizados = otrosDeEsaCausa.map(d => d.id === c.id ? cambios.nombre : d.nombre).filter(Boolean).join('|')
+          await supabase.from('causas').update({ imputado: nombresActualizados }).eq('id', c.causa_id)
+        }
       }
     }))
   }

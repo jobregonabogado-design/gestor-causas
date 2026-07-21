@@ -621,7 +621,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                     <span style={{fontSize:10,fontWeight:600,color:'#94a3b8',...f}}>({getCorteApelaciones(c.tribunal)})</span>
                   )}
                   <span style={{color:'#e2e8f0'}}>|</span>
-                  <span style={{color:'#475569',fontWeight:500}}>{c.imputado}</span>
+                  <span style={{color:'#475569',fontWeight:500}}>{(c.imputado||'').replace(/\|/g,' / ')}</span>
                   <SemaforoTag updated_at={c.updated_at} estado={c.estado} />
                   {imputados.length === 1 && imputados.filter(i=>i.regimen).map(i=>(
                     <span key={i.id} style={{
@@ -684,7 +684,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                   ):(
                     <div className="fld" onClick={()=>{setEditField('campo_imputado');setEditValue(c.imputado||'')}}
                       style={{padding:'11px 14px',border:'none',borderRadius:14,fontSize:13,color:c.imputado?'#1E293B':'#94a3b8',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}}>
-                      <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1}}>{c.imputado||'Clic para agregar...'}</span>
+                      <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1}}>{c.imputado?c.imputado.replace(/\|/g,' / '):'Clic para agregar...'}</span>
                       <span style={{fontSize:11,color:'#94a3b8',flexShrink:0,marginLeft:8}}>✏</span>
                     </div>
                   )}
@@ -1048,6 +1048,17 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                     await supabase.from('imputados').update(updateData).eq('id',imp.id)
                     setImputados(prev=>prev.map(x=>x.id===imp.id?{...x,...updateData}:x))
                     if (updateData.regimen === 'RPA') await sincronizarTribunalRPA(c.id, c.tribunal, c.ruc)
+                    // ✅ "causas.imputado" es un campo de texto APARTE (aparece en la lista
+                    // de Causas y arriba en Datos) — es una copia, no se actualiza sola con
+                    // los datos de la pestaña Imputado. Si se corrige el nombre acá, hay que
+                    // recalcularlo también, si no queda desactualizado en esos dos lugares.
+                    if (field === 'nombre') {
+                      const nombresActualizados = imputados.map(x => x.id === imp.id ? value : x.nombre).filter(Boolean).join('|')
+                      await supabase.from('causas').update({ imputado: nombresActualizados }).eq('id', c.id)
+                      const u = { ...selectedCausa, imputado: nombresActualizados }
+                      setSelectedCausa(u)
+                      setCausas(prev=>prev.map(x=>x.id===u.id?u:x))
+                    }
                     // Sincronizar datos personales en TODAS las causas con el mismo RUT
                     const camposPersonales = ['nombre','nacionalidad','domicilio','fecha_nacimiento','otros_antecedentes']
                     if (camposPersonales.includes(field) && imp.rut) {
@@ -1413,7 +1424,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                     </div>
                   </div>
                   <div style={{padding:'14px 20px',fontSize:12,color:'#475569',fontWeight:500,...f}}>{c.tribunal}</div>
-                  <div style={{padding:'14px 20px',textAlign:'center',...f}}><div style={{maxWidth:'100%',margin:'0 auto',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:13,color:'#1E293B',fontWeight:500}}>{c.imputado}</div></div>
+                  <div style={{padding:'14px 20px',textAlign:'center',...f}}><div style={{maxWidth:'100%',margin:'0 auto',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:13,color:'#1E293B',fontWeight:500}}>{(c.imputado||'').replace(/\|/g,' / ')}</div></div>
                   <div style={{padding:'14px 20px',textAlign:'center',...f}}><div style={{maxWidth:280,margin:'0 auto',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:12,color:'#64748b'}}>{(c.delito||'').replace(/\|/g,', ')||'—'}</div></div>
                 </div>
                 {/* Tarjeta condensada — solo en celular: RUC + estado, luego RIT/Tribunal, luego imputado.
@@ -1424,7 +1435,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                     <SemaforoTag updated_at={c.updated_at} estado={c.estado} />
                   </div>
                   <div style={{fontSize:12,fontWeight:600,color:'#475569',marginTop:4,...f}}>{c.rit||'—'} · {c.tribunal||'—'}</div>
-                  <div style={{fontSize:13,fontWeight:600,color:'#1E293B',marginTop:3,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',...f}}>{c.imputado}</div>
+                  <div style={{fontSize:13,fontWeight:600,color:'#1E293B',marginTop:3,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',...f}}>{(c.imputado||'').replace(/\|/g,' / ')}</div>
                 </div>
               </div>
             ))}
