@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { parsearComprobanteFiscalia, extraerTextoPdf } from './diligencias'
 import { f } from './primitives'
 import { BotonImprimirDocumentos } from './resumen'
+import { sanitizarNombreArchivo } from './utils'
 
 export function FallosReferencia({ causaId, ruc, email, onAccion }) {
   const [fallos, setFallos] = useState([])
@@ -22,7 +23,7 @@ export function FallosReferencia({ causaId, ruc, email, onAccion }) {
     if (!file || file.type !== 'application/pdf') { alert('Solo se permiten archivos PDF'); return }
     setSubiendo(true)
     try {
-      const path = `${causaId}/${Date.now()}_${file.name}`
+      const path = `${causaId}/${Date.now()}_${sanitizarNombreArchivo(file.name)}`
       const { error: uploadError } = await supabase.storage.from('fallos').upload(path, file, { contentType: 'application/pdf' })
       if (uploadError) throw uploadError
       const { data: urlData } = supabase.storage.from('fallos').getPublicUrl(path)
@@ -117,7 +118,7 @@ async function guardarComprobanteComoDiligencia(file, texto, { causaId, ruc, ema
   }).select().single()
   if (error || !data) throw (error || new Error('No se pudo crear el registro de la diligencia'))
   try {
-    const path = `diligencias/${data.id}/comprobante_${Date.now()}_${file.name}`
+    const path = `diligencias/${data.id}/comprobante_${Date.now()}_${sanitizarNombreArchivo(file.name)}`
     const { error: upErr } = await supabase.storage.from('documentos').upload(path, file)
     if (!upErr) {
       const { data: urlData } = supabase.storage.from('documentos').getPublicUrl(path)
@@ -162,7 +163,7 @@ export function DocumentosGuardados({ causaId, ruc, email, registrarActividad, o
           console.warn('No se pudo analizar el PDF, se sube como documento genérico:', errLectura)
         }
       }
-      const path = `${causaId}/${Date.now()}_${file.name}`
+      const path = `${causaId}/${Date.now()}_${sanitizarNombreArchivo(file.name)}`
       const { error: uploadError } = await supabase.storage.from('documentos').upload(path, file)
       if (uploadError) throw uploadError
       const { data: urlData } = supabase.storage.from('documentos').getPublicUrl(path)

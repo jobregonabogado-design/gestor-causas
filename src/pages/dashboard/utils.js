@@ -1276,6 +1276,26 @@ export function fechaDDMM(fecha) {
   return `${m[3]}-${m[2]}-${m[1]}`
 }
 
+// ✅ Limpia un nombre de archivo para poder usarlo como parte de la ruta al
+// subirlo a Supabase Storage — antes se usaba el nombre del archivo tal cual
+// (ej. "Resolución pyp.pdf"), y como Storage no acepta tildes/ñ/espacios/etc.
+// en la ruta, la subida fallaba con "Invalid key" (pasaba sobre todo con
+// archivos descargados desde la Fiscalía, que suelen traer tildes en el
+// nombre). Esto NO cambia lo que ve Joaquín — el nombre visible del archivo
+// en la app sigue siendo el original, solo se limpia la ruta interna.
+export function sanitizarNombreArchivo(nombre) {
+  if (!nombre) return 'archivo'
+  const idx = nombre.lastIndexOf('.')
+  const base = idx > 0 ? nombre.slice(0, idx) : nombre
+  const ext = idx > 0 ? nombre.slice(idx).toLowerCase().replace(/[^a-z0-9.]/g, '') : ''
+  const baseLimpio = base
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // quita tildes (á->a, ñ->n, etc.)
+    .replace(/[^a-zA-Z0-9_-]+/g, '_')                  // todo lo demás (espacios, °, /, etc.) a "_"
+    .replace(/_+/g, '_')
+    .replace(/^_+|_+$/g, '')
+  return (baseLimpio || 'archivo') + ext
+}
+
 // ✅ Quita tildes y trata "ñ" como "n" — SOLO para comparar en buscadores/
 // filtros (nunca para guardar ni mostrar texto tal cual), así buscar
 // "trafico" encuentra "TRÁFICO" y buscar "avendano" encuentra "AVENDAÑO".

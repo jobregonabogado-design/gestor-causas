@@ -3,9 +3,33 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { BotonImprimirLista } from './resumen'
-import { fechaDDMM } from './utils'
+import { fechaDDMM, sanitizarNombreArchivo } from './utils'
 
-export const TIPOS_DILIGENCIA = ['Declaración de imputado','Petición de carpeta','Entrevista con el fiscal','Reconstitución de escena','Careo','Otra diligencia']
+// ✅ Se agregaron los tipos oficiales tal cual aparecen en el desplegable
+// "Seleccione Solicitud" de Mi Fiscalía en Línea (agenda.minpublico.cl), para
+// que coincida exactamente con lo que se elige al hacer la solicitud real.
+// Se mantienen los que ya existían (algunos son más específicos, ej.
+// "Declaración de imputado", y puede haber diligencias antiguas guardadas
+// con esos nombres).
+export const TIPOS_DILIGENCIA = [
+  'Declaración de imputado',
+  'Petición de carpeta',
+  'Entrevista con el fiscal',
+  'Reconstitución de escena',
+  'Careo',
+  'Solicitud de diligencias de investigación',
+  'Información específica sobre término de una causa',
+  'Información sobre diligencias de investigación',
+  'Solicitud de copia de la carpeta',
+  'Solicitud de audiencia o entrevista',
+  'Solicitud de cambio de fecha/hora de citación o entrevista',
+  'Solicitud de devolución de especies/dinero',
+  'Solicitud de revisión de la carpeta de investigación',
+  'Solicitud de revisión de evidencia',
+  'Aporte de antecedentes asociados a una causa',
+  'Solicitud de documentos específicos de la causa',
+  'Otra diligencia',
+]
 export const ESTADOS_DILIGENCIA = {
   pendiente:    { label:'Pendiente de respuesta',   color:'#92400e', bg:'#fff7ed', border:'#fed7aa' },
   aprobada:     { label:'Aprobada',                 color:'#065f46', bg:'#ecfdf5', border:'#a7f3d0' },
@@ -50,27 +74,55 @@ export async function extraerTextoPdf(file) {
 // pero siempre se muestra al usuario para que revise/corrija antes de guardar.
 export function parsearComprobanteFiscalia(texto) {
   const buscar = (regex) => { const m = texto.match(regex); return m ? m[1].replace(/\s+/g,' ').trim() : '' }
-  const ruc = buscar(/RUC\s+(\d{6,9}-[\dkK])/i)
+  // ✅ FIX: en el PDF real, pdf.js extrae primero TODAS las etiquetas
+  // ("Nombre Solicitante RUT Fecha Ingreso ... RUC Nombre Caso ...") y RECIÉN
+  // DESPUÉS todos los valores en otro orden — la palabra "RUC" nunca queda
+  // pegada a su número, así que buscar "RUC seguido del número" nunca
+  // encontraba nada y "ruc" quedaba vacío. En vez de depender del orden del
+  // texto, se buscan directamente todos los RUT/RUC del documento (formato
+  // dígitos-guión-verificador) y se toma el que tiene MÁS dígitos: el RUC de
+  // una causa es de 9-10 dígitos, mientras que el RUT de una persona
+  // (solicitante o representado) tiene 7-8 — así no se confunden entre sí.
+  const candidatosRuc = (texto.match(/\b(\d{6,10}-[\dkK])\b/gi) || []).sort((a, b) => b.length - a.length)
+  const ruc = candidatosRuc[0] || buscar(/RUC\s+(\d{6,10}-[\dkK])/i)
   const fechaIngresoRaw = buscar(/Fecha Ingreso\s+(\d{2}\/\d{2}\/\d{4})/i)
   const fiscal = buscar(/Fiscal Asignado\s+([A-ZÁÉÍÓÚÑ ]+?)(?=\s+Representado|\s+Tipo Abogado|$)/i)
   const representado = buscar(/Representado\s+([A-ZÁÉÍÓÚÑ ]+?)(?=\s+Tipo Abogado|$)/i)
   const nombreCaso = buscar(/Nombre Caso\s+([^\n]+?)(?=\s+Fiscalia|$)/i)
 
-  // Folio: el N° Solicitud siempre tiene menos dígitos (6-9) que el Folio (10-15).
-  // Tomando el número puro más largo del documento se aísla el folio de forma
-  // confiable (el RUC tiene guión y las fechas tienen "/", así que no compiten).
-  const numeros = texto.match(/\b\d{10,15}\b/g) || []
+  // ✅ FIX: antes esto tomaba el PRIMER número largo del documento — pero el
+  // RUC (ej. "2600437612-8") aparece ANTES que el Folio en el comprobante, y
+  // sus 10 dígitos (sin el guión ni el dígito verificador) igual calzaban con
+  // \d{10,15}, así que el folio guardado terminaba siendo el RUC. Ahora se
+  // saca el RUC del texto ANTES de buscar, para que sus dígitos nunca
+  // compitan, y entre los números que queden se toma el más LARGO — el folio
+  // real (13 dígitos típicamente) siempre es más largo que el N° de
+  // Solicitud, el RUT del solicitante u otros números que puedan aparecer.
+  const textoSinRuc = ruc ? texto.replace(new RegExp(`RUC\\s+${ruc.replace('-', '\\-')}`, 'i'), '') : texto
+  const numeros = (textoSinRuc.match(/\b\d{8,20}\b/g) || []).sort((a, b) => b.length - a.length)
   const folio = numeros[0] || ''
 
   // Observación / detalle de lo solicitado: todo el texto entre "Observación"
   // (encabezado de la tabla) y "Documentos Adjuntos".
+  // ✅ FIX: el bloque entre "Observación" y "Documentos Adjuntos" trae PEGADO
+  // por delante el "Detalle Servicio" y el "Estado" de la fila (ej.
+  // "Activar/Anular acreditación de representación 1406310459777 10706440
+  // Ingresado ..."), porque el PDF ordena esas columnas antes que la
+  // observación real. Antes solo se recortaba el prefijo "Ingreso Solicitud
+  // Portal." si quedaba justo al INICIO del bloque — como en la práctica casi
+  // nunca queda al inicio, ese recorte nunca se aplicaba y se guardaba
+  // "Folio N° Solicitud Detalle Servicio Estado..." completo. Ahora se busca
+  // esa frase EN CUALQUIER PARTE del bloque (siempre marca el inicio real de
+  // la observación en este formato de comprobante) y se toma todo desde ahí.
   let observacion = ''
   const idxObs = texto.indexOf('Observación')
   const idxDocs = texto.indexOf('Documentos Adjuntos')
   if (idxObs !== -1) {
     const fin = idxDocs !== -1 ? idxDocs : texto.length
-    observacion = texto.slice(idxObs + 'Observación'.length, fin).replace(/\s+/g,' ').trim()
-    observacion = observacion.replace(/^Ingreso Solicitud Portal\.?\s*/i, '')
+    let bloque = texto.slice(idxObs + 'Observación'.length, fin).replace(/\s+/g,' ').trim()
+    const idxPortal = bloque.search(/Ingreso Solicitud Portal\.?/i)
+    if (idxPortal !== -1) bloque = bloque.slice(idxPortal)
+    observacion = bloque.replace(/^Ingreso Solicitud Portal\.?\s*/i, '')
   }
 
   let fechaSolicitud = ''
@@ -176,7 +228,7 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
     // automáticamente a esta misma diligencia — sin tener que volver a subirlo.
     if (comprobantePendiente) {
       try {
-        const path = `diligencias/${data.id}/comprobante_${Date.now()}_${comprobantePendiente.name}`
+        const path = `diligencias/${data.id}/comprobante_${Date.now()}_${sanitizarNombreArchivo(comprobantePendiente.name)}`
         const { error: upErr } = await supabase.storage.from('documentos').upload(path, comprobantePendiente)
         if (!upErr) {
           const { data: urlData } = supabase.storage.from('documentos').getPublicUrl(path)
@@ -278,7 +330,7 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
   const subirDocumento = async (file, tipoDoc, diligenciaId) => {
     setSubiendoId(diligenciaId)
     try {
-      const path = `diligencias/${diligenciaId}/${tipoDoc}_${Date.now()}_${file.name}`
+      const path = `diligencias/${diligenciaId}/${tipoDoc}_${Date.now()}_${sanitizarNombreArchivo(file.name)}`
       const { error: uploadError } = await supabase.storage.from('documentos').upload(path, file)
       if (uploadError) throw uploadError
       const { data: urlData } = supabase.storage.from('documentos').getPublicUrl(path)
