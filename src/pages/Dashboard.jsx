@@ -702,7 +702,12 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                     registros individuales, igual que si se hubieran agregado uno por uno. */}
                 {(() => {
                   const nombreCombinado = imputados.length === 1 ? imputados[0].nombre : (imputados.length === 0 ? c.imputado : null)
-                  const partes = nombreCombinado ? nombreCombinado.split(/\s+Y\s+|\s*\/\s*|\s+-\s+/i).map(s=>s.trim()).filter(Boolean) : []
+                  // ✅ El guion no siempre viene con espacios alrededor (ej.
+                  // "PEREZ-JUAN GOMEZ", pegado) — antes exigía espacio a ambos
+                  // lados (\s+-\s+) y por eso no detectaba esos casos. También se
+                  // agrega la coma como separador (ej. "JUAN PEREZ, PEDRO GOMEZ Y
+                  // ANA DIAZ"), que antes no se reconocía en absoluto.
+                  const partes = nombreCombinado ? nombreCombinado.split(/\s+Y\s+|\s*\/\s*|\s*-\s*|\s*,\s*/i).map(s=>s.trim()).filter(Boolean) : []
                   if (partes.length < 2) return null
                   return (
                     <div style={{gridColumn:'1/-1',background:'#eff6ff',border:'1.5px solid #bfdbfe',borderRadius:10,padding:'12px 14px',marginTop:-4,marginBottom:4}}>
