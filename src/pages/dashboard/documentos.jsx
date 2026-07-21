@@ -1,7 +1,7 @@
 // Panel de Fallos de Referencia y Documentos Guardados dentro de una causa.
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
-import { parsearComprobanteFiscalia, extraerTextoPdf } from './diligencias'
+import { parsearComprobanteFiscalia, extraerTextoPdf, TIPOS_DILIGENCIA } from './diligencias'
 import { f } from './primitives'
 import { BotonImprimirDocumentos } from './resumen'
 import { sanitizarNombreArchivo } from './utils'
@@ -96,25 +96,23 @@ function esComprobanteFiscalia(texto) {
   return /SIAU|Comprobante Ingreso Solicitud|mi\s*\.\s*FISCAL[IÍ]A|Sistema de Informaci[oó]n y Atenci[oó]n a Usuarios/i.test(texto || '')
 }
 
-function adivinarTipoDiligencia(observacion) {
-  const o = (observacion || '').toUpperCase()
-  if (o.includes('DECLARACION') || o.includes('DECLARACIÓN')) return 'Declaración de imputado'
-  if (o.includes('CARPETA')) return 'Petición de carpeta'
-  if (o.includes('ENTREVISTA')) return 'Entrevista con el fiscal'
-  if (o.includes('RECONSTITUCION') || o.includes('RECONSTITUCIÓN')) return 'Reconstitución de escena'
-  if (o.includes('CAREO')) return 'Careo'
-  return 'Otra diligencia'
-}
-
 // Crea el registro en diligencias_fiscalia a partir de un comprobante detectado
 // automáticamente (arrastrado en cualquier parte de la app) y le adjunta el
 // mismo PDF como comprobante — para que quede junto al resto del seguimiento.
+// ✅ FIX: antes tenía su propia lista de tipos "adivinados" (Declaración de
+// imputado, Petición de carpeta, etc.) que ya no son las oficiales — ahora
+// usa el mismo tipo detectado por parsearComprobanteFiscalia (por palabras
+// clave contra los tipos oficiales de Mi Fiscalía en Línea). Si no hay
+// ninguno confiable, se antepone igual el "Detalle Servicio" real al
+// detalle para que el motivo de la petición nunca quede oculto, y se usa el
+// primer tipo oficial como valor por defecto (Joaquín lo corrige a mano).
 async function guardarComprobanteComoDiligencia(file, texto, { causaId, ruc, email, registrarActividad, onAccion }) {
   const datos = parsearComprobanteFiscalia(texto)
-  const tipo = adivinarTipoDiligencia(datos.observacion)
+  const tipo = datos.tipoDetectado || TIPOS_DILIGENCIA[0]
+  const detalleCompleto = [datos.detalleServicio, datos.observacion].filter(Boolean).join(' — ')
   const { data, error } = await supabase.from('diligencias_fiscalia').insert({
     causa_id: causaId, tipo, fecha_solicitud: datos.fechaSolicitud || new Date().toISOString().slice(0,10),
-    folio: datos.folio || 'SIN FOLIO DETECTADO', observacion: datos.observacion || null, estado:'pendiente', registrado_por: email
+    folio: datos.folio || 'SIN FOLIO DETECTADO', observacion: detalleCompleto || null, estado:'pendiente', registrado_por: email
   }).select().single()
   if (error || !data) throw (error || new Error('No se pudo crear el registro de la diligencia'))
   try {

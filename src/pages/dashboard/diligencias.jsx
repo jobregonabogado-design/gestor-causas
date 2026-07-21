@@ -5,18 +5,12 @@ import { supabase } from '../../lib/supabase'
 import { BotonImprimirLista } from './resumen'
 import { fechaDDMM, sanitizarNombreArchivo } from './utils'
 
-// ✅ Se agregaron los tipos oficiales tal cual aparecen en el desplegable
-// "Seleccione Solicitud" de Mi Fiscalía en Línea (agenda.minpublico.cl), para
-// que coincida exactamente con lo que se elige al hacer la solicitud real.
-// Se mantienen los que ya existían (algunos son más específicos, ej.
-// "Declaración de imputado", y puede haber diligencias antiguas guardadas
-// con esos nombres).
+// ✅ FIX: se deja SOLO la lista oficial, tal cual aparece en el desplegable
+// "Seleccione Solicitud" de Mi Fiscalía en Línea (agenda.minpublico.cl) — a
+// pedido explícito de Joaquín, se sacan las que no son oficiales ("Declaración
+// de imputado", "Petición de carpeta", "Entrevista con el fiscal",
+// "Reconstitución de escena", "Careo", "Otra diligencia").
 export const TIPOS_DILIGENCIA = [
-  'Declaración de imputado',
-  'Petición de carpeta',
-  'Entrevista con el fiscal',
-  'Reconstitución de escena',
-  'Careo',
   'Solicitud de diligencias de investigación',
   'Información específica sobre término de una causa',
   'Información sobre diligencias de investigación',
@@ -28,7 +22,6 @@ export const TIPOS_DILIGENCIA = [
   'Solicitud de revisión de evidencia',
   'Aporte de antecedentes asociados a una causa',
   'Solicitud de documentos específicos de la causa',
-  'Otra diligencia',
 ]
 export const ESTADOS_DILIGENCIA = {
   pendiente:    { label:'Pendiente de respuesta',   color:'#92400e', bg:'#fff7ed', border:'#fed7aa' },
@@ -67,6 +60,28 @@ export async function extraerTextoPdf(file) {
     texto += content.items.map(it => it.str).join(' ') + '\n'
   }
   return texto
+}
+
+// ✅ NUEVO: intenta adivinar cuál de los tipos OFICIALES (TIPOS_DILIGENCIA)
+// corresponde según el texto del "Detalle Servicio" o de la observación del
+// comprobante — por palabras clave, sin tildes para no fallar por acentos.
+// Si no encuentra ninguna coincidencia confiable, devuelve '' (no se
+// inventa un tipo — mejor dejar que Joaquín lo elija a mano viendo el
+// detalle real, que siempre queda visible en la observación).
+function adivinarTipoOficial(texto) {
+  const t = (texto || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  if (t.includes('COPIA') && t.includes('CARPETA')) return 'Solicitud de copia de la carpeta'
+  if (t.includes('REVISION') && t.includes('CARPETA')) return 'Solicitud de revisión de la carpeta de investigación'
+  if (t.includes('REVISION') && t.includes('EVIDENCIA')) return 'Solicitud de revisión de evidencia'
+  if ((t.includes('CAMBIO') || t.includes('REPROGRAMA')) && (t.includes('FECHA') || t.includes('HORA')) && (t.includes('CITACION') || t.includes('ENTREVISTA'))) return 'Solicitud de cambio de fecha/hora de citación o entrevista'
+  if (t.includes('AUDIENCIA') || t.includes('ENTREVISTA')) return 'Solicitud de audiencia o entrevista'
+  if (t.includes('DEVOLUCION') && (t.includes('ESPECIE') || t.includes('DINERO'))) return 'Solicitud de devolución de especies/dinero'
+  if (t.includes('TERMINO') && t.includes('CAUSA')) return 'Información específica sobre término de una causa'
+  if (t.includes('APORTE') && t.includes('ANTECEDENTE')) return 'Aporte de antecedentes asociados a una causa'
+  if (t.includes('DOCUMENTO') && t.includes('ESPECIFIC')) return 'Solicitud de documentos específicos de la causa'
+  if (t.includes('DILIGENCIA') && t.includes('INVESTIGACION') && t.includes('INFORMACION')) return 'Información sobre diligencias de investigación'
+  if (t.includes('DILIGENCIA') && t.includes('INVESTIGACION')) return 'Solicitud de diligencias de investigación'
+  return ''
 }
 
 // Reconoce el formato del "Comprobante Ingreso Solicitud Asociada a una Causa"
@@ -115,15 +130,26 @@ export function parsearComprobanteFiscalia(texto) {
   // esa frase EN CUALQUIER PARTE del bloque (siempre marca el inicio real de
   // la observación en este formato de comprobante) y se toma todo desde ahí.
   let observacion = ''
+  // ✅ NUEVO: "Detalle Servicio" es el motivo real de la petición (ej.
+  // "Activar/Anular acreditación de representación") — es el texto que
+  // queda ANTES del folio en ese mismo bloque revuelto. Antes no se
+  // guardaba en ningún lado, así que si el tipo no se adivinaba bien, ese
+  // motivo se perdía por completo. Ahora se guarda aparte y se antepone a
+  // la observación, para que SIEMPRE se vea qué se pidió exactamente,
+  // aunque el tipo automático no calce con ninguna opción oficial.
+  let detalleServicio = ''
   const idxObs = texto.indexOf('Observación')
   const idxDocs = texto.indexOf('Documentos Adjuntos')
   if (idxObs !== -1) {
     const fin = idxDocs !== -1 ? idxDocs : texto.length
     let bloque = texto.slice(idxObs + 'Observación'.length, fin).replace(/\s+/g,' ').trim()
+    const idxPrimerNumeroLargo = bloque.search(/\d{6,}/)
+    if (idxPrimerNumeroLargo > 0) detalleServicio = bloque.slice(0, idxPrimerNumeroLargo).trim()
     const idxPortal = bloque.search(/Ingreso Solicitud Portal\.?/i)
     if (idxPortal !== -1) bloque = bloque.slice(idxPortal)
     observacion = bloque.replace(/^Ingreso Solicitud Portal\.?\s*/i, '')
   }
+  const tipoDetectado = adivinarTipoOficial(detalleServicio) || adivinarTipoOficial(observacion)
 
   let fechaSolicitud = ''
   if (fechaIngresoRaw) {
@@ -131,7 +157,7 @@ export function parsearComprobanteFiscalia(texto) {
     if (d && m && y) fechaSolicitud = `${y}-${m}-${d}`
   }
 
-  return { ruc, fechaSolicitud, fiscal, representado, nombreCaso, folio, observacion }
+  return { ruc, fechaSolicitud, fiscal, representado, nombreCaso, folio, observacion, detalleServicio, tipoDetectado }
 }
 
 // ─── LECTURA DE SCREENSHOTS (imágenes) DEL COMPROBANTE — vía OCR ─────────────
@@ -363,11 +389,22 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
     try {
       const texto = esPdf ? await extraerTextoPdf(file) : await extraerTextoImagen(file)
       const datos = parsearComprobanteFiscalia(texto)
+      // ✅ FIX: antes "tipo" nunca se completaba con lo leído del comprobante
+      // — se quedaba en lo que ya tuviera el formulario (por defecto, el
+      // primer ítem de la lista), así que SIEMPRE mostraba ese mismo tipo
+      // sin importar qué se hubiera pedido en realidad. Ahora se usa el tipo
+      // detectado por palabras clave (ver adivinarTipoOficial) si hay uno
+      // confiable; si no, se antepone igual el "Detalle Servicio" real (ej.
+      // "Activar/Anular acreditación de representación") al detalle, para
+      // que el motivo real de la petición nunca quede oculto — Joaquín
+      // elige el tipo correcto a mano si ninguno de los oficiales calza.
+      const detalleCompleto = [datos.detalleServicio, datos.observacion].filter(Boolean).join(' — ')
       setForm(p => ({
         ...p,
+        tipo: datos.tipoDetectado || p.tipo,
         folio: datos.folio || p.folio,
         fecha_solicitud: datos.fechaSolicitud || p.fecha_solicitud,
-        observacion: datos.observacion || p.observacion,
+        observacion: detalleCompleto || p.observacion,
       }))
       setComprobantePendiente(file)
       if (datos.ruc && normalizarRuc(datos.ruc) !== normalizarRuc(ruc)) {
@@ -446,6 +483,12 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
                   <div style={{ gridColumn:'1/-1' }}>
                     <div style={{ fontSize:10, color:'#64748b', textTransform:'uppercase', letterSpacing:1.2, marginBottom:5, fontWeight:600, ...f }}>Tipo de diligencia</div>
                     <select style={inp} value={formEdit.tipo} onChange={e=>setFormEdit(p=>({...p,tipo:e.target.value}))}>
+                      {/* ✅ Si esta diligencia se guardó con un tipo que ya no está en la
+                          lista oficial (ej. una antigua "Declaración de imputado" o "Otra
+                          diligencia"), se agrega igual como opción — así nunca se cambia
+                          solo por abrir a editar sin querer, aunque ya no se pueda elegir
+                          de nuevo para diligencias nuevas. */}
+                      {!TIPOS_DILIGENCIA.includes(formEdit.tipo) && formEdit.tipo && <option value={formEdit.tipo}>{formEdit.tipo} (tipo anterior, ya no oficial)</option>}
                       {TIPOS_DILIGENCIA.map(t=><option key={t}>{t}</option>)}
                     </select>
                   </div>
@@ -459,7 +502,7 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
                   </div>
                   <div style={{ gridColumn:'1/-1' }}>
                     <div style={{ fontSize:10, color:'#64748b', textTransform:'uppercase', letterSpacing:1.2, marginBottom:5, fontWeight:600, ...f }}>Detalle de lo solicitado</div>
-                    <input style={inp} value={formEdit.observacion} onChange={e=>setFormEdit(p=>({...p,observacion:e.target.value}))}/>
+                    <textarea style={{...inp,minHeight:76,resize:'vertical',lineHeight:1.5}} rows={3} value={formEdit.observacion} onChange={e=>setFormEdit(p=>({...p,observacion:e.target.value}))}/>
                   </div>
                   <div style={{ gridColumn:'1/-1' }}>
                     <div style={{ fontSize:10, color:'#dc2626', textTransform:'uppercase', letterSpacing:1.2, marginBottom:5, fontWeight:700, ...f }}>Motivo de la corrección *</div>
@@ -593,7 +636,7 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
             </div>
             <div style={{ gridColumn:'1/-1' }}>
               <div style={{ fontSize:10, color:'#64748b', textTransform:'uppercase', letterSpacing:1.2, marginBottom:5, fontWeight:600, ...f }}>Detalle de lo solicitado (opcional)</div>
-              <input style={inp} placeholder="Ej: Declaración de los imputados para reconocer los hechos y aportar antecedentes..." value={form.observacion} onChange={e=>setForm(p=>({...p,observacion:e.target.value}))}/>
+              <textarea style={{...inp,minHeight:76,resize:'vertical',lineHeight:1.5}} rows={3} placeholder="Ej: Declaración de los imputados para reconocer los hechos y aportar antecedentes..." value={form.observacion} onChange={e=>setForm(p=>({...p,observacion:e.target.value}))}/>
             </div>
           </div>
           <div style={{ display:'flex', gap:8 }}>
