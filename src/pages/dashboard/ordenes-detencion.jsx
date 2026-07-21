@@ -5,6 +5,7 @@
 // nunca se sobrescribe una orden anterior.
 import { useState } from 'react'
 import { f } from './primitives'
+import { fechaDDMM } from './utils'
 
 export function OrdenesDetencionPanel({ ordenes, onGuardar, onActualizar, onEliminar, esTitular, isMobile }) {
   const hoyISO = new Date().toISOString().slice(0,10)
@@ -38,7 +39,7 @@ export function OrdenesDetencionPanel({ ordenes, onGuardar, onActualizar, onElim
   }
 
   const eliminarOrden = async (o) => {
-    const motivo = window.prompt(`¿Eliminar DEFINITIVAMENTE esta orden de detención (del ${o.fecha_orden})? Esta acción no se puede deshacer.\n\nIngresa el motivo de la eliminación:`)
+    const motivo = window.prompt(`¿Eliminar DEFINITIVAMENTE esta orden de detención (del ${fechaDDMM(o.fecha_orden)})? Esta acción no se puede deshacer.\n\nIngresa el motivo de la eliminación:`)
     if (motivo === null || !motivo.trim()) return
     await onEliminar(o.id, motivo.trim())
   }
@@ -87,7 +88,7 @@ export function OrdenesDetencionPanel({ ordenes, onGuardar, onActualizar, onElim
                         <span style={{fontSize:11,fontWeight:600,color:vigente?'#dc2626':'#059669',...f}}>{vigente?'VIGENTE':'Se dejó sin efecto'}</span>
                       </div>
                       <div style={{fontSize:11,color:'#94a3b8',marginTop:2,...f}}>
-                        Desde {o.fecha_orden}{o.fecha_levantamiento?` · Sin efecto desde ${o.fecha_levantamiento}`:''}
+                        Desde {fechaDDMM(o.fecha_orden)}{o.fecha_levantamiento?` · Sin efecto desde ${fechaDDMM(o.fecha_levantamiento)}`:''}
                       </div>
                       {o.motivo && <div style={{fontSize:12,color:'#475569',marginTop:4,...f}}>{o.motivo}</div>}
                     </div>

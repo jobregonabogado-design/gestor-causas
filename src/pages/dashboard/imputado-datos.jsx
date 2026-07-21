@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { f } from './primitives'
 import { SearchableSelect, DelitoCard, Field } from './primitives'
-import { DELITOS_CATALOGO, CENTROS_PENALES, calcularEdadActual } from './utils'
+import { DELITOS_CATALOGO, CENTROS_PENALES, calcularEdadActual, fechaDDMM } from './utils'
 import { CautelaresPanel, TIPOS_ABONO_DIRECTO, CAUTELAR_NOCTURNO, diasEntreFechasCaut } from './cautelares'
 
 export function ImputadoDatosCard({ imp, numero, causaId, ruc, cautelares, esTitular, isMobile, registrarActividad, onUpdateCampo, onDelitoChange, onGuardarCautelar, onActualizarCautelar, onEliminarCautelar }) {
@@ -66,7 +66,7 @@ export function ImputadoDatosCard({ imp, numero, causaId, ruc, cautelares, esTit
               <div className="fld" onClick={()=>{setEditField('fecha_nacimiento');setEditValue(imp.fecha_nacimiento||'')}}
                 style={{padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:imp.fecha_nacimiento?'#1E293B':'#94a3b8',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
                 <span>
-                  {imp.fecha_nacimiento || 'Clic para agregar...'}
+                  {fechaDDMM(imp.fecha_nacimiento) || 'Clic para agregar...'}
                   {imp.fecha_nacimiento && (() => {
                     const edad = calcularEdadActual(imp.fecha_nacimiento)
                     return edad !== null ? <span style={{marginLeft:8,fontSize:11,color:'#1E293B',fontWeight:600,background:'#eff6ff',padding:'1px 7px',borderRadius:10}}>{edad} AÑOS HOY</span> : null
@@ -102,7 +102,7 @@ export function ImputadoDatosCard({ imp, numero, causaId, ruc, cautelares, esTit
               ):(
                 <div className="fld" onClick={()=>{setEditField('fecha_detencion');setEditValue(imp.fecha_detencion||'')}}
                   style={{padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:imp.fecha_detencion?'#1E293B':'#94a3b8',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
-                  <span>{imp.fecha_detencion || 'Clic para agregar...'}</span>
+                  <span>{fechaDDMM(imp.fecha_detencion) || 'Clic para agregar...'}</span>
                   <span style={{fontSize:11,color:'#94a3b8'}}>✏</span>
                 </div>
               )}
@@ -150,7 +150,7 @@ export function ImputadoDatosCard({ imp, numero, causaId, ruc, cautelares, esTit
                 ):(
                   <div className="fld" onClick={()=>{setEditField('delegacion_fecha');setEditValue(imp.delegacion_fecha||'')}}
                     style={{padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:imp.delegacion_fecha?'#1E293B':'#94a3b8',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
-                    <span>{imp.delegacion_fecha || 'Clic para agregar...'}</span>
+                    <span>{fechaDDMM(imp.delegacion_fecha) || 'Clic para agregar...'}</span>
                     <span style={{fontSize:11,color:'#94a3b8'}}>✏</span>
                   </div>
                 )}

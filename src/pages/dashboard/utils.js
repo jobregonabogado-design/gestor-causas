@@ -1261,6 +1261,21 @@ export function formatearRut(r) {
   return limpio.slice(0, -1) + '-' + limpio.slice(-1)
 }
 
+// ✅ Única función para MOSTRAR una fecha en DD-MM-AAAA — se usa en toda la
+// app para que las fechas se vean siempre igual (antes cada pantalla
+// mostraba el AAAA-MM-DD "en crudo" tal como se guarda en la base de
+// datos). Solo cambia cómo se VE — el valor guardado y los inputs de tipo
+// "date" (que el navegador controla) siguen igual. Si el texto no calza
+// con el formato AAAA-MM-DD esperado, se devuelve tal cual llegó (por si
+// es otra cosa, ej. "VENCE DD-MM-AAAA" o ya viene con otro formato) — así
+// nunca rompe nada, en el peor caso no cambia nada.
+export function fechaDDMM(fecha) {
+  if (!fecha) return fecha
+  const m = String(fecha).match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (!m) return fecha
+  return `${m[3]}-${m[2]}-${m[1]}`
+}
+
 // ✅ Quita tildes y trata "ñ" como "n" — SOLO para comparar en buscadores/
 // filtros (nunca para guardar ni mostrar texto tal cual), así buscar
 // "trafico" encuentra "TRÁFICO" y buscar "avendano" encuentra "AVENDAÑO".

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import GmailIntegracion from '../components/GmailIntegracion'
+import { fechaDDMM } from './dashboard/utils'
 
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
@@ -433,7 +434,7 @@ export default function Calendario({ onVerCausa }) {
                           <span style={{fontSize:12,color:'#94a3b8',...f}}>{a.ruc||'—'}</span>
                         )}
                       </td>
-                      <td style={{padding:"11px 16px",fontSize:13,fontWeight:600,color:"#1e293b",...f}}>{a.fecha}</td>
+                      <td style={{padding:"11px 16px",fontSize:13,fontWeight:600,color:"#1e293b",...f}}>{fechaDDMM(a.fecha)}</td>
                       <td style={{padding:"11px 16px",fontSize:13,color:"#475569",...f}}>{a.hora}</td>
                       <td style={{padding:"11px 16px"}}>
                         <span style={{fontSize:11,padding:"3px 8px",borderRadius:20,background:c.bg,color:c.text,border:`1px solid ${c.border}`,fontWeight:600,...f}}>{a.tipo}</span>

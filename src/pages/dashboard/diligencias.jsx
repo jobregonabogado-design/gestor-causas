@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { BotonImprimirLista } from './resumen'
+import { fechaDDMM } from './utils'
 
 export const TIPOS_DILIGENCIA = ['Declaración de imputado','Petición de carpeta','Entrevista con el fiscal','Reconstitución de escena','Careo','Otra diligencia']
 export const ESTADOS_DILIGENCIA = {
@@ -212,7 +213,7 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
     if (!formEdit.fecha_solicitud) return
     if (!motivoEditDatos.trim()) { alert('Ingresa el motivo de la corrección — queda registrado para tener trazabilidad.'); return }
     const anterior = diligencias.find(d => d.id === id)
-    const lineaHistorial = `[${new Date().toLocaleString('es-CL')}] Corregido por ${email||'usuario'}. Motivo: ${motivoEditDatos.trim()}. Antes era: ${anterior?.tipo||'—'}, ${anterior?.fecha_solicitud||'—'}, folio ${anterior?.folio||'—'}.`
+    const lineaHistorial = `[${new Date().toLocaleString('es-CL')}] Corregido por ${email||'usuario'}. Motivo: ${motivoEditDatos.trim()}. Antes era: ${anterior?.tipo||'—'}, ${fechaDDMM(anterior?.fecha_solicitud)||'—'}, folio ${anterior?.folio||'—'}.`
     const nuevoHistorial = anterior?.historial ? anterior.historial + '\n' + lineaHistorial : lineaHistorial
     const campos = { tipo: formEdit.tipo, fecha_solicitud: formEdit.fecha_solicitud, folio: formEdit.folio.toUpperCase(), observacion: formEdit.observacion || null, historial: nuevoHistorial }
     await supabase.from('diligencias_fiscalia').update(campos).eq('id', id)
@@ -342,8 +343,8 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
       <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:8 }} className="no-imprimir">
         <BotonImprimirLista ruc={ruc} titulo="Diligencias de Fiscalía" items={diligencias} renderItem={(d)=> (
           <div style={{fontSize:12,color:'#475569'}}>
-            <strong style={{color:'#1E293B'}}>{d.tipo}</strong> — solicitada el {d.fecha_solicitud}{d.folio ? ` · Folio ${d.folio}` : ''}
-            {d.estado === 'pendiente' ? ' · Pendiente de respuesta' : ` · Respondida el ${d.fecha_respuesta || '—'}${d.estado === 'con_citacion' && d.fecha_citacion ? ` · Cita el ${d.fecha_citacion}` : ''}`}
+            <strong style={{color:'#1E293B'}}>{d.tipo}</strong> — solicitada el {fechaDDMM(d.fecha_solicitud)}{d.folio ? ` · Folio ${d.folio}` : ''}
+            {d.estado === 'pendiente' ? ' · Pendiente de respuesta' : ` · Respondida el ${fechaDDMM(d.fecha_respuesta) || '—'}${d.estado === 'con_citacion' && d.fecha_citacion ? ` · Cita el ${fechaDDMM(d.fecha_citacion)}` : ''}`}
           </div>
         )}/>
       </div>
@@ -368,7 +369,7 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:8 }}>
               <div>
                 <div style={{ fontSize:13, fontWeight:700, color:'#1E293B', ...f }}>{d.tipo}</div>
-                <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>Solicitada el {d.fecha_solicitud} · Folio <strong style={{color:'#475569'}}>{d.folio}</strong></div>
+                <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>Solicitada el {fechaDDMM(d.fecha_solicitud)} · Folio <strong style={{color:'#475569'}}>{d.folio}</strong></div>
               </div>
               <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:4 }}>
                 <span style={{ fontSize:10, fontWeight:700, padding:'3px 10px', borderRadius:20, textTransform:'uppercase', letterSpacing:0.3, color:cfg.color, background:cfg.bg, border:`1px solid ${cfg.border}`, ...f }}>{cfg.label}</span>
@@ -492,8 +493,8 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
               <div style={{ marginTop:10 }}>
                 {d.estado !== 'pendiente' && (
                   <div style={{ fontSize:12, color:'#475569', ...f }}>
-                    Respondida el {d.fecha_respuesta}
-                    {d.estado === 'con_citacion' && d.fecha_citacion && <> · Cita el <strong>{d.fecha_citacion}</strong></>}
+                    Respondida el {fechaDDMM(d.fecha_respuesta)}
+                    {d.estado === 'con_citacion' && d.fecha_citacion && <> · Cita el <strong>{fechaDDMM(d.fecha_citacion)}</strong></>}
                     {d.respuesta_detalle && <div style={{ marginTop:4, color:'#64748b' }}>{d.respuesta_detalle}</div>}
                   </div>
                 )}

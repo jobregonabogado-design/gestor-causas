@@ -1,7 +1,7 @@
 // Tarjetas de Audiencia e Imputado usadas dentro de la lista de una causa.
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
-import { DELITOS_CATALOGO, CENTROS_PENALES, calcularEdadActual, calcularFechaTerminoCondena, getBadgeConfig, normRut, formatearRut } from './utils'
+import { DELITOS_CATALOGO, CENTROS_PENALES, calcularEdadActual, calcularFechaTerminoCondena, getBadgeConfig, normRut, formatearRut, fechaDDMM } from './utils'
 import { SearchableSelect, DelitosChips } from './primitives'
 import { calcularTotalAbono } from './cautelares'
 import { OrdenesDetencionPanel } from './ordenes-detencion'
@@ -67,7 +67,7 @@ export function AudienciaCard({ a, onUpdate }) {
           <span style={{fontSize:13,fontWeight:600,color:'#1E293B',...f}}>{a.tipo||'Audiencia'}</span>
         </div>
         <div style={{display:'flex',gap:6,alignItems:'center'}}>
-          <span style={{fontSize:11,color:'#94a3b8',fontWeight:500,...f}}>{a.fecha}{a.hora?' · '+a.hora:''}</span>
+          <span style={{fontSize:11,color:'#94a3b8',fontWeight:500,...f}}>{fechaDDMM(a.fecha)}{a.hora?' · '+a.hora:''}</span>
           <button onClick={()=>setEditing(true)} style={{background:'transparent',border:'1px solid #e2e8f0',borderRadius:6,padding:'3px 8px',fontSize:10,color:'#94a3b8',cursor:'pointer',fontWeight:500,...f}}>✏ Editar</button>
         </div>
       </div>
@@ -237,7 +237,7 @@ export function ImputadoCard({ imp, idx, totalImputados, cautelares, ordenesDete
       ):(
         <div onClick={()=>{setEditField(field);setEditValue(imp[field]||'')}}
           style={{padding:'8px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:imp[field]?'#1E293B':'#94a3b8',minHeight:36,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
-          <span>{imp[field]||'Clic para agregar...'}</span>
+          <span>{(field==='fecha_detencion'?fechaDDMM(imp[field]):imp[field])||'Clic para agregar...'}</span>
           <span style={{fontSize:11,color:'#94a3b8'}}>✏</span>
         </div>
       )}
@@ -280,7 +280,7 @@ export function ImputadoCard({ imp, idx, totalImputados, cautelares, ordenesDete
             <div onClick={()=>{setEditField('fecha_nacimiento');setEditValue(imp.fecha_nacimiento||'')}}
               style={{padding:'8px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:imp.fecha_nacimiento?'#1E293B':'#94a3b8',minHeight:36,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
               <span>
-                {imp.fecha_nacimiento || 'Clic para agregar...'}
+                {fechaDDMM(imp.fecha_nacimiento) || 'Clic para agregar...'}
                 {imp.fecha_nacimiento && (() => {
                   const edad = calcularEdadActual(imp.fecha_nacimiento)
                   return edad !== null ? <span style={{marginLeft:8,fontSize:11,color:'#1E293B',fontWeight:600,background:'#eff6ff',padding:'1px 7px',borderRadius:10}}>
@@ -425,7 +425,7 @@ export function ImputadoCard({ imp, idx, totalImputados, cautelares, ordenesDete
           <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
             <div style={{padding:'10px 14px',background:'#fff',borderRadius:8,border:'1px solid #e2e8f0'}}>
               <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1,fontWeight:700,...f}}>{imp.condena_tipo==='sustitutiva' ? 'Pena sustitutiva desde' : 'Condena efectiva desde'}</div>
-              <div style={{fontSize:14,fontWeight:700,color:'#1E293B',...f}}>{imp.condena_fecha_inicio} · {formatearTiempoCondena(imp.condena_anos, imp.condena_meses, imp.condena_dias)}</div>
+              <div style={{fontSize:14,fontWeight:700,color:'#1E293B',...f}}>{fechaDDMM(imp.condena_fecha_inicio)} · {formatearTiempoCondena(imp.condena_anos, imp.condena_meses, imp.condena_dias)}</div>
             </div>
             <div style={{padding:'10px 14px',background:'#fff',borderRadius:8,border:'1px solid #e2e8f0',display:'flex',alignItems:'center',gap:10}}>
               <span style={{fontSize:18}}>🔒</span>

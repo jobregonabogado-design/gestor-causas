@@ -7,7 +7,7 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from '../../lib/supabase'
 import { f } from './primitives'
-import { calcularVencimiento, calcularSubestado, calcularEdadActual, estadoConfig } from './utils'
+import { calcularVencimiento, calcularSubestado, calcularEdadActual, estadoConfig, fechaDDMM } from './utils'
 import { calcularTotalAbono, diasEntreFechasCaut } from './cautelares'
 
 const TC_LABELS = {
@@ -95,7 +95,7 @@ export function BotonResumenImprimible({ causa, imputados, audiencias, aumentos,
           <Seccion titulo="Datos de la causa">
             <Fila label="Delito(s)" valor={(causa.delito || '').replace(/\|/g, ', ') || '—'} />
             <Fila label="Plazo" valor={causa.plazo || '—'} />
-            <Fila label="Fecha de los hechos" valor={causa.fecha_hechos || '—'} />
+            <Fila label="Fecha de los hechos" valor={fechaDDMM(causa.fecha_hechos) || '—'} />
             {(imputados && imputados.length > 0 ? imputados : [null]).map((imp, i) => (
               <div key={i} style={{ marginTop: 12, paddingTop: 12, borderTop: i > 0 ? '1px dashed #e2e8f0' : 'none' }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: '#1E293B' }}>{imp ? (imp.nombre || 'Imputado sin nombre') : (causa.imputado || 'Imputado sin nombre')}</div>
@@ -124,7 +124,7 @@ export function BotonResumenImprimible({ causa, imputados, audiencias, aumentos,
                     <div style={{ fontSize: 12, color: '#475569', marginBottom: 6 }}>Abono total (1×1): <strong>{totalAbono} días</strong></div>
                     {propias.map((ct, j) => (
                       <div key={j} style={{ fontSize: 12, color: '#475569', padding: '2px 0' }}>
-                        {ct.tipo} — desde {ct.fecha_inicio}{ct.fecha_termino ? ` hasta ${ct.fecha_termino}` : ' (vigente)'}
+                        {ct.tipo} — desde {fechaDDMM(ct.fecha_inicio)}{ct.fecha_termino ? ` hasta ${fechaDDMM(ct.fecha_termino)}` : ' (vigente)'}
                         {!ct.fecha_termino ? '' : ` · ${diasEntreFechasCaut(ct.fecha_inicio, ct.fecha_termino)} días`}
                       </div>
                     ))}
@@ -146,7 +146,7 @@ export function BotonResumenImprimible({ causa, imputados, audiencias, aumentos,
                 <tbody>
                   {[...audiencias].sort((a, b) => (a.fecha || '').localeCompare(b.fecha || '')).map((a, i) => (
                     <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '6px 8px' }}>{a.fecha}</td>
+                      <td style={{ padding: '6px 8px' }}>{fechaDDMM(a.fecha)}</td>
                       <td style={{ padding: '6px 8px' }}>{a.hora || '—'}</td>
                       <td style={{ padding: '6px 8px' }}>{a.tipo || '—'}</td>
                       <td style={{ padding: '6px 8px' }}>{a.tribunal || '—'}{a.sala ? ' · Sala ' + a.sala : ''}</td>
@@ -167,7 +167,7 @@ export function BotonResumenImprimible({ causa, imputados, audiencias, aumentos,
                 </div>
                 {activos.map((a, i) => (
                   <div key={i} style={{ fontSize: 12, color: '#475569', padding: '4px 0' }}>
-                    {a.fecha_audiencia} · {a.tipo_audiencia || 'Audiencia'} · +{a.dias_plazo}d{a.observacion ? ' · ' + a.observacion : ''}
+                    {fechaDDMM(a.fecha_audiencia)} · {a.tipo_audiencia || 'Audiencia'} · +{a.dias_plazo}d{a.observacion ? ' · ' + a.observacion : ''}
                   </div>
                 ))}
               </>
@@ -192,10 +192,10 @@ export function BotonResumenImprimible({ causa, imputados, audiencias, aumentos,
             {datos.diligencias.length === 0 ? <Vacio texto="Sin diligencias solicitadas." /> : (
               datos.diligencias.map((d, i) => (
                 <div key={i} style={{ fontSize: 12, color: '#475569', padding: '4px 0' }}>
-                  <strong style={{ color: '#1E293B' }}>{d.tipo}</strong> — solicitada el {d.fecha_solicitud}{d.folio ? ` · Folio ${d.folio}` : ''}
+                  <strong style={{ color: '#1E293B' }}>{d.tipo}</strong> — solicitada el {fechaDDMM(d.fecha_solicitud)}{d.folio ? ` · Folio ${d.folio}` : ''}
                   {d.estado === 'pendiente'
                     ? ' · Pendiente de respuesta'
-                    : ` · Respondida el ${d.fecha_respuesta || '—'}${d.estado === 'con_citacion' && d.fecha_citacion ? ` · Cita el ${d.fecha_citacion}` : ''}`}
+                    : ` · Respondida el ${fechaDDMM(d.fecha_respuesta) || '—'}${d.estado === 'con_citacion' && d.fecha_citacion ? ` · Cita el ${fechaDDMM(d.fecha_citacion)}` : ''}`}
                 </div>
               ))
             )}

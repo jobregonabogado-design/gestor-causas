@@ -17,7 +17,7 @@ import { HonorariosTab } from './dashboard/honorarios'
 import { TeoriaDelCaso } from './dashboard/teoria'
 import { BotonResumenImprimible } from './dashboard/resumen'
 import { PlazoCalculador } from './dashboard/plazo'
-import { calcularRegimenAlMomento, calcularVencimiento, parseFechaCL, diasRestantes, calcularSubestado, calcularEdadActual, TRIBUNAL_RPA, normRut, normalizarBusqueda, formatearRut } from './dashboard/utils'
+import { calcularRegimenAlMomento, calcularVencimiento, parseFechaCL, diasRestantes, calcularSubestado, calcularEdadActual, TRIBUNAL_RPA, normRut, normalizarBusqueda, formatearRut, fechaDDMM } from './dashboard/utils'
 import { ImputadoDatosCard } from './dashboard/imputado-datos'
 import { CautelaresPanel, TIPOS_ABONO_DIRECTO, TIPOS_DETENCION_PENAL, CAUTELAR_NOCTURNO, CAUTELAR_SENAME, TIPOS_CAUTELARES_TODAS, diasEntreFechasCaut } from './dashboard/cautelares'
 
@@ -267,7 +267,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
   // la tarjeta, no solo en el log de actividad general).
   const actualizarCautelarConMotivo = async (id, campos, motivo) => {
     const anterior = cautelares.find(x => x.id === id)
-    const lineaHistorial = `[${new Date().toLocaleString('es-CL')}] Corregido por ${session?.user?.email||'usuario'}. Motivo: ${motivo}. Antes era: ${anterior?.tipo||'—'}, ${anterior?.fecha_inicio||'—'}${anterior?.fecha_termino?' hasta '+anterior.fecha_termino:''}.`
+    const lineaHistorial = `[${new Date().toLocaleString('es-CL')}] Corregido por ${session?.user?.email||'usuario'}. Motivo: ${motivo}. Antes era: ${anterior?.tipo||'—'}, ${fechaDDMM(anterior?.fecha_inicio)||'—'}${anterior?.fecha_termino?' hasta '+fechaDDMM(anterior.fecha_termino):''}.`
     const nuevoHistorial = anterior?.historial ? anterior.historial + '\n' + lineaHistorial : lineaHistorial
     const camposFinales = { ...campos, historial: nuevoHistorial }
     await supabase.from('cautelares_causa').update(camposFinales).eq('id', id)
@@ -281,7 +281,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
     let camposFinales = campos
     if (motivo) {
       const anterior = imputados.find(x => x.id === impId)
-      const lineaHistorial = `[${new Date().toLocaleString('es-CL')}] Corregido por ${session?.user?.email||'usuario'}. Motivo: ${motivo}. Antes era: ${anterior?.condena_tipo||'—'}, ${anterior?.condena_fecha_inicio||'—'}, ${anterior?.condena_anos||0}a ${anterior?.condena_meses||0}m ${anterior?.condena_dias||0}d.`
+      const lineaHistorial = `[${new Date().toLocaleString('es-CL')}] Corregido por ${session?.user?.email||'usuario'}. Motivo: ${motivo}. Antes era: ${anterior?.condena_tipo||'—'}, ${fechaDDMM(anterior?.condena_fecha_inicio)||'—'}, ${anterior?.condena_anos||0}a ${anterior?.condena_meses||0}m ${anterior?.condena_dias||0}d.`
       const nuevoHistorial = anterior?.condena_historial ? anterior.condena_historial + '\n' + lineaHistorial : lineaHistorial
       camposFinales = { ...campos, condena_historial: nuevoHistorial }
     }
@@ -399,7 +399,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
     const{data,error}=await supabase.from('audiencias').insert({causa_id:selectedCausa.id,ruc:selectedCausa.ruc,imputado:selectedCausa.imputado?.split('|')[0],...upAud}).select().single()
     if(!error){
       setAudiencias(prev=>[data,...prev].sort((a,b)=>b.fecha.localeCompare(a.fecha)))
-      if (registrarActividad) registrarActividad('accion', `Nueva audiencia en RUC ${selectedCausa.ruc}: ${nuevaAud.tipo||'Audiencia'} ${nuevaAud.fecha}`)
+      if (registrarActividad) registrarActividad('accion', `Nueva audiencia en RUC ${selectedCausa.ruc}: ${nuevaAud.tipo||'Audiencia'} ${fechaDDMM(nuevaAud.fecha)}`)
       await marcarAccion(selectedCausa.id) // ✅ actualiza semáforo
     }
     setNuevaAud({fecha:'',hora:'',tipo:'',tribunal:selectedCausa?.tribunal||'',sala:'',resultado:'',notas:''});setShowAudForm(false);setSaving(false)
@@ -797,7 +797,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                               ):(
                                 <div className="fld" onClick={()=>{setEditField(`fecha_audiencia_corte_${apel.id}`);setEditValue(apel.fecha_audiencia_corte||'')}}
                                   style={{padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:apel.fecha_audiencia_corte?'#1E293B':'#94a3b8',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
-                                  <span>{apel.fecha_audiencia_corte || 'Clic para agregar...'}</span>
+                                  <span>{fechaDDMM(apel.fecha_audiencia_corte) || 'Clic para agregar...'}</span>
                                   <span style={{fontSize:11,color:'#94a3b8'}}>✏</span>
                                 </div>
                               )}
@@ -876,7 +876,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                       ):(
                         <div className="fld" onClick={()=>{setEditField('fecha_hechos');setEditValue(c.fecha_hechos||'')}}
                           style={{padding:'7px 9px',borderRadius:8,fontSize:11,fontWeight:700,color:c.fecha_hechos?'#991b1b':'#94a3b8',minHeight:30,display:'flex',alignItems:'center',cursor:'pointer',background:c.fecha_hechos?'#fef2f2':'#fff',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}}>
-                          <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{c.fecha_hechos || 'Clic para agregar...'}</span>
+                          <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{fechaDDMM(c.fecha_hechos) || 'Clic para agregar...'}</span>
                         </div>
                       )}
                     </div>
@@ -1153,7 +1153,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                 onEditarAudiencia={async(id, form, motivo)=>{
                 const diasNum = parseInt(form.dias_plazo) || 0
                 const anterior = aumentos.find(a=>a.id===id)
-                const lineaHistorial = `[${new Date().toLocaleString('es-CL')}] Corregido por ${session?.user?.email||'usuario'}. Motivo: ${motivo}. Antes era: ${anterior?.tipo_audiencia||'—'}, ${anterior?.fecha_audiencia||'—'}, ${anterior?.dias_plazo||0} días.`
+                const lineaHistorial = `[${new Date().toLocaleString('es-CL')}] Corregido por ${session?.user?.email||'usuario'}. Motivo: ${motivo}. Antes era: ${anterior?.tipo_audiencia||'—'}, ${fechaDDMM(anterior?.fecha_audiencia)||'—'}, ${anterior?.dias_plazo||0} días.`
                 const nuevoHistorial = anterior?.historial ? anterior.historial + '\n' + lineaHistorial : lineaHistorial
                 const{error}=await supabase.from('aumentos_plazo').update({fecha_audiencia:form.fecha_audiencia,tipo_audiencia:form.tipo_audiencia,dias_plazo:diasNum,dias_aumento:diasNum,observacion:form.observacion||'',fecha_proxima_audiencia:form.fecha_proxima_audiencia||null,historial:nuevoHistorial}).eq('id',id)
                 if(!error){

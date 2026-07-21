@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { f } from './primitives'
 import { CUENTAS_TRANSFERENCIA } from './documentos'
+import { fechaDDMM } from './utils'
 
 export function HonorariosTab({ causaId, ruc, email, registrarActividad, onAccion, esTitular, isMobile }) {
   const [honorario, setHonorario] = useState(null)
@@ -69,7 +70,7 @@ export function HonorariosTab({ causaId, ruc, email, registrarActividad, onAccio
     const monto = parseFloat(editForm.monto)
     if (!monto || monto <= 0) { alert('Ingresa un monto válido'); return }
     const usaTransf = editForm.forma_pago === 'Transferencia' || editForm.forma_pago === 'Transferencia + Efectivo'
-    const linea = `[${new Date().toLocaleString('es-CL')}] Corregido por ${email}. Motivo: ${motivoEdit.trim()}. Antes era: $${abonoAnterior.monto} · ${abonoAnterior.fecha} · ${abonoAnterior.forma_pago}.`
+    const linea = `[${new Date().toLocaleString('es-CL')}] Corregido por ${email}. Motivo: ${motivoEdit.trim()}. Antes era: $${abonoAnterior.monto} · ${fechaDDMM(abonoAnterior.fecha)} · ${abonoAnterior.forma_pago}.`
     const historial = abonoAnterior.historial ? abonoAnterior.historial + '\n' + linea : linea
     await supabase.from('abonos_honorarios').update({
       monto, fecha: editForm.fecha, forma_pago: editForm.forma_pago,
@@ -83,7 +84,7 @@ export function HonorariosTab({ causaId, ruc, email, registrarActividad, onAccio
   }
 
   const eliminarAbono = async (abono) => {
-    const motivo = window.prompt(`¿Eliminar DEFINITIVAMENTE el abono de ${fmt(abono.monto)} del ${abono.fecha}? Esta acción no se puede deshacer.\n\nIngresa el motivo de la eliminación:`)
+    const motivo = window.prompt(`¿Eliminar DEFINITIVAMENTE el abono de ${fmt(abono.monto)} del ${fechaDDMM(abono.fecha)}? Esta acción no se puede deshacer.\n\nIngresa el motivo de la eliminación:`)
     if (motivo === null || !motivo.trim()) return
     await supabase.from('abonos_honorarios').delete().eq('id', abono.id)
     await cargar()
@@ -158,7 +159,7 @@ export function HonorariosTab({ causaId, ruc, email, registrarActividad, onAccio
           <div style={{ width:36, height:36, background:'#ecfdf5', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', color:'#059669', fontSize:15, fontWeight:700, flexShrink:0 }}>$</div>
           <div style={{ flex:'1 1 200px', minWidth:0 }}>
             <div style={{ fontSize:13, fontWeight:700, color:'#1E293B', ...f }}>{fmt(a.monto)} <span style={{fontWeight:400,color:'#94a3b8',fontSize:12}}>· {a.forma_pago}{a.cuenta_transferencia?' · '+a.cuenta_transferencia:''}</span></div>
-            <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>{a.fecha}{a.observacion?' · '+a.observacion:''} · registrado por {a.registrado_por}</div>
+            <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>{fechaDDMM(a.fecha)}{a.observacion?' · '+a.observacion:''} · registrado por {a.registrado_por}</div>
             {a.historial && (
               <div style={{marginTop:6,paddingTop:6,borderTop:'1px solid #e2e8f0'}}>
                 {a.historial.split('\n').map((h,i)=><div key={i} style={{fontSize:10,color:'#94a3b8',...f}}>📝 {h}</div>)}

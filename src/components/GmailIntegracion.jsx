@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { loginGmail, isGmailConnected, logoutGmail, fetchNotificacionesPJUD, exchangeCodeForToken } from '../lib/gmail'
 import { supabase } from '../lib/supabase'
+import { fechaDDMM } from '../pages/dashboard/utils'
 
 const f = { fontFamily:"'Manrope','Inter',sans-serif" }
 
@@ -208,11 +209,11 @@ export default function GmailIntegracion({ onImportComplete }) {
         const esCorreccionAutomatica = n.audiencia.esCorreccionFuerte && posiblesAnteriores.length === 0 && !!posibleReemplazo
 
         const notaCorreccion = esCorreccionAutomatica
-          ? `✓ CORREGIDA AUTOMÁTICAMENTE: el correo indicó explícitamente que la audiencia del ${posibleReemplazo.fecha} (${posibleReemplazo.tipo||'—'}) quedaba corregida/sin efecto — se eliminó esa y se dejó esta con la fecha correcta.\n`
+          ? `✓ CORREGIDA AUTOMÁTICAMENTE: el correo indicó explícitamente que la audiencia del ${fechaDDMM(posibleReemplazo.fecha)} (${posibleReemplazo.tipo||'—'}) quedaba corregida/sin efecto — se eliminó esa y se dejó esta con la fecha correcta.\n`
           : posiblesAnteriores.length > 0
           ? `⚠ INCONSISTENCIA: ya existía(n) ${posiblesAnteriores.length} audiencia(s) para este RUC/fecha con tipo "${posiblesAnteriores.map(a=>a.tipo||'—').join(', ')}" y hora "${posiblesAnteriores.map(a=>a.hora||'—').join(', ')}". Esta se agregó como tipo "${n.audiencia.tipo||'—'}" y hora "${n.audiencia.hora||'—'}". Revisa cuál es la correcta y elimina la que sobre.\n`
           : posibleReemplazo
-          ? `⚠ POSIBLE REPROGRAMACIÓN: el correo corrige/reprograma una audiencia — parece reemplazar la del ${posibleReemplazo.fecha} (${posibleReemplazo.tipo||'—'}). Revisa y elimina la anterior si corresponde.\n`
+          ? `⚠ POSIBLE REPROGRAMACIÓN: el correo corrige/reprograma una audiencia — parece reemplazar la del ${fechaDDMM(posibleReemplazo.fecha)} (${posibleReemplazo.tipo||'—'}). Revisa y elimina la anterior si corresponde.\n`
           : ''
 
         // ✅ FIX: incluye imputado y tribunal con fallback desde la causa
@@ -228,7 +229,7 @@ export default function GmailIntegracion({ onImportComplete }) {
           imputado: causa.imputado || '',
           resultado: '',
           notas: `${notaCorreccion}Importado automáticamente desde correo ${n.tipo}\nAsunto: ${n.asunto}\nFecha correo: ${new Date(n.fecha_correo).toLocaleDateString('es-CL')}`,
-          ...(esCorreccionAutomatica ? { corregida_en: new Date().toISOString(), corregida_de: `${posibleReemplazo.fecha} (${posibleReemplazo.tipo||'—'}, ${posibleReemplazo.hora||'sin hora'})` } : {}),
+          ...(esCorreccionAutomatica ? { corregida_en: new Date().toISOString(), corregida_de: `${fechaDDMM(posibleReemplazo.fecha)} (${posibleReemplazo.tipo||'—'}, ${posibleReemplazo.hora||'sin hora'})` } : {}),
         }).select().single()
 
         if (!error && data) {
@@ -286,7 +287,7 @@ export default function GmailIntegracion({ onImportComplete }) {
   // tarjeta desaparecía de la pantalla igual, aunque el registro siguiera
   // guardado en la base de datos (por eso seguía apareciendo en Calendario).
   const eliminarAudiencia = async (item) => {
-    if (!window.confirm(`¿Eliminar audiencia ${item.tipo} del ${item.fecha}?`)) return
+    if (!window.confirm(`¿Eliminar audiencia ${item.tipo} del ${fechaDDMM(item.fecha)}?`)) return
     const { error } = await supabase.from('audiencias').delete().eq('id', item.id)
     if (error) { alert('No se pudo eliminar la audiencia: ' + error.message); return }
     setAgregados(prev => prev.filter(x => x.id !== item.id))
@@ -300,7 +301,7 @@ export default function GmailIntegracion({ onImportComplete }) {
   const eliminarAudienciaAnterior = async (item) => {
     const anterior = item.audienciaAnterior
     if (!anterior) return
-    if (!window.confirm(`¿Eliminar la audiencia anterior ${anterior.tipo||''} del ${anterior.fecha}? Esto es la que quedó desactualizada, no la que se acaba de agregar.`)) return
+    if (!window.confirm(`¿Eliminar la audiencia anterior ${anterior.tipo||''} del ${fechaDDMM(anterior.fecha)}? Esto es la que quedó desactualizada, no la que se acaba de agregar.`)) return
     const { error } = await supabase.from('audiencias').delete().eq('id', anterior.id)
     if (error) { alert('No se pudo eliminar la audiencia anterior: ' + error.message); return }
     setAgregados(prev => prev.map(x => x.id === item.id ? { ...x, audienciaAnterior: null } : x))
@@ -315,7 +316,7 @@ export default function GmailIntegracion({ onImportComplete }) {
   const eliminarDuplicadoAnterior = async (item) => {
     const anterior = item.audienciaAnterior
     if (!anterior) return
-    if (!window.confirm(`¿Eliminar la audiencia anterior ${anterior.tipo||''} del ${anterior.fecha}? Esto es la que quedó desactualizada.`)) return
+    if (!window.confirm(`¿Eliminar la audiencia anterior ${anterior.tipo||''} del ${fechaDDMM(anterior.fecha)}? Esto es la que quedó desactualizada.`)) return
     const { error } = await supabase.from('audiencias').delete().eq('id', anterior.id)
     if (error) { alert('No se pudo eliminar la audiencia anterior: ' + error.message); return }
     setDuplicados(prev => prev.filter(x => x !== item))
@@ -404,7 +405,7 @@ export default function GmailIntegracion({ onImportComplete }) {
                     {item.imputado && <span style={{ marginLeft:8 }}>· {item.imputado.split('|')[0]}</span>}
                   </div>
                   <div style={{ fontSize:12, color:'#059669', fontWeight:500, marginTop:4, ...f }}>
-                    📅 {item.fecha}{item.hora ? ` · 🕐 ${item.hora}` : ''}{item.tribunal ? ` · 🏛 ${item.tribunal?.substring(0,30)}` : ''}
+                    📅 {fechaDDMM(item.fecha)}{item.hora ? ` · 🕐 ${item.hora}` : ''}{item.tribunal ? ` · 🏛 ${item.tribunal?.substring(0,30)}` : ''}
                   </div>
                   {item.esPosibleCorreccion && (
                     <div style={{ fontSize:11, color:'#92400e', background:'#fff7ed', border:'1px solid #fed7aa', borderRadius:7, padding:'4px 8px', marginTop:6, fontWeight:600, ...f }}>
@@ -418,7 +419,7 @@ export default function GmailIntegracion({ onImportComplete }) {
                       dejarla ahí sin decir nada. */}
                   {item.audienciaAnterior && (
                     <div style={{ fontSize:11, color:'#9a3412', background:'#fff7ed', border:'1px solid #fdba74', borderRadius:7, padding:'6px 8px', marginTop:6, fontWeight:600, ...f, display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, flexWrap:'wrap' }}>
-                      <span>⚠ Parece reemplazar la audiencia del {item.audienciaAnterior.fecha} ({item.audienciaAnterior.tipo||'—'}, {item.audienciaAnterior.hora||'sin hora'}) — ¿eliminarla?</span>
+                      <span>⚠ Parece reemplazar la audiencia del {fechaDDMM(item.audienciaAnterior.fecha)} ({item.audienciaAnterior.tipo||'—'}, {item.audienciaAnterior.hora||'sin hora'}) — ¿eliminarla?</span>
                       <button onClick={() => eliminarAudienciaAnterior(item)}
                         style={{ background:'#dc2626', color:'#fff', border:'none', borderRadius:6, padding:'4px 10px', fontSize:10, cursor:'pointer', fontWeight:700, flexShrink:0, ...f }}>
                         Eliminar anterior
@@ -433,7 +434,7 @@ export default function GmailIntegracion({ onImportComplete }) {
                       con calma, por si el correo se leyó mal. */}
                   {item.esCorreccionAutomatica && (
                     <div style={{ fontSize:11, color:'#065f46', background:'#ecfdf5', border:'1px solid #a7f3d0', borderRadius:7, padding:'6px 8px', marginTop:6, fontWeight:600, ...f }}>
-                      ✓ CORREGIDA AUTOMÁTICAMENTE — el correo indicó que reemplazaba la audiencia del {item.corregidaDe?.fecha} ({item.corregidaDe?.tipo||'—'}, {item.corregidaDe?.hora||'sin hora'}); esa se eliminó y quedó esta con la fecha correcta. Revisa que esté bien.
+                      ✓ CORREGIDA AUTOMÁTICAMENTE — el correo indicó que reemplazaba la audiencia del {fechaDDMM(item.corregidaDe?.fecha)} ({item.corregidaDe?.tipo||'—'}, {item.corregidaDe?.hora||'sin hora'}); esa se eliminó y quedó esta con la fecha correcta. Revisa que esté bien.
                       {item.fallóBorrarAnterior && <div style={{ color:'#dc2626', marginTop:4 }}>⚠ No se pudo eliminar la anterior — revisa el Calendario, puede que haya quedado duplicada.</div>}
                     </div>
                   )}
@@ -472,10 +473,10 @@ export default function GmailIntegracion({ onImportComplete }) {
                 <div style={{ fontSize:12, color:'#64748b', ...f }}>
                   RUC <span style={{ fontFamily:'monospace', fontWeight:600, color:'#0f172a' }}>{item.ruc}</span>
                   {item.imputado && <span style={{ marginLeft:8 }}>· {item.imputado.split('|')[0]}</span>}
-                  <span style={{ marginLeft:8 }}>· Vigente: 📅 {item.fecha}{item.hora ? ` · 🕐 ${item.hora}` : ''}</span>
+                  <span style={{ marginLeft:8 }}>· Vigente: 📅 {fechaDDMM(item.fecha)}{item.hora ? ` · 🕐 ${item.hora}` : ''}</span>
                 </div>
                 <div style={{ fontSize:11, color:'#9a3412', background:'#fff7ed', border:'1px solid #fdba74', borderRadius:7, padding:'6px 8px', marginTop:6, fontWeight:600, ...f, display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, flexWrap:'wrap' }}>
-                  <span>⚠ Parece que reemplaza a la audiencia del {item.audienciaAnterior.fecha} ({item.audienciaAnterior.tipo||'—'}, {item.audienciaAnterior.hora||'sin hora'}) — ¿eliminarla?</span>
+                  <span>⚠ Parece que reemplaza a la audiencia del {fechaDDMM(item.audienciaAnterior.fecha)} ({item.audienciaAnterior.tipo||'—'}, {item.audienciaAnterior.hora||'sin hora'}) — ¿eliminarla?</span>
                   <button onClick={() => eliminarDuplicadoAnterior(item)}
                     style={{ background:'#dc2626', color:'#fff', border:'none', borderRadius:6, padding:'4px 10px', fontSize:10, cursor:'pointer', fontWeight:700, flexShrink:0, ...f }}>
                     Eliminar anterior

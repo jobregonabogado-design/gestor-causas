@@ -2,6 +2,7 @@
 // fórmula de arresto nocturno.
 import { useState } from 'react'
 import { f } from './primitives'
+import { fechaDDMM } from './utils'
 
 export const TIPOS_ABONO_DIRECTO = ['Prisión Preventiva','Internación Provisoria','Arresto Total']
 // ✅ Subconjunto que implica que la persona está privada de libertad en un
@@ -107,7 +108,7 @@ export function CautelaresPanel({ causaId, cautelares, esRPA, onGuardar, onActua
   }
 
   const eliminarCautelar = async (ct) => {
-    const motivo = window.prompt(`¿Eliminar DEFINITIVAMENTE la cautelar "${ct.tipo}" (desde ${ct.fecha_inicio})? Esta acción no se puede deshacer.\n\nIngresa el motivo de la eliminación:`)
+    const motivo = window.prompt(`¿Eliminar DEFINITIVAMENTE la cautelar "${ct.tipo}" (desde ${fechaDDMM(ct.fecha_inicio)})? Esta acción no se puede deshacer.\n\nIngresa el motivo de la eliminación:`)
     if (motivo === null || !motivo.trim()) return
     await onEliminar(ct.id, motivo.trim())
   }
@@ -223,7 +224,7 @@ export function CautelaresPanel({ causaId, cautelares, esRPA, onGuardar, onActua
                       {esSename && <span style={{fontSize:11,color:'#92400e',...f}}>· sin abono 2×1</span>}
                     </div>
                     <div style={{fontSize:11,color:'#94a3b8',marginTop:2,...f}}>
-                      Desde {ct.fecha_inicio}{ct.fecha_termino?` hasta ${ct.fecha_termino}`:''}
+                      Desde {fechaDDMM(ct.fecha_inicio)}{ct.fecha_termino?` hasta ${fechaDDMM(ct.fecha_termino)}`:''}
                       {ct.frecuencia?` · ${ct.frecuencia}`:''}
                     </div>
                   </div>
