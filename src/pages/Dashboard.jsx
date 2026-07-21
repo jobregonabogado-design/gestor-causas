@@ -595,6 +595,18 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
     condenas: { n: sumaSubestados('condena_preso','condena_libertad'), pct: pctDe(sumaSubestados('condena_preso','condena_libertad')) },
     salidasAlt: { n: sumaSubestados('scp','salida_ar'), pct: pctDe(sumaSubestados('scp','salida_ar')) },
   }
+  // 📊 A favor / en contra — mismo criterio pedido: a favor = absuelto,
+  // condena en libertad, salidas alternativas (SCP/AR) y DNP; en contra =
+  // renuncia, revocación (patrocinio y poder o de pena sustitutiva) y
+  // condena con preso. "Orden de detención" queda fuera de ambos — es un
+  // estado procesal, no un resultado del caso.
+  const nFavor = sumaSubestados('absuelto','condena_libertad','scp','salida_ar','dnp')
+  const nContra = sumaSubestados('renuncia','revocacion','revocacion_pena_sustitutiva','condena_preso')
+  const totalFavorContra = nFavor + nContra
+  const resumenFavorContra = {
+    favor: { n: nFavor, pct: totalFavorContra>0 ? Math.round((nFavor/totalFavorContra)*100) : 0 },
+    contra: { n: nContra, pct: totalFavorContra>0 ? Math.round((nContra/totalFavorContra)*100) : 0 },
+  }
   const COLORS=['#5B7CFA','#F0A868','#5BAE8C','#E0748C','#8B7FD1','#4FADC2','#D4A94E','#7FA6D6','#C77D5E','#8FA85E']
   const inp={width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}
 
@@ -1359,6 +1371,31 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                       <div style={{fontSize:11,color:'#991b1b',fontWeight:600,marginTop:4,...f}}>Condenas ({resumenRendimiento.condenas.n})</div>
                     </div>
                   </div>
+
+                  {/* 📊 A favor / en contra — a favor: absuelto, condena en
+                      libertad, salidas alternativas, DNP · en contra:
+                      renuncia, revocación (patrocinio y poder o pena
+                      sustitutiva), condena con preso. */}
+                  {totalFavorContra > 0 && (
+                    <div style={{marginBottom:24}}>
+                      <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:10,fontWeight:600,...f}}>A favor vs. en contra</div>
+                      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+                        <div style={{background:'#ecfdf5',border:'1.5px solid #a7f3d0',borderRadius:12,padding:'16px',textAlign:'center'}}>
+                          <div style={{fontSize:26,fontWeight:900,color:'#059669',letterSpacing:'-1px',...f}}>{resumenFavorContra.favor.pct}%</div>
+                          <div style={{fontSize:11,color:'#065f46',fontWeight:600,marginTop:4,...f}}>A favor ({resumenFavorContra.favor.n})</div>
+                        </div>
+                        <div style={{background:'#fef2f2',border:'1.5px solid #fecaca',borderRadius:12,padding:'16px',textAlign:'center'}}>
+                          <div style={{fontSize:26,fontWeight:900,color:'#dc2626',letterSpacing:'-1px',...f}}>{resumenFavorContra.contra.pct}%</div>
+                          <div style={{fontSize:11,color:'#991b1b',fontWeight:600,marginTop:4,...f}}>En contra ({resumenFavorContra.contra.n})</div>
+                        </div>
+                      </div>
+                      <div style={{display:'flex',background:'#F8F9FC',borderRadius:8,height:10,overflow:'hidden',marginTop:10,border:'1px solid #e2e8f0'}}>
+                        <div style={{width:`${resumenFavorContra.favor.pct}%`,background:'#a7f3d0'}}/>
+                        <div style={{width:`${resumenFavorContra.contra.pct}%`,background:'#fca5a5'}}/>
+                      </div>
+                    </div>
+                  )}
+
                   <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:10,fontWeight:600,...f}}>Detalle por subestado</div>
                   {chartResultados.map(r=>(
                     <div key={r.subestado} style={{display:'flex',alignItems:'center',gap:12,marginBottom:8}}>
