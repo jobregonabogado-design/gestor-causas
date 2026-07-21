@@ -53,6 +53,13 @@ export function CautelaresPanel({ causaId, cautelares, esRPA, onGuardar, onActua
   const [editandoId,setEditandoId] = useState(null)
   const [editForm,setEditForm] = useState({ tipo:'', fecha_inicio:'', fecha_termino:'' })
   const [motivoEdit,setMotivoEdit] = useState('')
+  // ✅ "Cerrar / cambiar" — antes pedía la fecha de término con un prompt
+  // nativo del navegador (solo un campo suelto, sin contexto). Ahora muestra
+  // "Inicio de cautelar" y "Término de cautelar" juntos, en un formulario
+  // propio — más claro y dinámico, y se puede corregir el inicio de una vez
+  // si hacía falta, sin tener que abrir aparte "✏ Editar".
+  const [cerrandoId,setCerrandoId] = useState(null)
+  const [cierreForm,setCierreForm] = useState({ fecha_inicio:'', fecha_termino:'' })
 
   // ✅ Abono total EN VIVO — SOLO cuenta Prisión Preventiva / Internación Provisoria /
   // Arresto Total (y Arresto Nocturno ya sumado explícitamente). Sujeción a SENAME
@@ -73,10 +80,17 @@ export function CautelaresPanel({ causaId, cautelares, esRPA, onGuardar, onActua
     setGuardando(false)
   }
 
-  const cerrarCautelar = async (ct) => {
-    const fecha = window.prompt(`¿Hasta qué fecha estuvo vigente "${ct.tipo}"? (formato AAAA-MM-DD)`, hoyISO)
-    if (!fecha) return
-    await onActualizar(ct.id, { fecha_termino: fecha })
+  const iniciarCierre = (ct) => {
+    setCerrandoId(ct.id)
+    setCierreForm({ fecha_inicio: ct.fecha_inicio || '', fecha_termino: hoyISO })
+  }
+
+  const guardarCierre = async (ct) => {
+    if (!cierreForm.fecha_inicio || !cierreForm.fecha_termino) return
+    const cambios = { fecha_termino: cierreForm.fecha_termino }
+    if (cierreForm.fecha_inicio !== ct.fecha_inicio) cambios.fecha_inicio = cierreForm.fecha_inicio
+    await onActualizar(ct.id, cambios)
+    setCerrandoId(null)
   }
 
   const iniciarEdicion = (ct) => {
@@ -155,9 +169,28 @@ export function CautelaresPanel({ causaId, cautelares, esRPA, onGuardar, onActua
             const diasSename = esSename ? diasEntreFechasCaut(ct.fecha_inicio, ct.fecha_termino||hoyISO) : 0
             const calcLocal = nocturnoEdit[ct.id]
             const editando = editandoId === ct.id
+            const cerrando = cerrandoId === ct.id
             return (
               <div key={ct.id} style={{padding:'10px 0', borderBottom: idx<cautelares.length-1 ? '1px solid #f1f5f9' : 'none'}}>
-                {editando ? (
+                {cerrando ? (
+                  <div style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:10,padding:10}}>
+                    <div style={{fontSize:12,fontWeight:700,color:'#991b1b',marginBottom:8,...f}}>Cerrar "{ct.tipo}"</div>
+                    <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
+                      <div style={{display:'flex',flexDirection:'column',gap:2}}>
+                        <label style={{fontSize:9,color:'#94a3b8',...f}}>Inicio de cautelar</label>
+                        <input type="date" style={{padding:'6px 8px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:12,color:'#1E293B',background:'#fff',...f}} value={cierreForm.fecha_inicio} onChange={e=>setCierreForm(p=>({...p,fecha_inicio:e.target.value}))}/>
+                      </div>
+                      <div style={{display:'flex',flexDirection:'column',gap:2}}>
+                        <label style={{fontSize:9,color:'#94a3b8',...f}}>Término de cautelar</label>
+                        <input type="date" style={{padding:'6px 8px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:12,color:'#1E293B',background:'#fff',...f}} value={cierreForm.fecha_termino} onChange={e=>setCierreForm(p=>({...p,fecha_termino:e.target.value}))}/>
+                      </div>
+                    </div>
+                    <div style={{display:'flex',gap:8,marginTop:8}}>
+                      <button onClick={()=>guardarCierre(ct)} disabled={!cierreForm.fecha_inicio||!cierreForm.fecha_termino} style={{background:'#dc2626',color:'#fff',border:'none',borderRadius:7,padding:'7px 14px',fontSize:12,cursor:'pointer',fontWeight:600,...f}}>✓ Cerrar cautelar</button>
+                      <button onClick={()=>setCerrandoId(null)} style={{background:'#fff',border:'1.5px solid #e2e8f0',borderRadius:7,padding:'7px 12px',fontSize:12,cursor:'pointer',...f}}>✗ Cancelar</button>
+                    </div>
+                  </div>
+                ) : editando ? (
                   <div style={{background:'#F8F9FC',border:'1px solid #e2e8f0',borderRadius:10,padding:10}}>
                     <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
                       <select style={{flex:'1 1 200px',minWidth:160,padding:'7px 9px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:12,color:'#1E293B',background:'#fff',...f}} value={editForm.tipo} onChange={e=>setEditForm(p=>({...p,tipo:e.target.value}))}>
@@ -195,7 +228,7 @@ export function CautelaresPanel({ causaId, cautelares, esRPA, onGuardar, onActua
                     </div>
                   </div>
                   <div style={{display:'flex',gap:10,flexShrink:0,alignItems:'center'}}>
-                    {vigente && <button onClick={()=>cerrarCautelar(ct)} style={{fontSize:11,color:'#dc2626',background:'transparent',border:'none',cursor:'pointer',fontWeight:600,...f}}>Cerrar / cambiar</button>}
+                    {vigente && <button onClick={()=>iniciarCierre(ct)} style={{fontSize:11,color:'#dc2626',background:'transparent',border:'none',cursor:'pointer',fontWeight:600,...f}}>Cerrar / cambiar</button>}
                     <button onClick={()=>iniciarEdicion(ct)} style={{fontSize:11,color:'#2563eb',background:'transparent',border:'none',cursor:'pointer',fontWeight:600,...f}}>✏ Editar</button>
                     {/* Eliminar de forma definitiva — solo el titular, para no acumular
                         registros erróneos sueltos sin perder el historial por defecto. */}
