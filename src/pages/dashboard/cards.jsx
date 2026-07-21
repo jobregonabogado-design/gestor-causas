@@ -150,40 +150,46 @@ export function ImputadoCard({ imp, idx, totalImputados, cautelares, esTitular, 
 
   useEffect(() => { cargarCausasAsociadas(imp.rut) }, [imp.rut, causaId])
 
+  // ✅ Sincronización COMPLETA y en AMBOS sentidos al guardar el RUT — antes
+  // solo "rellenaba" los campos vacíos de esta tarjeta con datos de otra
+  // causa, así que si el RUT se agregaba DESPUÉS de corregir el nombre en
+  // una causa, esa corrección nunca llegaba a las demás (dependía del orden
+  // en que se editara cada cosa). Ahora, cada vez que se guarda el RUT: por
+  // cada campo (nombre, nacionalidad, domicilio, fecha de nacimiento, otros
+  // antecedentes) se busca el valor MÁS COMPLETO (el más largo) entre TODAS
+  // las causas con ese RUT, y se pareja en todas — sin importar en cuál se
+  // haya escrito ni en qué orden.
   const buscarPorRut = async (rut) => {
     if (!rut || rut.length < 6) return
     const rutNorm = normRut(rut)
     const { data, error } = await supabase.from('imputados').select('*').limit(500)
     if (error || !data || data.length === 0) return
-    // Filtrar todos los que tienen ese RUT
     const coincidencias = data.filter(d => d.rut && normRut(d.rut) === rutNorm)
     if (coincidencias.length === 0) return
-    // Tomar el más completo (más campos llenos)
     const campos = ['nombre','nacionalidad','domicilio','fecha_nacimiento','otros_antecedentes']
-    const masCompleto = coincidencias.reduce((mejor, actual) => {
-      const puntajeMejor = campos.filter(c => mejor[c] && mejor[c].trim()).length
-      const puntajeActual = campos.filter(c => actual[c] && actual[c].trim()).length
-      return puntajeActual > puntajeMejor ? actual : mejor
-    })
-    // Rellenar campos vacíos con los datos más completos
+    const mejorValor = {}
     for (const campo of campos) {
-      if (masCompleto[campo] && masCompleto[campo].trim() && (!imp[campo] || imp[campo].trim() === '')) {
-        onUpdate(campo, masCompleto[campo])
+      let mejor = ''
+      for (const c of coincidencias) {
+        const val = (c[campo] || '').trim()
+        if (val.length > mejor.length) mejor = val
       }
+      if (mejor) mejorValor[campo] = mejor
     }
-  }
-
-  const sincronizarRutEnTodasLasCausas = async (campo, valor, rut) => {
-    if (!rut || rut.length < 6) return
-    const rutNorm = normRut(rut)
-    // Obtener todos los imputados con ese RUT
-    const { data } = await supabase.from('imputados').select('id, rut').limit(500)
-    if (!data) return
-    const mismoRut = data.filter(d => d.rut && normRut(d.rut) === rutNorm && d.id !== imp.id)
-    // Actualizar en paralelo
-    await Promise.all(mismoRut.map(d =>
-      supabase.from('imputados').update({ [campo]: valor }).eq('id', d.id)
-    ))
+    await Promise.all(coincidencias.map(async c => {
+      const cambios = {}
+      for (const campo of campos) {
+        if (mejorValor[campo] && (c[campo] || '').trim() !== mejorValor[campo]) cambios[campo] = mejorValor[campo]
+      }
+      if (Object.keys(cambios).length === 0) return
+      if (c.id === imp.id) {
+        // La tarjeta actual: pasa por onUpdate para que la pantalla se
+        // actualice al toque (y de paso guarda en la base igual que siempre).
+        for (const campo of Object.keys(cambios)) onUpdate(campo, cambios[campo])
+      } else {
+        await supabase.from('imputados').update(cambios).eq('id', c.id)
+      }
+    }))
   }
 
   const Field2 = ({ label, field }) => (
