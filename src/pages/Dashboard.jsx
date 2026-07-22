@@ -624,7 +624,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
   // renuncia, revocación (patrocinio y poder o de pena sustitutiva) y
   // condena con preso. "Orden de detención" queda fuera de ambos — es un
   // estado procesal, no un resultado del caso.
-  const nFavor = sumaSubestados('absuelto','condena_libertad','scp','salida_ar','dnp')
+  const nFavor = sumaSubestados('absuelto','condena_libertad','scp','salida_ar','dnp','sobreseimiento')
   const nContra = sumaSubestados('renuncia','revocacion','revocacion_pena_sustitutiva','condena_preso')
   const totalFavorContra = nFavor + nContra
   const resumenFavorContra = {

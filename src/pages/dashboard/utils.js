@@ -21,15 +21,19 @@ export const estadoConfig = {
   dnp:               { label:'DNP',                      color:'#475569', bg:'#F8F9FC', border:'#e2e8f0' },
   scp:               { label:'SALIDA ALTERNATIVA SCP',  color:'#065f46', bg:'#ecfdf5', border:'#a7f3d0' },
   salida_ar:         { label:'SALIDA ALTERNATIVA AR',   color:'#065f46', bg:'#ecfdf5', border:'#a7f3d0' },
-  // Subestado compartido — puede darse tanto en causas Vigentes como Terminadas
+  // Subestados compartidos — pueden darse tanto en causas Vigentes como Terminadas
   orden_detencion:   { label:'ORDEN DE DETENCIÓN (OD)', color:'#c2410c', bg:'#fff7ed', border:'#fdba74' },
+  // ✅ NUEVO: sobreseimiento puede ser temporal (causa sigue vigente, solo
+  // suspendida) o definitivo (termina la causa) — por eso, a pedido de
+  // Joaquín, queda disponible en ambos estados igual que orden_detencion.
+  sobreseimiento:    { label:'SOBRESEIMIENTO',          color:'#065f46', bg:'#ecfdf5', border:'#a7f3d0' },
   // Estados principales
   terminada:         { label:'TERMINADA',               color:'#475569', bg:'#F8F9FC', border:'#e2e8f0' },
   vigente:           { label:'VIGENTE',                 color:'#065f46', bg:'#ecfdf5', border:'#a7f3d0' },
 }
 
-export const SUBESTADOS_VIGENTE = ['plazo_vigente','proximo','vencido','apjo','juicio_oral','cumpliendo_condena','orden_detencion','revocacion_pena_sustitutiva']
-export const SUBESTADOS_TERMINADA = ['renuncia','revocacion','revocacion_pena_sustitutiva','condena_preso','condena_libertad','absuelto','dnp','scp','salida_ar','orden_detencion']
+export const SUBESTADOS_VIGENTE = ['plazo_vigente','proximo','vencido','apjo','juicio_oral','cumpliendo_condena','orden_detencion','revocacion_pena_sustitutiva','sobreseimiento']
+export const SUBESTADOS_TERMINADA = ['renuncia','revocacion','revocacion_pena_sustitutiva','condena_preso','condena_libertad','absuelto','dnp','scp','salida_ar','orden_detencion','sobreseimiento']
 
 export function getBadgeConfig(estado, subestado) {
   if (subestado && estadoConfig[subestado]) return estadoConfig[subestado]
