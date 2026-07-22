@@ -1,7 +1,7 @@
 // Componentes de UI pequeños y reutilizables del Dashboard: selector con
 // búsqueda, chips de delitos, badges de estado y el campo editable base.
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { estadoConfig, getBadgeConfig, SUBESTADOS_VIGENTE, SUBESTADOS_TERMINADA, TRIBUNALES_CHILE, DELITOS_CATALOGO, CENTROS_PENALES, normalizarBusqueda } from './utils'
+import { estadoConfig, getBadgeConfig, SUBESTADOS_VIGENTE, SUBESTADOS_TERMINADA, TRIBUNALES_CHILE, DELITOS_CATALOGO, CENTROS_PENALES, normalizarBusqueda, GRADOS_DELITO, parsearDelito, formatearDelito } from './utils'
 
 export function SearchableSelect({ value, onChange, options, placeholder, isDelito }) {
   const [open, setOpen] = useState(false)
@@ -123,20 +123,72 @@ export function SearchableSelect({ value, onChange, options, placeholder, isDeli
 
 
 // ─── COMPONENTE DELITOS MÚLTIPLES (chips + agregar más) ──────────────────────
+// Colores por grado — Consumado neutro (es el default, la mayoría de los
+// casos), Frustrado y Tentado en tonos que los distinguen de un vistazo
+// (importan para la pena: la rebajan respecto del delito consumado).
+const GRADO_COLOR = {
+  CONSUMADO: { color:'#991b1b', bg:'#fef2f2', border:'#fecaca' },
+  FRUSTRADO: { color:'#92400e', bg:'#fff7ed', border:'#fed7aa' },
+  TENTADO:   { color:'#7c3aed', bg:'#faf5ff', border:'#ddd6fe' },
+}
+
+// Selector de grado de un delito — clic para desplegar las 3 opciones.
+// Se usa tanto al agregar un delito nuevo como para cambiarlo en uno ya
+// guardado, siempre en el mismo lugar (junto al nombre del delito).
+function GradoDelitoTag({ grado, onChange }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+  useEffect(() => {
+    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [])
+  const gc = GRADO_COLOR[grado] || GRADO_COLOR.CONSUMADO
+  const f = { fontFamily:"'Manrope','Inter',sans-serif" }
+  return (
+    <div ref={ref} style={{ position:'relative', flexShrink:0 }}>
+      <span onClick={(e)=>{e.stopPropagation();setOpen(v=>!v)}}
+        style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', letterSpacing:0.5, color:gc.color, background:gc.bg, border:`1px solid ${gc.border}`, borderRadius:20, padding:'2px 7px', cursor:'pointer', whiteSpace:'nowrap', ...f }}>
+        {grado}▾
+      </span>
+      {open && (
+        <div style={{ position:'absolute', top:'100%', left:0, zIndex:200, background:'#fff', border:'1.5px solid #e2e8f0', borderRadius:10, boxShadow:'0 8px 24px rgba(15,23,42,0.14)', marginTop:4, overflow:'hidden', minWidth:110 }}>
+          {GRADOS_DELITO.map(g => (
+            <div key={g} onClick={(e)=>{e.stopPropagation();onChange(g);setOpen(false)}}
+              style={{ padding:'7px 12px', fontSize:11, fontWeight: g===grado?700:400, color: g===grado?GRADO_COLOR[g].color:'#374151', background: g===grado?GRADO_COLOR[g].bg:'transparent', cursor:'pointer', ...f }}>
+              {g}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function DelitosChips({ value, onChange, options }) {
   const [adding, setAdding] = useState(false)
   const [temp, setTemp] = useState('')
-  const lista = (value || '').split('|').map(s => s.trim()).filter(Boolean)
+  // ✅ Cada delito puede tener su propio grado (Consumado/Frustrado/Tentado)
+  // — se guarda como sufijo dentro del mismo texto (ver parsearDelito en
+  // utils.js), así sigue funcionando igual que antes en todo lo demás
+  // (búsqueda, filtros, estadísticas) sin necesidad de una columna nueva.
+  const lista = (value || '').split('|').map(s => s.trim()).filter(Boolean).map(parsearDelito)
   const f = { fontFamily:"'Manrope','Inter',sans-serif" }
 
-  const agregar = (nuevo) => {
-    if (!nuevo || lista.includes(nuevo)) { setAdding(false); setTemp(''); return }
-    onChange([...lista, nuevo].join('|'))
+  const guardarLista = (nuevaLista) => {
+    onChange(nuevaLista.map(d => formatearDelito(d.nombre, d.grado)).join('|'))
+  }
+  const agregar = (nombre) => {
+    if (!nombre || lista.some(d => d.nombre === nombre)) { setAdding(false); setTemp(''); return }
+    guardarLista([...lista, { nombre, grado: 'CONSUMADO' }])
     setAdding(false)
     setTemp('')
   }
   const quitar = (idx) => {
-    onChange(lista.filter((_, i) => i !== idx).join('|'))
+    guardarLista(lista.filter((_, i) => i !== idx))
+  }
+  const cambiarGrado = (idx, grado) => {
+    guardarLista(lista.map((d, i) => i === idx ? { ...d, grado } : d))
   }
 
   return (
@@ -144,8 +196,9 @@ export function DelitosChips({ value, onChange, options }) {
       {lista.length > 0 && (
         <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginBottom:10 }}>
           {lista.map((d, i) => (
-            <div key={i} title={d} style={{ display:'flex', alignItems:'center', gap:7, background:'#fef2f2', border:'1px solid #fecaca', borderRadius:8, padding:'5px 9px', maxWidth:'100%', minWidth:0 }}>
-              <span style={{ fontSize:11, color:'#991b1b', fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:280, ...f }}>{d}</span>
+            <div key={i} title={d.nombre} style={{ display:'flex', alignItems:'center', gap:7, background:'#fef2f2', border:'1px solid #fecaca', borderRadius:8, padding:'5px 9px', maxWidth:'100%', minWidth:0 }}>
+              <span style={{ fontSize:11, color:'#991b1b', fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:220, ...f }}>{d.nombre}</span>
+              <GradoDelitoTag grado={d.grado} onChange={(g) => cambiarGrado(i, g)} />
               <button onClick={() => quitar(i)} style={{ background:'transparent', border:'none', cursor:'pointer', color:'#fca5a5', fontSize:12, padding:0, flexShrink:0 }}>✕</button>
             </div>
           ))}

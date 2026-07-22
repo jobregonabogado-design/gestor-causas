@@ -1318,4 +1318,33 @@ export function normalizarBusqueda(texto) {
     .toLowerCase()
 }
 
+// ─── GRADO DE DESARROLLO DEL DELITO (Consumado / Frustrado / Tentado) ───────
+// Cada delito puede tener su propio grado — un imputado puede tener 3
+// delitos y cada uno estar en una etapa distinta (importa para la pena: la
+// tentativa y la frustración la rebajan respecto del delito consumado). Se
+// guarda como sufijo " (FRUSTRADO)" / " (TENTADO)" dentro del mismo texto
+// del delito — así no hace falta ninguna columna ni tabla nueva, y sigue
+// funcionando con el campo "delito"/"delitos" (texto separado por "|") que
+// ya usa toda la app. "Consumado" es el valor por defecto y NO se le agrega
+// sufijo (así los datos ya cargados, sin grado especificado, no cambian).
+export const GRADOS_DELITO = ['CONSUMADO', 'FRUSTRADO', 'TENTADO']
+
+// "ROBO CON INTIMIDACIÓN (FRUSTRADO)" → { nombre:"ROBO CON INTIMIDACIÓN", grado:"FRUSTRADO" }
+// "ROBO CON INTIMIDACIÓN" (sin sufijo) → { nombre:"ROBO CON INTIMIDACIÓN", grado:"CONSUMADO" }
+export function parsearDelito(d) {
+  const texto = (d || '').trim()
+  const m = texto.match(/^(.*?)\s*\((CONSUMADO|FRUSTRADO|TENTADO)\)$/i)
+  if (m) return { nombre: m[1].trim(), grado: m[2].toUpperCase() }
+  return { nombre: texto, grado: 'CONSUMADO' }
+}
+
+// Reconstruye el texto guardado — omite el sufijo si es "Consumado" (el
+// caso más común) para no ensuciar los delitos que no lo necesitan.
+export function formatearDelito(nombre, grado) {
+  const n = (nombre || '').trim()
+  if (!n) return ''
+  if (!grado || grado === 'CONSUMADO') return n
+  return `${n} (${grado})`
+}
+
 

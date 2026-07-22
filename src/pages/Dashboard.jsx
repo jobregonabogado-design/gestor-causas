@@ -17,7 +17,7 @@ import { HonorariosTab } from './dashboard/honorarios'
 import { TeoriaDelCaso } from './dashboard/teoria'
 import { BotonResumenImprimible } from './dashboard/resumen'
 import { PlazoCalculador } from './dashboard/plazo'
-import { calcularRegimenAlMomento, calcularVencimiento, parseFechaCL, diasRestantes, calcularSubestado, calcularEdadActual, TRIBUNAL_RPA, normRut, normalizarBusqueda, formatearRut, fechaDDMM } from './dashboard/utils'
+import { calcularRegimenAlMomento, calcularVencimiento, parseFechaCL, diasRestantes, calcularSubestado, calcularEdadActual, TRIBUNAL_RPA, normRut, normalizarBusqueda, formatearRut, fechaDDMM, parsearDelito } from './dashboard/utils'
 import { ImputadoDatosCard } from './dashboard/imputado-datos'
 import { CautelaresPanel, TIPOS_ABONO_DIRECTO, TIPOS_DETENCION_PENAL, CAUTELAR_NOCTURNO, CAUTELAR_SENAME, TIPOS_CAUTELARES_TODAS, diasEntreFechasCaut } from './dashboard/cautelares'
 
@@ -563,7 +563,10 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
       // solo muestra las terminadas que TODAVÍA no tienen subestado. Apenas se le pone
       // un subestado a una causa, desaparece de aquí y solo aparece en su subestado específico.
       const estadoMatch=!filterEstado||(filterEstado==='vigente'?c.estado==='vigente':filterEstado==='terminada'?(c.estado==='terminada'&&!c.subestado):filterEstado==='top'?(c.subestado==='juicio_oral'||c.tiene_top===true):c.subestado===filterEstado)
-      const delitoMatch=!filterDelito||(c.delito||'').split('|').map(d=>d.trim()).includes(filterDelito)
+      // ✅ Se compara solo el nombre del delito (sin el sufijo de grado, ej.
+      // "(FRUSTRADO)") — así filtrar por "Robo" encuentra tanto el consumado
+      // como el frustrado o tentado, sin importar la etapa en que quedó.
+      const delitoMatch=!filterDelito||(c.delito||'').split('|').map(d=>parsearDelito(d).nombre).includes(filterDelito)
       // ✅ Régimen: RPA/Adulto = al menos un imputado con ese régimen; Mixta = tiene ambos
       const regs = regimenesPorCausa[c.id]
       const regimenMatch=!filterRegimen||(regs && (filterRegimen==='MIXTO' ? (regs.has('RPA')&&regs.has('ADULTO')) : regs.has(filterRegimen)))
@@ -585,7 +588,10 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
   // se guarda el nombre completo del delito (no truncado) para poder filtrar con precisión al hacer clic.
   const chartDelitos=useMemo(()=>{
     const map={}
-    filtered.forEach(c=>{(c.delito||'').split('|').map(d=>d.trim()).filter(Boolean).forEach(d=>{ if(!map[d]) map[d]=0; map[d]++ })})
+    // ✅ Se agrupa por nombre del delito sin el grado (Consumado/Frustrado/
+    // Tentado) — si no, "Robo" y "Robo (Frustrado)" saldrían como 2 barras
+    // separadas en vez de sumarse en el mismo delito.
+    filtered.forEach(c=>{(c.delito||'').split('|').map(d=>parsearDelito(d).nombre).filter(Boolean).forEach(d=>{ if(!map[d]) map[d]=0; map[d]++ })})
     // En celular se resume a los 6 más frecuentes para que las barras no queden apretadas
     return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,isMobile?6:12).map(([nombreCompleto,value])=>({name:nombreCompleto.substring(0,isMobile?16:28),nombreCompleto,value}))
   },[filtered,isMobile])
