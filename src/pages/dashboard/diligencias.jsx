@@ -107,7 +107,14 @@ export function parsearComprobanteFiscalia(texto) {
   // (solicitante o representado) tiene 7-8 — así no se confunden entre sí.
   const candidatosRuc = (texto.match(/\b(\d{6,10}-[\dkK])\b/gi) || []).sort((a, b) => b.length - a.length)
   const ruc = candidatosRuc[0] || buscar(/RUC\s+(\d{6,10}-[\dkK])/i)
-  const fechaIngresoRaw = buscar(/Fecha Ingreso\s+(\d{2}\/\d{2}\/\d{4})/i)
+  // ✅ FIX: por el mismo motivo que el RUC, "Fecha Ingreso" nunca queda pegada
+  // a su valor real (ej. "05/02/2026 18:30:19") — antes esto SIEMPRE quedaba
+  // vacío, y como el formulario ya traía la fecha de HOY puesta por defecto,
+  // se guardaba la fecha de hoy en vez de la fecha real de la solicitud, sin
+  // ningún aviso. La Fecha de Ingreso es la ÚNICA fecha del comprobante que
+  // viene con hora pegada (a diferencia de la Fecha de Denuncia, que es solo
+  // fecha) — se usa eso para encontrarla sin depender del orden del texto.
+  const fechaIngresoRaw = buscar(/Fecha Ingreso\s+(\d{2}\/\d{2}\/\d{4})/i) || buscar(/(\d{2}\/\d{2}\/\d{4})\s+\d{2}:\d{2}:\d{2}/)
   const fiscal = buscar(/Fiscal Asignado\s+([A-ZÁÉÍÓÚÑ ]+?)(?=\s+Representado|\s+Tipo Abogado|$)/i)
   const representado = buscar(/Representado\s+([A-ZÁÉÍÓÚÑ ]+?)(?=\s+Tipo Abogado|$)/i)
   const nombreCaso = buscar(/Nombre Caso\s+([^\n]+?)(?=\s+Fiscalia|$)/i)
