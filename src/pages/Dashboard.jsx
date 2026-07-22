@@ -529,28 +529,6 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
     setSaving(false)
   }
 
-  // ✅ NUEVO: eliminar una causa completa — no existía forma de hacerlo desde
-  // la app (solo se podían borrar registros sueltos como audiencias o
-  // cautelares). Es irreversible y borra TODO lo asociado (imputados,
-  // audiencias, diligencias, documentos, honorarios, etc. — todas las
-  // tablas tienen ON DELETE CASCADE), así que además de ser exclusivo del
-  // titular, pide escribir el RUC exacto para confirmar — no basta un
-  // simple "sí" como en otras eliminaciones, porque acá se pierde la causa
-  // completa, no un solo dato.
-  const eliminarCausa = async (c) => {
-    if (!esTitular) return
-    const escrito = window.prompt(`Esto elimina DEFINITIVAMENTE la causa RUC ${c.ruc} y TODO lo asociado (imputados, audiencias, diligencias, documentos, honorarios, etc.) — no se puede deshacer.\n\nPara confirmar, escribe exactamente el RUC "${c.ruc}":`)
-    if (escrito === null) return
-    if (escrito.trim() !== c.ruc) { alert('El RUC escrito no coincide — no se eliminó nada.'); return }
-    const motivo = window.prompt('Motivo de la eliminación (queda registrado en el historial de actividad):')
-    if (motivo === null || !motivo.trim()) { alert('Debes indicar un motivo — no se eliminó nada.'); return }
-    const { error } = await supabase.from('causas').delete().eq('id', c.id)
-    if (error) { alert('No se pudo eliminar la causa: ' + error.message); return }
-    setCausas(prev => prev.filter(x => x.id !== c.id))
-    setView('list')
-    if (registrarActividad) registrarActividad('accion', `Eliminó definitivamente la causa RUC ${c.ruc} (${(c.imputado||'').replace(/\|/g,' / ')}). Motivo: ${motivo.trim()}`)
-  }
-
   const handleSort=col=>{if(sortCol===col)setSortDir(d=>d==='asc'?'desc':'asc');else{setSortCol(col);setSortDir('asc')}}
   const tribunales=useMemo(()=>[...new Set(causas.map(c=>c.tribunal).filter(Boolean))].sort(),[causas])
   const filtered=useMemo(()=>{
@@ -648,19 +626,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
         <div style={{maxWidth:1060,margin:'0 auto',padding:'24px 28px'}}>
           <div className="no-imprimir" style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20,flexWrap:'wrap',gap:10}}>
             <button className="btn-secondary" onClick={()=>setView('list')} style={{fontSize:13,border:'none',borderRadius:14,boxShadow:'0 1px 2px rgba(15,23,42,0.06)'}}>← Volver</button>
-            <div style={{display:'flex',gap:8,alignItems:'center'}}>
-              {/* ✅ Solo visible en las causas importadas del Excel (las que tienen
-                  "Excel fila..." en Carpeta y referencia) — a pedido de Joaquín, no
-                  quiere este botón disponible siempre en todas las causas, solo
-                  mientras revisa esta tanda para sacar las que no sirven. */}
-              {esTitular && (c.carpeta_ref||'').startsWith('Excel fila') && (
-                <button onClick={()=>eliminarCausa(c)} title="Elimina la causa completa y todo lo asociado — irreversible"
-                  style={{fontSize:12,fontWeight:600,background:'#fef2f2',color:'#dc2626',border:'1px solid #fecaca',borderRadius:14,padding:'9px 16px',cursor:'pointer',...f}}>
-                  🗑 Eliminar causa
-                </button>
-              )}
-              <BotonResumenImprimible causa={c} imputados={imputados} audiencias={audiencias} aumentos={aumentos} cautelares={cautelares} esTitular={esTitular}/>
-            </div>
+            <BotonResumenImprimible causa={c} imputados={imputados} audiencias={audiencias} aumentos={aumentos} cautelares={cautelares} esTitular={esTitular}/>
           </div>
           <div style={{background:'#fff',borderRadius:20,boxShadow:'0 1px 3px rgba(15,23,42,0.06)'}}>
           <div style={{padding:'28px 28px 20px',borderRadius:'20px 20px 0 0'}}>
@@ -730,19 +696,15 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                     <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,fontWeight:600,...f}}>Imputado(s)</div>
                     <button className="btn-secondary" style={{fontSize:11,padding:'5px 12px',flexShrink:0}} onClick={()=>{setEditField('nuevo_imputado');setEditValue('')}}>+ Agregar imputado</button>
                   </div>
-                  {editField==='campo_imputado'?(
-                    <div style={{display:'flex',gap:6,alignItems:'flex-start'}}>
-                      <input style={{width:'100%',padding:'11px 14px',border:'none',borderRadius:14,fontSize:13,color:'#1E293B',background:'#fff',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}} value={editValue} onChange={e=>setEditValue(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')updateField('imputado',editValue);if(e.key==='Escape')setEditField(null)}} autoFocus/>
-                      <button className="btn-primary" style={{padding:'8px 14px',fontSize:12,flexShrink:0,borderRadius:14}} onClick={()=>updateField('imputado',editValue)}>✓</button>
-                      <button className="btn-secondary" style={{padding:'8px 12px',fontSize:12,flexShrink:0,border:'none',borderRadius:14,boxShadow:'0 1px 2px rgba(15,23,42,0.06)'}} onClick={()=>setEditField(null)}>✗</button>
-                    </div>
-                  ):(
-                    <div className="fld" onClick={()=>{setEditField('campo_imputado');setEditValue(c.imputado||'')}}
-                      style={{padding:'11px 14px',border:'none',borderRadius:14,fontSize:13,color:c.imputado?'#1E293B':'#94a3b8',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}}>
-                      <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1}}>{c.imputado?c.imputado.replace(/\|/g,' / '):'Clic para agregar...'}</span>
-                      <span style={{fontSize:11,color:'#94a3b8',flexShrink:0,marginLeft:8}}>✏</span>
-                    </div>
-                  )}
+                  {/* ✅ FIX: antes se podía escribir acá directo, aparte del nombre real
+                      que se edita en la pestaña Imputado — eso los podía desincronizar.
+                      Este campo es solo un agregado (une los nombres de todos los
+                      imputados con " / ") que ya se actualiza solo apenas cambias el
+                      nombre en la pestaña Imputado — acá solo se muestra, no se edita. */}
+                  <div title="Se edita desde la pestaña Imputado — acá solo se muestra"
+                    style={{padding:'11px 14px',border:'none',borderRadius:14,fontSize:13,color:c.imputado?'#1E293B':'#94a3b8',minHeight:38,display:'flex',alignItems:'center',background:'#F8F9FC',...f}}>
+                    <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1}}>{c.imputado?c.imputado.replace(/\|/g,' / '):'Sin imputado registrado'}</span>
+                  </div>
                   {editField==='nuevo_imputado' && (
                     <div style={{display:'flex',gap:8,marginTop:8}}>
                       <input style={{flex:1,padding:'9px 12px',border:'1.5px solid #2563eb',borderRadius:8,fontSize:13,...f}} placeholder="Nombre del nuevo imputado" value={editValue} onChange={e=>setEditValue(e.target.value)} onKeyDown={async e=>{if(e.key==='Enter'){updateField('imputado',(c.imputado||'')+'|'+editValue);const{data}=await supabase.from('imputados').insert({causa_id:c.id,nombre:editValue}).select().single();if(data)setImputados(prev=>[...prev,data]);setEditField(null)}if(e.key==='Escape')setEditField(null)}} autoFocus/>
@@ -857,16 +819,6 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                     Datos de la causa
                     <span className="seccion-chevron" style={{fontSize:12}}>▾</span>
                   </summary>
-
-                  {/* ✅ NUEVO: el RUC nunca se pudo editar después de crear la causa —
-                      hacía falta para corregir los "SIN-RUC-Fxxx" provisorios que se
-                      usaron al importar el Excel. Solo el titular puede tocarlo (es el
-                      identificador principal, usado para el enlace con Gmail y el
-                      seguimiento de la causa) y pide confirmar antes de guardar. */}
-                  <Field label="RUC" value={c.ruc} editable={esTitular} full fieldKey="ruc" editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>{
-                    if (!window.confirm(`¿Cambiar el RUC de esta causa de "${c.ruc}" a "${editValue}"?\n\nEs el identificador principal — revisa que esté bien escrito antes de confirmar.`)) return
-                    updateField('ruc',editValue)
-                  }}/>
 
                   <Field label="Tribunal" value={c.tribunal} editable full fieldKey="tribunal" editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField('tribunal',editValue)}/>
 
