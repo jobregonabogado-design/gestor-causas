@@ -196,10 +196,10 @@ export function DelitosChips({ value, onChange, options }) {
       {lista.length > 0 && (
         <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginBottom:10 }}>
           {lista.map((d, i) => (
-            <div key={i} title={d.nombre} style={{ display:'flex', alignItems:'center', gap:7, background:'#fef2f2', border:'1px solid #fecaca', borderRadius:8, padding:'5px 9px', maxWidth:'100%', minWidth:0 }}>
-              <span style={{ fontSize:11, color:'#991b1b', fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:220, ...f }}>{d.nombre}</span>
+            <div key={i} title={d.nombre} style={{ display:'flex', alignItems:'center', gap:7, background:'#fff', border:'1px solid #e2e8f0', borderRadius:8, padding:'5px 9px', maxWidth:'100%', minWidth:0 }}>
+              <span style={{ fontSize:11, color:'#1E293B', fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:220, ...f }}>{d.nombre}</span>
               <GradoDelitoTag grado={d.grado} onChange={(g) => cambiarGrado(i, g)} />
-              <button onClick={() => quitar(i)} style={{ background:'transparent', border:'none', cursor:'pointer', color:'#fca5a5', fontSize:12, padding:0, flexShrink:0 }}>✕</button>
+              <button onClick={() => quitar(i)} style={{ background:'transparent', border:'none', cursor:'pointer', color:'#94a3b8', fontSize:12, padding:0, flexShrink:0 }}>✕</button>
             </div>
           ))}
         </div>
