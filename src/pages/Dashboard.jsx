@@ -1299,7 +1299,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
               />
             )}
             {esTitular && activeTab==='honorarios'&&(
-              <HonorariosTab causaId={c.id} ruc={c.ruc} email={session?.user?.email||''} registrarActividad={registrarActividad} onAccion={()=>marcarAccion(c.id)} esTitular={esTitular} isMobile={isMobile}/>
+              <HonorariosTab causaId={c.id} ruc={c.ruc} imputado={c.imputado} email={session?.user?.email||''} registrarActividad={registrarActividad} onAccion={()=>marcarAccion(c.id)} esTitular={esTitular} isMobile={isMobile}/>
             )}
           </div>
           </div>
