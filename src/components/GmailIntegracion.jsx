@@ -64,8 +64,20 @@ export default function GmailIntegracion({ onImportComplete }) {
       // 2. Obtener notificaciones de Gmail — solo leer correos de causas vigentes
       const todasNotificaciones = await fetchNotificacionesPJUD()
 
-      // Filtrar: solo procesar correos cuyo RUC esté en causas vigentes
+      // ✅ NUEVO: correos que Joaquín ya revisó y resolvió antes (eliminó una
+      // audiencia agregada por error, o eliminó la anterior/desactualizada
+      // tras confirmar la corrección) — se guardan por el id del correo de
+      // Gmail para que NUNCA más se vuelvan a mostrar como inconsistencia,
+      // aunque "Revisar correos" lo vuelva a leer una y otra vez.
+      const { data: descartadosData } = await supabase
+        .from('gmail_correos_descartados')
+        .select('gmail_message_id')
+      const correosDescartados = new Set((descartadosData || []).map(d => d.gmail_message_id))
+
+      // Filtrar: solo procesar correos cuyo RUC esté en causas vigentes y que
+      // no hayan sido descartados ya en una revisión anterior.
       const notificaciones = todasNotificaciones.filter(n => {
+        if (n.id && correosDescartados.has(n.id)) return false
         const rucNorm = n.ruc?.replace(/[\s\-]/g, '').toLowerCase()
         return rucsVigentes.has(rucNorm)
       })
@@ -240,6 +252,7 @@ export default function GmailIntegracion({ onImportComplete }) {
             )
             nuevosDuplicados.push({
               id: actual?.id || null,
+              correoId: n.id || null,
               ruc: rucLimpio, imputado: causa.imputado, tipo: n.audiencia.tipo,
               fecha: n.audiencia.fecha, hora: n.audiencia.hora,
               tribunal: n.audiencia.tribunal || causa.tribunal, asunto: n.asunto, origen: n.tipo,
@@ -297,6 +310,7 @@ export default function GmailIntegracion({ onImportComplete }) {
 
           nuevosAgregados.push({
             id: data.id,
+            correoId: n.id || null,
             ruc: rucLimpio,
             imputado: causa.imputado,
             tipo: n.audiencia.tipo,
@@ -355,6 +369,21 @@ export default function GmailIntegracion({ onImportComplete }) {
     if (onImportComplete) onImportComplete()
   }
 
+  // ✅ NUEVO: una vez que Joaquín revisó una inconsistencia y decidió qué
+  // hacer con ella (eliminar la agregada por error, o eliminar la anterior
+  // ya corregida), se guarda el id del correo de Gmail que la originó — así
+  // "Revisar correos" nunca más la vuelve a mostrar, aunque el correo siga
+  // apareciendo en la búsqueda cada vez que se actualiza. Si el correo no
+  // trae id (correos antiguos, de antes de este arreglo) simplemente no se
+  // guarda nada — no hay como recordarlo, pero tampoco rompe nada.
+  const descartarCorreo = async (correoId) => {
+    if (!correoId) return
+    await supabase.from('gmail_correos_descartados').upsert(
+      { gmail_message_id: correoId },
+      { onConflict: 'gmail_message_id', ignoreDuplicates: true }
+    )
+  }
+
   // ✅ FIX: antes no se revisaba si el borrado fallaba (ej. permisos) — la
   // tarjeta desaparecía de la pantalla igual, aunque el registro siguiera
   // guardado en la base de datos (por eso seguía apareciendo en Calendario).
@@ -362,6 +391,7 @@ export default function GmailIntegracion({ onImportComplete }) {
     if (!window.confirm(`¿Eliminar audiencia ${item.tipo} del ${fechaDDMM(item.fecha)}?`)) return
     const { error } = await supabase.from('audiencias').delete().eq('id', item.id)
     if (error) { alert('No se pudo eliminar la audiencia: ' + error.message); return }
+    await descartarCorreo(item.correoId)
     setAgregados(prev => prev.filter(x => x.id !== item.id))
     if (onImportComplete) onImportComplete()
   }
@@ -376,6 +406,7 @@ export default function GmailIntegracion({ onImportComplete }) {
     if (!window.confirm(`¿Eliminar la audiencia anterior ${anterior.tipo||''} del ${fechaDDMM(anterior.fecha)}? Esto es la que quedó desactualizada, no la que se acaba de agregar.`)) return
     const { error } = await supabase.from('audiencias').delete().eq('id', anterior.id)
     if (error) { alert('No se pudo eliminar la audiencia anterior: ' + error.message); return }
+    await descartarCorreo(item.correoId)
     setAgregados(prev => prev.map(x => x.id === item.id ? { ...x, audienciaAnterior: null } : x))
     if (onImportComplete) onImportComplete()
   }
@@ -391,6 +422,7 @@ export default function GmailIntegracion({ onImportComplete }) {
     if (!window.confirm(`¿Eliminar la audiencia anterior ${anterior.tipo||''} del ${fechaDDMM(anterior.fecha)}? Esto es la que quedó desactualizada.`)) return
     const { error } = await supabase.from('audiencias').delete().eq('id', anterior.id)
     if (error) { alert('No se pudo eliminar la audiencia anterior: ' + error.message); return }
+    await descartarCorreo(item.correoId)
     setDuplicados(prev => prev.filter(x => x !== item))
     if (onImportComplete) onImportComplete()
   }

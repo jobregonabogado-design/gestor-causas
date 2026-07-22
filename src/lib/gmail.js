@@ -247,6 +247,10 @@ async function parsearCorreo(msg) {
   const respuestaFiscalia = esSiau ? extraerRespuestaFiscalia(cuerpo, asunto) : null
 
   return {
+    id: msg.id, // ✅ id del mensaje de Gmail — se usa para poder "recordar"
+    // que este correo puntual ya fue revisado y descartado, y no volver a
+    // mostrarlo en futuras revisiones aunque el correo siga llegando en la
+    // búsqueda (ver gmail_correos_descartados en GmailIntegracion.jsx).
     tipo: esFiscalia ? 'FISCALIA' : 'PJUD',
     ruc,
     rit,
