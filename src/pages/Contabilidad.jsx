@@ -165,15 +165,18 @@ export default function Contabilidad() {
             </div>
             {cuentasPorCobrar.length === 0 ? (
               <p style={{ color:'#94a3b8', fontSize:13 }}>No hay saldos pendientes — todo está al día.</p>
-            ) : cuentasPorCobrar.map(r => (
-              <div key={r.causa.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 14px', background:'#F8F9FC', border:'1px solid #e2e8f0', borderRadius:10, marginBottom:8 }}>
-                <div>
-                  <div style={{ fontSize:13, fontWeight:700, color:'#1E293B' }}>RUC {r.causa.ruc}</div>
-                  <div style={{ fontSize:11, color:'#94a3b8', marginTop:2 }}>Pactado {fmt(r.montoTotal)} · Abonado {fmt(r.totalAbonado)}</div>
+            ) : cuentasPorCobrar.map(r => {
+              const { nombre, soloRuc } = nombreOSoloRuc(r.causa)
+              return (
+                <div key={r.causa.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 14px', background:'#F8F9FC', border:'1px solid #e2e8f0', borderRadius:10, marginBottom:8 }}>
+                  <div>
+                    <div style={{ fontSize:13, fontWeight:700, color:'#1E293B' }}>RUC {r.causa.ruc}{!soloRuc && <span style={{fontWeight:400,color:'#64748b'}}> · {nombre}</span>}</div>
+                    <div style={{ fontSize:11, color:'#94a3b8', marginTop:2 }}>Pactado {fmt(r.montoTotal)} · Abonado {fmt(r.totalAbonado)}</div>
+                  </div>
+                  <div style={{ fontSize:15, fontWeight:800, color:'#dc2626' }}>{fmt(r.saldo)}</div>
                 </div>
-                <div style={{ fontSize:15, fontWeight:800, color:'#dc2626' }}>{fmt(r.saldo)}</div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
 
