@@ -452,6 +452,18 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
 
   const saveCausa = async () => {
     if (!nuevaCausa.ruc) return
+    // ✅ NUEVO: avisa si el RUC ya existe entre las causas cargadas, ANTES de
+    // guardar — así se evita crear una causa duplicada (ej. una nueva causa
+    // aparte para el mismo RUC en vez de usar "Juicio Oral" en la que ya
+    // existe, o agregar un coimputado a la causa que ya está). Se compara
+    // sin guión/espacios para que un RUC escrito con formato levemente
+    // distinto igual se detecte.
+    const rucNuevoNorm = normRut(nuevaCausa.ruc)
+    const existente = causas.find(c => normRut(c.ruc) === rucNuevoNorm)
+    if (existente) {
+      const seguir = window.confirm(`⚠ Ya existe una causa con este RUC:\n\nRIT ${existente.rit || '—'} · ${existente.tribunal || '—'}\n${(existente.imputado||'').replace(/\|/g,' / ') || 'Sin imputado'}\n\n¿Es la misma causa? Si pasó a Juicio Oral, ábrela y usa la pestaña "Juicio Oral" para agregar el RIT nuevo en vez de crear una causa aparte. Si tiene un coimputado nuevo, ábrela y agrégalo ahí.\n\n¿Seguro que quieres crear una causa NUEVA y separada con este mismo RUC?`)
+      if (!seguir) return
+    }
     // Autocorrección ortográfica antes de guardar
     setSaving(true)
     let plazoFinal = nuevaCausa.plazo
@@ -894,6 +906,25 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                       )}
                     </div>
                   </div>
+
+                  {/* ✅ NUEVO: editar el RUC — a propósito NO es un campo tipo "clic para
+                      editar" como los demás (Tribunal, RIT, etc.), para que nunca se
+                      cambie sin querer solo por apretarlo. Usa una ventana de
+                      confirmación aparte, y solo el titular la ve. */}
+                  {esTitular && (
+                    <div style={{marginTop:14,paddingTop:12,borderTop:'1px dashed #e2e8f0',textAlign:'right'}}>
+                      <button onClick={()=>{
+                        const nuevo = window.prompt('Editar RUC de esta causa — revisa bien antes de confirmar:', c.ruc)
+                        if (nuevo === null) return
+                        const limpio = nuevo.trim().toUpperCase()
+                        if (!limpio || limpio === c.ruc) return
+                        if (!window.confirm(`¿Cambiar el RUC de "${c.ruc}" a "${limpio}"?\n\nEs el identificador principal de la causa — revisa que esté bien escrito.`)) return
+                        updateField('ruc', limpio)
+                      }} style={{background:'transparent',border:'none',color:'#94a3b8',fontSize:11,cursor:'pointer',textDecoration:'underline',...f}}>
+                        ✏ Editar RUC (titular)
+                      </button>
+                    </div>
+                  )}
                 </details>
 
                 {/* ── Todo lo que puede variar por imputado: Centro Penal, Cautelar Personal,
