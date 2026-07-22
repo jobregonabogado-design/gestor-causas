@@ -1318,33 +1318,51 @@ export function normalizarBusqueda(texto) {
     .toLowerCase()
 }
 
-// ─── GRADO DE DESARROLLO DEL DELITO (Consumado / Frustrado / Tentado) ───────
-// Cada delito puede tener su propio grado — un imputado puede tener 3
-// delitos y cada uno estar en una etapa distinta (importa para la pena: la
-// tentativa y la frustración la rebajan respecto del delito consumado). Se
-// guarda como sufijo " (FRUSTRADO)" / " (TENTADO)" dentro del mismo texto
-// del delito — así no hace falta ninguna columna ni tabla nueva, y sigue
-// funcionando con el campo "delito"/"delitos" (texto separado por "|") que
-// ya usa toda la app. "Consumado" es el valor por defecto y NO se le agrega
-// sufijo (así los datos ya cargados, sin grado especificado, no cambian).
+// ─── GRADO DE DESARROLLO (Consumado/Frustrado/Tentado) Y DE PARTICIPACIÓN
+// (Autor/Cómplice/Encubridor) DEL DELITO ─────────────────────────────────
+// Cada delito puede tener su propio grado de desarrollo Y su propia forma
+// de participación — un imputado puede tener 3 delitos y en uno ser autor
+// consumado, en otro cómplice frustrado, en otro encubridor tentado. Ambos
+// bajan la pena respecto del caso base (autor consumado), así que importan
+// por separado. Se guardan juntos como sufijo dentro del mismo texto del
+// delito — ej. " (FRUSTRADO, ENCUBRIDOR)" — así no hace falta ninguna
+// columna ni tabla nueva. Los valores por defecto (Consumado y Autor, los
+// más comunes) NO se agregan al sufijo, para no ensuciar los delitos que no
+// los necesitan ni cambiar los datos ya cargados antes de este cambio.
 export const GRADOS_DELITO = ['CONSUMADO', 'FRUSTRADO', 'TENTADO']
+export const GRADOS_PARTICIPACION = ['AUTOR', 'COMPLICE', 'ENCUBRIDOR']
 
-// "ROBO CON INTIMIDACIÓN (FRUSTRADO)" → { nombre:"ROBO CON INTIMIDACIÓN", grado:"FRUSTRADO" }
-// "ROBO CON INTIMIDACIÓN" (sin sufijo) → { nombre:"ROBO CON INTIMIDACIÓN", grado:"CONSUMADO" }
+// "ROBO (FRUSTRADO, ENCUBRIDOR)" → { nombre:"ROBO", grado:"FRUSTRADO", participacion:"ENCUBRIDOR" }
+// "ROBO (ENCUBRIDOR)" → { nombre:"ROBO", grado:"CONSUMADO", participacion:"ENCUBRIDOR" }
+// "ROBO" (sin sufijo) → { nombre:"ROBO", grado:"CONSUMADO", participacion:"AUTOR" }
+// "DAÑO FALTA (495 N°21 Código Penal)" → el paréntesis no es un grado/
+// participación reconocido, así que se deja tal cual, como parte del nombre
+// (algunos delitos del catálogo ya traen su propio paréntesis).
 export function parsearDelito(d) {
   const texto = (d || '').trim()
-  const m = texto.match(/^(.*?)\s*\((CONSUMADO|FRUSTRADO|TENTADO)\)$/i)
-  if (m) return { nombre: m[1].trim(), grado: m[2].toUpperCase() }
-  return { nombre: texto, grado: 'CONSUMADO' }
+  const m = texto.match(/^(.*?)\s*\(([^)]+)\)$/)
+  if (!m) return { nombre: texto, grado: 'CONSUMADO', participacion: 'AUTOR' }
+  const partes = m[2].split(',').map(s => s.trim().toUpperCase())
+  let grado = 'CONSUMADO', participacion = 'AUTOR', reconocido = false
+  for (const p of partes) {
+    if (GRADOS_DELITO.includes(p)) { grado = p; reconocido = true }
+    else if (GRADOS_PARTICIPACION.includes(p)) { participacion = p; reconocido = true }
+  }
+  if (!reconocido) return { nombre: texto, grado: 'CONSUMADO', participacion: 'AUTOR' }
+  return { nombre: m[1].trim(), grado, participacion }
 }
 
-// Reconstruye el texto guardado — omite el sufijo si es "Consumado" (el
-// caso más común) para no ensuciar los delitos que no lo necesitan.
-export function formatearDelito(nombre, grado) {
+// Reconstruye el texto guardado — omite del sufijo lo que sea el valor por
+// defecto (Consumado / Autor), y si ambos son el valor por defecto, no
+// agrega ningún paréntesis.
+export function formatearDelito(nombre, grado, participacion) {
   const n = (nombre || '').trim()
   if (!n) return ''
-  if (!grado || grado === 'CONSUMADO') return n
-  return `${n} (${grado})`
+  const partes = []
+  if (grado && grado !== 'CONSUMADO') partes.push(grado)
+  if (participacion && participacion !== 'AUTOR') partes.push(participacion)
+  if (partes.length === 0) return n
+  return `${n} (${partes.join(', ')})`
 }
 
 

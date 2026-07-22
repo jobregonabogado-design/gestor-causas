@@ -1,7 +1,7 @@
 // Componentes de UI pequeños y reutilizables del Dashboard: selector con
 // búsqueda, chips de delitos, badges de estado y el campo editable base.
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { estadoConfig, getBadgeConfig, SUBESTADOS_VIGENTE, SUBESTADOS_TERMINADA, TRIBUNALES_CHILE, DELITOS_CATALOGO, CENTROS_PENALES, normalizarBusqueda, GRADOS_DELITO, parsearDelito, formatearDelito } from './utils'
+import { estadoConfig, getBadgeConfig, SUBESTADOS_VIGENTE, SUBESTADOS_TERMINADA, TRIBUNALES_CHILE, DELITOS_CATALOGO, CENTROS_PENALES, normalizarBusqueda, GRADOS_DELITO, GRADOS_PARTICIPACION, parsearDelito, formatearDelito } from './utils'
 
 export function SearchableSelect({ value, onChange, options, placeholder, isDelito }) {
   const [open, setOpen] = useState(false)
@@ -123,19 +123,29 @@ export function SearchableSelect({ value, onChange, options, placeholder, isDeli
 
 
 // ─── COMPONENTE DELITOS MÚLTIPLES (chips + agregar más) ──────────────────────
-// Colores por grado — Consumado neutro (es el default, la mayoría de los
-// casos), Frustrado y Tentado en tonos que los distinguen de un vistazo
-// (importan para la pena: la rebajan respecto del delito consumado).
+// Colores por grado de desarrollo — Consumado neutro (es el default, la
+// mayoría de los casos), Frustrado y Tentado en tonos que los distinguen
+// de un vistazo (importan para la pena: la rebajan respecto del delito
+// consumado).
 const GRADO_COLOR = {
   CONSUMADO: { color:'#991b1b', bg:'#fef2f2', border:'#fecaca' },
   FRUSTRADO: { color:'#92400e', bg:'#fff7ed', border:'#fed7aa' },
   TENTADO:   { color:'#7c3aed', bg:'#faf5ff', border:'#ddd6fe' },
 }
+// Colores por grado de participación — Autor es el default (la mayoría de
+// los casos); Cómplice y Encubridor en otros tonos, distintos a los del
+// grado de desarrollo para no confundirlos de un vistazo.
+const PARTICIPACION_COLOR = {
+  AUTOR:      { color:'#475569', bg:'#F8F9FC', border:'#e2e8f0' },
+  COMPLICE:   { color:'#1e40af', bg:'#eff6ff', border:'#bfdbfe' },
+  ENCUBRIDOR: { color:'#0f766e', bg:'#f0fdfa', border:'#99f6e4' },
+}
 
-// Selector de grado de un delito — clic para desplegar las 3 opciones.
-// Se usa tanto al agregar un delito nuevo como para cambiarlo en uno ya
-// guardado, siempre en el mismo lugar (junto al nombre del delito).
-function GradoDelitoTag({ grado, onChange }) {
+// Selector genérico de una etiqueta de delito — clic para desplegar las
+// opciones. Se usa tanto para el grado de desarrollo (Consumado/Frustrado/
+// Tentado) como para el grado de participación (Autor/Cómplice/
+// Encubridor) — son dos datos independientes, cada delito tiene los dos.
+function EtiquetaDelitoTag({ valor, opciones, colores, onChange }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   useEffect(() => {
@@ -143,20 +153,20 @@ function GradoDelitoTag({ grado, onChange }) {
     document.addEventListener('mousedown', h)
     return () => document.removeEventListener('mousedown', h)
   }, [])
-  const gc = GRADO_COLOR[grado] || GRADO_COLOR.CONSUMADO
+  const c = colores[valor] || colores[opciones[0]]
   const f = { fontFamily:"'Manrope','Inter',sans-serif" }
   return (
     <div ref={ref} style={{ position:'relative', flexShrink:0 }}>
       <span onClick={(e)=>{e.stopPropagation();setOpen(v=>!v)}}
-        style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', letterSpacing:0.5, color:gc.color, background:gc.bg, border:`1px solid ${gc.border}`, borderRadius:20, padding:'2px 7px', cursor:'pointer', whiteSpace:'nowrap', ...f }}>
-        {grado}▾
+        style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', letterSpacing:0.5, color:c.color, background:c.bg, border:`1px solid ${c.border}`, borderRadius:20, padding:'2px 7px', cursor:'pointer', whiteSpace:'nowrap', ...f }}>
+        {valor}▾
       </span>
       {open && (
-        <div style={{ position:'absolute', top:'100%', left:0, zIndex:200, background:'#fff', border:'1.5px solid #e2e8f0', borderRadius:10, boxShadow:'0 8px 24px rgba(15,23,42,0.14)', marginTop:4, overflow:'hidden', minWidth:110 }}>
-          {GRADOS_DELITO.map(g => (
-            <div key={g} onClick={(e)=>{e.stopPropagation();onChange(g);setOpen(false)}}
-              style={{ padding:'7px 12px', fontSize:11, fontWeight: g===grado?700:400, color: g===grado?GRADO_COLOR[g].color:'#374151', background: g===grado?GRADO_COLOR[g].bg:'transparent', cursor:'pointer', ...f }}>
-              {g}
+        <div style={{ position:'absolute', top:'100%', left:0, zIndex:200, background:'#fff', border:'1.5px solid #e2e8f0', borderRadius:10, boxShadow:'0 8px 24px rgba(15,23,42,0.14)', marginTop:4, overflow:'hidden', minWidth:120 }}>
+          {opciones.map(o => (
+            <div key={o} onClick={(e)=>{e.stopPropagation();onChange(o);setOpen(false)}}
+              style={{ padding:'7px 12px', fontSize:11, fontWeight: o===valor?700:400, color: o===valor?colores[o].color:'#374151', background: o===valor?colores[o].bg:'transparent', cursor:'pointer', ...f }}>
+              {o}
             </div>
           ))}
         </div>
@@ -168,19 +178,21 @@ function GradoDelitoTag({ grado, onChange }) {
 export function DelitosChips({ value, onChange, options }) {
   const [adding, setAdding] = useState(false)
   const [temp, setTemp] = useState('')
-  // ✅ Cada delito puede tener su propio grado (Consumado/Frustrado/Tentado)
-  // — se guarda como sufijo dentro del mismo texto (ver parsearDelito en
-  // utils.js), así sigue funcionando igual que antes en todo lo demás
-  // (búsqueda, filtros, estadísticas) sin necesidad de una columna nueva.
+  // ✅ Cada delito puede tener su propio grado de desarrollo (Consumado/
+  // Frustrado/Tentado) Y su propio grado de participación (Autor/Cómplice/
+  // Encubridor) — son independientes entre sí, y de un delito a otro del
+  // mismo imputado. Se guardan como sufijo dentro del mismo texto (ver
+  // parsearDelito en utils.js), así sigue funcionando igual que antes en
+  // todo lo demás (búsqueda, filtros, estadísticas) sin columnas nuevas.
   const lista = (value || '').split('|').map(s => s.trim()).filter(Boolean).map(parsearDelito)
   const f = { fontFamily:"'Manrope','Inter',sans-serif" }
 
   const guardarLista = (nuevaLista) => {
-    onChange(nuevaLista.map(d => formatearDelito(d.nombre, d.grado)).join('|'))
+    onChange(nuevaLista.map(d => formatearDelito(d.nombre, d.grado, d.participacion)).join('|'))
   }
   const agregar = (nombre) => {
     if (!nombre || lista.some(d => d.nombre === nombre)) { setAdding(false); setTemp(''); return }
-    guardarLista([...lista, { nombre, grado: 'CONSUMADO' }])
+    guardarLista([...lista, { nombre, grado: 'CONSUMADO', participacion: 'AUTOR' }])
     setAdding(false)
     setTemp('')
   }
@@ -190,6 +202,9 @@ export function DelitosChips({ value, onChange, options }) {
   const cambiarGrado = (idx, grado) => {
     guardarLista(lista.map((d, i) => i === idx ? { ...d, grado } : d))
   }
+  const cambiarParticipacion = (idx, participacion) => {
+    guardarLista(lista.map((d, i) => i === idx ? { ...d, participacion } : d))
+  }
 
   return (
     <div>
@@ -198,7 +213,8 @@ export function DelitosChips({ value, onChange, options }) {
           {lista.map((d, i) => (
             <div key={i} title={d.nombre} style={{ display:'flex', alignItems:'center', gap:7, background:'#fff', border:'1px solid #e2e8f0', borderRadius:8, padding:'5px 9px', maxWidth:'100%', minWidth:0 }}>
               <span style={{ fontSize:11, color:'#1E293B', fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:220, ...f }}>{d.nombre}</span>
-              <GradoDelitoTag grado={d.grado} onChange={(g) => cambiarGrado(i, g)} />
+              <EtiquetaDelitoTag valor={d.grado} opciones={GRADOS_DELITO} colores={GRADO_COLOR} onChange={(g) => cambiarGrado(i, g)} />
+              <EtiquetaDelitoTag valor={d.participacion} opciones={GRADOS_PARTICIPACION} colores={PARTICIPACION_COLOR} onChange={(p) => cambiarParticipacion(i, p)} />
               <button onClick={() => quitar(i)} style={{ background:'transparent', border:'none', cursor:'pointer', color:'#94a3b8', fontSize:12, padding:0, flexShrink:0 }}>✕</button>
             </div>
           ))}
