@@ -852,6 +852,16 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                     <span className="seccion-chevron" style={{fontSize:12}}>▾</span>
                   </summary>
 
+                  {/* ✅ NUEVO: el RUC nunca se pudo editar después de crear la causa —
+                      hacía falta para corregir los "SIN-RUC-Fxxx" provisorios que se
+                      usaron al importar el Excel. Solo el titular puede tocarlo (es el
+                      identificador principal, usado para el enlace con Gmail y el
+                      seguimiento de la causa) y pide confirmar antes de guardar. */}
+                  <Field label="RUC" value={c.ruc} editable={esTitular} full fieldKey="ruc" editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>{
+                    if (!window.confirm(`¿Cambiar el RUC de esta causa de "${c.ruc}" a "${editValue}"?\n\nEs el identificador principal — revisa que esté bien escrito antes de confirmar.`)) return
+                    updateField('ruc',editValue)
+                  }}/>
+
                   <Field label="Tribunal" value={c.tribunal} editable full fieldKey="tribunal" editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={()=>updateField('tribunal',editValue)}/>
 
                   <div className="grid2-mobile" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginTop:2}}>
