@@ -4,7 +4,9 @@ import { useState } from 'react'
 import { f } from './primitives'
 import { calcularVencimiento, calcularSubestado, diasRestantes, fechaDDMM } from './utils'
 
-export function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudiencia, onEditarAudiencia, onEliminarAudiencia, isMobile }) {
+export function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudiencia, onEditarAudiencia, onEliminarAudiencia, isMobile, subestadoCausa, fechaCierreInvestigacion, onGuardarCierreInvestigacion }) {
+  const [editandoCierre, setEditandoCierre] = useState(false)
+  const [fechaCierreTemp, setFechaCierreTemp] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ fecha_audiencia:'', tipo_audiencia:'Formalización', dias_plazo:'', observacion:'', fecha_proxima_audiencia:'' })
   const [guardando, setGuardando] = useState(false)
@@ -121,6 +123,61 @@ export function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudie
           {diff !== null && <div style={{fontSize:11,fontWeight:600,marginTop:4,color:subestado==='vencido'?'#dc2626':subestado==='proximo'?'#d97706':'#64748b',...f}}>{subestado==='vencido' ? `Venció hace ${Math.abs(diff)} días` : subestado==='proximo' ? `⚠️ Vence en ${diff} días` : `Faltan ${diff} días`}</div>}
         </div>
       </div>
+
+      {/* ✅ NUEVO: Investigación cerrada. El único que puede cerrar la
+          investigación es el fiscal (en audiencia o por escrito) — cuando eso
+          pasa, la causa pasa a subestado APJO (si acusó) o DNP (si pidió no
+          perseverar). Es una fecha distinta del vencimiento del plazo: el
+          plazo es el límite máximo, pero la investigación se puede cerrar
+          antes. Si la causa ya está en APJO o DNP y todavía no se registró
+          esta fecha, se destaca para que no se pase por alto. */}
+      {(() => {
+        const requiereAviso = (subestadoCausa === 'apjo' || subestadoCausa === 'dnp') && !fechaCierreInvestigacion
+        return (
+          <div style={{
+            background: requiereAviso ? '#fff7ed' : '#F8F9FC',
+            border: `1.5px solid ${requiereAviso ? '#fed7aa' : '#e2e8f0'}`,
+            borderRadius:12, padding:'14px 16px', marginBottom:20,
+          }}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:10}}>
+              <div>
+                <div style={{fontSize:10,color: requiereAviso ? '#92400e' : '#64748b',textTransform:'uppercase',letterSpacing:1.2,fontWeight:700,...f}}>
+                  {requiereAviso ? '⚠️ Investigación cerrada' : 'Investigación cerrada'}
+                </div>
+                {requiereAviso && (
+                  <div style={{fontSize:11.5,color:'#9a3412',marginTop:3,maxWidth:420,lineHeight:1.5,...f}}>
+                    Esta causa está en {subestadoCausa==='apjo' ? 'APJO' : 'DNP'} — eso significa que el fiscal ya cerró
+                    la investigación (en audiencia o por escrito). Registra la fecha para dejarlo trazado.
+                  </div>
+                )}
+              </div>
+              {!editandoCierre && (
+                <div style={{display:'flex',alignItems:'center',gap:10}}>
+                  {fechaCierreInvestigacion && (
+                    <span style={{fontSize:13,fontWeight:700,color:'#1E293B',...f}}>{fechaDDMM(fechaCierreInvestigacion)}</span>
+                  )}
+                  <button className="btn-secondary" style={{fontSize:11,padding:'6px 12px'}}
+                    onClick={()=>{setEditandoCierre(true);setFechaCierreTemp(fechaCierreInvestigacion||'')}}>
+                    {fechaCierreInvestigacion ? '✏ Cambiar' : '+ Registrar fecha'}
+                  </button>
+                </div>
+              )}
+            </div>
+            {editandoCierre && (
+              <div style={{display:'flex',gap:8,marginTop:10,flexWrap:'wrap',alignItems:'center'}}>
+                <input type="date" style={inp} value={fechaCierreTemp} onChange={e=>setFechaCierreTemp(e.target.value)} autoFocus/>
+                <button className="btn-primary" style={{fontSize:12,padding:'8px 16px'}} onClick={async()=>{await onGuardarCierreInvestigacion(fechaCierreTemp||null);setEditandoCierre(false)}}>Guardar</button>
+                {fechaCierreInvestigacion && (
+                  <button style={{fontSize:12,padding:'8px 12px',background:'transparent',border:'none',color:'#dc2626',cursor:'pointer',...f}}
+                    onClick={async()=>{await onGuardarCierreInvestigacion(null);setEditandoCierre(false)}}>Quitar fecha</button>
+                )}
+                <button className="btn-secondary" style={{fontSize:12,padding:'8px 12px'}} onClick={()=>setEditandoCierre(false)}>Cancelar</button>
+              </div>
+            )}
+          </div>
+        )
+      })()}
+
       <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:10,fontWeight:600,...f}}>Historial de audiencias de plazo</div>
       {(!aumentos||aumentos.length===0) && <p style={{color:'#94a3b8',fontSize:13,marginBottom:14,...f}}>Sin audiencias registradas.</p>}
       {aumentos && aumentos.map((a,i) => {

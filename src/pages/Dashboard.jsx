@@ -877,20 +877,28 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                   </div>
 
                   <div style={{display:'flex',gap:10,flexWrap:'wrap',maxWidth:640,marginTop:16}}>
-                    {/* Vencimiento del plazo */}
+                    {/* ✅ FIX: antes este campo se podía escribir a mano (texto libre)
+                        aparte del cálculo automático que ya hace la pestaña Plazo — con
+                        eso se podían desincronizar (ej. si alguien tipeaba algo acá y
+                        después se agregaba una audiencia distinta en Plazo). Ahora se
+                        calcula igual que en esa pestaña (última audiencia + sus días) y
+                        solo lleva ahí — ya no se puede editar aparte, mismo criterio que
+                        Fecha ACD de al lado. */}
                     <div style={{flex:'1 1 190px',minWidth:170}}>
                       <div style={{fontSize:9,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4,fontWeight:600,...f}}>Vencimiento del plazo</div>
-                      {editField==='Plazo / Vencimiento'?(
-                        <div style={{display:'flex',gap:4}}>
-                          <input style={{width:'100%',padding:'7px 9px',border:'none',borderRadius:8,fontSize:11,color:'#1E293B',background:'#fff',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}} value={editValue} onChange={e=>setEditValue(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')updateField('plazo',editValue);if(e.key==='Escape')setEditField(null)}} autoFocus/>
-                          <button className="btn-primary" style={{padding:'5px 9px',fontSize:10,borderRadius:8}} onClick={()=>updateField('plazo',editValue)}>✓</button>
-                        </div>
-                      ):(
-                        <div className="fld" onClick={()=>{setEditField('Plazo / Vencimiento');setEditValue(c.plazo||'')}}
-                          style={{padding:'7px 9px',borderRadius:8,fontSize:11,fontWeight:600,color:c.plazo?'#1E293B':'#94a3b8',minHeight:30,display:'flex',alignItems:'center',cursor:'pointer',background:'#fff',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}}>
-                          <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{c.plazo||'Clic para agregar...'}</span>
-                        </div>
-                      )}
+                      {(() => {
+                        const activosPlazo = (aumentos||[]).filter(a=>!a.eliminado).sort((x,y)=>x.fecha_audiencia.localeCompare(y.fecha_audiencia))
+                        const ultimaPlazo = activosPlazo[activosPlazo.length-1]
+                        const vencCalculado = ultimaPlazo ? calcularVencimiento(ultimaPlazo.fecha_audiencia, ultimaPlazo.dias_plazo) : null
+                        return (
+                          <div onClick={()=>setActiveTab('plazo')}
+                            style={{padding:'7px 9px',borderRadius:8,fontSize:11,fontWeight:600,color:vencCalculado?'#1e40af':'#94a3b8',minHeight:30,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}}
+                            title="Se calcula automáticamente desde la última audiencia registrada en la pestaña Plazo">
+                            <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{vencCalculado || 'Sin audiencias'}</span>
+                            <span style={{fontSize:9,color:'#93c5fd'}}>↗</span>
+                          </div>
+                        )
+                      })()}
                     </div>
                     {/* Fecha ACD (Control Detención) — se toma de la 1ª audiencia registrada en Plazo */}
                     <div style={{flex:'1 1 150px',minWidth:140}}>
@@ -902,7 +910,10 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                           <div onClick={()=>setActiveTab('plazo')}
                             style={{padding:'7px 9px',borderRadius:8,fontSize:11,fontWeight:600,color:fechaAcd?'#1e40af':'#94a3b8',minHeight:30,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}}
                             title="Se toma automáticamente de la primera audiencia registrada en la pestaña Plazo">
-                            <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{fechaAcd || 'Sin audiencias'}</span>
+                            {/* ✅ FIX: mostraba la fecha "en crudo" (AAAA-MM-DD) en vez de
+                                DD-MM-AAAA como el resto de la app — se le había pasado por
+                                alto a este campo en particular. */}
+                            <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{fechaDDMM(fechaAcd) || 'Sin audiencias'}</span>
                             <span style={{fontSize:9,color:'#93c5fd'}}>↗</span>
                           </div>
                         )
@@ -1180,6 +1191,13 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
             )}
             {activeTab==='plazo'&&(
               <PlazoCalculador causaId={c.id} plazoActual={c.plazo} aumentos={aumentos} isMobile={isMobile}
+                subestadoCausa={c.subestado} fechaCierreInvestigacion={c.fecha_cierre_investigacion}
+                onGuardarCierreInvestigacion={async(fecha)=>{
+                  await supabase.from('causas').update({ fecha_cierre_investigacion: fecha || null, updated_at: new Date() }).eq('id', c.id)
+                  const u = { ...selectedCausa, fecha_cierre_investigacion: fecha || null, updated_at: new Date().toISOString() }
+                  setSelectedCausa(u); setCausas(prev => prev.map(x => x.id===u.id ? u : x))
+                  if (registrarActividad) registrarActividad('accion', `${fecha ? 'Registró' : 'Quitó la'} fecha de cierre de investigación en RUC ${c.ruc}`)
+                }}
                 onGuardarAudiencia={async(form)=>{
                 const diasNum = parseInt(form.dias_plazo) || 0
                 const{data,error}=await supabase.from('aumentos_plazo').insert({causa_id:c.id,fecha_audiencia:form.fecha_audiencia,tipo_audiencia:form.tipo_audiencia,dias_plazo:diasNum,dias_aumento:diasNum,observacion:form.observacion||'',fecha_proxima_audiencia:form.fecha_proxima_audiencia||null}).select().single()
