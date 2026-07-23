@@ -97,7 +97,7 @@ async function gmailFetch(path, options = {}) {
   return res.json()
 }
 
-export async function fetchNotificacionesPJUD() {
+export async function fetchNotificacionesPJUD(rucsVigentes) {
   try {
     // ✅ FIX: antes solo buscaba por remitente exacto (pjud.cl, minpublico.cl, etc.)
     // y se perdía cualquier correo que llegara de otra dirección. Como más abajo
@@ -118,7 +118,7 @@ export async function fetchNotificacionesPJUD() {
     for (const msg of data.messages.slice(0, 150)) {
       try {
         const detalle = await gmailFetch(`/gmail/v1/users/me/messages/${msg.id}?format=full`)
-        const parsed = await parsearCorreo(detalle)
+        const parsed = await parsearCorreo(detalle, rucsVigentes)
         if (parsed) mensajes.push(parsed)
       } catch(e) {}
     }
@@ -192,11 +192,34 @@ async function extraerTextoPDF(base64urlData) {
   }
 }
 
-async function parsearCorreo(msg) {
+async function parsearCorreo(msg, rucsVigentes) {
   const headers = msg.payload?.headers || []
   const asunto = getHeader(headers, 'subject')
   const de = getHeader(headers, 'from')
   const cuerpoEmail = getBody(msg.payload)
+
+  // ✅ NUEVO: antes se descargaban y analizaban SIEMPRE los PDF adjuntos
+  // (hasta 2 por correo, con pdf.js) de los 150 correos, ANTES de siquiera
+  // revisar si el RUC del correo correspondía a una causa vigente — muchos
+  // de esos 150 correos son de causas ya terminadas o de otras personas que
+  // igual mencionan "RUC"/"audiencia", y ese trabajo se botaba igual más
+  // abajo en GmailIntegracion.jsx. En el celular, procesar tantos PDF
+  // seguidos (cada uno abre su propio motor de lectura en el navegador)
+  // satura la memoria y el navegador termina recargando la pestaña solo,
+  // sin mostrar ningún resultado. Ahora se busca el RUC primero SOLO en el
+  // asunto + cuerpo del correo (sin abrir el PDF, que es rapidísimo) — casi
+  // siempre alcanza, porque el tribunal/Fiscalía ya lo escribe ahí. Si ese
+  // RUC no es de una causa vigente, se descarta de inmediato sin tocar el
+  // PDF. Solo se abre el PDF si el RUC sí es vigente, o si no se encontró
+  // ningún RUC en el texto (para no perder casos raros donde solo viene
+  // dentro del PDF).
+  const normalizarRucRapido = (r) => (r || '').replace(/[\s-]/g, '').toLowerCase()
+  const textoRapido = `${asunto}\n${cuerpoEmail.substring(0, 6000)}`
+  const matchRucRapido = textoRapido.match(/RUC[°:\s]*N?[°:\s]*([0-9]{6,10}[\s-][0-9Kk])/i)
+  if (matchRucRapido && rucsVigentes && rucsVigentes.size > 0) {
+    const rucRapidoNorm = normalizarRucRapido(matchRucRapido[1])
+    if (!rucsVigentes.has(rucRapidoNorm)) return null // no es de una causa vigente — no hace falta abrir el PDF
+  }
 
   // Leer el/los PDF adjuntos (máximo 2 por correo, para no demorar demasiado)
   // y sumar su texto al del correo antes de buscar RUC/RIT/fecha/tribunal/sala.
@@ -298,25 +321,46 @@ function extraerRespuestaFiscalia(cuerpo, asunto) {
     estado = 'rechazada'
   }
 
-  // Fecha de citación (solo si no fue rechazada) — reusa el mismo patrón de
-  // fecha-en-prosa que ya usa extraerAudienciaFiscalia.
+  // Fecha de citación (solo si no fue rechazada)
+  // ✅ FIX: el correo real de "Comunicacion Respuesta" de siau@minpublico.cl
+  // escribe la fecha de la cita como "MIERCOLES 5 AGOSTO DE 2026" (SIN la
+  // palabra "de" entre el día y el mes) y también como "05.08.2026" (con
+  // puntos) — ninguno de los dos formatos calzaba con los patrones viejos
+  // (que exigían "5 DE agosto de 2026" o fecha con barra/guión), así que
+  // fechaCitacion quedaba vacía. Peor aún: el mismo correo TAMBIÉN trae la
+  // fecha en que se ingresó la solicitud original (ej. "ingresada con fecha
+  // 22/07/2026", con barra) — que si el patrón numérico viejo llegaba a
+  // usarse como respaldo, la tomaba a ella por error en vez de la fecha
+  // real de la cita. Ahora se busca primero SOLO en el bloque de texto
+  // cerca de palabras que indican agendamiento real ("agendamiento",
+  // "aprueba", "entrevista", "cita"/"citación"), y con el "de" opcional
+  // entre día y mes; solo si ahí no se encuentra nada se usa una búsqueda
+  // genérica de respaldo en todo el texto.
   let fechaCitacion = null
   if (estado !== 'rechazada') {
     const meses = {enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,julio:7,agosto:8,septiembre:9,octubre:10,noviembre:11,diciembre:12}
-    const matches = [...textoCompleto.matchAll(/(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/gi)]
-    for (const m of matches) {
-      const mes = meses[m[2].toLowerCase()]
-      if (mes) {
-        const d = String(m[1]).padStart(2, '0')
-        const mm = String(mes).padStart(2, '0')
-        const posible = `${m[3]}-${mm}-${d}`
-        if (esFechaFuturaOReciente(posible)) { fechaCitacion = posible; break }
+    const buscarFechaProsa = (texto) => {
+      const matches = [...texto.matchAll(/(\d{1,2})\s+(?:de\s+)?(\w+)\s+de\s+(\d{4})/gi)]
+      for (const m of matches) {
+        const mes = meses[m[2].toLowerCase()]
+        if (mes) {
+          const d = String(m[1]).padStart(2, '0')
+          const mm = String(mes).padStart(2, '0')
+          const posible = `${m[3]}-${mm}-${d}`
+          if (esFechaFuturaOReciente(posible)) return posible
+        }
       }
+      return null
     }
-    if (!fechaCitacion) {
-      const matchFechaNum = textoCompleto.match(/(\d{2})[\/\-](\d{2})[\/\-](\d{4})/)
-      if (matchFechaNum) fechaCitacion = `${matchFechaNum[3]}-${matchFechaNum[2]}-${matchFechaNum[1]}`
+    const buscarFechaNumerica = (texto) => {
+      const m = texto.match(/(\d{2})[\/\-.](\d{2})[\/\-.](\d{4})/)
+      return m ? `${m[3]}-${m[2]}-${m[1]}` : null
     }
+    const idxAgendamiento = textoCompleto.search(/agendamiento|aprueba|entrevista|se\s+cita|citaci[oó]n/i)
+    const bloqueCita = idxAgendamiento >= 0 ? textoCompleto.substring(idxAgendamiento, idxAgendamiento + 400) : ''
+    fechaCitacion = (bloqueCita && (buscarFechaProsa(bloqueCita) || buscarFechaNumerica(bloqueCita)))
+      || buscarFechaProsa(textoCompleto)
+      || buscarFechaNumerica(textoCompleto)
     if (fechaCitacion) estado = 'con_citacion'
   }
 
@@ -461,8 +505,25 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
 
   const fechaEsFuerte = fecha !== null // patrones 1-4: viene de una sección específica (fijación/tabla/reprogramación)
 
+  // ✅ NUEVO: un correo que solo notifica un PLAZO para responder/formular
+  // observaciones/contestar (ej. "se confiere traslado por el plazo de 5
+  // días, esto es, hasta el 18 de julio de 2026") NO es una audiencia — es
+  // un plazo procesal. Antes, si no había ninguna fecha "fuerte" (patrones
+  // 1-4, que exigen una sección de fijación/tabla real), el patrón débil de
+  // respaldo (5/6, "cualquier fecha futura escrita en el texto") igual
+  // tomaba la fecha del vencimiento del plazo y la guardaba como si fuera
+  // una audiencia agendada, con tipo y hora sacados de texto cercano sin
+  // relación real (ej. de menciones genéricas de otra audiencia ya fijada
+  // en el mismo documento, o de la hora de firma electrónica). Ahora, si el
+  // texto suena a notificación de plazo y NO hay ninguna fecha fuerte ya
+  // encontrada, se deja sin detectar (mejor que Joaquín la revise a mano
+  // que agendar una audiencia falsa).
+  const esNotificacionDePlazo = /plazo\s+de\s+\d+\s+d[ií]as?[^.]{0,100}(responder|contestar|evacuar|traslado|observaci[oó]n|formular)/i.test(cuerpo)
+    || /se\s+confiere\s+traslado/i.test(cuerpo)
+    || /t[eé]ngase\s+por\s+notificad[oa][^.]{0,60}plazo/i.test(cuerpo)
+
   // Patrón 5: cualquier fecha escrita futura en el cuerpo (fallback — menos confiable)
-  if (!fecha) {
+  if (!fecha && !esNotificacionDePlazo) {
     const matches = [...cuerpo.matchAll(/(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/gi)]
     for (const m of matches) {
       const mes = meses[m[2].toLowerCase()]
@@ -476,7 +537,7 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
   }
 
   // Patrón 6: fecha numérica PDF YYYY/MM/DD (solo si es futura — fallback menos confiable)
-  if (!fecha) {
+  if (!fecha && !esNotificacionDePlazo) {
     const matchesPDF = [...cuerpo.matchAll(/(\d{4})\/(\d{2})\/(\d{2})/g)]
     for (const m of matchesPDF) {
       const posible = `${m[1]}-${m[2]}-${m[3]}`

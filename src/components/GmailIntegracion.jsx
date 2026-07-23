@@ -62,7 +62,7 @@ export default function GmailIntegracion({ onImportComplete }) {
       )
 
       // 2. Obtener notificaciones de Gmail — solo leer correos de causas vigentes
-      const todasNotificaciones = await fetchNotificacionesPJUD()
+      const todasNotificaciones = await fetchNotificacionesPJUD(rucsVigentes)
 
       // ✅ NUEVO: correos que Joaquín ya revisó y resolvió antes (eliminó una
       // audiencia agregada por error, o eliminó la anterior/desactualizada
