@@ -139,11 +139,45 @@ function decodeBase64(str) {
   } catch { return '' }
 }
 
+// ✅ NUEVO: convierte HTML a texto plano (quitando etiquetas) — se usa como
+// respaldo cuando el correo no trae ninguna parte "text/plain" (ver getBody
+// más abajo). Es simple a propósito: no necesita renderizar el HTML, solo
+// dejar el texto legible para poder buscar RUC/folio/fechas con regex.
+function stripHtml(html) {
+  return html
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|tr|li|h[1-6]|table)>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&aacute;/gi, 'á').replace(/&eacute;/gi, 'é').replace(/&iacute;/gi, 'í')
+    .replace(/&oacute;/gi, 'ó').replace(/&uacute;/gi, 'ú').replace(/&ntilde;/gi, 'ñ')
+    .replace(/&[a-zA-Z0-9#]+;/g, ' ')
+    .replace(/[ \t]+/g, ' ')
+    .trim()
+}
+
 function getBody(payload) {
-  if (payload.body?.data) return decodeBase64(payload.body.data)
+  // ✅ FIX: antes, si el correo venía en HTML puro (sin ninguna parte
+  // "text/plain" — típico en correos con diseño, como las respuestas de
+  // mi.Fiscalía/SIAU con su banner celeste), esta función devolvía texto
+  // vacío. Sin texto, parsearCorreo no encontraba el RUC y el correo se
+  // descartaba ENTERO, silenciosamente — por eso una respuesta real de
+  // Fiscalía nunca aparecía en "respuestas detectadas". Ahora, si no hay
+  // ninguna parte de texto plano, se usa el HTML como respaldo quitándole
+  // las etiquetas.
+  if (payload.body?.data) {
+    const crudo = decodeBase64(payload.body.data)
+    return payload.mimeType === 'text/html' ? stripHtml(crudo) : crudo
+  }
   if (payload.parts) {
     for (const part of payload.parts) {
       if (part.mimeType === 'text/plain' && part.body?.data) return decodeBase64(part.body.data)
+    }
+    for (const part of payload.parts) {
+      if (part.mimeType === 'text/html' && part.body?.data) return stripHtml(decodeBase64(part.body.data))
     }
     for (const part of payload.parts) {
       const body = getBody(part)
@@ -383,6 +417,20 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
   let fecha = null, hora = null, tipo = null, tribunal = null, sala = null
   let posFecha = -1 // posición en el texto donde se encontró la fecha — para buscar hora/sala CERCA de ahí
 
+  // ✅ NUEVO: un correo que solo notifica un PLAZO para responder/formular
+  // observaciones/contestar (ej. "se confiere traslado por el plazo de 5
+  // días, esto es, hasta el 18 de julio de 2026") NO es una audiencia — es
+  // un plazo procesal. Se comprueba ANTES de buscar cualquier fecha, y
+  // bloquea TODOS los patrones (no solo los de respaldo/débiles): se vio en
+  // la práctica que frases como "...plazo... para el día 18 de julio de
+  // 2026..." también calzaban con el patrón "fuerte" que busca "para el
+  // día X" pensado para audiencias fijadas de verdad, así que solo bloquear
+  // los patrones débiles no bastaba. Mejor que Joaquín revise el correo a
+  // mano que agendar una audiencia falsa con la fecha del vencimiento.
+  const esNotificacionDePlazo = /plazo\s+de\s+\d+\s+d[ií]as?[^.]{0,100}(responder|contestar|evacuar|traslado|observaci[oó]n|formular)/i.test(cuerpo)
+    || /se\s+confiere\s+traslado/i.test(cuerpo)
+    || /t[eé]ngase\s+por\s+notificad[oa][^.]{0,60}plazo/i.test(cuerpo)
+
   // ═══════════════════════════════════════════════════════
   // PASO 1: Buscar fecha en sección de FIJACIÓN (al final)
   // Patrones de los PDFs reales del PJUD:
@@ -400,7 +448,7 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
   // día 21 de julio de 2026... quedando en definitiva para el día 10 de
   // julio de 2026, a las 09:00 horas..." → debe tomar el 10 de julio, no el 21.
   // ═══════════════════════════════════════════════════════
-  const matchDefinitiva = cuerpo.match(/definitiv[oa]?\s*(?:mente)?[^.]{0,60}?para\s+el\s+d[ií]a\s+(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/i)
+  const matchDefinitiva = !esNotificacionDePlazo && cuerpo.match(/definitiv[oa]?\s*(?:mente)?[^.]{0,60}?para\s+el\s+d[ií]a\s+(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/i)
   if (matchDefinitiva) {
     const mes = meses[matchDefinitiva[2].toLowerCase()]
     if (mes) {
@@ -412,7 +460,7 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
   }
 
   // Patrón 1a: "para el día DD de MES de YYYY" — año en dígitos
-  if (!fecha) {
+  if (!fecha && !esNotificacionDePlazo) {
     const matchFijacion = cuerpo.match(/para\s+el\s+d[ií]a\s+(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/i)
     if (matchFijacion) {
       const mes = meses[matchFijacion[2].toLowerCase()]
@@ -428,7 +476,7 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
   // Patrón 1b: "DD de MES de dos mil veintiséis" — año en palabras (formato actas PJUD)
   // Ejemplo exacto: "Fecha 25 de junio de dos mil veintiséis"
   // IMPORTANTE: usar [a-záéíóúüñ]+ en lugar de \w+ para capturar letras con tilde
-  if (!fecha) {
+  if (!fecha && !esNotificacionDePlazo) {
     const regexAnioPalabras = /(\d{1,2})\s+de\s+([a-záéíóúüñ]+)\s+de\s+(dos|tres|cuatro)\s+mil\s+([a-záéíóúüñ]+(?:\s+[a-záéíóúüñ]+)?)/gi
     const matchesAP = [...cuerpo.matchAll(regexAnioPalabras)]
     for (const m of matchesAP) {
@@ -446,7 +494,7 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
   }
 
   // Patrón 2a: "Fecha  2026/07/31" — tabla del PDF
-  if (!fecha) {
+  if (!fecha && !esNotificacionDePlazo) {
     const matchTablaFecha = cuerpo.match(/Fecha\s+(\d{4})\/(\d{2})\/(\d{2})/i)
     if (matchTablaFecha) {
       fecha = `${matchTablaFecha[1]}-${matchTablaFecha[2]}-${matchTablaFecha[3]}`
@@ -456,7 +504,7 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
 
   // Patrón 2b: "Fecha 25 de junio de dos mil veintiséis" — tabla acta PJUD con año en palabras
   // Captura específica para este formato de tabla
-  if (!fecha) {
+  if (!fecha && !esNotificacionDePlazo) {
     const matchTablaAP = cuerpo.match(/Fecha\s+(\d{1,2})\s+de\s+([a-z\u00e0-\u00ff]+)\s+de\s+(dos|tres|cuatro)\s+mil\s+([a-z\u00e0-\u00ff]+(?:\s+[a-z\u00e0-\u00ff]+)?)/i)
     if (matchTablaAP) {
       const normalizar = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
@@ -476,7 +524,7 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
   }
 
   // Patrón 3: "fijada para el DD de MES de YYYY"
-  if (!fecha) {
+  if (!fecha && !esNotificacionDePlazo) {
     const matchFijada = cuerpo.match(/fijada?\s+para\s+el\s+(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/i)
     if (matchFijada) {
       const mes = meses[matchFijada[2].toLowerCase()]
@@ -490,7 +538,7 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
   }
 
   // Patrón 4: tabla Reprogramación — "Fecha  8 de octubre de 2026"
-  if (!fecha) {
+  if (!fecha && !esNotificacionDePlazo) {
     const matchReprog = cuerpo.match(/(?:Reprogramaci[oó]n|Fecha\s+de\s+Audiencia)[^\n]*\n[^\n]*?(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/i)
     if (matchReprog) {
       const mes = meses[matchReprog[2].toLowerCase()]
@@ -504,23 +552,6 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
   }
 
   const fechaEsFuerte = fecha !== null // patrones 1-4: viene de una sección específica (fijación/tabla/reprogramación)
-
-  // ✅ NUEVO: un correo que solo notifica un PLAZO para responder/formular
-  // observaciones/contestar (ej. "se confiere traslado por el plazo de 5
-  // días, esto es, hasta el 18 de julio de 2026") NO es una audiencia — es
-  // un plazo procesal. Antes, si no había ninguna fecha "fuerte" (patrones
-  // 1-4, que exigen una sección de fijación/tabla real), el patrón débil de
-  // respaldo (5/6, "cualquier fecha futura escrita en el texto") igual
-  // tomaba la fecha del vencimiento del plazo y la guardaba como si fuera
-  // una audiencia agendada, con tipo y hora sacados de texto cercano sin
-  // relación real (ej. de menciones genéricas de otra audiencia ya fijada
-  // en el mismo documento, o de la hora de firma electrónica). Ahora, si el
-  // texto suena a notificación de plazo y NO hay ninguna fecha fuerte ya
-  // encontrada, se deja sin detectar (mejor que Joaquín la revise a mano
-  // que agendar una audiencia falsa).
-  const esNotificacionDePlazo = /plazo\s+de\s+\d+\s+d[ií]as?[^.]{0,100}(responder|contestar|evacuar|traslado|observaci[oó]n|formular)/i.test(cuerpo)
-    || /se\s+confiere\s+traslado/i.test(cuerpo)
-    || /t[eé]ngase\s+por\s+notificad[oa][^.]{0,60}plazo/i.test(cuerpo)
 
   // Patrón 5: cualquier fecha escrita futura en el cuerpo (fallback — menos confiable)
   if (!fecha && !esNotificacionDePlazo) {
