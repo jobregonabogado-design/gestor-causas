@@ -660,7 +660,17 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
         </div>
       ) : (
         <div
-          onDragOver={e=>{e.preventDefault();setDragPdf(true)}}
+          // ✅ FIX: en algunos navegadores/Windows (visto en video: Edge)
+          // arrastrar el PDF mostraba el símbolo rojo de "no permitido" y el
+          // recuadro nunca se ponía azul — el navegador nunca llegaba a
+          // "aceptar" el archivo. Solo se prevenía el default en
+          // "dragover"; algunos navegadores necesitan que TAMBIÉN se
+          // prevenga en "dragenter" (el primer evento al entrar al
+          // recuadro) para aceptar el drop, y fijar explícitamente
+          // dropEffect="copy" evita que el navegador decida por su cuenta
+          // que la acción no está permitida.
+          onDragEnter={e=>{e.preventDefault();setDragPdf(true)}}
+          onDragOver={e=>{e.preventDefault();if(e.dataTransfer)e.dataTransfer.dropEffect='copy';setDragPdf(true)}}
           onDragLeave={()=>setDragPdf(false)}
           onDrop={e=>{e.preventDefault();setDragPdf(false);const file=e.dataTransfer.files[0];if(file)procesarPdfComprobante(file)}}
           onClick={()=>nuevaDiligenciaFileRef.current.click()}

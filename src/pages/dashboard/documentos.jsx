@@ -58,7 +58,11 @@ export function FallosReferencia({ causaId, ruc, email, onAccion }) {
       <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:10 }}>
         <BotonImprimirDocumentos items={fallos}/>
       </div>
-      <div onDragOver={e => { e.preventDefault(); setDrag(true) }} onDragLeave={() => setDrag(false)} onDrop={onDrop} onClick={() => inputRef.current?.click()}
+      {/* ✅ FIX: mismo arreglo que en diligencias.jsx — algunos navegadores en
+          Windows (ej. Edge) necesitan que "dragenter" también prevenga el
+          default y que se fije dropEffect="copy", si no muestran el
+          símbolo rojo de "no permitido" y nunca aceptan el archivo. */}
+      <div onDragEnter={e => { e.preventDefault(); setDrag(true) }} onDragOver={e => { e.preventDefault(); if(e.dataTransfer) e.dataTransfer.dropEffect='copy'; setDrag(true) }} onDragLeave={() => setDrag(false)} onDrop={onDrop} onClick={() => inputRef.current?.click()}
         style={{ border: `2px dashed ${drag ? '#2563eb' : '#e2e8f0'}`, borderRadius: 12, padding: '28px 20px', textAlign: 'center', background: drag ? '#eff6ff' : '#F8F9FC', cursor: 'pointer', transition: 'all 0.2s', marginBottom: 16 }}>
         <input ref={inputRef} type="file" accept=".pdf" multiple style={{ display:'none' }} onChange={e => Array.from(e.target.files).forEach(f => subirArchivo(f))}/>
         <div style={{ fontSize: 32, marginBottom: 8 }}>{subiendo ? '⏳' : '📄'}</div>
@@ -202,7 +206,11 @@ export function DocumentosGuardados({ causaId, ruc, email, registrarActividad, o
         </div>
       </div>
       <div style={{ marginBottom:14 }}/>
-      <div onDragOver={e => { e.preventDefault(); setDrag(true) }} onDragLeave={() => setDrag(false)} onDrop={onDrop} onClick={() => inputRef.current?.click()}
+      {/* ✅ FIX: mismo arreglo que en diligencias.jsx — algunos navegadores en
+          Windows (ej. Edge) necesitan que "dragenter" también prevenga el
+          default y que se fije dropEffect="copy", si no muestran el
+          símbolo rojo de "no permitido" y nunca aceptan el archivo. */}
+      <div onDragEnter={e => { e.preventDefault(); setDrag(true) }} onDragOver={e => { e.preventDefault(); if(e.dataTransfer) e.dataTransfer.dropEffect='copy'; setDrag(true) }} onDragLeave={() => setDrag(false)} onDrop={onDrop} onClick={() => inputRef.current?.click()}
         style={{ border: `2px dashed ${drag ? '#2563eb' : '#e2e8f0'}`, borderRadius: 12, padding: '24px 20px', textAlign: 'center', background: drag ? '#eff6ff' : '#F8F9FC', cursor: 'pointer', transition: 'all 0.2s', marginBottom: 16 }}>
         <input ref={inputRef} type="file" multiple style={{ display:'none' }} onChange={e => Array.from(e.target.files).forEach(f => subirArchivo(f))}/>
         <div style={{ fontSize: 28, marginBottom: 6 }}>{subiendo ? '⏳' : '📎'}</div>
