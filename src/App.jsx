@@ -85,8 +85,21 @@ function PanelActividad({ onClose, onVerCausa }) {
     else if (filtro === 'semana') desde.setDate(desde.getDate() - 7)
     else if (filtro === 'mes') desde.setDate(desde.getDate() - 30)
     // 🔎 Solo interesa qué se hizo (acción), no ingresos/salidas de sesión
-    const { data } = await supabase.from('actividad_usuario').select('*').eq('tipo', 'accion').gte('created_at', desde.toISOString()).order('created_at', { ascending: false }).limit(150)
-    setActividad(data || [])
+    // ✅ FIX: antes se pedía un solo LIMIT 150 compartido entre TODOS los
+    // usuarios juntos, ordenado por fecha — si una persona es mucho más
+    // activa que otra (ej. Joaquín hace cientos de acciones seguidas), sus
+    // acciones llenaban las 150 completas y la otra persona (ej. Adolfo)
+    // desaparecía del todo del panel, aunque sí hubiera trabajado dentro
+    // del rango de fechas elegido. Ahora se trae hasta 150 acciones POR
+    // CADA usuario que tuvo actividad en el rango, para que nadie quede
+    // tapado por otro más activo.
+    const { data: emailsData } = await supabase.from('actividad_usuario').select('email').eq('tipo', 'accion').gte('created_at', desde.toISOString())
+    const emails = [...new Set((emailsData || []).map(r => r.email))]
+    const resultados = await Promise.all(emails.map(email =>
+      supabase.from('actividad_usuario').select('*').eq('tipo', 'accion').eq('email', email).gte('created_at', desde.toISOString()).order('created_at', { ascending: false }).limit(150)
+    ))
+    const data = resultados.flatMap(r => r.data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    setActividad(data)
     setLoading(false)
   }
 
