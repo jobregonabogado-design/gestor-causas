@@ -427,9 +427,16 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
   // día X" pensado para audiencias fijadas de verdad, así que solo bloquear
   // los patrones débiles no bastaba. Mejor que Joaquín revise el correo a
   // mano que agendar una audiencia falsa con la fecha del vencimiento.
-  const esNotificacionDePlazo = /plazo\s+de\s+\d+\s+d[ií]as?[^.]{0,100}(responder|contestar|evacuar|traslado|observaci[oó]n|formular)/i.test(cuerpo)
+  // ✅ FIX: el número de días casi nunca viene en dígito en este tipo de
+  // notificación ("plazo de CINCO días", no "plazo de 5 días") — el patrón
+  // original exigía \d+ y por eso nunca reconocía el caso real. También se
+  // agrega "dentro de quinto/tercero/etc. día", otra fórmula procesal muy
+  // usada en Chile que significa lo mismo (plazo de N días) sin usar la
+  // palabra "plazo" para nada.
+  const esNotificacionDePlazo = /plazo\s+de\s+(?:\d+|un|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s+d[ií]as?[^.]{0,100}(responder|contestar|evacuar|traslado|observaci[oó]n|formular)/i.test(cuerpo)
     || /se\s+confiere\s+traslado/i.test(cuerpo)
     || /t[eé]ngase\s+por\s+notificad[oa][^.]{0,60}plazo/i.test(cuerpo)
+    || /dentro\s+de\s+(?:quinto|tercero|segundo|d[eé]cimo|primer)\s+d[ií]a/i.test(cuerpo)
 
   // ═══════════════════════════════════════════════════════
   // PASO 1: Buscar fecha en sección de FIJACIÓN (al final)

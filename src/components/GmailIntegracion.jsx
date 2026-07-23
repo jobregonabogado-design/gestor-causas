@@ -103,20 +103,34 @@ export default function GmailIntegracion({ onImportComplete }) {
 
       const nuevasRespuestas = []
       const foliosVistos = new Set()
+      // ✅ NUEVO: un correo que ya se identificó como RESPUESTA de Fiscalía a
+      // una solicitud (calza por folio con una diligencia pendiente) NO debe
+      // agregarse TAMBIÉN como una audiencia genérica más abajo — antes se
+      // procesaba en ambos lados: acá como "respuesta detectada" (correcto,
+      // usando el folio) y más abajo como "audiencia agregada automáticamente"
+      // (incorrecto, tomando la fecha en que se INGRESÓ la solicitud como si
+      // fuera una audiencia real, incluso en solicitudes RECHAZADAS que no
+      // tienen ninguna cita). Se guardan los ids de estos correos para
+      // excluirlos del todo de la detección de audiencias.
+      const idsConRespuesta = new Set()
       for (const n of todasNotificaciones) {
         const folioDetectado = normalizarFolio(n.respuestaFiscalia?.folio)
-        if (!folioDetectado || foliosVistos.has(folioDetectado)) continue
+        if (!folioDetectado) continue
         const diligencia = pendientesPorFolio.get(folioDetectado)
         if (!diligencia) continue
+        if (n.id) idsConRespuesta.add(n.id)
+        if (foliosVistos.has(folioDetectado)) continue
         foliosVistos.add(folioDetectado)
         const causa = causasPorId[diligencia.causa_id]
         nuevasRespuestas.push({
           diligenciaId: diligencia.id,
+          causaId: diligencia.causa_id,
           tipoDiligencia: diligencia.tipo,
           folio: diligencia.folio,
           fechaSolicitud: diligencia.fecha_solicitud,
           ruc: causa?.ruc || '',
           imputado: causa?.imputado || '',
+          tribunal: causa?.tribunal || '',
           estado: n.respuestaFiscalia.estado,
           fechaCitacion: n.respuestaFiscalia.fechaCitacion,
           detalle: n.respuestaFiscalia.detalle,
@@ -191,7 +205,12 @@ export default function GmailIntegracion({ onImportComplete }) {
 
       setProcesando(true)
 
-      for (const n of notificaciones) {
+      // ✅ Se excluyen acá (y no antes) los correos que ya se identificaron
+      // como respuesta de Fiscalía — así el filtro de RUC vigente de arriba
+      // no se duplica innecesariamente.
+      const notificacionesParaAudiencias = notificaciones.filter(n => !(n.id && idsConRespuesta.has(n.id)))
+
+      for (const n of notificacionesParaAudiencias) {
         const rucLimpio = n.ruc?.replace(/\s/g, '')
         const rucNorm = normalizarRuc(rucLimpio)
         const causa = causasPorRucNorm[rucNorm]
@@ -363,8 +382,36 @@ export default function GmailIntegracion({ onImportComplete }) {
       fecha_citacion: item.estado === 'con_citacion' ? item.fechaCitacion : null,
       respuesta_detalle: item.detalle || null,
     }).eq('id', item.diligenciaId)
+    if (error) { setAplicandoId(null); alert('No se pudo aplicar la respuesta: ' + error.message); return }
+
+    // ✅ NUEVO: si la respuesta fija una fecha concreta (ej. "SE APRUEBA
+    // ENTREVISTA PRESENCIAL... 5 de agosto de 2026"), esa fecha también
+    // queda en el Calendario, no solo anotada en la diligencia — es lo que
+    // más le importa a Joaquín tener a la vista: fechas de entrevista con
+    // el fiscal y de declaración. Se marca su origen en "notas" para
+    // distinguirla de una audiencia normal del PJUD.
+    if (item.estado === 'con_citacion' && item.fechaCitacion && item.causaId) {
+      const t = (item.tipoDiligencia || '').toUpperCase()
+      const tipoAudiencia = /audiencia|entrevista/.test(t) ? 'ENTREVISTA'
+        : /declaraci[oó]n/.test(t) ? 'DECLARACIÓN'
+        : 'CITACIÓN FISCALÍA'
+      const { error: errAudiencia } = await supabase.from('audiencias').insert({
+        causa_id: item.causaId,
+        ruc: item.ruc,
+        tipo: tipoAudiencia,
+        fecha: item.fechaCitacion,
+        hora: '',
+        tribunal: item.tribunal || 'FISCALÍA',
+        imputado: item.imputado || '',
+        resultado: '',
+        notas: `Agregada desde respuesta de Fiscalía al folio ${item.folio} ("${item.tipoDiligencia}").\nAsunto: ${item.asunto}`,
+      })
+      if (errAudiencia) {
+        alert('La diligencia se marcó como respondida, pero no se pudo agregar la fecha al calendario: ' + errAudiencia.message + '\n\nAgrégala manualmente en Audiencias.')
+      }
+    }
+
     setAplicandoId(null)
-    if (error) { alert('No se pudo aplicar la respuesta: ' + error.message); return }
     setRespuestasDetectadas(prev => prev.filter(x => x.diligenciaId !== item.diligenciaId))
     if (onImportComplete) onImportComplete()
   }
