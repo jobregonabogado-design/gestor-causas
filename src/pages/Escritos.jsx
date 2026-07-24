@@ -59,7 +59,11 @@ function construirDatos(causa, imputado, abogado) {
     ABOGADO_NOMBRE: abogado?.nombre || '[NOMBRE ABOGADO]',
     ABOGADO_RUN: abogado?.run || '[RUN ABOGADO]',
     ABOGADO_DOMICILIO: abogado?.domicilio || '[DOMICILIO ABOGADO]',
-    CORREO_NOTIFICACION: causa?.correo_notificacion || '[CORREO DE NOTIFICACIÓN]',
+    ABOGADO_CORREO: abogado?.correo || '[CORREO ABOGADO]',
+    // ✅ Si la causa no tiene su propio correo de notificación elegido, se
+    // usa el del perfil del abogado como respaldo — antes quedaba en
+    // "[CORREO DE NOTIFICACIÓN]" aunque el abogado sí tuviera uno guardado.
+    CORREO_NOTIFICACION: causa?.correo_notificacion || abogado?.correo || '[CORREO DE NOTIFICACIÓN]',
     FECHA: new Date().toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' }),
   }
 }
@@ -93,7 +97,7 @@ function PerfilAbogado({ abogado, setAbogado, onGuardar, guardando }) {
     <div style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 14, padding: 20, marginBottom: 20 }}>
       <div style={{ fontSize: 13, fontWeight: 700, color: '#1E293B', marginBottom: 4, ...f }}>Datos del abogado patrocinante</div>
       <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 14, ...f }}>Se usan para rellenar automáticamente los escritos. Se guardan para la próxima vez.</div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr 1.3fr', gap: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr 1.3fr 1.3fr', gap: 10 }}>
         <div>
           <div style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 5, fontWeight: 600, ...f }}>Nombre completo</div>
           <input style={inp} value={abogado.nombre} onChange={e => setAbogado(p => ({ ...p, nombre: e.target.value }))} placeholder="Nombre del abogado" />
@@ -105,6 +109,14 @@ function PerfilAbogado({ abogado, setAbogado, onGuardar, guardando }) {
         <div>
           <div style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 5, fontWeight: 600, ...f }}>Domicilio profesional</div>
           <input style={inp} value={abogado.domicilio} onChange={e => setAbogado(p => ({ ...p, domicilio: e.target.value }))} placeholder="Domicilio para notificaciones" />
+        </div>
+        <div>
+          <div style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 5, fontWeight: 600, ...f }}>Correo</div>
+          <select style={inp} value={abogado.correo || ''} onChange={e => setAbogado(p => ({ ...p, correo: e.target.value }))}>
+            <option value="">Seleccionar correo...</option>
+            <option value="JOBREGONABOGADO@GMAIL.COM">JOBREGONABOGADO@GMAIL.COM</option>
+            <option value="NOTIFICACION.DEFENSAPENAL@GMAIL.COM">NOTIFICACION.DEFENSAPENAL@GMAIL.COM</option>
+          </select>
         </div>
       </div>
       <button className="btn-secondary" style={{ marginTop: 12, fontSize: 12 }} onClick={onGuardar} disabled={guardando}>{guardando ? 'Guardando...' : '💾 Guardar datos'}</button>
@@ -121,7 +133,10 @@ export default function Escritos({ session, registrarActividad }) {
   const [impSel, setImpSel] = useState(null)
   const [plantillaSel, setPlantillaSel] = useState(null)
   const [preview, setPreview] = useState('')
-  const [abogado, setAbogado] = useState({ nombre: 'JOAQUÍN IGNACIO OBREGÓN ABARCA', run: '', domicilio: 'AVENIDA PEDRO MONTT Nº 1739, DEPARTAMENTO 23, COMUNA DE SANTIAGO' })
+  // ✅ RUT y domicilio definitivos de Joaquín — se usan como valor por
+  // defecto para cualquier cuenta que aún no tenga su propio perfil
+  // guardado en `perfil_abogado`.
+  const [abogado, setAbogado] = useState({ nombre: 'JOAQUÍN IGNACIO OBREGÓN ABARCA', run: '17.348.087-3', domicilio: 'CALLE FABRICA 1996-D OFICINA 4 SANTIAGO', correo: '' })
   const [guardandoPerfil, setGuardandoPerfil] = useState(false)
   const [guardandoEscrito, setGuardandoEscrito] = useState(false)
 
@@ -131,14 +146,14 @@ export default function Escritos({ session, registrarActividad }) {
     const email = session?.user?.email
     if (!email) return
     const { data } = await supabase.from('perfil_abogado').select('*').eq('email', email).maybeSingle()
-    if (data) setAbogado({ nombre: data.nombre || '', run: data.run || '', domicilio: data.domicilio || '' })
+    if (data) setAbogado({ nombre: data.nombre || '', run: data.run || '', domicilio: data.domicilio || '', correo: data.correo || '' })
   }
 
   const guardarPerfilAbogado = async () => {
     const email = session?.user?.email
     if (!email) return
     setGuardandoPerfil(true)
-    await supabase.from('perfil_abogado').upsert({ email, nombre: abogado.nombre.toUpperCase(), run: abogado.run.toUpperCase(), domicilio: abogado.domicilio.toUpperCase() }, { onConflict: 'email' })
+    await supabase.from('perfil_abogado').upsert({ email, nombre: abogado.nombre.toUpperCase(), run: abogado.run.toUpperCase(), domicilio: abogado.domicilio.toUpperCase(), correo: abogado.correo || null }, { onConflict: 'email' })
     setGuardandoPerfil(false)
   }
 
