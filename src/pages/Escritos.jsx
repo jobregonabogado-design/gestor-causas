@@ -68,17 +68,48 @@ function construirDatos(causa, imputado, abogado) {
   }
 }
 
-// Genera un .doc descargable (formato Word vía HTML) sin depender de librerías externas
+// ✅ FIX: el .doc se veía "desprolijo" al abrirlo en Word de verdad — sin
+// sangría, sin espacio entre párrafos y con letra muy grande. La causa: Word
+// NO respeta de forma confiable el CSS puesto solo en <body> cuando importa
+// un archivo HTML como si fuera .doc — ignora la herencia y aplica su propio
+// estilo "Normal" por defecto (que suele ser más grande). La forma correcta
+// de generar un .doc por HTML que Word SÍ respeta es la que usa Word mismo al
+// exportar "Página web filtrada": una clase p.MsoNormal declarada en un
+// <style>, repetir tamaño/tipografía en CADA párrafo (no solo en el body), y
+// un bloque [if gte mso 9] con la configuración del documento. Los tamaños se
+// dan en puntos (pt), no píxeles, que es la unidad real de Word.
 function descargarWord(texto, nombreArchivo) {
+  const FUENTE = "'Times New Roman',serif"
+  const TAMANO = '12pt'
   const parrafos = texto.split('\n').map(l => {
-    if (!l) return `<p style="margin:0 0 10px 0;">&nbsp;</p>`
+    const estiloBase = `margin:0 0 12pt 0;font-family:${FUENTE};font-size:${TAMANO};line-height:150%;text-align:justify;`
+    if (!l) return `<p class="MsoNormal" style="${estiloBase}">&nbsp;</p>`
     const tieneSangria = l.startsWith('\t')
     const limpio = l.replace(/^\t+/, '').replace(/&/g, '&amp;').replace(/</g, '&lt;')
-    return `<p style="margin:0 0 10px 0;${tieneSangria ? 'text-indent:40px;' : ''}">${limpio}</p>`
+    const estilo = estiloBase + (tieneSangria ? 'text-indent:35.4pt;' : '')
+    return `<p class="MsoNormal" style="${estilo}"><span style="font-family:${FUENTE};font-size:${TAMANO};">${limpio}</span></p>`
   }).join('')
   const html = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-  <head><meta charset='utf-8'><title>${nombreArchivo}</title></head>
-  <body style="font-family:'Times New Roman',serif;font-size:12pt;line-height:1.5;">${parrafos}</body>
+  <head>
+    <meta charset='utf-8'>
+    <title>${nombreArchivo}</title>
+    <!--[if gte mso 9]>
+    <xml>
+      <w:WordDocument>
+        <w:View>Print</w:View>
+        <w:Zoom>100</w:Zoom>
+        <w:DoNotOptimizeForBrowser/>
+      </w:WordDocument>
+    </xml>
+    <![endif]-->
+    <style>
+      @page Section1 { size:21.0cm 29.7cm; margin:2.5cm 2.5cm 2.5cm 2.5cm; }
+      div.Section1 { page:Section1; }
+      body { font-family:${FUENTE}; font-size:${TAMANO}; }
+      p.MsoNormal { margin:0 0 12pt 0; font-family:${FUENTE}; font-size:${TAMANO}; line-height:150%; }
+    </style>
+  </head>
+  <body><div class="Section1">${parrafos}</div></body>
   </html>`
   const blob = new Blob(['\ufeff', html], { type: 'application/msword' })
   const url = URL.createObjectURL(blob)
