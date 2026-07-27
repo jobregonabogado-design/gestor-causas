@@ -66,7 +66,14 @@ function diasRestantes(plazoStr) {
   return Math.round((fecha - hoy) / (1000*60*60*24))
 }
 
-function PanelActividad({ onClose, onVerCausa }) {
+// ✅ NUEVO: prop `soloEmail` — cuando viene con un correo, el panel funciona
+// en "modo propio": una sola persona viendo SU PROPIA actividad (pensado
+// para el asistente, que no tiene acceso al Panel de Control del titular
+// pero sí puede querer ver de un vistazo en qué causas avanzó en el día).
+// En ese modo se salta la sección de solicitudes de eliminación pendientes
+// (eso es solo del titular) y no tiene sentido agrupar por usuario, así que
+// se muestra directo el detalle de acciones.
+function PanelActividad({ onClose, onVerCausa, soloEmail }) {
   const [actividad, setActividad] = useState([])
   const [loading, setLoading] = useState(true)
   const [filtro, setFiltro] = useState('hoy')
@@ -75,7 +82,7 @@ function PanelActividad({ onClose, onVerCausa }) {
 
   useEffect(() => {
     cargarActividad()
-    cargarSolicitudes()
+    if (!soloEmail) cargarSolicitudes()
   }, [filtro])
 
   const cargarActividad = async () => {
@@ -84,6 +91,14 @@ function PanelActividad({ onClose, onVerCausa }) {
     if (filtro === 'hoy') desde.setHours(0,0,0,0)
     else if (filtro === 'semana') desde.setDate(desde.getDate() - 7)
     else if (filtro === 'mes') desde.setDate(desde.getDate() - 30)
+
+    if (soloEmail) {
+      const { data } = await supabase.from('actividad_usuario').select('*').eq('tipo', 'accion').eq('email', soloEmail).gte('created_at', desde.toISOString()).order('created_at', { ascending: false }).limit(150)
+      setActividad(data || [])
+      setLoading(false)
+      return
+    }
+
     // 🔎 Solo interesa qué se hizo (acción), no ingresos/salidas de sesión
     // ✅ FIX: antes se pedía un solo LIMIT 150 compartido entre TODOS los
     // usuarios juntos, ordenado por fecha — si una persona es mucho más
@@ -133,8 +148,8 @@ function PanelActividad({ onClose, onVerCausa }) {
         <div style={{ background:'#1E293B', padding:'24px 24px 20px', position:'sticky', top:0, zIndex:10 }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
             <div>
-              <div style={{ fontSize:18, fontWeight:800, color:'#fff', letterSpacing:'-0.5px' }}>👁 Panel de Control</div>
-              <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, textTransform:'uppercase', letterSpacing:1 }}>Qué hizo el equipo — solo visible para el titular</div>
+              <div style={{ fontSize:18, fontWeight:800, color:'#fff', letterSpacing:'-0.5px' }}>{soloEmail ? '📋 Mi actividad' : '👁 Panel de Control'}</div>
+              <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, textTransform:'uppercase', letterSpacing:1 }}>{soloEmail ? 'Lo que has trabajado en las causas' : 'Qué hizo el equipo — solo visible para el titular'}</div>
             </div>
             <button onClick={onClose} style={{ background:'rgba(255,255,255,0.1)', border:'none', borderRadius:10, padding:'6px 12px', color:'#fff', cursor:'pointer', fontSize:13 }}>✕ Cerrar</button>
           </div>
@@ -147,7 +162,7 @@ function PanelActividad({ onClose, onVerCausa }) {
           </div>
         </div>
         <div style={{ padding:20 }}>
-          {solicitudes.length > 0 && (
+          {!soloEmail && solicitudes.length > 0 && (
             <div style={{ background:'#fff', border:'1.5px solid #fecaca', borderRadius:16, padding:16, marginBottom:20, boxShadow:'0 8px 24px rgba(220,38,38,0.06)' }}>
               <div style={{ fontSize:13, fontWeight:700, color:'#dc2626', marginBottom:12 }}>🚨 {solicitudes.length} solicitud{solicitudes.length>1?'es':''} de eliminación pendiente{solicitudes.length>1?'s':''}</div>
               {solicitudes.map(s => (
@@ -162,7 +177,7 @@ function PanelActividad({ onClose, onVerCausa }) {
               ))}
             </div>
           )}
-          {Object.entries(stats).map(([email, cantidad]) => {
+          {!soloEmail && Object.entries(stats).map(([email, cantidad]) => {
             const actividadUsuario = actividad.filter(a => a.email === email)
             return (
               <div key={email} style={{ background:'#fff', border:'1.5px solid #E2E8F0', borderRadius:14, marginBottom:12, overflow:'hidden', boxShadow:'0 4px 16px rgba(15,23,42,0.04)' }}>
@@ -198,11 +213,11 @@ function PanelActividad({ onClose, onVerCausa }) {
               </div>
             )
           })}
-          <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, fontWeight:600, marginBottom:10 }}>Registro de acciones</div>
+          <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, fontWeight:600, marginBottom:10 }}>{soloEmail ? 'Detalle' : 'Registro de acciones'}</div>
           {loading ? (
             <div style={{ textAlign:'center', padding:20, color:'#94a3b8', fontSize:13 }}>Cargando...</div>
           ) : actividad.length === 0 ? (
-            <div style={{ textAlign:'center', padding:20, color:'#cbd5e1', fontSize:13 }}>Sin acciones registradas en este período</div>
+            <div style={{ textAlign:'center', padding:20, color:'#cbd5e1', fontSize:13 }}>{soloEmail ? 'Aún no hay acciones registradas en este período' : 'Sin acciones registradas en este período'}</div>
           ) : actividad.map(a => {
             const ruc = extraerRuc(a.descripcion)
             return (
@@ -210,7 +225,7 @@ function PanelActividad({ onClose, onVerCausa }) {
                 <span style={{ fontSize:14, flexShrink:0 }}>📝</span>
                 <div style={{ flex:1 }}>
                   <div style={{ fontSize:12, fontWeight:500, color:'#1E293B' }}>{a.descripcion}</div>
-                  <div style={{ fontSize:11, color:'#94a3b8', marginTop:2 }}>{a.email} · {new Date(a.created_at).toLocaleString('es-CL')}</div>
+                  <div style={{ fontSize:11, color:'#94a3b8', marginTop:2 }}>{soloEmail ? new Date(a.created_at).toLocaleString('es-CL') : `${a.email} · ${new Date(a.created_at).toLocaleString('es-CL')}`}</div>
                 </div>
                 {ruc && onVerCausa && (
                   <button onClick={() => onVerCausa(ruc)} style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:7, padding:'5px 10px', fontSize:11, color:'#1e40af', cursor:'pointer', fontWeight:600, flexShrink:0, fontFamily:"'Manrope','Inter',sans-serif" }}>→ Ver causa</button>
@@ -373,6 +388,9 @@ export default function App() {
   const [pagina, setPagina] = useState('causas')
   const [userRol, setUserRol] = useState(null)
   const [showPanel, setShowPanel] = useState(false)
+  // ✅ NUEVO: vista propia de actividad para quien no es titular (ej. el
+  // asistente) — mismo panel, pero acotado a su propio correo.
+  const [showPanelPropio, setShowPanelPropio] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' && window.innerWidth < 640)
   useEffect(() => {
@@ -527,6 +545,7 @@ export default function App() {
       setCausaDesdeCalendario(data)
       setPagina('causas')
       setShowPanel(false)
+      setShowPanelPropio(false)
       setShowAlerta(false)
     }
   }
@@ -536,6 +555,7 @@ export default function App() {
       <style>{css}</style>
       {notifTarea && <TareaToast tarea={notifTarea} onClose={() => setNotifTarea(null)} />}
       {showPanel && <PanelActividad onClose={() => { setShowPanel(false); setSolicitudesPendientes(0) }} onVerCausa={irACausaPorRuc} />}
+      {showPanelPropio && <PanelActividad onClose={() => setShowPanelPropio(false)} onVerCausa={irACausaPorRuc} soloEmail={session.user.email} />}
       {showAlerta && (
         <PanelAlertas
           onClose={() => setShowAlerta(false)}
@@ -588,12 +608,19 @@ export default function App() {
                       {esTitular ? '⚖ Titular' : '👤 Asistente'}
                     </span>
                   </div>
-                  {esTitular && (
+                  {esTitular ? (
                     <button onClick={() => { setShowUserMenu(false); setShowPanel(true) }} style={{ width:'100%', textAlign:'left', background:'none', border:'none', padding:'12px 16px', fontSize:13, cursor:'pointer', color: solicitudesPendientes > 0 ? '#dc2626' : '#374151', display:'flex', alignItems:'center', justifyContent:'space-between', fontFamily:"'Manrope','Inter',sans-serif", textTransform:'uppercase', letterSpacing:0.3 }}>
                       <span>👁 Control</span>
                       {solicitudesPendientes > 0 && (
                         <span style={{ background:'#dc2626', color:'#fff', borderRadius:'50%', width:16, height:16, fontSize:9, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center' }}>{solicitudesPendientes}</span>
                       )}
+                    </button>
+                  ) : (
+                    // ✅ NUEVO: el asistente no ve el Panel de Control del titular,
+                    // pero sí puede ver su propio avance del día — pensado para
+                    // que sepa en qué causas trabajó, con acceso directo a cada una.
+                    <button onClick={() => { setShowUserMenu(false); setShowPanelPropio(true) }} style={{ width:'100%', textAlign:'left', background:'none', border:'none', padding:'12px 16px', fontSize:13, cursor:'pointer', color:'#374151', fontFamily:"'Manrope','Inter',sans-serif", textTransform:'uppercase', letterSpacing:0.3 }}>
+                      📋 Mi actividad
                     </button>
                   )}
                   <button onClick={() => { setShowUserMenu(false); setPagina('causas'); setShowStatsCausas(v => !v) }} style={{ width:'100%', textAlign:'left', background:'none', border:'none', borderTop:'1px solid #F1F5F9', padding:'12px 16px', fontSize:13, cursor:'pointer', color: showStatsCausas ? '#2563eb' : '#374151', fontFamily:"'Manrope','Inter',sans-serif", textTransform:'uppercase', letterSpacing:0.3 }}>
