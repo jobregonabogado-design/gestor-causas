@@ -388,12 +388,21 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
     }
   }
 
-  // ✅ Al arrastrar/seleccionar el comprobante (PDF o screenshot/imagen) de
-  // Fiscalía para una diligencia NUEVA: se lee el texto (o se hace OCR si es
-  // una imagen), se completan folio/fecha/observación solas, y el archivo
-  // queda listo para adjuntarse automáticamente al guardar. Nunca se guarda
-  // nada sin que el usuario revise y confirme — el formulario siempre se abre
-  // para poder corregir cualquier campo antes de "Guardar diligencia".
+  // ✅ FIX (antes: "nunca se guarda nada sin confirmar" — se comprobó que
+  // ESE resguardo era justo el problema): al arrastrar/seleccionar el
+  // comprobante de Fiscalía, si se detecta folio Y el RUC coincide con esta
+  // causa, la diligencia se GUARDA DE INMEDIATO en la base de datos — igual
+  // que ya se hacía en la pestaña "Documentos guardados" para el mismo tipo
+  // de archivo (ver documentos.jsx, guardarComprobanteComoDiligencia). Antes
+  // esto solo llenaba el formulario y esperaba el clic en "Guardar
+  // diligencia": si Joaquín cambiaba de pestaña o se le olvidaba, la
+  // diligencia — con su folio — se perdía sin dejar rastro. Y ese folio es
+  // justo lo que el sistema necesita después para reconocer la respuesta
+  // real de Fiscalía y agendar la audiencia sola (ver GmailIntegracion.jsx).
+  // Se sigue pidiendo revisión manual SOLO en los dos casos donde de verdad
+  // hay riesgo de guardar algo mal: si no se pudo leer el folio (no hay con
+  // qué identificarla después), o si el RUC del comprobante no coincide con
+  // esta causa (podría ser de otra causa distinta).
   const procesarPdfComprobante = async (file) => {
     const esPdf = file?.type === 'application/pdf'
     const esImagen = file?.type?.startsWith('image/')
@@ -413,25 +422,68 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
       // que el motivo real de la petición nunca quede oculto — Joaquín
       // elige el tipo correcto a mano si ninguno de los oficiales calza.
       const detalleCompleto = [datos.detalleServicio, datos.observacion].filter(Boolean).join(' — ')
+      const rucNoCoincide = datos.ruc && normalizarRuc(datos.ruc) !== normalizarRuc(ruc)
+      const tipoDetectado = datos.tipoDetectado || TIPOS_DILIGENCIA[0]
+      const fechaDetectada = datos.fechaSolicitud || new Date().toISOString().slice(0,10)
+      const folioDetectado = datos.folio || ''
+
+      if (folioDetectado && !rucNoCoincide) {
+        // ── Caso seguro: se guarda sola ──────────────────────────────────
+        setGuardando(true)
+        const { data, error } = await supabase.from('diligencias_fiscalia').insert({
+          causa_id: causaId, tipo: tipoDetectado, fecha_solicitud: fechaDetectada, folio: folioDetectado.toUpperCase(), observacion: detalleCompleto || null, estado:'pendiente', registrado_por: email
+        }).select().single()
+        if (error || !data) {
+          alert('No se pudo guardar la diligencia automáticamente: ' + (error?.message || 'Error desconocido') + '\n\nRevisa los datos y guárdala a mano.')
+          setForm({ tipo: tipoDetectado, fecha_solicitud: fechaDetectada, folio: folioDetectado, observacion: detalleCompleto })
+          setComprobantePendiente(file)
+          setGuardando(false)
+          setAnalizandoPdf(false)
+          setShowForm(true)
+          return
+        }
+        let dataFinal = data
+        try {
+          const path = `diligencias/${data.id}/comprobante_${Date.now()}_${sanitizarNombreArchivo(file.name)}`
+          const { error: upErr } = await supabase.storage.from('documentos').upload(path, file)
+          if (!upErr) {
+            const { data: urlData } = supabase.storage.from('documentos').getPublicUrl(path)
+            const camposArchivo = { comprobante_url: urlData.publicUrl, comprobante_path: path, comprobante_nombre: file.name }
+            await supabase.from('diligencias_fiscalia').update(camposArchivo).eq('id', data.id)
+            dataFinal = { ...data, ...camposArchivo }
+          }
+        } catch { /* si falla el adjunto, la diligencia igual queda guardada */ }
+        setDiligencias(prev => [dataFinal, ...prev])
+        if (registrarActividad) registrarActividad('accion', `Registró diligencia "${tipoDetectado}" (folio ${folioDetectado}) en RUC ${ruc} — guardado automático desde comprobante`)
+        if (onAccion) onAccion()
+        setGuardando(false)
+        setAnalizandoPdf(false)
+        alert(`✓ Diligencia guardada automáticamente: "${tipoDetectado}" (folio ${folioDetectado}).\n\nRevisa que los datos estén correctos — puedes corregirlos con el botón "✏ Corregir datos" si algo se leyó mal.`)
+        return
+      }
+
+      // ── Folio no detectado o RUC no coincide: sigue pidiendo revisión
+      // manual antes de guardar, porque ahí sí hay riesgo real. ──────────
       setForm(p => ({
         ...p,
-        tipo: datos.tipoDetectado || p.tipo,
-        folio: datos.folio || p.folio,
-        fecha_solicitud: datos.fechaSolicitud || p.fecha_solicitud,
+        tipo: tipoDetectado,
+        folio: folioDetectado || p.folio,
+        fecha_solicitud: fechaDetectada,
         observacion: detalleCompleto || p.observacion,
       }))
       setComprobantePendiente(file)
-      if (datos.ruc && normalizarRuc(datos.ruc) !== normalizarRuc(ruc)) {
+      if (rucNoCoincide) {
         setAvisoRuc(`⚠ Este comprobante indica RUC ${datos.ruc}, pero esta causa es RUC ${ruc}. Revisa antes de guardar — puede que corresponda a otra causa.`)
       }
-      if (!datos.folio) {
+      if (!folioDetectado) {
         alert(esImagen
           ? 'No se pudo detectar el folio automáticamente en la imagen (el OCR de screenshots es menos preciso que leer un PDF) — complétalo a mano antes de guardar.'
           : 'No se pudo detectar el folio automáticamente — complétalo a mano antes de guardar.')
       }
+      setAnalizandoPdf(false)
+      setShowForm(true)
     } catch (err) {
       alert('No se pudo leer el comprobante automáticamente. Completa los datos a mano. (' + (err?.message || '') + ')')
-    } finally {
       setAnalizandoPdf(false)
       setShowForm(true)
     }
@@ -679,7 +731,7 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
             onChange={e=>{ const file=e.target.files[0]; if(file) procesarPdfComprobante(file); e.target.value='' }}/>
           <div style={{ fontSize:24, marginBottom:6 }}>{analizandoPdf ? '⏳' : '📄'}</div>
           <div style={{ fontSize:13, fontWeight:600, color:'#475569', ...f }}>
-            {analizandoPdf ? 'Leyendo comprobante...' : dragPdf ? 'Suelta el archivo aquí' : 'Arrastra el comprobante (PDF o screenshot) de Fiscalía — se completa solo'}
+            {analizandoPdf ? 'Leyendo y guardando comprobante...' : dragPdf ? 'Suelta el archivo aquí' : 'Arrastra el comprobante (PDF o screenshot) de Fiscalía — se guarda solo'}
           </div>
           <div style={{ fontSize:11, color:'#94a3b8', marginTop:6, ...f }}>
             o <span style={{ color:'#2563eb', fontWeight:600 }} onClick={e=>{e.stopPropagation();setShowForm(true)}}>ingresar manualmente</span>
