@@ -7,19 +7,26 @@ import { DiligenciasFiscalia } from './diligencias'
 import { FallosReferencia, DocumentosGuardados } from './documentos'
 import CarpetaOneDrive from '../../components/CarpetaOneDrive'
 
+// ✅ Se sacaron "Prueba y testigos" y "Observaciones" como secciones aparte —
+// Joaquín pidió dejar solo 5: Hechos, Teoría de la Defensa, Fallos, Carpeta
+// y Diligencias. La "Prueba" no desapareció: ahora vive DENTRO de "Teoría de
+// la Defensa" como un segundo campo (ver más abajo), porque es la evidencia
+// que sustenta esa teoría puntual, no un inventario aparte. Los datos que ya
+// existían en "prueba" se conservan intactos (misma clave). Los 2 registros
+// que sí tenían algo en "Observaciones" se migraron a mano al campo de
+// Teoría de la Defensa antes de sacar la sección, con una marca clara de su
+// origen — no se perdió nada.
 const TC_SECCIONES = [
   { key:'hechos',        icon:'📋', label:'Hechos del caso',       placeholder:'Describe los hechos relevantes: lugar, fecha, circunstancias, cronología de los eventos...' },
-  { key:'teoria_defensa',icon:'⚖️',  label:'Teoría y Defensa',      placeholder:'Calificación jurídica, tipo penal, elementos del delito, circunstancias modificatorias, estrategia de defensa, alegaciones, excepciones, jurisprudencia aplicable...' },
-  { key:'prueba',        icon:'🔍', label:'Prueba y testigos',      placeholder:'Lista de testigos, peritos, documentos, evidencias materiales, cadena de custodia...' },
+  { key:'teoria_defensa',icon:'⚖️',  label:'Teoría de la Defensa',  placeholder:null },
   { key:'fallos',        icon:'📄', label:'Fallos de referencia',   placeholder:null },
-  { key:'observaciones', icon:'📝', label:'Observaciones',          placeholder:'Notas de seguimiento, criterios del tribunal, pendientes...' },
   { key:'carpeta',       icon:'📁', label:'Carpeta y Documentos',   placeholder:null },
   { key:'diligencias',   icon:'📨', label:'Diligencias Fiscalía',   placeholder:null },
 ]
 
 export function TeoriaDelCaso({ causaId, ruc, session, registrarActividad, onAccion, carpetaRef, onUpdateCarpetaRef, isMobile }) {
   const [teoria, setTeoria] = useState(null)
-  const [form, setForm] = useState({ hechos:'', teoria_defensa:'', prueba:'', observaciones:'' })
+  const [form, setForm] = useState({ hechos:'', teoria_defensa:'', prueba:'' })
   const [historial, setHistorial] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -37,7 +44,7 @@ export function TeoriaDelCaso({ causaId, ruc, session, registrarActividad, onAcc
     const { data } = await supabase.from('notas').select('*').eq('causa_id', causaId).eq('tipo', 'teoria_caso').order('created_at', { ascending: false }).limit(1).maybeSingle()
     if (data) {
       try { const parsed = JSON.parse(data.contenido); setForm(parsed.contenido || {}); setTeoria(data) }
-      catch { setForm({ hechos: data.contenido || '', teoria_defensa:'', prueba:'', observaciones:'' }); setTeoria(data) }
+      catch { setForm({ hechos: data.contenido || '', teoria_defensa:'', prueba:'' }); setTeoria(data) }
     }
     const { data: hist } = await supabase.from('notas').select('*').eq('causa_id', causaId).eq('tipo', 'teoria_caso_historial').order('created_at', { ascending: false }).limit(20)
     setHistorial(hist || [])
@@ -82,6 +89,13 @@ export function TeoriaDelCaso({ causaId, ruc, session, registrarActividad, onAcc
   const esSeccionTexto = !['fallos','carpeta','diligencias'].includes(seccionActiva)
   const totalCaracteres = Object.values(form).join('').length
 
+  // ✅ "Teoría de la Defensa" ahora incluye 2 campos (el texto y la prueba
+  // que lo sustenta) — el puntito de "tiene contenido" debe prenderse si
+  // CUALQUIERA de los dos tiene algo escrito, no solo el primero.
+  const tieneContenido = (key) => key === 'teoria_defensa'
+    ? (form.teoria_defensa||'').trim().length > 0 || (form.prueba||'').trim().length > 0
+    : (form[key]||'').trim().length > 0
+
   if (loading) return <div style={{ textAlign:'center', padding:40, color:'#94a3b8', fontSize:13, ...f }}>Cargando teoría del caso...</div>
 
   return (
@@ -93,24 +107,23 @@ export function TeoriaDelCaso({ causaId, ruc, session, registrarActividad, onAcc
         <div style={{ background:'#F8F9FC', borderBottom:'1px solid #E2E8F0', padding:'12px 16px' }}>
           <select value={seccionActiva} onChange={e=>setSeccionActiva(e.target.value)}
             style={{width:'100%',padding:'10px 12px',border:'1.5px solid #e2e8f0',borderRadius:10,fontSize:13,fontWeight:600,color:'#1E293B',background:'#fff',...f}}>
-            {TC_SECCIONES.map(s => {
-              const tieneContenido = (form[s.key]||'').trim().length > 0
-              return <option key={s.key} value={s.key}>{s.icon} {s.label}{tieneContenido?' ●':''}</option>
-            })}
+            {TC_SECCIONES.map(s => (
+              <option key={s.key} value={s.key}>{s.icon} {s.label}{tieneContenido(s.key)?' ●':''}</option>
+            ))}
           </select>
         </div>
       ) : (
         <div style={{ background:'#F8F9FC', borderRight:'1px solid #E2E8F0', padding:'20px 0' }}>
           <div style={{ fontSize:9, color:'#94a3b8', textTransform:'uppercase', letterSpacing:2, fontWeight:700, padding:'0 16px 12px', ...f }}>Secciones</div>
           {TC_SECCIONES.map(s => {
-            const tieneContenido = (form[s.key]||'').trim().length > 0
+            const marcada = tieneContenido(s.key)
             return (
               <button key={s.key} onClick={() => setSeccionActiva(s.key)}
                 style={{ width:'100%', textAlign:'left', padding:'10px 16px', background: seccionActiva===s.key ? '#1E293B' : 'transparent', border:'none', borderLeft: seccionActiva===s.key ? '3px solid #1E293B' : '3px solid transparent', cursor:'pointer', display:'flex', alignItems:'center', gap:8, transition:'all 0.2s ease' }}>
                 <span style={{ fontSize:13, opacity: seccionActiva===s.key ? 1 : 0.6 }}>{s.icon}</span>
                 <div style={{ flex:1 }}>
                   <div style={{ fontSize:11, fontWeight: seccionActiva===s.key ? 600 : 400, color: seccionActiva===s.key ? '#fff' : '#64748b', ...f, lineHeight:1.3, textTransform:'uppercase', letterSpacing:0.5 }}>{s.label}</div>
-                  {tieneContenido && <div style={{ width:5, height:5, borderRadius:'50%', background: seccionActiva===s.key ? '#fff' : '#1E293B', marginTop:3 }}/>}
+                  {marcada && <div style={{ width:5, height:5, borderRadius:'50%', background: seccionActiva===s.key ? '#fff' : '#1E293B', marginTop:3 }}/>}
                 </div>
               </button>
             )
@@ -190,6 +203,28 @@ export function TeoriaDelCaso({ causaId, ruc, session, registrarActividad, onAcc
             </div>
           ) : seccionActiva === 'diligencias' ? (
             <DiligenciasFiscalia causaId={causaId} ruc={ruc} email={session?.user?.email || ''} registrarActividad={registrarActividad} onAccion={onAccion} />
+          ) : seccionActiva === 'teoria_defensa' ? (
+            // ✅ "Teoría de la Defensa" es un mini-formulario de 2 campos, no un
+            // solo cuadro de texto. El primero (el texto principal) no lleva
+            // etiqueta propia arriba — repetir "Teoría de la Defensa" ahí
+            // quedaba redundante con el título de la sección, que ya dice lo
+            // mismo. El segundo campo sí lleva su propia etiqueta ("Prueba"),
+            // porque es un dato distinto dentro de la misma sección.
+            <div style={{ display:'flex', flexDirection:'column', gap:22, height:'100%' }}>
+              <textarea value={form.teoria_defensa || ''} onChange={e => handleChange('teoria_defensa', e.target.value)}
+                placeholder="Calificación jurídica, tipo penal, elementos del delito, circunstancias modificatorias, estrategia de defensa, alegaciones, excepciones, jurisprudencia aplicable..."
+                style={{ width:'100%', minHeight:180, border:'1.5px solid #e2e8f0', borderRadius:10, outline:'none', resize:'vertical', fontSize:14, lineHeight:1.8, color:'#1E293B', background:'#fdfdfd', fontFamily:"'Manrope','Inter',sans-serif", padding:'12px 14px', boxSizing:'border-box' }}/>
+              <div>
+                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
+                  <div style={{ width:26, height:26, borderRadius:7, background:'#f0fdf4', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, flexShrink:0 }}>🔎</div>
+                  <div style={{ fontSize:12, fontWeight:700, color:'#1E293B', textTransform:'uppercase', letterSpacing:0.5, ...f }}>Prueba</div>
+                </div>
+                <div style={{ fontSize:11, color:'#94a3b8', marginLeft:34, marginBottom:8, ...f }}>Prueba concreta que sustenta esta teoría (peritajes, declaraciones, documentos)</div>
+                <textarea value={form.prueba || ''} onChange={e => handleChange('prueba', e.target.value)}
+                  placeholder="Prueba que sustenta la teoría de la defensa: peritajes, declaraciones de testigos, documentos, contradicciones en el parte policial..."
+                  style={{ width:'100%', minHeight:140, border:'1.5px solid #e2e8f0', borderRadius:10, outline:'none', resize:'vertical', fontSize:14, lineHeight:1.8, color:'#1E293B', background:'#fdfdfd', fontFamily:"'Manrope','Inter',sans-serif", padding:'12px 14px', boxSizing:'border-box' }}/>
+              </div>
+            </div>
           ) : (
             <textarea value={form[seccionActiva] || ''} onChange={e => handleChange(seccionActiva, e.target.value)} placeholder={seccionActual?.placeholder}
               style={{ width:'100%', height:'100%', minHeight:360, border:'none', outline:'none', resize:'none', fontSize:14, lineHeight:1.8, color:'#1E293B', background:'transparent', fontFamily:"'Manrope','Inter',sans-serif", padding:0 }}/>
