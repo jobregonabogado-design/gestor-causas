@@ -203,7 +203,7 @@ async function extraerTextoImagen(file) {
 // para avisar cuando ya pasaron los ~5 días hábiles típicos de respuesta de
 // Fiscalía y todavía no ha llegado nada, así el usuario sabe que debe
 // hacer seguimiento.
-function diasHabilesDesde(fechaISO) {
+export function diasHabilesDesde(fechaISO) {
   if (!fechaISO) return 0
   const inicio = new Date(fechaISO + 'T00:00:00')
   const hoy = new Date(); hoy.setHours(0,0,0,0)

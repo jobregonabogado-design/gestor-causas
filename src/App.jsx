@@ -6,6 +6,7 @@ import Calendario from './pages/Calendario'
 import Escritos from './pages/Escritos'
 import CodigosLeyes from './pages/CodigosLeyes'
 import Contabilidad from './pages/Contabilidad'
+import { diasHabilesDesde } from './pages/dashboard/diligencias'
 
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
@@ -239,7 +240,7 @@ function PanelActividad({ onClose, onVerCausa, soloEmail }) {
   )
 }
 
-function PanelAlertas({ onClose, esTitular, alertaCounts, tareas, audienciasProximas, onVerCausa, onAgregarTarea, onCompletarTarea }) {
+function PanelAlertas({ onClose, esTitular, alertaCounts, tareas, audienciasProximas, diligenciasSinRespuesta, onVerCausa, onAgregarTarea, onCompletarTarea }) {
   const [nuevaTarea, setNuevaTarea] = useState('')
   const [guardando, setGuardando] = useState(false)
 
@@ -288,6 +289,27 @@ function PanelAlertas({ onClose, esTitular, alertaCounts, tareas, audienciasProx
                   </div>
                 )
               })}
+            </div>
+          )}
+
+          {/* ✅ NUEVO: solicitudes de audiencia/entrevista/declaración sin
+              respuesta hace más de 5 días hábiles — antes solo se veía
+              entrando a la pestaña Diligencias de cada causa puntual. */}
+          {diligenciasSinRespuesta && diligenciasSinRespuesta.length > 0 && (
+            <div style={{ marginBottom:24 }}>
+              <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, fontWeight:700, marginBottom:10, ...f }}>Fiscalía sin responder ({diligenciasSinRespuesta.length})</div>
+              {diligenciasSinRespuesta.map(d => (
+                <div key={d.id} style={{ display:'flex', gap:10, alignItems:'center', background:'#fef2f2', border:'1px solid #fecaca', borderRadius:10, padding:'12px 14px', marginBottom:8 }}>
+                  <span style={{ fontSize:10, fontWeight:800, color:'#991b1b', background:'#fee2e2', borderRadius:8, padding:'4px 8px', flexShrink:0, whiteSpace:'nowrap', ...f }}>{d.diasHabiles}d hábiles</span>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:13, fontWeight:600, color:'#1E293B', ...f }}>{d.tipo}{d.imputado ? ' · ' + d.imputado.split('|')[0] : ''}</div>
+                    <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>RUC {d.ruc || '—'} · Folio {d.folio || '—'}</div>
+                  </div>
+                  {d.ruc && onVerCausa && (
+                    <button onClick={()=>onVerCausa(d.ruc)} style={{ background:'#fff', border:'1px solid #fecaca', borderRadius:7, padding:'5px 10px', fontSize:11, color:'#991b1b', cursor:'pointer', fontWeight:600, flexShrink:0, fontFamily:"'Manrope','Inter',sans-serif" }}>→ Ver causa</button>
+                  )}
+                </div>
+              ))}
             </div>
           )}
 
@@ -407,6 +429,13 @@ export default function App() {
   const [tareas, setTareas] = useState([])
   const [alertaCounts, setAlertaCounts] = useState({ vencido: 0, proximo: 0 })
   const [audienciasProximas, setAudienciasProximas] = useState([])
+  // ✅ NUEVO: diligencias de Fiscalía tipo audiencia/entrevista/declaración
+  // (donde la respuesta que se espera ES un agendamiento o su rechazo) que
+  // llevan más de 5 días hábiles sin respuesta — antes este aviso solo
+  // existía DENTRO de cada causa (pestaña Diligencias), así que si nadie
+  // abría esa causa puntual, nadie se enteraba. La de Eladio Llempi Muñoz
+  // (folio 140339880075) llevaba 161 días así sin que nada avisara.
+  const [diligenciasSinRespuesta, setDiligenciasSinRespuesta] = useState([])
   const [notifTarea, setNotifTarea] = useState(null)
 
   const cargarRol = useCallback(async (userId) => {
@@ -446,6 +475,24 @@ export default function App() {
     const fmt = (d) => d.toISOString().slice(0,10)
     const { data } = await supabase.from('audiencias').select('*').gte('fecha', fmt(hoy)).lte('fecha', fmt(manana)).order('fecha', { ascending: true }).order('hora', { ascending: true })
     setAudienciasProximas(data || [])
+  }, [])
+
+  // ✅ NUEVO: diligencias pendientes de causas vigentes, tipo audiencia/
+  // entrevista/declaración (por palabra clave, para no depender de que el
+  // texto coincida exacto con la lista oficial), con más de 5 días hábiles
+  // sin respuesta — se avisa en el Centro de Alertas, sin tener que entrar
+  // causa por causa a revisarlo.
+  const cargarDiligenciasSinRespuesta = useCallback(async () => {
+    const { data } = await supabase
+      .from('diligencias_fiscalia')
+      .select('id, causa_id, tipo, folio, fecha_solicitud, causas!inner(ruc, imputado, estado)')
+      .eq('estado', 'pendiente')
+      .eq('causas.estado', 'vigente')
+    const conAviso = (data || [])
+      .filter(d => /audiencia|entrevista|declaraci[oó]n/i.test(d.tipo || '') && diasHabilesDesde(d.fecha_solicitud) >= 5)
+      .map(d => ({ ...d, diasHabiles: diasHabilesDesde(d.fecha_solicitud), ruc: d.causas?.ruc, imputado: d.causas?.imputado }))
+      .sort((a, b) => b.diasHabiles - a.diasHabiles)
+    setDiligenciasSinRespuesta(conAviso)
   }, [])
 
   const agregarTarea = useCallback(async (texto) => {
@@ -495,6 +542,7 @@ export default function App() {
     cargarAlertaData()
     cargarTareas()
     cargarAudienciasProximas()
+    cargarDiligenciasSinRespuesta()
     const channel = supabase.channel('tareas-realtime')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tareas' }, (payload) => {
         cargarTareas()
@@ -511,9 +559,12 @@ export default function App() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'audiencias' }, () => {
         cargarAudienciasProximas()
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'diligencias_fiscalia' }, () => {
+        cargarDiligenciasSinRespuesta()
+      })
       .subscribe()
     return () => supabase.removeChannel(channel)
-  }, [session, cargarAlertaData, cargarTareas, cargarAudienciasProximas])
+  }, [session, cargarAlertaData, cargarTareas, cargarAudienciasProximas, cargarDiligenciasSinRespuesta])
 
   if (loading) return (
     <div style={{ minHeight:'100vh', background:'#F8F9FC', display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -528,7 +579,7 @@ export default function App() {
 
   const esTitular = userRol?.rol === 'titular'
   const tareasPendientesCount = tareas.filter(t => !t.completada).length
-  const alertaTotal = alertaCounts.vencido + alertaCounts.proximo + tareasPendientesCount + audienciasProximas.length
+  const alertaTotal = alertaCounts.vencido + alertaCounts.proximo + tareasPendientesCount + audienciasProximas.length + diligenciasSinRespuesta.length
   const handleSignOut = async () => { await supabase.auth.signOut() }
 
   // ✅ Handler: desde calendario → abrir causa en Dashboard
@@ -563,6 +614,7 @@ export default function App() {
           alertaCounts={alertaCounts}
           tareas={tareas}
           audienciasProximas={audienciasProximas}
+          diligenciasSinRespuesta={diligenciasSinRespuesta}
           onVerCausa={irACausaPorRuc}
           onAgregarTarea={agregarTarea}
           onCompletarTarea={completarTarea}
