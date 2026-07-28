@@ -371,6 +371,14 @@ function extraerRespuestaFiscalia(cuerpo, asunto) {
   // entre día y mes; solo si ahí no se encuentra nada se usa una búsqueda
   // genérica de respaldo en todo el texto.
   let fechaCitacion = null
+  // ✅ NUEVO: distingue si la fecha se encontró CERCA de una palabra que
+  // indica agendamiento real ("bloqueCita" — confianza alta) o si hubo que
+  // recurrir a la búsqueda genérica en todo el texto (confianza baja, el
+  // mismo tipo de búsqueda que ya dio problemas esta sesión). Como esto se
+  // aplica SOLO sin pedir confirmación (ver GmailIntegracion.jsx), es
+  // importante poder distinguir visualmente cuáles conviene revisar con más
+  // atención — no se deja de aplicar, solo se marca.
+  let fechaCitacionEsFuerte = false
   if (estado !== 'rechazada') {
     const meses = {enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,julio:7,agosto:8,septiembre:9,octubre:10,noviembre:11,diciembre:12}
     const buscarFechaProsa = (texto) => {
@@ -392,9 +400,9 @@ function extraerRespuestaFiscalia(cuerpo, asunto) {
     }
     const idxAgendamiento = textoCompleto.search(/agendamiento|aprueba|entrevista|se\s+cita|citaci[oó]n/i)
     const bloqueCita = idxAgendamiento >= 0 ? textoCompleto.substring(idxAgendamiento, idxAgendamiento + 400) : ''
-    fechaCitacion = (bloqueCita && (buscarFechaProsa(bloqueCita) || buscarFechaNumerica(bloqueCita)))
-      || buscarFechaProsa(textoCompleto)
-      || buscarFechaNumerica(textoCompleto)
+    const fechaEnBloque = bloqueCita && (buscarFechaProsa(bloqueCita) || buscarFechaNumerica(bloqueCita))
+    fechaCitacion = fechaEnBloque || buscarFechaProsa(textoCompleto) || buscarFechaNumerica(textoCompleto)
+    fechaCitacionEsFuerte = !!fechaEnBloque
     if (fechaCitacion) estado = 'con_citacion'
   }
 
@@ -403,7 +411,7 @@ function extraerRespuestaFiscalia(cuerpo, asunto) {
   const matchMotivo = textoCompleto.match(/motivo[:\s]+([^\n.]{5,200})/i)
   if (matchMotivo) detalle = matchMotivo[1].trim()
 
-  return { folio, estado, fechaCitacion, detalle }
+  return { folio, estado, fechaCitacion, detalle, fechaCitacionEsFuerte }
 }
 
 // ─── PARSER PRINCIPAL PJUD ────────────────────────────────────────────────────
@@ -708,7 +716,17 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
   // audiencia existente para esa causa) — GmailIntegracion.jsx lo usa para
   // buscar la audiencia anterior de esa misma causa y avisar que puede haber
   // quedado desactualizada, en vez de dejarla ahí sin decir nada.
-  return { fecha, hora, tipo, tribunal, sala, esReprogramacion: hayReprogramacion, esCorreccionFuerte }
+  // ✅ FIX: "fechaEsFuerte" ya se calculaba (línea de arriba) pero nunca se
+  // devolvía — se perdía sin que nadie la usara. La idea es justamente
+  // distinguir cuándo la fecha vino de una frase clara y anclada del
+  // documento ("fijada para el día X", tabla de fecha, reprogramación) de
+  // cuándo vino del patrón de respaldo más débil (cualquier fecha futura
+  // suelta en el texto) — este último es el que ha dado más problemas esta
+  // sesión (el caso del "plazo de 5 días", entre otros). Ahora se devuelve
+  // para que GmailIntegracion.jsx pueda destacar visualmente las de baja
+  // confianza y pedir que se revisen con más atención, en vez de mostrarlas
+  // igual que una lectura segura.
+  return { fecha, hora, tipo, tribunal, sala, esReprogramacion: hayReprogramacion, esCorreccionFuerte, fechaEsFuerte }
 }
 
 // Convierte año en palabras a número: "dos mil veintiséis" → 2026
@@ -747,7 +765,7 @@ function extraerAudienciaFiscalia(cuerpo, asunto) {
   // audiencia o comparecencia — si no, se descarta (queda para revisión manual).
   const textoCompleto = `${asunto}\n${cuerpo}`
   const hayCitacionReal = /cita(?:ci[oó]n|r)?|entrevista|declarac|audiencia|comparec/i.test(textoCompleto)
-  if (!hayCitacionReal) return { fecha: null, hora: null, tipo: null, tribunal: 'FISCALÍA', sala: null }
+  if (!hayCitacionReal) return { fecha: null, hora: null, tipo: null, tribunal: 'FISCALÍA', sala: null, fechaEsFuerte: false }
 
   let fecha = null, hora = null, tipo = 'ENTREVISTA'
 
@@ -782,5 +800,8 @@ function extraerAudienciaFiscalia(cuerpo, asunto) {
   else if (asunto.match(/declarac/i)) tipo = 'DECLARACION'
   else if (asunto.match(/audiencia/i)) tipo = 'AUDIENCIA'
 
-  return { fecha, hora, tipo, tribunal: 'FISCALÍA', sala: null }
+  // ✅ Este parser nunca usa un patrón ancla fuerte (tipo "fijada para el
+  // día X") — siempre busca cualquier fecha futura suelta en el texto, así
+  // que TODO lo que encuentra se considera de confianza baja por diseño.
+  return { fecha, hora, tipo, tribunal: 'FISCALÍA', sala: null, fechaEsFuerte: false }
 }

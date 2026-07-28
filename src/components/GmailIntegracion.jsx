@@ -141,6 +141,7 @@ export default function GmailIntegracion({ onImportComplete }) {
           tribunal: causa?.tribunal || '',
           estado: n.respuestaFiscalia.estado,
           fechaCitacion: n.respuestaFiscalia.fechaCitacion,
+          fechaEsFuerte: n.respuestaFiscalia.fechaCitacionEsFuerte !== false,
           detalle: n.respuestaFiscalia.detalle,
           fechaRespuestaEmail: n.fecha_correo ? n.fecha_correo.slice(0, 10) : new Date().toISOString().slice(0, 10),
           asunto: n.asunto,
@@ -373,6 +374,10 @@ export default function GmailIntegracion({ onImportComplete }) {
             esCorreccionAutomatica,
             corregidaDe: esCorreccionAutomatica ? posibleReemplazo : null,
             fallóBorrarAnterior: esCorreccionAutomatica && !borradoOk,
+            // ✅ NUEVO: si la fecha vino del patrón de respaldo débil (no de
+            // una frase ancla clara del documento), se marca para revisar
+            // con más atención — ver nota en extraerAudienciaPJUD.
+            fechaEsFuerte: n.audiencia.fechaEsFuerte !== false,
           })
         } else if (error) {
           nuevosErrores.push({ ...n, motivo: error.message })
@@ -616,6 +621,16 @@ export default function GmailIntegracion({ onImportComplete }) {
                   </div>
                   {item.detalle && <div style={{ fontSize:11, color:'#64748b', marginTop:4, fontStyle:'italic', ...f }}>"{item.detalle}"</div>}
                   {item.fallóCalendario && <div style={{ fontSize:11, color:'#dc2626', marginTop:4, fontWeight:600, ...f }}>⚠ No se pudo agregar al calendario — agrégala manualmente en Audiencias.</div>}
+                  {/* ✅ NUEVO: como esto se aplica sin pedir confirmación, es
+                      justo donde más importa avisar si la fecha se encontró
+                      con el método menos confiable — se sigue aplicando
+                      igual (mejor eso que arriesgarse a perderla), pero se
+                      pide que se revise con más cuidado. */}
+                  {!item.fechaEsFuerte && (
+                    <div style={{ fontSize:11, color:'#92400e', background:'#fffbeb', border:'1px solid #fde68a', borderRadius:7, padding:'4px 8px', marginTop:6, fontWeight:600, ...f }}>
+                      🔍 Confianza baja — esta fecha se encontró por un método menos confiable. Se aplicó igual (por si acaso), pero revísala con más atención.
+                    </div>
+                  )}
                 </div>
                 <button onClick={() => deshacerRespuestaAutomatica(item)}
                   style={{ background:'#fff', border:'1px solid #fecaca', borderRadius:7, padding:'6px 14px', fontSize:11, cursor:'pointer', fontWeight:700, color:'#dc2626', flexShrink:0, ...f }}>
@@ -701,6 +716,15 @@ export default function GmailIntegracion({ onImportComplete }) {
                   <div style={{ fontSize:12, color:'#059669', fontWeight:500, marginTop:4, ...f }}>
                     📅 {fechaDDMM(item.fecha)}{item.hora ? ` · 🕐 ${item.hora}` : ''}{item.tribunal ? ` · 🏛 ${item.tribunal?.substring(0,30)}` : ''}
                   </div>
+                  {/* ✅ NUEVO: la fecha se encontró con el patrón de respaldo
+                      (cualquier fecha suelta en el texto), no con una frase
+                      ancla clara del documento — se marca para que se revise
+                      con más atención, sin dejar de agregarla al calendario. */}
+                  {!item.fechaEsFuerte && (
+                    <div style={{ fontSize:11, color:'#92400e', background:'#fffbeb', border:'1px solid #fde68a', borderRadius:7, padding:'4px 8px', marginTop:6, fontWeight:600, ...f }}>
+                      🔍 Confianza baja — esta fecha se encontró por un método menos confiable (no había una frase clara tipo "fijada para el día X"). Revísala con más atención.
+                    </div>
+                  )}
                   {item.esPosibleCorreccion && (
                     <div style={{ fontSize:11, color:'#92400e', background:'#fff7ed', border:'1px solid #fed7aa', borderRadius:7, padding:'4px 8px', marginTop:6, fontWeight:600, ...f }}>
                       ⚠ INCONSISTENCIA: ya existía otra audiencia para este mismo RUC/fecha con otro tipo o hora — revisa cuál es la correcta y elimina la que sobre.
