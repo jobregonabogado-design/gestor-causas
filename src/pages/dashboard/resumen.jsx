@@ -7,15 +7,8 @@ import { useState, Fragment } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from '../../lib/supabase'
 import { f } from './primitives'
-import { calcularVencimiento, calcularSubestado, calcularEdadActual, estadoConfig, fechaDDMM } from './utils'
+import { calcularVencimiento, calcularSubestado, calcularEdadActual, calcularFechaTerminoCondena, estadoConfig, fechaDDMM } from './utils'
 import { calcularTotalAbono, diasEntreFechasCaut } from './cautelares'
-
-const TC_LABELS = {
-  hechos: 'Hechos del caso',
-  teoria_defensa: 'Teoría y Defensa',
-  prueba: 'Prueba y testigos',
-  observaciones: 'Observaciones',
-}
 
 export function BotonResumenImprimible({ causa, imputados, audiencias, aumentos, cautelares, esTitular }) {
   const [cargando, setCargando] = useState(false)
@@ -26,18 +19,22 @@ export function BotonResumenImprimible({ causa, imputados, audiencias, aumentos,
 
   const abrir = async () => {
     setCargando(true)
-    const [{ data: notaTeoria }, { data: fallos }, { data: documentos }, { data: diligencias }] = await Promise.all([
+    // ✅ NUEVO: se suman Apelaciones a la Corte y Órdenes de Detención — antes
+    // no aparecían para nada en el resumen aunque existieran registradas.
+    const [{ data: notaTeoria }, { data: fallos }, { data: documentos }, { data: diligencias }, { data: apelaciones }, { data: ordenes }] = await Promise.all([
       supabase.from('notas').select('*').eq('causa_id', causa.id).eq('tipo', 'teoria_caso').order('created_at', { ascending: false }).limit(1).maybeSingle(),
       supabase.from('fallos_referencia').select('*').eq('causa_id', causa.id).order('created_at', { ascending: false }),
       supabase.from('documentos_causa').select('*').eq('causa_id', causa.id).order('created_at', { ascending: false }),
       supabase.from('diligencias_fiscalia').select('*').eq('causa_id', causa.id).order('fecha_solicitud', { ascending: false }),
+      supabase.from('apelaciones_corte').select('*').eq('causa_id', causa.id).order('fecha_audiencia_corte', { ascending: false }),
+      supabase.from('ordenes_detencion').select('*').eq('causa_id', causa.id).order('fecha_orden', { ascending: false }),
     ])
     let teoria = {}
     if (notaTeoria) {
       try { teoria = JSON.parse(notaTeoria.contenido).contenido || {} }
       catch { teoria = { hechos: notaTeoria.contenido || '' } }
     }
-    setDatos({ teoria, fallos: fallos || [], documentos: documentos || [], diligencias: diligencias || [] })
+    setDatos({ teoria, fallos: fallos || [], documentos: documentos || [], diligencias: diligencias || [], apelaciones: apelaciones || [], ordenes: ordenes || [] })
     setCargando(false)
     setMostrar(true)
   }
@@ -103,13 +100,38 @@ export function BotonResumenImprimible({ causa, imputados, audiencias, aumentos,
                   <div style={{ fontSize: 12, color: '#64748b', marginTop: 3, lineHeight: 1.7 }}>
                     RUT: {imp.rut || '—'} · {imp.regimen || 'Régimen no calculado'}
                     {imp.fecha_nacimiento ? ` · ${calcularEdadActual(imp.fecha_nacimiento)} años` : ''}
+                    {imp.nacionalidad ? ` · ${imp.nacionalidad}` : ''}
                     <br />
                     Situación: {imp.esta_detenido ? `Privado de libertad${imp.lugar_detencion ? ' en ' + imp.lugar_detencion : ''}` : 'En libertad'}
+                    <br />
+                    Domicilio: {imp.domicilio || '—'}
+                    {imp.correo_notificacion ? ` · Correo de notificación: ${imp.correo_notificacion}` : ''}
                   </div>
                 )}
               </div>
             ))}
           </Seccion>
+
+          {/* ── Condena — solo si algún imputado tiene fecha de inicio registrada ── */}
+          {(imputados || []).some(imp => imp.condena_fecha_inicio) && (
+            <Seccion titulo="Condena">
+              {(imputados || []).filter(imp => imp.condena_fecha_inicio).map((imp, i) => {
+                const propiasCaut = (cautelares || []).filter(ct => ct.imputado_id === imp.id)
+                const abonoDias = calcularTotalAbono(propiasCaut)
+                const fechaTermino = calcularFechaTerminoCondena(imp.condena_fecha_inicio, imp.condena_anos, imp.condena_meses, imp.condena_dias, abonoDias)
+                return (
+                  <div key={i} style={{ marginTop: i > 0 ? 12 : 0, paddingTop: i > 0 ? 12 : 0, borderTop: i > 0 ? '1px dashed #e2e8f0' : 'none' }}>
+                    {imputados.length > 1 && <div style={{ fontSize: 12, fontWeight: 700, color: '#1E293B', marginBottom: 4 }}>{imp.nombre}</div>}
+                    <div style={{ fontSize: 12, color: '#475569' }}>
+                      {imp.condena_tipo === 'sustitutiva' ? 'Pena sustitutiva' : 'Condena efectiva'} — {imp.condena_anos || 0}a {imp.condena_meses || 0}m {imp.condena_dias || 0}d
+                      <br />
+                      Inicio: {fechaDDMM(imp.condena_fecha_inicio)} · Término estimado: <strong>{fechaTermino || '—'}</strong>{abonoDias > 0 ? ` (con ${abonoDias} días de abono descontados)` : ''}
+                    </div>
+                  </div>
+                )
+              })}
+            </Seccion>
+          )}
 
           {/* ── Cautelares y abono — por imputado si hay más de uno ── */}
           <Seccion titulo="Cautelares y abono">
@@ -185,17 +207,63 @@ export function BotonResumenImprimible({ causa, imputados, audiencias, aumentos,
             )}
           </Seccion>
 
-          {/* ── Teoría del Caso — siempre se muestran los 4 títulos, aunque estén
-              vacíos, igual que Documentos/Fallos siempre muestran su cantidad. ── */}
+          {/* ── Teoría del Caso — ✅ actualizado a la estructura nueva (ver
+              teoria.jsx): solo "Hechos del caso" y "Teoría de la Defensa"
+              existen como secciones de la pestaña; "Prueba" ahora vive
+              DENTRO de Teoría de la Defensa (misma clave "prueba" en la
+              base de datos) y "Observaciones" ya no existe. Siempre se
+              muestran los títulos aunque estén vacíos, igual que
+              Documentos/Fallos siempre muestran su cantidad. ── */}
           <Seccion titulo="Teoría del Caso">
-            {Object.entries(TC_LABELS).map(([key, label]) => (
-              <div key={key} style={{ marginBottom: 12 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>{label}</div>
-                {datos.teoria[key]
-                  ? <div style={{ fontSize: 13, color: '#1E293B', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{datos.teoria[key]}</div>
-                  : <Vacio texto="Sin contenido registrado." />}
-              </div>
-            ))}
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Hechos del caso</div>
+              {datos.teoria.hechos
+                ? <div style={{ fontSize: 13, color: '#1E293B', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{datos.teoria.hechos}</div>
+                : <Vacio texto="Sin contenido registrado." />}
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Teoría de la Defensa</div>
+              {datos.teoria.teoria_defensa
+                ? <div style={{ fontSize: 13, color: '#1E293B', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{datos.teoria.teoria_defensa}</div>
+                : <Vacio texto="Sin contenido registrado." />}
+            </div>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Prueba</div>
+              {datos.teoria.prueba
+                ? <div style={{ fontSize: 13, color: '#1E293B', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{datos.teoria.prueba}</div>
+                : <Vacio texto="Sin contenido registrado." />}
+            </div>
+          </Seccion>
+
+          {/* ── Apelaciones a la Corte ── */}
+          <Seccion titulo={`Apelaciones a la Corte (${datos.apelaciones.length})`}>
+            {datos.apelaciones.length === 0 ? <Vacio texto="Sin apelaciones registradas." /> : (
+              datos.apelaciones.map((a, i) => (
+                <div key={i} style={{ fontSize: 12, color: '#475569', padding: '4px 0' }}>
+                  Rol Corte <strong style={{ color: '#1E293B' }}>{a.rol_corte || '—'}</strong>{a.sala_corte ? ` · Sala ${a.sala_corte}` : ''}{a.fecha_audiencia_corte ? ` · Audiencia el ${fechaDDMM(a.fecha_audiencia_corte)}` : ''}
+                </div>
+              ))
+            )}
+          </Seccion>
+
+          {/* ── Órdenes de Detención — se marca claramente si sigue vigente o
+              ya fue levantada, y a qué imputado corresponde si hay más de uno. ── */}
+          <Seccion titulo={`Órdenes de Detención (${datos.ordenes.length})`}>
+            {datos.ordenes.length === 0 ? <Vacio texto="Sin órdenes de detención registradas." /> : (
+              datos.ordenes.map((o, i) => {
+                const impNombre = (imputados || []).find(imp => imp.id === o.imputado_id)?.nombre
+                return (
+                  <div key={i} style={{ fontSize: 12, color: '#475569', padding: '4px 0' }}>
+                    {imputados && imputados.length > 1 && impNombre ? <strong style={{ color: '#1E293B' }}>{impNombre} — </strong> : null}
+                    Dictada el {fechaDDMM(o.fecha_orden)}{o.motivo ? ` · Motivo: ${o.motivo}` : ''}
+                    {' · '}
+                    {o.fecha_levantamiento
+                      ? <span>Levantada el {fechaDDMM(o.fecha_levantamiento)}</span>
+                      : <strong style={{ color: '#dc2626' }}>VIGENTE</strong>}
+                  </div>
+                )
+              })
+            )}
           </Seccion>
 
           {/* ── Diligencias de Fiscalía ── */}
