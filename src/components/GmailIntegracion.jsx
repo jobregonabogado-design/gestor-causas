@@ -14,10 +14,16 @@ export default function GmailIntegracion({ onImportComplete }) {
   const [errores, setErrores] = useState([])
   const [sinCausa, setSinCausa] = useState([])
   const [duplicados, setDuplicados] = useState([])
-  // ✅ NUEVO: respuestas de Fiscalía detectadas en el correo, que calzan por
-  // folio con una diligencia "Pendiente de respuesta" — nunca se aplican
-  // solas, siempre se muestran para que Joaquín las revise y confirme.
+  // ✅ Respuestas de Fiscalía SIN fecha de comparecencia (aprobación de
+  // documentos, rechazos, etc.) — estas sí se muestran para que Joaquín
+  // confirme, no hay urgencia de que falte a algo.
   const [respuestasDetectadas, setRespuestasDetectadas] = useState([])
+  // ✅ NUEVO: respuestas que SÍ traían fecha de audiencia/citación/
+  // declaración — se aplican solas (diligencia + calendario) apenas se
+  // detectan, sin esperar confirmación. Regla de Joaquín: cualquier cosa que
+  // obligue a presentarse a tribunal, fiscalía, PDI o Carabineros no puede
+  // depender de que alguien se acuerde de apretar un botón.
+  const [respuestasAutoAplicadas, setRespuestasAutoAplicadas] = useState([])
   const [aplicandoId, setAplicandoId] = useState(null)
 
   useEffect(() => {
@@ -42,6 +48,7 @@ export default function GmailIntegracion({ onImportComplete }) {
     setSinCausa([])
     setDuplicados([])
     setRespuestasDetectadas([])
+    setRespuestasAutoAplicadas([])
 
     try {
       // 1. Obtener causas vigentes PRIMERO — solo procesamos correos de estas
@@ -102,6 +109,7 @@ export default function GmailIntegracion({ onImportComplete }) {
       })
 
       const nuevasRespuestas = []
+      const nuevasAutoAplicadas = []
       const foliosVistos = new Set()
       // ✅ NUEVO: un correo que ya se identificó como RESPUESTA de Fiscalía a
       // una solicitud (calza por folio con una diligencia pendiente) NO debe
@@ -122,7 +130,7 @@ export default function GmailIntegracion({ onImportComplete }) {
         if (foliosVistos.has(folioDetectado)) continue
         foliosVistos.add(folioDetectado)
         const causa = causasPorId[diligencia.causa_id]
-        nuevasRespuestas.push({
+        const item = {
           diligenciaId: diligencia.id,
           causaId: diligencia.causa_id,
           tipoDiligencia: diligencia.tipo,
@@ -136,8 +144,30 @@ export default function GmailIntegracion({ onImportComplete }) {
           detalle: n.respuestaFiscalia.detalle,
           fechaRespuestaEmail: n.fecha_correo ? n.fecha_correo.slice(0, 10) : new Date().toISOString().slice(0, 10),
           asunto: n.asunto,
-        })
+        }
+
+        // ✅ REGLA DE JOAQUÍN: si la respuesta trae fecha de audiencia,
+        // citación o declaración (algo que obliga a presentarse a tribunal,
+        // fiscalía, PDI o Carabineros), se aplica SOLA — sin esperar
+        // confirmación — igual que ya pasa con las audiencias que llegan
+        // directo del PJUD. Solo las respuestas SIN fecha de comparecencia
+        // (documentos aprobados, solicitudes rechazadas) siguen pidiendo
+        // que Joaquín confirme, porque ahí no hay riesgo de faltar a algo.
+        if (item.estado === 'con_citacion' && item.fechaCitacion) {
+          const resultado = await guardarRespuestaEnBD(item)
+          if (resultado.ok) {
+            nuevasAutoAplicadas.push({ ...item, audienciaId: resultado.audienciaId, fallóCalendario: !!resultado.errorAudiencia })
+          } else {
+            // Si por algún motivo no se pudo guardar sola, no se pierde —
+            // queda para que Joaquín la aplique a mano.
+            nuevasRespuestas.push(item)
+          }
+        } else {
+          nuevasRespuestas.push(item)
+        }
       }
+      setRespuestasAutoAplicadas(nuevasAutoAplicadas)
+      if (nuevasAutoAplicadas.length > 0 && onImportComplete) onImportComplete()
       setRespuestasDetectadas(nuevasRespuestas)
 
       // 3. Corroborar contra lo que ya existe (RUC+fecha+tipo+HORA — la sala
@@ -367,35 +397,32 @@ export default function GmailIntegracion({ onImportComplete }) {
     setProcesando(false)
   }
 
-  // ✅ NUEVO: aplica una respuesta de Fiscalía detectada por correo a la
-  // diligencia pendiente correspondiente (por folio) — siempre pide
-  // confirmación antes, ya que la lectura automática puede fallar (mismo
-  // criterio que el resto de las lecturas de correo de esta pantalla).
-  const aplicarRespuesta = async (item) => {
-    const etiquetaEstado = ESTADOS_DILIGENCIA[item.estado]?.label || item.estado
-    const detalleCita = item.estado === 'con_citacion' && item.fechaCitacion ? ` (cita el ${fechaDDMM(item.fechaCitacion)})` : ''
-    if (!window.confirm(`¿Marcar la diligencia "${item.tipoDiligencia}" (folio ${item.folio}) como "${etiquetaEstado}"${detalleCita}?\n\nRevisa que sea correcto — se detectó automáticamente del correo "${item.asunto}".`)) return
-    setAplicandoId(item.diligenciaId)
+  // ✅ NUEVO: escribe en la base de datos el resultado de una respuesta de
+  // Fiscalía — actualiza la diligencia y, si trae fecha de audiencia/
+  // citación/declaración (algo que obliga a presentarse en algún lado), la
+  // agrega también al Calendario. Se usa tanto para las que Joaquín aplica a
+  // mano como para las que ahora se aplican SOLAS (ver revisarCorreos): la
+  // regla de Joaquín es clara — si hay una citación de Fiscalía con fecha
+  // para presentarse a tribunal, fiscalía, PDI o Carabineros, tiene que
+  // quedar registrada sin esperar que él confirme nada, igual que ya pasa
+  // con las audiencias que llegan directo del PJUD.
+  const guardarRespuestaEnBD = async (item) => {
     const { error } = await supabase.from('diligencias_fiscalia').update({
       estado: item.estado,
       fecha_respuesta: item.fechaRespuestaEmail,
       fecha_citacion: item.estado === 'con_citacion' ? item.fechaCitacion : null,
       respuesta_detalle: item.detalle || null,
     }).eq('id', item.diligenciaId)
-    if (error) { setAplicandoId(null); alert('No se pudo aplicar la respuesta: ' + error.message); return }
+    if (error) return { ok: false, error }
 
-    // ✅ NUEVO: si la respuesta fija una fecha concreta (ej. "SE APRUEBA
-    // ENTREVISTA PRESENCIAL... 5 de agosto de 2026"), esa fecha también
-    // queda en el Calendario, no solo anotada en la diligencia — es lo que
-    // más le importa a Joaquín tener a la vista: fechas de entrevista con
-    // el fiscal y de declaración. Se marca su origen en "notas" para
-    // distinguirla de una audiencia normal del PJUD.
+    let audienciaId = null
+    let errorAudiencia = null
     if (item.estado === 'con_citacion' && item.fechaCitacion && item.causaId) {
       const t = (item.tipoDiligencia || '').toUpperCase()
       const tipoAudiencia = /audiencia|entrevista/.test(t) ? 'ENTREVISTA'
         : /declaraci[oó]n/.test(t) ? 'DECLARACIÓN'
         : 'CITACIÓN FISCALÍA'
-      const { error: errAudiencia } = await supabase.from('audiencias').insert({
+      const { data, error: errAudiencia } = await supabase.from('audiencias').insert({
         causa_id: item.causaId,
         ruc: item.ruc,
         tipo: tipoAudiencia,
@@ -405,14 +432,40 @@ export default function GmailIntegracion({ onImportComplete }) {
         imputado: item.imputado || '',
         resultado: '',
         notas: `Agregada desde respuesta de Fiscalía al folio ${item.folio} ("${item.tipoDiligencia}").\nAsunto: ${item.asunto}`,
-      })
-      if (errAudiencia) {
-        alert('La diligencia se marcó como respondida, pero no se pudo agregar la fecha al calendario: ' + errAudiencia.message + '\n\nAgrégala manualmente en Audiencias.')
-      }
+      }).select().single()
+      audienciaId = data?.id || null
+      errorAudiencia = errAudiencia
     }
+    return { ok: true, audienciaId, errorAudiencia }
+  }
 
+  // ✅ Aplicar a mano — se usa solo para respuestas SIN fecha de
+  // comparecencia (aprobaciones de documentos, rechazos, etc.), donde no hay
+  // riesgo de faltar a algo y tiene sentido seguir pidiendo confirmación.
+  const aplicarRespuesta = async (item) => {
+    const etiquetaEstado = ESTADOS_DILIGENCIA[item.estado]?.label || item.estado
+    if (!window.confirm(`¿Marcar la diligencia "${item.tipoDiligencia}" (folio ${item.folio}) como "${etiquetaEstado}"?\n\nRevisa que sea correcto — se detectó automáticamente del correo "${item.asunto}".`)) return
+    setAplicandoId(item.diligenciaId)
+    const resultado = await guardarRespuestaEnBD(item)
+    if (!resultado.ok) { setAplicandoId(null); alert('No se pudo aplicar la respuesta: ' + resultado.error.message); return }
+    if (resultado.errorAudiencia) {
+      alert('La diligencia se marcó como respondida, pero no se pudo agregar la fecha al calendario: ' + resultado.errorAudiencia.message + '\n\nAgrégala manualmente en Audiencias.')
+    }
     setAplicandoId(null)
     setRespuestasDetectadas(prev => prev.filter(x => x.diligenciaId !== item.diligenciaId))
+    if (onImportComplete) onImportComplete()
+  }
+
+  // ✅ NUEVO: deshace una citación que se aplicó sola y resultó estar mal —
+  // vuelve a dejar la diligencia "pendiente" (para que la próxima vez que se
+  // revisen los correos se pueda detectar y aplicar de nuevo, por si el
+  // problema fue solo una fecha mal leída) y borra la audiencia que se había
+  // agregado al calendario.
+  const deshacerRespuestaAutomatica = async (item) => {
+    if (!window.confirm(`¿Deshacer esta citación agregada automáticamente (folio ${item.folio})? Se borrará del calendario y la diligencia volverá a quedar "Pendiente de respuesta".`)) return
+    if (item.audienciaId) await supabase.from('audiencias').delete().eq('id', item.audienciaId)
+    await supabase.from('diligencias_fiscalia').update({ estado: 'pendiente', fecha_respuesta: null, fecha_citacion: null, respuesta_detalle: null }).eq('id', item.diligenciaId)
+    setRespuestasAutoAplicadas(prev => prev.filter(x => x.diligenciaId !== item.diligenciaId))
     if (onImportComplete) onImportComplete()
   }
 
@@ -491,7 +544,7 @@ export default function GmailIntegracion({ onImportComplete }) {
     </div>
   )
 
-  const hayResultados = agregados.length > 0 || errores.length > 0 || sinCausa.length > 0 || duplicados.length > 0 || respuestasDetectadas.length > 0
+  const hayResultados = agregados.length > 0 || errores.length > 0 || sinCausa.length > 0 || duplicados.length > 0 || respuestasDetectadas.length > 0 || respuestasAutoAplicadas.length > 0
 
   return (
     <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:16, padding:28 }}>
@@ -531,8 +584,52 @@ export default function GmailIntegracion({ onImportComplete }) {
         </div>
       )}
 
-      {/* BANNER: RESPUESTAS DE FISCALÍA DETECTADAS — nunca se aplican solas,
-          siempre piden confirmación con "Aplicar respuesta". */}
+      {/* BANNER: CITACIONES APLICADAS SOLAS — traían fecha de audiencia/
+          citación/declaración, así que se guardaron directo (diligencia +
+          calendario) sin esperar confirmación. Se avisa en rojo/urgente
+          porque es justo el tipo de cosa que no puede pasar desapercibida:
+          algo que obliga a presentarse a tribunal, fiscalía, PDI o
+          Carabineros. Si alguna quedó mal, "Deshacer" la revierte entera. */}
+      {respuestasAutoAplicadas.length > 0 && (
+        <div style={{ background:'linear-gradient(135deg,#fef2f2,#fee2e2)', border:'1.5px solid #fca5a5', borderRadius:14, padding:'16px 20px', marginBottom:16 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:14 }}>
+            <div style={{ width:32, height:32, background:'linear-gradient(135deg,#dc2626,#991b1b)', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, flexShrink:0 }}>⚠️</div>
+            <div>
+              <div style={{ fontSize:14, fontWeight:700, color:'#991b1b', ...f }}>
+                {respuestasAutoAplicadas.length} citación{respuestasAutoAplicadas.length > 1 ? 'es' : ''} agregada{respuestasAutoAplicadas.length > 1 ? 's' : ''} automáticamente al calendario
+              </div>
+              <div style={{ fontSize:11, color:'#b91c1c', ...f }}>Traían fecha de audiencia/citación — se guardaron directo, sin esperar confirmación. Revisa que los datos estén correctos.</div>
+            </div>
+          </div>
+          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+            {respuestasAutoAplicadas.map((item, i) => (
+              <div key={i} style={{ background:'#fff', border:'1px solid #fca5a5', borderRadius:10, padding:'12px 16px', display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12, flexWrap:'wrap' }}>
+                <div style={{ flex:1, minWidth:220 }}>
+                  <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:4, flexWrap:'wrap' }}>
+                    <span style={{ fontSize:12, fontWeight:600, color:'#0f172a', ...f }}>{item.tipoDiligencia}</span>
+                    <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:20, textTransform:'uppercase', background:'#fef2f2', color:'#991b1b', border:'1px solid #fecaca', ...f }}>Cita el {fechaDDMM(item.fechaCitacion)}</span>
+                  </div>
+                  <div style={{ fontSize:12, color:'#64748b', ...f }}>
+                    RUC <span style={{ fontFamily:'monospace', fontWeight:600, color:'#0f172a' }}>{item.ruc}</span>
+                    {item.imputado && <span style={{ marginLeft:8 }}>· {item.imputado.split('|')[0]}</span>}
+                    <span style={{ marginLeft:8 }}>· Folio <span style={{ fontFamily:'monospace' }}>{item.folio}</span></span>
+                  </div>
+                  {item.detalle && <div style={{ fontSize:11, color:'#64748b', marginTop:4, fontStyle:'italic', ...f }}>"{item.detalle}"</div>}
+                  {item.fallóCalendario && <div style={{ fontSize:11, color:'#dc2626', marginTop:4, fontWeight:600, ...f }}>⚠ No se pudo agregar al calendario — agrégala manualmente en Audiencias.</div>}
+                </div>
+                <button onClick={() => deshacerRespuestaAutomatica(item)}
+                  style={{ background:'#fff', border:'1px solid #fecaca', borderRadius:7, padding:'6px 14px', fontSize:11, cursor:'pointer', fontWeight:700, color:'#dc2626', flexShrink:0, ...f }}>
+                  ↩ Deshacer
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* BANNER: RESPUESTAS DE FISCALÍA DETECTADAS — sin fecha de
+          comparecencia (documentos, rechazos) — piden confirmación con
+          "Aplicar respuesta" porque no hay urgencia de faltar a algo. */}
       {respuestasDetectadas.length > 0 && (
         <div style={{ background:'linear-gradient(135deg,#eff6ff,#dbeafe)', border:'1.5px solid #bfdbfe', borderRadius:14, padding:'16px 20px', marginBottom:16 }}>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:14 }}>
