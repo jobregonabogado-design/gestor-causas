@@ -169,7 +169,23 @@ export default function GmailIntegracion({ onImportComplete }) {
       }
       setRespuestasAutoAplicadas(nuevasAutoAplicadas)
       if (nuevasAutoAplicadas.length > 0 && onImportComplete) onImportComplete()
-      setRespuestasDetectadas(nuevasRespuestas)
+      // ✅ FIX: se detectó que a veces la MISMA respuesta de Fiscalía llega
+      // duplicada entre los correos revisados (ej. el mismo folio aparece en
+      // dos mensajes distintos) — si la primera copia ya se aplicó sola
+      // (nuevasAutoAplicadas), la copia repetida NO debe quedar ADEMÁS en el
+      // panel de "Aplicar respuesta" a mano: si se apretara ahí, se
+      // duplicaría la audiencia ya agendada. Se filtra por diligenciaId
+      // contra lo ya aplicado, y también contra sí misma (por si la
+      // duplicación ocurre dentro del mismo panel manual).
+      const idsYaAplicados = new Set(nuevasAutoAplicadas.map(x => x.diligenciaId))
+      const idsVistosManual = new Set()
+      const nuevasRespuestasSinDuplicar = nuevasRespuestas.filter(item => {
+        if (idsYaAplicados.has(item.diligenciaId)) return false
+        if (idsVistosManual.has(item.diligenciaId)) return false
+        idsVistosManual.add(item.diligenciaId)
+        return true
+      })
+      setRespuestasDetectadas(nuevasRespuestasSinDuplicar)
 
       // 3. Corroborar contra lo que ya existe (RUC+fecha+tipo+HORA — la sala
       // se deja fuera de la comparación porque a veces se lee con espacios o
@@ -678,6 +694,11 @@ export default function GmailIntegracion({ onImportComplete }) {
                     {item.estado === 'con_citacion' && item.fechaCitacion ? ` · Cita el ${fechaDDMM(item.fechaCitacion)}` : ''}
                   </div>
                   {item.detalle && <div style={{ fontSize:11, color:'#64748b', marginTop:4, fontStyle:'italic', ...f }}>"{item.detalle}"</div>}
+                  {item.estado === 'con_citacion' && !item.fechaEsFuerte && (
+                    <div style={{ fontSize:11, color:'#92400e', background:'#fffbeb', border:'1px solid #fde68a', borderRadius:7, padding:'4px 8px', marginTop:6, fontWeight:600, ...f }}>
+                      🔍 Confianza baja — esta fecha se encontró por un método menos confiable. Revísala con más atención antes de aplicar.
+                    </div>
+                  )}
                 </div>
                 <button onClick={() => aplicarRespuesta(item)} disabled={aplicandoId === item.diligenciaId}
                   style={{ background:'#2563eb', color:'#fff', border:'none', borderRadius:7, padding:'6px 14px', fontSize:11, cursor:'pointer', fontWeight:700, flexShrink:0, ...f }}>

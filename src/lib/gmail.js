@@ -394,9 +394,20 @@ function extraerRespuestaFiscalia(cuerpo, asunto) {
       }
       return null
     }
+    // ✅ FIX: a diferencia de buscarFechaProsa, esto tomaba la PRIMERA fecha
+    // numérica que encontrara en el texto sin revisar si tenía sentido como
+    // fecha de cita — así se coló la fecha en que se HABÍA INGRESADO la
+    // solicitud (ej. "ingresada con fecha 17/07/2026", que además queda
+    // ANTES de la fecha de respuesta) como si fuera la cita real. Ahora
+    // revisa TODAS las fechas numéricas del texto y usa la misma validación
+    // de "futura o reciente" que ya se aplicaba a las fechas en palabras.
     const buscarFechaNumerica = (texto) => {
-      const m = texto.match(/(\d{2})[\/\-.](\d{2})[\/\-.](\d{4})/)
-      return m ? `${m[3]}-${m[2]}-${m[1]}` : null
+      const matches = [...texto.matchAll(/(\d{2})[\/\-.](\d{2})[\/\-.](\d{4})/g)]
+      for (const m of matches) {
+        const posible = `${m[3]}-${m[2]}-${m[1]}`
+        if (esFechaFuturaOReciente(posible)) return posible
+      }
+      return null
     }
     const idxAgendamiento = textoCompleto.search(/agendamiento|aprueba|entrevista|se\s+cita|citaci[oó]n/i)
     const bloqueCita = idxAgendamiento >= 0 ? textoCompleto.substring(idxAgendamiento, idxAgendamiento + 400) : ''
