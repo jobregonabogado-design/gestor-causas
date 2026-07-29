@@ -107,6 +107,20 @@ export function CautelaresPanel({ causaId, cautelares, esRPA, onGuardar, onActua
     setEditandoId(null)
   }
 
+  // ✅ NUEVO: antes, la única forma de volver a dejar "vigente" una cautelar
+  // ya cerrada era abrir "✏ Editar" y borrar a mano la fecha de término —
+  // nada obvio, y "Cerrar / cambiar" (que sí es visible) SOLO permite cerrar,
+  // nunca reabrir (su botón de guardar exige una fecha de término). Eso fue
+  // justo lo que confundió a Joaquín: al no poder "revertir" desde ahí,
+  // terminó creando una cautelar duplicada como parche. Este botón hace
+  // directamente lo que "Editar" también permite, pero sin tener que abrir
+  // el formulario completo ni volver a escribir tipo/fecha de inicio.
+  const reabrirCautelar = async (ct) => {
+    const motivo = window.prompt(`¿Reabrir "${ct.tipo}" (dejarla vigente de nuevo, sin fecha de término)?\n\nIngresa el motivo:`, 'Se cerró por error')
+    if (motivo === null || !motivo.trim()) return
+    await onActualizar(ct.id, { fecha_termino: null }, motivo.trim())
+  }
+
   const eliminarCautelar = async (ct) => {
     const motivo = window.prompt(`¿Eliminar DEFINITIVAMENTE la cautelar "${ct.tipo}" (desde ${fechaDDMM(ct.fecha_inicio)})? Esta acción no se puede deshacer.\n\nIngresa el motivo de la eliminación:`)
     if (motivo === null || !motivo.trim()) return
@@ -229,7 +243,8 @@ export function CautelaresPanel({ causaId, cautelares, esRPA, onGuardar, onActua
                     </div>
                   </div>
                   <div style={{display:'flex',gap:10,flexShrink:0,alignItems:'center'}}>
-                    {vigente && <button onClick={()=>iniciarCierre(ct)} style={{fontSize:11,color:'#dc2626',background:'transparent',border:'none',cursor:'pointer',fontWeight:600,...f}}>Cerrar / cambiar</button>}
+                    {vigente && <button onClick={()=>iniciarCierre(ct)} style={{fontSize:11,color:'#dc2626',background:'transparent',border:'none',cursor:'pointer',fontWeight:600,...f}}>Cerrar cautelar</button>}
+                    {!vigente && <button onClick={()=>reabrirCautelar(ct)} style={{fontSize:11,color:'#059669',background:'transparent',border:'none',cursor:'pointer',fontWeight:600,...f}}>↺ Reabrir (dejar vigente)</button>}
                     <button onClick={()=>iniciarEdicion(ct)} style={{fontSize:11,color:'#2563eb',background:'transparent',border:'none',cursor:'pointer',fontWeight:600,...f}}>✏ Editar</button>
                     {/* Eliminar de forma definitiva — solo el titular, para no acumular
                         registros erróneos sueltos sin perder el historial por defecto. */}
