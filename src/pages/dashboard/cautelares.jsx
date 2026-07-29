@@ -66,6 +66,13 @@ export function CautelaresPanel({ causaId, cautelares, esRPA, onGuardar, onActua
   // Arresto Total (y Arresto Nocturno ya sumado explícitamente). Sujeción a SENAME
   // NUNCA suma acá — se cuenta aparte, para no duplicar el cómputo 1x1.
   const totalAbono = calcularTotalAbono(cautelares, hoyISO)
+  // ✅ NUEVO: el contador "X días de abono" solo tiene sentido si hay al
+  // menos una cautelar del tipo que da abono (misma condición que ya se
+  // usaba para la calculadora, más abajo) — antes se mostraba siempre,
+  // incluso "0 días de abono" cuando la causa solo tenía, por ejemplo,
+  // Arraigo Nacional o Firma. Las cautelares vigentes siguen viéndose
+  // igual en la lista, esto solo oculta el contador cuando no aplica.
+  const hayCautelarConAbono = cautelares.some(ct => TIPOS_ABONO_DIRECTO.includes(ct.tipo) || ct.tipo === CAUTELAR_NOCTURNO)
 
   // Días de SENAME — solo informativo, no entra al abono 1x1
   const totalDiasSename = cautelares.reduce((sum,ct)=>{
@@ -159,7 +166,7 @@ export function CautelaresPanel({ causaId, cautelares, esRPA, onGuardar, onActua
         }}>
         <span style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
           <span>🔒</span>
-          <strong>{totalAbono} días de abono</strong>
+          {hayCautelarConAbono ? <strong>{totalAbono} días de abono</strong> : <strong>Cautelares</strong>}
           {totalDiasSename > 0 && (
             <span style={{fontSize:11,color:'#92400e',background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:10,padding:'2px 8px',...f}}>
               SENAME: {totalDiasSename}d (aparte)
