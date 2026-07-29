@@ -182,6 +182,16 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
 
   const openCausa=async(c)=>{
     setSelectedCausa(c);setView('detail');setActiveTab('datos')
+    // ✅ FIX: se limpian los datos de la causa anterior ANTES de esperar los
+    // nuevos — antes quedaban en pantalla (audiencias, cautelares, etc. de
+    // la causa que se estaba dejando) durante el instante en que se cargan
+    // los de la causa nueva. Si en ese instante se editaba algo (ej. una
+    // cautelar) desde un panel que no se había "reseteado" (sin key propia
+    // por causa), el cambio se guardaba contra la fila de la causa ANTERIOR
+    // aunque en pantalla ya se viera la causa nueva — esto pasó de verdad
+    // hoy al entrar a una "causa asociada" desde el imputado y terminó
+    // modificando la cautelar de la causa que se estaba abandonando.
+    setAudiencias([]);setAumentos([]);setImputados([]);setApelaciones([]);setCautelares([]);setOrdenesDetencion([])
     const[{data:a},{data:au},{data:imp},{data:apel},{data:caut},{data:ords}]=await Promise.all([
       supabase.from('audiencias').select('*').or(`causa_id.eq.${c.id},ruc.eq.${c.ruc}`).order('fecha',{ascending:false}),
       supabase.from('aumentos_plazo').select('*').eq('causa_id',c.id).order('fecha_audiencia',{ascending:true}),
@@ -253,9 +263,15 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
   // para esto salvo para el titular (CautelaresPanel ya filtra por esTitular
   // antes de mostrar el botón). Por defecto las cautelares nunca se borran,
   // solo se editan o se cierran, para mantener el historial.
-  const eliminarCautelarDefinitivo = async (id, impId, motivo) => {
+  const eliminarCautelarDefinitivo = async (id, impId, motivo, causaId) => {
     const cautelar = cautelares.find(x => x.id === id)
-    await supabase.from('cautelares_causa').delete().eq('id', id)
+    // ✅ FIX: mismo resguardo que en actualizarCautelarConMotivo — filtrar
+    // también por causa_id evita borrar (de forma PERMANENTE, sin poder
+    // deshacerlo) una cautelar de otra causa si algo llegara a quedar
+    // desincronizado.
+    let query = supabase.from('cautelares_causa').delete().eq('id', id)
+    if (causaId) query = query.eq('causa_id', causaId)
+    await query
     setCautelares(prev => prev.filter(x => x.id !== id))
     if (impId) await sincronizarDetencionImputado(impId)
     if (registrarActividad) registrarActividad('accion', `Eliminó definitivamente la cautelar "${cautelar?.tipo||''}" (desde ${cautelar?.fecha_inicio||'—'}) en RUC ${selectedCausa?.ruc}. Motivo: ${motivo}`)
@@ -265,12 +281,19 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
   // arma una línea de historial con fecha, quién lo hizo y el motivo, y se
   // concatena al historial anterior de esa misma cautelar (queda visible en
   // la tarjeta, no solo en el log de actividad general).
-  const actualizarCautelarConMotivo = async (id, campos, motivo) => {
+  const actualizarCautelarConMotivo = async (id, campos, motivo, causaId) => {
     const anterior = cautelares.find(x => x.id === id)
     const lineaHistorial = `[${new Date().toLocaleString('es-CL')}] Corregido por ${session?.user?.email||'usuario'}. Motivo: ${motivo}. Antes era: ${anterior?.tipo||'—'}, ${fechaDDMM(anterior?.fecha_inicio)||'—'}${anterior?.fecha_termino?' hasta '+fechaDDMM(anterior.fecha_termino):''}.`
     const nuevoHistorial = anterior?.historial ? anterior.historial + '\n' + lineaHistorial : lineaHistorial
     const camposFinales = { ...campos, historial: nuevoHistorial }
-    await supabase.from('cautelares_causa').update(camposFinales).eq('id', id)
+    // ✅ FIX: se agrega también el filtro por causa_id (no solo id) como
+    // segunda barrera — si por cualquier motivo el panel llegara a operar
+    // sobre datos de otra causa (el bug real que pasó hoy), esto hace que
+    // el UPDATE no afecte ninguna fila si el id no pertenece a esa causa,
+    // en vez de modificar silenciosamente la causa equivocada.
+    let query = supabase.from('cautelares_causa').update(camposFinales).eq('id', id)
+    if (causaId) query = query.eq('causa_id', causaId)
+    await query
     setCautelares(prev => prev.map(x => x.id === id ? { ...x, ...camposFinales } : x))
   }
 
@@ -970,6 +993,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                     )}
 
                     <CautelaresPanel
+                      key={c.id}
                       isMobile={isMobile}
                       causaId={c.id}
                       ruc={c.ruc}
@@ -983,11 +1007,11 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                         if(imputados[0]?.id) await sincronizarDetencionImputado(imputados[0].id)
                       }}
                       onActualizar={async(id,campos,motivo)=>{
-                        if (motivo) { await actualizarCautelarConMotivo(id, campos, motivo) }
-                        else { await supabase.from('cautelares_causa').update(campos).eq('id',id); setCautelares(prev=>prev.map(x=>x.id===id?{...x,...campos}:x)) }
+                        if (motivo) { await actualizarCautelarConMotivo(id, campos, motivo, c.id) }
+                        else { await supabase.from('cautelares_causa').update(campos).eq('id',id).eq('causa_id',c.id); setCautelares(prev=>prev.map(x=>x.id===id?{...x,...campos}:x)) }
                         if(imputados[0]?.id) await sincronizarDetencionImputado(imputados[0].id)
                       }}
-                      onEliminar={(id,motivo)=>eliminarCautelarDefinitivo(id, imputados[0]?.id, motivo)}
+                      onEliminar={(id,motivo)=>eliminarCautelarDefinitivo(id, imputados[0]?.id, motivo, c.id)}
                     />
 
                     <div style={{gridColumn:'1/-1',marginBottom:2}}>
@@ -1074,11 +1098,11 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                           await sincronizarDetencionImputado(imp.id)
                         }}
                         onActualizarCautelar={async(id,campos,motivo)=>{
-                          if (motivo) { await actualizarCautelarConMotivo(id, campos, motivo) }
-                          else { await supabase.from('cautelares_causa').update(campos).eq('id',id); setCautelares(prev=>prev.map(x=>x.id===id?{...x,...campos}:x)) }
+                          if (motivo) { await actualizarCautelarConMotivo(id, campos, motivo, c.id) }
+                          else { await supabase.from('cautelares_causa').update(campos).eq('id',id).eq('causa_id',c.id); setCautelares(prev=>prev.map(x=>x.id===id?{...x,...campos}:x)) }
                           await sincronizarDetencionImputado(imp.id)
                         }}
-                        onEliminarCautelar={(id,motivo)=>eliminarCautelarDefinitivo(id, imp.id, motivo)}
+                        onEliminarCautelar={(id,motivo)=>eliminarCautelarDefinitivo(id, imp.id, motivo, c.id)}
                       />
                     ))}
                   </div>
