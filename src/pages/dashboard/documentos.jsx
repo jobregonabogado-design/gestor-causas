@@ -88,6 +88,18 @@ export function FallosReferencia({ causaId, ruc, email, onAccion }) {
 
 // ─── DOCUMENTOS GUARDADOS EN LA APP (independiente de OneDrive) ──────────────
 const ICONO_POR_EXT = { pdf:'📄', doc:'📝', docx:'📝', xls:'📊', xlsx:'📊', jpg:'🖼️', jpeg:'🖼️', png:'🖼️', zip:'🗜️' }
+// ✅ NUEVO: detecta si el nombre del archivo es un código/hash ilegible en vez
+// de un nombre real — pasa seguido con archivos descargados de portales como
+// "Mi Fiscalía en Línea" o el PJUD, que nombran los PDF con su ID interno
+// (ej. "baea1338505841582382e1885f2d6e8.pdf") en vez de algo como
+// "ACUSACION.pdf". Se usa para ofrecer ponerle un nombre más claro antes de
+// guardarlo, en vez de dejarlo así para siempre en la lista.
+function pareceNombreHash(nombre) {
+  const sinExtension = (nombre || '').replace(/\.[a-zA-Z0-9]{1,5}$/, '')
+  const soloCaracteres = sinExtension.replace(/[-_\s]/g, '')
+  return soloCaracteres.length >= 16 && /^[0-9a-f]+$/i.test(soloCaracteres)
+}
+
 function iconoDocumento(nombre) {
   const ext = (nombre.split('.').pop() || '').toLowerCase()
   return ICONO_POR_EXT[ext] || '📎'
@@ -165,11 +177,21 @@ export function DocumentosGuardados({ causaId, ruc, email, registrarActividad, o
           console.warn('No se pudo analizar el PDF, se sube como documento genérico:', errLectura)
         }
       }
+      // ✅ NUEVO: si el nombre del archivo parece un código/hash sin sentido
+      // (típico de descargas de "Mi Fiscalía en Línea" o el PJUD), se ofrece
+      // ponerle un nombre más claro ANTES de guardarlo — así nunca queda en
+      // la lista un nombre ilegible, sin tener que arreglarlo después.
+      let nombreFinal = file.name
+      if (pareceNombreHash(file.name)) {
+        const extension = (file.name.match(/\.[a-zA-Z0-9]{1,5}$/) || [''])[0]
+        const sugerido = window.prompt(`Este archivo se llama "${file.name}" — un código, no un nombre real (pasa con descargas de Fiscalía o el PJUD). Ponle un nombre más claro para identificarlo después:`, extension ? `Documento${extension}` : 'Documento')
+        if (sugerido && sugerido.trim()) nombreFinal = sugerido.trim()
+      }
       const path = `${causaId}/${Date.now()}_${sanitizarNombreArchivo(file.name)}`
       const { error: uploadError } = await supabase.storage.from('documentos').upload(path, file)
       if (uploadError) throw uploadError
       const { data: urlData } = supabase.storage.from('documentos').getPublicUrl(path)
-      const { error: insertError } = await supabase.from('documentos_causa').insert({ causa_id: causaId, nombre: file.name, storage_path: path, url: urlData.publicUrl, tipo_mime: file.type || '', subido_por: email })
+      const { error: insertError } = await supabase.from('documentos_causa').insert({ causa_id: causaId, nombre: nombreFinal, storage_path: path, url: urlData.publicUrl, tipo_mime: file.type || '', subido_por: email })
       if (insertError) throw insertError
       await cargarDocs()
       if (onAccion) onAccion()
@@ -179,6 +201,18 @@ export function DocumentosGuardados({ causaId, ruc, email, registrarActividad, o
     } finally {
       setSubiendo(false)
     }
+  }
+
+  // ✅ NUEVO: renombrar un documento ya subido — para los que quedaron con
+  // nombre de código antes de que existiera este arreglo (como los de la
+  // captura de Joaquín), sin tener que borrarlos y volver a subirlos.
+  const renombrar = async (doc) => {
+    const nuevo = window.prompt('Nuevo nombre para este documento:', doc.nombre)
+    if (!nuevo || !nuevo.trim() || nuevo.trim() === doc.nombre) return
+    const { error } = await supabase.from('documentos_causa').update({ nombre: nuevo.trim() }).eq('id', doc.id)
+    if (error) { alert('No se pudo renombrar: ' + error.message); return }
+    setDocs(prev => prev.map(d => d.id === doc.id ? { ...d, nombre: nuevo.trim() } : d))
+    if (onAccion) onAccion()
   }
 
   const eliminar = async (doc) => {
@@ -227,6 +261,7 @@ export function DocumentosGuardados({ causaId, ruc, email, registrarActividad, o
             <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>Subido por {doc.subido_por || 'usuario'} · {new Date(doc.created_at).toLocaleDateString('es-CL')}</div>
           </div>
           <a href={doc.url} target="_blank" rel="noreferrer" style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:7, padding:'5px 12px', fontSize:11, color:'#2563eb', cursor:'pointer', fontWeight:600, textDecoration:'none', ...f }}>Ver / Descargar</a>
+          <button onClick={() => renombrar(doc)} title="Renombrar" style={{ background:'#F8F9FC', border:'1px solid #e2e8f0', borderRadius:7, padding:'5px 10px', fontSize:11, color:'#475569', cursor:'pointer', fontWeight:600, ...f }}>✏️</button>
           <button onClick={() => eliminar(doc)} style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:7, padding:'5px 10px', fontSize:11, color:'#dc2626', cursor:'pointer', fontWeight:600, ...f }}>✕</button>
         </div>
       ))}
