@@ -778,17 +778,40 @@ function extraerAudienciaFiscalia(cuerpo, asunto) {
   const hayCitacionReal = /cita(?:ci[oó]n|r)?|entrevista|declarac|audiencia|comparec/i.test(textoCompleto)
   if (!hayCitacionReal) return { fecha: null, hora: null, tipo: null, tribunal: 'FISCALÍA', sala: null, fechaEsFuerte: false }
 
-  let fecha = null, hora = null, tipo = 'ENTREVISTA'
+  let fecha = null, hora = null, tipo = 'ENTREVISTA', fechaEsFuerte = false
 
-  // Buscar todas las fechas escritas y tomar la más futura
-  const matches = [...cuerpo.matchAll(/(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/gi)]
-  for (const m of matches) {
-    const mes = meses[m[2].toLowerCase()]
+  // ✅ FIX: antes este parser NUNCA distinguía confianza fuerte/débil — se
+  // marcaba "confianza baja" siempre, sin excepción, aunque la fecha viniera
+  // clarísima ("se cita a Ud. para el día 5 de agosto de 2026"). Como la
+  // mayoría de las audiencias que llegan por este parser (correos de
+  // Fiscalía) SÍ traen ese tipo de frase clara, terminó saliendo la alerta
+  // en casi todo — dejó de servir para distinguir nada. Ahora se busca
+  // primero una fecha anclada a una frase real de citación (mismo criterio
+  // que ya usa extraerAudienciaPJUD con "para el día X" / "fijada para el
+  // día X") y solo si eso no aparece, se cae al barrido genérico de
+  // cualquier fecha suelta (ese sí queda como confianza baja).
+  const matchAnclado = cuerpo.match(/(?:fijad[ao]s?\s+para\s+el\s+d[ií]a|se\s+cita\s+(?:a\s+ud\.?\s+)?para\s+el\s+d[ií]a|cita(?:ci[oó]n)?\s+para\s+el\s+d[ií]a|queda\s+citad[ao]\s+para\s+el\s+d[ií]a|comparecer\s+el\s+d[ií]a|para\s+el\s+d[ií]a)\s+(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/i)
+  if (matchAnclado) {
+    const mes = meses[matchAnclado[2].toLowerCase()]
     if (mes) {
-      const d = String(m[1]).padStart(2,'0')
+      const d = String(matchAnclado[1]).padStart(2,'0')
       const mm = String(mes).padStart(2,'0')
-      const posible = `${m[3]}-${mm}-${d}`
-      if (esFechaFuturaOReciente(posible)) { fecha = posible; break }
+      const posible = `${matchAnclado[3]}-${mm}-${d}`
+      if (esFechaFuturaOReciente(posible)) { fecha = posible; fechaEsFuerte = true }
+    }
+  }
+
+  // Barrido de respaldo (débil): cualquier fecha futura suelta en el texto
+  if (!fecha) {
+    const matches = [...cuerpo.matchAll(/(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/gi)]
+    for (const m of matches) {
+      const mes = meses[m[2].toLowerCase()]
+      if (mes) {
+        const d = String(m[1]).padStart(2,'0')
+        const mm = String(mes).padStart(2,'0')
+        const posible = `${m[3]}-${mm}-${d}`
+        if (esFechaFuturaOReciente(posible)) { fecha = posible; break }
+      }
     }
   }
 
@@ -811,8 +834,5 @@ function extraerAudienciaFiscalia(cuerpo, asunto) {
   else if (asunto.match(/declarac/i)) tipo = 'DECLARACION'
   else if (asunto.match(/audiencia/i)) tipo = 'AUDIENCIA'
 
-  // ✅ Este parser nunca usa un patrón ancla fuerte (tipo "fijada para el
-  // día X") — siempre busca cualquier fecha futura suelta en el texto, así
-  // que TODO lo que encuentra se considera de confianza baja por diseño.
-  return { fecha, hora, tipo, tribunal: 'FISCALÍA', sala: null, fechaEsFuerte: false }
+  return { fecha, hora, tipo, tribunal: 'FISCALÍA', sala: null, fechaEsFuerte }
 }
