@@ -248,12 +248,12 @@ export default function Calendario({ onVerCausa }) {
   return (
     <div style={{background:"#F8F9FC",minHeight:"100vh",...f}}>
       <style>{CSS}</style>
-      <div style={{maxWidth:1200,margin:"0 auto",padding:"28px"}}>
+      <div style={{maxWidth:1200,margin:"0 auto",padding:isMobile?"14px":"28px"}}>
 
         {/* Header */}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:24,flexWrap:"wrap",gap:12}}>
           <div>
-            <h1 style={{fontSize:26,fontWeight:800,color:"#1E293B",margin:0,letterSpacing:"-0.5px"}}>Calendario de audiencias</h1>
+            <h1 style={{fontSize:isMobile?20:26,fontWeight:800,color:"#1E293B",margin:0,letterSpacing:"-0.5px"}}>Calendario de audiencias</h1>
             <p style={{fontSize:14,color:"#64748b",marginTop:4}}><span style={{fontWeight:700,color:"#1E293B"}}>{audDelMes.length}</span> audiencias en {MESES[mes]} {anio}</p>
           </div>
           <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
@@ -295,16 +295,24 @@ export default function Calendario({ onVerCausa }) {
           <div style={{textAlign:"center",padding:60,color:"#94a3b8",fontSize:14,...f}}>Cargando audiencias...</div>
         ) : !vistaLista ? (
           <div style={{display:"grid",gridTemplateColumns:"1fr",gap:20,overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
-            {/* Calendario */}
-            <div style={{background:"#fff",borderRadius:16,border:"1px solid #e2e8f0",overflowX:"auto",WebkitOverflowScrolling:"touch",boxShadow:"0 1px 8px rgba(15,23,42,0.06)"}}>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",background:"#1E293B",minWidth:500}}>
+            {/* ✅ FIX: esta vista de cuadrícula nunca tuvo versión para celular —
+                usaba el mismo ancho fijo (minWidth 500) que en el computador, así
+                que en el teléfono obligaba a hacer scroll horizontal con letras
+                chiquitas y los datos de cada audiencia (hora + tipo + imputado)
+                amontonados e ilegibles en una celda de ~45px de ancho. Ahora en
+                celular la cuadrícula ocupa el ancho real de la pantalla, sin
+                scroll horizontal, con celdas más bajas y solo puntos de color
+                por audiencia (el detalle completo ya se ve abajo, en el panel
+                que aparece al tocar el día). */}
+            <div style={{background:"#fff",borderRadius:16,border:"1px solid #e2e8f0",overflowX:isMobile?"visible":"auto",WebkitOverflowScrolling:"touch",boxShadow:"0 1px 8px rgba(15,23,42,0.06)"}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",background:"#1E293B",minWidth:isMobile?0:500}}>
                 {DIAS.map((d,i)=>(
-                  <div key={d} style={{padding:"14px 0",textAlign:"center",fontSize:12,fontWeight:700,color:i===0||i===6?"#f87171":"#94a3b8",letterSpacing:0.8,...f}}>{d}</div>
+                  <div key={d} style={{padding:isMobile?"8px 0":"14px 0",textAlign:"center",fontSize:isMobile?10:12,fontWeight:700,color:i===0||i===6?"#f87171":"#94a3b8",letterSpacing:0.8,...f}}>{isMobile?d.substring(0,1):d}</div>
                 ))}
               </div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",minWidth:500}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",minWidth:isMobile?0:500}}>
                 {diasDelMes.map((dia,i)=>{
-                  if(!dia) return <div key={`e${i}`} style={{minHeight:80,background:"#fafafa",borderRight:"1px solid #f1f5f9",borderBottom:"1px solid #f1f5f9"}}/>
+                  if(!dia) return <div key={`e${i}`} style={{minHeight:isMobile?44:80,background:"#fafafa",borderRight:"1px solid #f1f5f9",borderBottom:"1px solid #f1f5f9"}}/>
                   const key=`${anio}-${String(mes+1).padStart(2,"0")}-${String(dia).padStart(2,"0")}`
                   const auds=audPorFecha[key]||[]
                   const esHoy=dia===hoy.getDate()&&mes===hoy.getMonth()&&anio===hoy.getFullYear()
@@ -313,20 +321,33 @@ export default function Calendario({ onVerCausa }) {
                   const esFind=diaSem===0||diaSem===6
                   return(
                     <div key={dia} className="cal-day" onClick={()=>setSelDia(dia===selDia?null:dia)}
-                      style={{minHeight:96,padding:"8px 6px",background:seleccionado?"#eff6ff":esFind?"#fafafa":"#fff",borderRight:"1px solid #f1f5f9",borderBottom:"1px solid #f1f5f9",outline:seleccionado?"2px solid #93c5fd":"none",outlineOffset:-2}}>
-                      <div style={{display:"flex",justifyContent:"flex-end",marginBottom:5}}>
-                        <div style={{width:30,height:30,borderRadius:"50%",background:esHoy?"#1E293B":"transparent",color:esHoy?"#fff":esFind?"#94a3b8":"#1e293b",fontSize:14,fontWeight:esHoy?700:600,display:"flex",alignItems:"center",justifyContent:"center",...f}}>{dia}</div>
+                      style={{minHeight:isMobile?44:96,padding:isMobile?"4px 2px":"8px 6px",background:seleccionado?"#eff6ff":esFind?"#fafafa":"#fff",borderRight:"1px solid #f1f5f9",borderBottom:"1px solid #f1f5f9",outline:seleccionado?"2px solid #93c5fd":"none",outlineOffset:-2}}>
+                      <div style={{display:"flex",justifyContent:isMobile?"center":"flex-end",marginBottom:isMobile?2:5}}>
+                        <div style={{width:isMobile?22:30,height:isMobile?22:30,borderRadius:"50%",background:esHoy?"#1E293B":"transparent",color:esHoy?"#fff":esFind?"#94a3b8":"#1e293b",fontSize:isMobile?11:14,fontWeight:esHoy?700:600,display:"flex",alignItems:"center",justifyContent:"center",...f}}>{dia}</div>
                       </div>
-                      {auds.slice(0,3).map((a,idx)=>{
-                        const c=tipoColor(a.tipo)
-                        return(
-                          <div key={idx} style={{fontSize:10,padding:"2px 5px",borderRadius:4,background:c.bg,borderLeft:`2px solid ${c.dot}`,color:c.text,marginBottom:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",fontWeight:500,...f}}>
-                            {a.hora} {(a.tipo||"").split("/")[0].substring(0,10)}
-                            {a.imputado&&<div style={{fontSize:9,opacity:0.85,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{(a.imputado||"").split(" ")[0]}</div>}
+                      {isMobile ? (
+                        auds.length>0 && (
+                          <div style={{display:"flex",justifyContent:"center",gap:2,flexWrap:"wrap"}}>
+                            {auds.slice(0,4).map((a,idx)=>{
+                              const c=tipoColor(a.tipo)
+                              return <div key={idx} style={{width:5,height:5,borderRadius:"50%",background:c.dot}}/>
+                            })}
                           </div>
                         )
-                      })}
-                      {auds.length>3&&<div style={{fontSize:10,color:"#64748b",paddingLeft:4,fontWeight:600,...f}}>+{auds.length-3} más</div>}
+                      ) : (
+                        <>
+                        {auds.slice(0,3).map((a,idx)=>{
+                          const c=tipoColor(a.tipo)
+                          return(
+                            <div key={idx} style={{fontSize:10,padding:"2px 5px",borderRadius:4,background:c.bg,borderLeft:`2px solid ${c.dot}`,color:c.text,marginBottom:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",fontWeight:500,...f}}>
+                              {a.hora} {(a.tipo||"").split("/")[0].substring(0,10)}
+                              {a.imputado&&<div style={{fontSize:9,opacity:0.85,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{(a.imputado||"").split(" ")[0]}</div>}
+                            </div>
+                          )
+                        })}
+                        {auds.length>3&&<div style={{fontSize:10,color:"#64748b",paddingLeft:4,fontWeight:600,...f}}>+{auds.length-3} más</div>}
+                        </>
+                      )}
                     </div>
                   )
                 })}
