@@ -282,9 +282,13 @@ async function parsearCorreo(msg, rucsVigentes) {
   const rit = matchRit ? matchRit[1].trim().replace(/\s+/, '-').replace(/\s/g, '') : ''
   const esFiscalia = /minpublico|fiscalia/i.test(de)
 
-  // Se intenta primero con el parser PJUD (más completo); si no encuentra fecha
-  // y el correo parece ser de Fiscalía, se prueba también con ese parser.
-  let audiencia = extraerAudienciaPJUD(cuerpo, asunto)
+  // Se intenta primero con el parser PJUD (más completo). Si el correo es de
+  // Fiscalía, se le pide que SOLO use sus patrones fuertes (soloFuerte) —
+  // su respaldo débil está pensado para el formato de documentos del PJUD y
+  // puede enganchar por error una fecha de otro tipo dentro de un PDF de
+  // Fiscalía. Si no encuentra nada así, recién ahí se prueba con el parser
+  // específico de Fiscalía, mucho más adecuado para ese formato.
+  let audiencia = extraerAudienciaPJUD(cuerpo, asunto, esFiscalia)
   if (!audiencia?.fecha && esFiscalia) {
     audiencia = extraerAudienciaFiscalia(cuerpo, asunto)
   }
@@ -430,7 +434,18 @@ function extraerRespuestaFiscalia(cuerpo, asunto) {
 // La estrategia es buscar primero en la sección de "fijación/reprogramación"
 // que aparece al final del documento, y solo si no hay, buscar en el encabezado.
 
-function extraerAudienciaPJUD(cuerpo, asunto) {
+// ✅ FIX: "soloFuerte" — cuando el correo es de Fiscalía (no del PJUD), este
+// parser igual se ejecuta primero (ver parsearCorreo más abajo), pero su
+// patrón de respaldo (5/6 — cualquier fecha suelta en el texto) está
+// pensado para el formato específico de los documentos del PJUD, y puede
+// encontrar por error una fecha de otro tipo dentro de un PDF de Fiscalía
+// (ej. una fecha de emisión/timbre) antes de que extraerAudienciaFiscalia
+// (más adecuado para ese formato) tenga la oportunidad de intentarlo. Con
+// soloFuerte=true, este parser solo devuelve una fecha si vino de una
+// sección claramente anclada (patrones 1-4) — si no, no devuelve nada, y
+// parsearCorreo pasa al parser de Fiscalía en vez de quedarse con un dato
+// de baja confianza sacado con reglas pensadas para otro tipo de documento.
+function extraerAudienciaPJUD(cuerpo, asunto, soloFuerte = false) {
   const meses = {enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,julio:7,agosto:8,septiembre:9,octubre:10,noviembre:11,diciembre:12}
 
   let fecha = null, hora = null, tipo = null, tribunal = null, sala = null
@@ -580,7 +595,7 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
   const fechaEsFuerte = fecha !== null // patrones 1-4: viene de una sección específica (fijación/tabla/reprogramación)
 
   // Patrón 5: cualquier fecha escrita futura en el cuerpo (fallback — menos confiable)
-  if (!fecha && !esNotificacionDePlazo) {
+  if (!fecha && !esNotificacionDePlazo && !soloFuerte) {
     const matches = [...cuerpo.matchAll(/(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/gi)]
     for (const m of matches) {
       const mes = meses[m[2].toLowerCase()]
@@ -594,7 +609,7 @@ function extraerAudienciaPJUD(cuerpo, asunto) {
   }
 
   // Patrón 6: fecha numérica PDF YYYY/MM/DD (solo si es futura — fallback menos confiable)
-  if (!fecha && !esNotificacionDePlazo) {
+  if (!fecha && !esNotificacionDePlazo && !soloFuerte) {
     const matchesPDF = [...cuerpo.matchAll(/(\d{4})\/(\d{2})\/(\d{2})/g)]
     for (const m of matchesPDF) {
       const posible = `${m[1]}-${m[2]}-${m[3]}`
@@ -790,7 +805,13 @@ function extraerAudienciaFiscalia(cuerpo, asunto) {
   // que ya usa extraerAudienciaPJUD con "para el día X" / "fijada para el
   // día X") y solo si eso no aparece, se cae al barrido genérico de
   // cualquier fecha suelta (ese sí queda como confianza baja).
-  const matchAnclado = cuerpo.match(/(?:fijad[ao]s?\s+para\s+el\s+d[ií]a|se\s+cita\s+(?:a\s+ud\.?\s+)?para\s+el\s+d[ií]a|cita(?:ci[oó]n)?\s+para\s+el\s+d[ií]a|queda\s+citad[ao]\s+para\s+el\s+d[ií]a|comparecer\s+el\s+d[ií]a|para\s+el\s+d[ií]a)\s+(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/i)
+  // ✅ FIX: se busca en textoCompleto (asunto + cuerpo), no solo en el cuerpo
+  // — hay correos reales donde la fecha real viene solo en el asunto (ej.
+  // "DECLARACION ... / 25 de agosto DEL 2026 / 15:00 HRS."), sin repetirse
+  // en el cuerpo del mensaje, y antes esos casos no se detectaban nunca acá.
+  // También se acepta "DEL" además de "de" antes del año (de[l]?), otro
+  // formato real visto en asuntos generados automáticamente.
+  const matchAnclado = textoCompleto.match(/(?:fijad[ao]s?\s+para\s+el\s+d[ií]a|se\s+cita\s+(?:a\s+ud\.?\s+)?para\s+el\s+d[ií]a|cita(?:ci[oó]n)?\s+para\s+el\s+d[ií]a|queda\s+citad[ao]\s+para\s+el\s+d[ií]a|comparecer\s+el\s+d[ií]a|para\s+el\s+d[ií]a)\s+(\d{1,2})\s+de\s+(\w+)\s+del?\s+(\d{4})/i)
   if (matchAnclado) {
     const mes = meses[matchAnclado[2].toLowerCase()]
     if (mes) {
@@ -802,8 +823,9 @@ function extraerAudienciaFiscalia(cuerpo, asunto) {
   }
 
   // Barrido de respaldo (débil): cualquier fecha futura suelta en el texto
+  // (también en textoCompleto, y aceptando "del" además de "de").
   if (!fecha) {
-    const matches = [...cuerpo.matchAll(/(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/gi)]
+    const matches = [...textoCompleto.matchAll(/(\d{1,2})\s+de\s+(\w+)\s+del?\s+(\d{4})/gi)]
     for (const m of matches) {
       const mes = meses[m[2].toLowerCase()]
       if (mes) {
@@ -815,14 +837,26 @@ function extraerAudienciaFiscalia(cuerpo, asunto) {
     }
   }
 
+  // ✅ FIX: igual que el bug corregido ayer en buscarFechaNumerica
+  // (extraerRespuestaFiscalia) — estos dos respaldos numéricos tomaban la
+  // PRIMERA fecha con ese formato que encontraran, sin revisar si tenía
+  // sentido como fecha de audiencia (podía ser la fecha de emisión del
+  // documento, anterior a hoy). Ahora revisan todas las coincidencias y
+  // solo aceptan una que sea futura o reciente.
   if (!fecha) {
-    const matchFechaNum = cuerpo.match(/(\d{2})[\/\-](\d{2})[\/\-](\d{4})/)
-    if (matchFechaNum) fecha = `${matchFechaNum[3]}-${matchFechaNum[2]}-${matchFechaNum[1]}`
+    const matchesNum = [...cuerpo.matchAll(/(\d{2})[\/\-](\d{2})[\/\-](\d{4})/g)]
+    for (const m of matchesNum) {
+      const posible = `${m[3]}-${m[2]}-${m[1]}`
+      if (esFechaFuturaOReciente(posible)) { fecha = posible; break }
+    }
   }
 
   if (!fecha) {
-    const matchPDF = cuerpo.match(/(\d{4})\/(\d{2})\/(\d{2})/)
-    if (matchPDF) fecha = `${matchPDF[1]}-${matchPDF[2]}-${matchPDF[3]}`
+    const matchesPDF = [...cuerpo.matchAll(/(\d{4})\/(\d{2})\/(\d{2})/g)]
+    for (const m of matchesPDF) {
+      const posible = `${m[1]}-${m[2]}-${m[3]}`
+      if (esFechaFuturaOReciente(posible)) { fecha = posible; break }
+    }
   }
 
   const matchHora =
