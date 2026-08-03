@@ -493,20 +493,26 @@ export default function App() {
     setDiligenciasSinRespuesta(conAviso)
   }, [])
 
-  // ✅ NUEVO: personas en Prisión Preventiva/Internación Provisoria (campo
-  // "esta_detenido", que ya se mantiene sincronizado solo según la cautelar
-  // vigente) en causas vigentes — para ver de un vistazo a quién lleva más
-  // tiempo sin visita. Pedido de Joaquín: a los que ya están condenados
-  // cumpliendo condena no les urge la visita seguida, por eso esto se
-  // limita solo a "esta_detenido" (Prisión Preventiva/Internación
-  // Provisoria), no a cualquiera que esté privado de libertad.
+  // ✅ NUEVO: personas en Prisión Preventiva/Internación Provisoria en causas
+  // vigentes — para ver de un vistazo a quién lleva más tiempo sin visita.
+  // Pedido de Joaquín: a los que ya están condenados cumpliendo condena no
+  // les urge la visita seguida, por eso esto se limita solo a Prisión
+  // Preventiva/Internación Provisoria, no a cualquiera privado de libertad.
+  // ✅ FIX: se encontró un caso real con "esta_detenido"=true pero SIN
+  // ninguna cautelar registrada (dato mal cargado en una importación
+  // antigua) — apareció en la alerta sin corresponder. En vez de confiar
+  // en ese campo solo, ahora se cruza directo contra cautelares_causa
+  // (inner join): si no hay una Prisión Preventiva/Internación Provisoria
+  // realmente vigente respaldándolo, no puede aparecer en esta alerta,
+  // sin importar lo que diga "esta_detenido" en ese momento.
   const [visitasPendientes, setVisitasPendientes] = useState([])
   const cargarVisitasPendientes = useCallback(async () => {
     const { data } = await supabase
       .from('imputados')
-      .select('id, nombre, ultima_visita, lugar_detencion, causas!inner(ruc, estado)')
-      .eq('esta_detenido', true)
+      .select('id, nombre, ultima_visita, lugar_detencion, causas!inner(ruc, estado), cautelares_causa!inner(tipo, fecha_termino)')
       .eq('causas.estado', 'vigente')
+      .in('cautelares_causa.tipo', ['Prisión Preventiva', 'Internación Provisoria'])
+      .is('cautelares_causa.fecha_termino', null)
     const hoyISO = new Date().toISOString().slice(0,10)
     const conAviso = (data || [])
       .map(im => ({ ...im, ruc: im.causas?.ruc, diasSinVisita: im.ultima_visita ? diasEntreFechasCaut(im.ultima_visita, hoyISO) : null }))
