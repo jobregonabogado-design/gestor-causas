@@ -5,6 +5,10 @@
 
 export const estadoConfig = {
   // Subestados VIGENTE
+  // ✅ NUEVO: pedido de Joaquín — etapa previa a que Fiscalía formalice la
+  // investigación (Art. 229 CPP). Es la etapa más temprana de una causa
+  // vigente, por eso queda primera en SUBESTADOS_VIGENTE más abajo.
+  sin_formalizacion: { label:'SIN FORMALIZACIÓN',      color:'#1e40af', bg:'#eff6ff', border:'#bfdbfe' },
   vencido:           { label:'PLAZO VENCIDO',          color:'#991b1b', bg:'#fef2f2', border:'#fecaca' },
   proximo:           { label:'POR VENCER',              color:'#92400e', bg:'#fff7ed', border:'#fed7aa' },
   plazo_vigente:     { label:'PLAZO VIGENTE',           color:'#065f46', bg:'#ecfdf5', border:'#a7f3d0' },
@@ -32,7 +36,7 @@ export const estadoConfig = {
   vigente:           { label:'VIGENTE',                 color:'#065f46', bg:'#ecfdf5', border:'#a7f3d0' },
 }
 
-export const SUBESTADOS_VIGENTE = ['plazo_vigente','proximo','vencido','apjo','juicio_oral','cumpliendo_condena','orden_detencion','revocacion_pena_sustitutiva','sobreseimiento']
+export const SUBESTADOS_VIGENTE = ['sin_formalizacion','plazo_vigente','proximo','vencido','apjo','juicio_oral','cumpliendo_condena','orden_detencion','revocacion_pena_sustitutiva','sobreseimiento']
 export const SUBESTADOS_TERMINADA = ['renuncia','revocacion','revocacion_pena_sustitutiva','condena_preso','condena_libertad','absuelto','dnp','scp','salida_ar','orden_detencion','sobreseimiento']
 
 export function getBadgeConfig(estado, subestado) {

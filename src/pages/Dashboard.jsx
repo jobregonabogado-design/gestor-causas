@@ -155,7 +155,10 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
     const { data, error } = await supabase.from('causas').select('*').order('created_at', { ascending:false })
     if (!error) {
       const causasActualizadas = (data||[]).map(c => {
-        const subestadosEspeciales = ['apjo','juicio_oral']
+        // ✅ NUEVO: "sin_formalizacion" se agrega acá también — es un
+        // subestado que Joaquín pone a mano (igual que APJO/Juicio Oral),
+        // así que no debe pisarse solo con el cálculo automático de plazo.
+        const subestadosEspeciales = ['apjo','juicio_oral','sin_formalizacion']
         let subestado = c.subestado
         if (c.estado === 'vigente' && !subestadosEspeciales.includes(c.subestado)) {
           const autoSub = calcularSubestado(c.plazo)
@@ -599,6 +602,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
     total:causas.length, vigente:causas.filter(c=>c.estado==='vigente').length, terminada:causas.filter(c=>c.estado==='terminada').length,
     vencido:causas.filter(c=>c.subestado==='vencido').length, proximo:causas.filter(c=>c.subestado==='proximo').length,
     apjo:causas.filter(c=>c.subestado==='apjo').length, juicioOral:causas.filter(c=>c.subestado==='juicio_oral'||c.tiene_top===true).length,
+    sinFormalizacion:causas.filter(c=>c.subestado==='sin_formalizacion').length,
   }),[causas])
 
   // ✅ Los gráficos respetan TODOS los filtros activos (búsqueda, tribunal, estado, delito) —
@@ -1398,6 +1402,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
         {grupoAbierto==='vigente' && (
           <div className="chip-group" style={{display:'flex',justifyContent:'center',gap:10,flexWrap:'wrap',marginBottom:24,marginTop:4}}>
             {[
+              {key:'sin_formalizacion',label:'📋 Sin formalización',num:stats.sinFormalizacion,activeColor:'#1e40af',activeBg:'#eff6ff'},
               {key:'vencido',label:'⚠ Plazo vencido',num:stats.vencido,activeColor:'#dc2626',activeBg:'#fef2f2'},
               {key:'proximo',label:'⏱ Por vencer',num:stats.proximo,activeColor:'#d97706',activeBg:'#fffbeb'},
               {key:'apjo',label:'⚖ APJO',num:stats.apjo,activeColor:'#334155',activeBg:'#F1F5F9'},
