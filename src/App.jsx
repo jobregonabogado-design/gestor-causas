@@ -7,6 +7,7 @@ import Escritos from './pages/Escritos'
 import CodigosLeyes from './pages/CodigosLeyes'
 import Contabilidad from './pages/Contabilidad'
 import { diasHabilesDesde } from './pages/dashboard/diligencias'
+import { diasEntreFechasCaut } from './pages/dashboard/cautelares'
 
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
@@ -221,7 +222,7 @@ function PanelActividad({ onClose, onVerCausa, soloEmail }) {
   )
 }
 
-function PanelAlertas({ onClose, esTitular, tareas, audienciasProximas, diligenciasSinRespuesta, onVerCausa, onAgregarTarea, onCompletarTarea }) {
+function PanelAlertas({ onClose, esTitular, tareas, audienciasProximas, diligenciasSinRespuesta, visitasPendientes, onVerCausa, onAgregarTarea, onCompletarTarea }) {
   const [nuevaTarea, setNuevaTarea] = useState('')
   const [guardando, setGuardando] = useState(false)
 
@@ -288,6 +289,28 @@ function PanelAlertas({ onClose, esTitular, tareas, audienciasProximas, diligenc
                   </div>
                   {d.ruc && onVerCausa && (
                     <button onClick={()=>onVerCausa(d.ruc)} style={{ background:'#fff', border:'1px solid #fecaca', borderRadius:7, padding:'5px 10px', fontSize:11, color:'#991b1b', cursor:'pointer', fontWeight:600, flexShrink:0, fontFamily:"'Manrope','Inter',sans-serif" }}>→ Ver causa</button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ✅ NUEVO: personas en Prisión Preventiva/Internación Provisoria
+              (causa vigente) con 21+ días sin visita registrada, o sin
+              ninguna visita nunca — pedido de Joaquín para saber de un
+              vistazo a quién le urge más ir a ver. */}
+          {visitasPendientes && visitasPendientes.length > 0 && (
+            <div style={{ marginBottom:24 }}>
+              <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, fontWeight:700, marginBottom:10, ...f }}>Visitas a centros penales ({visitasPendientes.length})</div>
+              {visitasPendientes.map(v => (
+                <div key={v.id} style={{ display:'flex', gap:10, alignItems:'center', background:'#fef2f2', border:'1px solid #fecaca', borderRadius:10, padding:'12px 14px', marginBottom:8 }}>
+                  <span style={{ fontSize:10, fontWeight:800, color:'#991b1b', background:'#fee2e2', borderRadius:8, padding:'4px 8px', flexShrink:0, whiteSpace:'nowrap', ...f }}>{v.diasSinVisita===null?'Sin visitas':`${v.diasSinVisita}d sin visita`}</span>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:13, fontWeight:600, color:'#1E293B', ...f }}>{v.nombre||'—'}</div>
+                    <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>RUC {v.ruc || '—'}{v.lugar_detencion?' · '+v.lugar_detencion:''}</div>
+                  </div>
+                  {v.ruc && onVerCausa && (
+                    <button onClick={()=>onVerCausa(v.ruc)} style={{ background:'#fff', border:'1px solid #fecaca', borderRadius:7, padding:'5px 10px', fontSize:11, color:'#991b1b', cursor:'pointer', fontWeight:600, flexShrink:0, fontFamily:"'Manrope','Inter',sans-serif" }}>→ Ver causa</button>
                   )}
                 </div>
               ))}
@@ -470,6 +493,33 @@ export default function App() {
     setDiligenciasSinRespuesta(conAviso)
   }, [])
 
+  // ✅ NUEVO: personas en Prisión Preventiva/Internación Provisoria (campo
+  // "esta_detenido", que ya se mantiene sincronizado solo según la cautelar
+  // vigente) en causas vigentes — para ver de un vistazo a quién lleva más
+  // tiempo sin visita. Pedido de Joaquín: a los que ya están condenados
+  // cumpliendo condena no les urge la visita seguida, por eso esto se
+  // limita solo a "esta_detenido" (Prisión Preventiva/Internación
+  // Provisoria), no a cualquiera que esté privado de libertad.
+  const [visitasPendientes, setVisitasPendientes] = useState([])
+  const cargarVisitasPendientes = useCallback(async () => {
+    const { data } = await supabase
+      .from('imputados')
+      .select('id, nombre, ultima_visita, lugar_detencion, causas!inner(ruc, estado)')
+      .eq('esta_detenido', true)
+      .eq('causas.estado', 'vigente')
+    const hoyISO = new Date().toISOString().slice(0,10)
+    const conAviso = (data || [])
+      .map(im => ({ ...im, ruc: im.causas?.ruc, diasSinVisita: im.ultima_visita ? diasEntreFechasCaut(im.ultima_visita, hoyISO) : null }))
+      // ✅ Solo se avisa de los que llevan 21+ días sin visita (o nunca
+      // registrada) — igual que con Fiscalía, si se mostrara TODOS
+      // (incluso a alguien visitado ayer) dejaría de servir como aviso.
+      // 21 días es un punto de partida razonable, ajustable si hace falta.
+      .filter(im => im.diasSinVisita === null || im.diasSinVisita >= 21)
+      // sin visita nunca registrada primero, después de más días a menos
+      .sort((a, b) => (b.diasSinVisita ?? Infinity) - (a.diasSinVisita ?? Infinity))
+    setVisitasPendientes(conAviso)
+  }, [])
+
   const agregarTarea = useCallback(async (texto) => {
     const email = (await supabase.auth.getUser()).data.user?.email || 'usuario'
     await supabase.from('tareas').insert({ texto, creado_por: email })
@@ -517,6 +567,7 @@ export default function App() {
     cargarTareas()
     cargarAudienciasProximas()
     cargarDiligenciasSinRespuesta()
+    cargarVisitasPendientes()
     const channel = supabase.channel('tareas-realtime')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tareas' }, (payload) => {
         cargarTareas()
@@ -533,9 +584,12 @@ export default function App() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'diligencias_fiscalia' }, () => {
         cargarDiligenciasSinRespuesta()
       })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'imputados' }, () => {
+        cargarVisitasPendientes()
+      })
       .subscribe()
     return () => supabase.removeChannel(channel)
-  }, [session, cargarTareas, cargarAudienciasProximas, cargarDiligenciasSinRespuesta])
+  }, [session, cargarTareas, cargarAudienciasProximas, cargarDiligenciasSinRespuesta, cargarVisitasPendientes])
 
   if (loading) return (
     <div style={{ minHeight:'100vh', background:'#F8F9FC', display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -550,7 +604,7 @@ export default function App() {
 
   const esTitular = userRol?.rol === 'titular'
   const tareasPendientesCount = tareas.filter(t => !t.completada).length
-  const alertaTotal = tareasPendientesCount + audienciasProximasVigentes.length + diligenciasSinRespuesta.length
+  const alertaTotal = tareasPendientesCount + audienciasProximasVigentes.length + diligenciasSinRespuesta.length + visitasPendientes.length
   const handleSignOut = async () => { await supabase.auth.signOut() }
 
   // ✅ Handler: desde calendario → abrir causa en Dashboard
@@ -585,6 +639,7 @@ export default function App() {
           tareas={tareas}
           audienciasProximas={audienciasProximasVigentes}
           diligenciasSinRespuesta={diligenciasSinRespuesta}
+          visitasPendientes={visitasPendientes}
           onVerCausa={irACausaPorRuc}
           onAgregarTarea={agregarTarea}
           onCompletarTarea={completarTarea}

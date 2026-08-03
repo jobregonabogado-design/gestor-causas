@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { DELITOS_CATALOGO, CENTROS_PENALES, calcularEdadActual, calcularFechaTerminoCondena, getBadgeConfig, normRut, formatearRut, fechaDDMM } from './utils'
 import { SearchableSelect, DelitosChips } from './primitives'
-import { calcularTotalAbono } from './cautelares'
+import { calcularTotalAbono, diasEntreFechasCaut } from './cautelares'
 import { OrdenesDetencionPanel } from './ordenes-detencion'
 
 export function AudienciaCard({ a, onUpdate, onUpdateResultado }) {
@@ -129,10 +129,29 @@ function formatearTiempoCondena(anos, meses, dias) {
   return partes.slice(0,-1).join(', ') + ' y ' + partes[partes.length-1]
 }
 
-export function ImputadoCard({ imp, idx, totalImputados, cautelares, ordenesDetencion, esTitular, isMobile, causaId, onAbrirCausaAsociada, onUpdate, onDelete, onGuardarCondena, onVaciarCondena, onGuardarOrdenDetencion, onActualizarOrdenDetencion, onEliminarOrdenDetencion }) {
+export function ImputadoCard({ imp, idx, totalImputados, cautelares, ordenesDetencion, esTitular, isMobile, causaId, onAbrirCausaAsociada, onUpdate, onDelete, onGuardarCondena, onVaciarCondena, onGuardarOrdenDetencion, onActualizarOrdenDetencion, onEliminarOrdenDetencion, onRegistrarVisita }) {
   const [editField, setEditField] = useState(null)
   const [editValue, setEditValue] = useState('')
   const [causasAsociadas, setCausasAsociadas] = useState([])
+  // ✅ NUEVO: registro de visitas a centros penales — pedido de Joaquín para
+  // llevar el control de hace cuánto no visita a alguien que está en
+  // Prisión Preventiva/Internación Provisoria. Queda historial completo
+  // (no solo la última fecha), igual patrón que cautelares/condena.
+  const hoyISO = new Date().toISOString().slice(0,10)
+  const [showFormVisita, setShowFormVisita] = useState(false)
+  const [fechaVisita, setFechaVisita] = useState(hoyISO)
+  const [notaVisita, setNotaVisita] = useState('')
+  const [guardandoVisita, setGuardandoVisita] = useState(false)
+  const diasSinVisita = imp.ultima_visita ? diasEntreFechasCaut(imp.ultima_visita, hoyISO) : null
+  const historialVisitas = (imp.visitas_historial||'').split('\n').filter(Boolean).reverse()
+
+  const guardarVisita = async () => {
+    if (!fechaVisita) return
+    setGuardandoVisita(true)
+    await onRegistrarVisita(fechaVisita, notaVisita.trim())
+    setFechaVisita(hoyISO); setNotaVisita(''); setShowFormVisita(false)
+    setGuardandoVisita(false)
+  }
   const f = { fontFamily:"'Manrope','Inter',sans-serif" }
   const inp = { width:'100%', padding:'8px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:'#1E293B', background:'#fff', ...f }
   // ✅ Mismo cálculo de abono que usa la pestaña Datos (Cautelares), para
@@ -386,6 +405,43 @@ export function ImputadoCard({ imp, idx, totalImputados, cautelares, ordenesDete
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginTop:8}}>
             <Field2 label="Recinto penitenciario" field="lugar_detencion"/>
             <Field2 label="Fecha de detención" field="fecha_detencion"/>
+          </div>
+        )}
+        {/* ✅ NUEVO: registro de visitas — solo mientras está privado de
+            libertad (en Prisión Preventiva/Internación Provisoria, que es
+            justo cuando "esta_detenido" se marca solo). Muestra hace
+            cuántos días fue la última visita, para priorizar a quién
+            visitar primero. */}
+        {imp.esta_detenido&&onRegistrarVisita&&(
+          <div style={{marginTop:12,paddingTop:12,borderTop:'1px solid #fecaca'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
+              <div style={{fontSize:12,fontWeight:600,...f}}>
+                {imp.ultima_visita ? (
+                  <span style={{color: diasSinVisita>30?'#dc2626':'#1E293B'}}>👤 Última visita: hace {diasSinVisita} día{diasSinVisita!==1?'s':''} ({fechaDDMM(imp.ultima_visita)})</span>
+                ) : (
+                  <span style={{color:'#dc2626'}}>👤 Sin visitas registradas</span>
+                )}
+              </div>
+              <button onClick={()=>setShowFormVisita(v=>!v)} style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:7,padding:'5px 12px',fontSize:11,color:'#475569',cursor:'pointer',fontWeight:600,...f}}>{showFormVisita?'✗ Cancelar':'+ Registrar visita'}</button>
+            </div>
+            {showFormVisita&&(
+              <div style={{marginTop:10,display:'flex',gap:8,flexWrap:'wrap',alignItems:'flex-end'}}>
+                <div>
+                  <div style={{fontSize:9,color:'#64748b',textTransform:'uppercase',letterSpacing:1,marginBottom:4,fontWeight:600,...f}}>Día que fui / voy a ir</div>
+                  <input type="date" style={{...inp,padding:'7px 10px',fontSize:12}} value={fechaVisita} onChange={e=>setFechaVisita(e.target.value)}/>
+                </div>
+                <div style={{flex:1,minWidth:140}}>
+                  <div style={{fontSize:9,color:'#64748b',textTransform:'uppercase',letterSpacing:1,marginBottom:4,fontWeight:600,...f}}>Nota (opcional)</div>
+                  <input style={{...inp,padding:'7px 10px',fontSize:12}} placeholder="Ej: CDP Santiago 1, correo enviado el día anterior" value={notaVisita} onChange={e=>setNotaVisita(e.target.value)}/>
+                </div>
+                <button onClick={guardarVisita} disabled={guardandoVisita} className="btn-primary" style={{fontSize:11,padding:'7px 14px'}}>{guardandoVisita?'Guardando...':'Guardar'}</button>
+              </div>
+            )}
+            {historialVisitas.length>0&&(
+              <div style={{marginTop:8}}>
+                {historialVisitas.slice(0,5).map((h,i)=><div key={i} style={{fontSize:10,color:'#94a3b8',marginBottom:2,...f}}>📍 {h}</div>)}
+              </div>
+            )}
           </div>
         )}
       </div>

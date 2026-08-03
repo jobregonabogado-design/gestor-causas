@@ -1192,6 +1192,22 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                     setSelectedCausa(u)
                     setCausas(prev=>prev.map(x=>x.id===u.id?u:x))
                     await marcarAccion(c.id) // ✅ actualiza semáforo
+                  }}
+                  // ✅ NUEVO: registrar visita a centro penal — pedido de
+                  // Joaquín, para llevar el control de hace cuánto no visita
+                  // a alguien en Prisión Preventiva/Internación Provisoria.
+                  // Se guarda con historial completo (no solo la última
+                  // fecha) y "ultima_visita" queda con la más reciente de
+                  // todas (por si alguna vez registra una visita atrasada,
+                  // de una fecha anterior a la que ya tenía guardada).
+                  onRegistrarVisita={async(fecha,nota)=>{
+                    const linea = `[${fechaDDMM(fecha)}] ${nota||'Visita registrada'}`
+                    const nuevoHistorial = imp.visitas_historial ? imp.visitas_historial + '\n' + linea : linea
+                    const nuevaUltima = (!imp.ultima_visita || fecha > imp.ultima_visita) ? fecha : imp.ultima_visita
+                    await supabase.from('imputados').update({ visitas_historial: nuevoHistorial, ultima_visita: nuevaUltima }).eq('id', imp.id)
+                    setImputados(prev=>prev.map(x=>x.id===imp.id?{...x,visitas_historial:nuevoHistorial,ultima_visita:nuevaUltima}:x))
+                    if (registrarActividad) registrarActividad('accion', `Registró visita (${fechaDDMM(fecha)}) a ${imp.nombre||'imputado'} en RUC ${c.ruc}`)
+                    await marcarAccion(c.id)
                   }}/>
                 ))}
                 <button className="btn-secondary" style={{marginTop:16}} onClick={async()=>{
