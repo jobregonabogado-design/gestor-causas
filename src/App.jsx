@@ -296,7 +296,7 @@ function PanelAlertas({ onClose, esTitular, tareas, audienciasProximas, diligenc
           )}
 
           {/* ✅ NUEVO: personas en Prisión Preventiva/Internación Provisoria
-              (causa vigente) con 21+ días sin visita registrada, o sin
+              (causa vigente) con 30+ días sin visita registrada, o sin
               ninguna visita nunca — pedido de Joaquín para saber de un
               vistazo a quién le urge más ir a ver. */}
           {visitasPendientes && visitasPendientes.length > 0 && (
@@ -516,11 +516,11 @@ export default function App() {
     const hoyISO = new Date().toISOString().slice(0,10)
     const conAviso = (data || [])
       .map(im => ({ ...im, ruc: im.causas?.ruc, diasSinVisita: im.ultima_visita ? diasEntreFechasCaut(im.ultima_visita, hoyISO) : null }))
-      // ✅ Solo se avisa de los que llevan 21+ días sin visita (o nunca
+      // ✅ Solo se avisa de los que llevan 30+ días sin visita (o nunca
       // registrada) — igual que con Fiscalía, si se mostrara TODOS
       // (incluso a alguien visitado ayer) dejaría de servir como aviso.
-      // 21 días es un punto de partida razonable, ajustable si hace falta.
-      .filter(im => im.diasSinVisita === null || im.diasSinVisita >= 21)
+      // Plazo confirmado por Joaquín en 30 días.
+      .filter(im => im.diasSinVisita === null || im.diasSinVisita >= 30)
       // sin visita nunca registrada primero, después de más días a menos
       .sort((a, b) => (b.diasSinVisita ?? Infinity) - (a.diasSinVisita ?? Infinity))
     setVisitasPendientes(conAviso)
