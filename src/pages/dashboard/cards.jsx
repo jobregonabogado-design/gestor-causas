@@ -6,13 +6,27 @@ import { SearchableSelect, DelitosChips } from './primitives'
 import { calcularTotalAbono } from './cautelares'
 import { OrdenesDetencionPanel } from './ordenes-detencion'
 
-export function AudienciaCard({ a, onUpdate }) {
+export function AudienciaCard({ a, onUpdate, onUpdateResultado }) {
   const [editing, setEditing] = useState(false)
   const [motivo, setMotivo] = useState('')
-  const [form, setForm] = useState({ fecha:a.fecha||'', hora:a.hora||'', tipo:a.tipo||'', resultado:a.resultado||'', tribunal:a.tribunal||'', sala:a.sala||'' })
+  const [form, setForm] = useState({ fecha:a.fecha||'', hora:a.hora||'', tipo:a.tipo||'', tribunal:a.tribunal||'', sala:a.sala||'' })
   const [saving, setSaving] = useState(false)
+  // ✅ NUEVO: el resultado de la audiencia se escribe aparte, directo en la
+  // tarjeta, sin pasar por "Editar" — pedido de Joaquín: anotar el resultado
+  // después de una audiencia es trabajo normal de todos los días, no una
+  // corrección de un error, así que no debería exigir "motivo de la
+  // modificación" cada vez. "Editar" queda solo para corregir datos mal
+  // puestos (fecha, hora, tribunal, sala).
+  const [resultadoLocal, setResultadoLocal] = useState(a.resultado||'')
+  const [guardandoResultado, setGuardandoResultado] = useState(false)
   const f = { fontFamily:"'Manrope','Inter',sans-serif" }
   const inp = { width:'100%', padding:'7px 10px', border:'1.5px solid #e2e8f0', borderRadius:7, fontSize:12, color:'#1E293B', background:'#fff', ...f }
+
+  const guardarResultado = async () => {
+    setGuardandoResultado(true)
+    await onUpdateResultado(resultadoLocal)
+    setGuardandoResultado(false)
+  }
 
   const tipoColor = (tipo) => {
     const t = (tipo||'').toUpperCase()
@@ -48,13 +62,6 @@ export function AudienciaCard({ a, onUpdate }) {
           </div>
         ))}
       </div>
-      {/* ✅ El resultado queda aparte, con más espacio para escribir — no
-          siempre hace falta, pero cuando sí, da lugar a escribir algo
-          especial. Se muestra igual en el Resumen imprimible. */}
-      <div style={{marginBottom:10}}>
-        <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4,fontWeight:600,...f}}>Resultado de audiencia (opcional)</div>
-        <textarea style={{...inp,minHeight:64,resize:'vertical',lineHeight:1.5}} rows={3} placeholder="Escribe aquí cualquier detalle especial del resultado, si corresponde..." value={form.resultado} onChange={e=>setForm(p=>({...p,resultado:e.target.value}))}/>
-      </div>
       <div style={{marginBottom:10}}>
         <div style={{fontSize:10,color:'#dc2626',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4,fontWeight:700,...f}}>Motivo de la modificación *</div>
         <input style={{...inp,borderColor:'#fecaca'}} placeholder="Ej: Error en la hora, reprogramación por el tribunal..." value={motivo} onChange={e=>setMotivo(e.target.value)}/>
@@ -79,12 +86,26 @@ export function AudienciaCard({ a, onUpdate }) {
         </div>
       </div>
       {a.tribunal&&<div style={{fontSize:12,color:'#64748b',marginBottom:2,...f}}>🏛 {a.tribunal}{a.sala?' · Sala '+a.sala:''}</div>}
-      {a.resultado&&(
-        <div style={{fontSize:12,color:'#1E293B',marginTop:6,background:'#fff',border:'1px solid #e2e8f0',borderRadius:8,padding:'8px 10px',whiteSpace:'pre-wrap',...f}}>
-          <span style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1,fontWeight:700,display:'block',marginBottom:3}}>Resultado de audiencia</span>
-          {a.resultado}
-        </div>
-      )}
+      {/* ✅ NUEVO: casilla de resultado directa en la tarjeta, sin pasar por
+          "Editar" ni pedir motivo — anotar el resultado es trabajo normal
+          de todos los días, no una corrección. "Editar" queda solo para
+          arreglar datos mal puestos (fecha, hora, tribunal, sala). */}
+      <div style={{marginTop:6}}>
+        <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1,fontWeight:700,marginBottom:3,...f}}>Resultado de audiencia</div>
+        <textarea
+          style={{...inp,minHeight:44,resize:'vertical',lineHeight:1.5,background:'#fff'}}
+          rows={2}
+          placeholder="Escribe aquí el resultado..."
+          value={resultadoLocal}
+          onChange={e=>setResultadoLocal(e.target.value)}
+        />
+        {resultadoLocal!==(a.resultado||'') && (
+          <div style={{display:'flex',gap:6,marginTop:5}}>
+            <button onClick={guardarResultado} disabled={guardandoResultado} className="btn-primary" style={{fontSize:11,padding:'5px 12px'}}>{guardandoResultado?'Guardando...':'Guardar resultado'}</button>
+            <button onClick={()=>setResultadoLocal(a.resultado||'')} className="btn-secondary" style={{fontSize:11,padding:'5px 12px'}}>Cancelar</button>
+          </div>
+        )}
+      </div>
       {notasLimpias&&<div style={{fontSize:12,color:'#94a3b8',marginTop:3,...f}}>{notasLimpias}</div>}
       {a.ruc&&<div style={{fontSize:10,color:'#94a3b8',marginTop:4,fontFamily:'monospace'}}>RUC: {a.ruc}</div>}
       {historial.length>0&&(

@@ -1276,6 +1276,17 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                       setAudiencias(prev=>prev.map(x=>x.id===a.id?{...x,...updated,notas:historial}:x))
                       await marcarAccion(c.id) // ✅ actualiza semáforo
                     }
+                  }}
+                  // ✅ NUEVO: guardar el resultado de la audiencia directo, sin
+                  // motivo ni tocar el historial de correcciones — pedido de
+                  // Joaquín, no es una edición/corrección, es anotar lo normal
+                  // después de que la audiencia ya pasó.
+                  onUpdateResultado={async(resultado)=>{
+                    const{error}=await supabase.from('audiencias').update({resultado}).eq('id',a.id)
+                    if(!error){
+                      setAudiencias(prev=>prev.map(x=>x.id===a.id?{...x,resultado}:x))
+                      await marcarAccion(c.id)
+                    }
                   }}/>
                 ))}
                 {audiencias.length===0&&<p style={{color:'#94a3b8',fontSize:13,marginBottom:14,...f}}>Sin audiencias registradas.</p>}
