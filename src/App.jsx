@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from './lib/supabase'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
@@ -47,25 +47,6 @@ const css = `
 `
 
 const f = { fontFamily:"'Manrope','Inter',sans-serif" }
-
-// ─── Helpers de plazo (mismo criterio que Dashboard) ─────────────────────────
-function parseFechaCL(str) {
-  if (!str) return null
-  const limpio = str.replace(/VENCE\s*/i, '').trim()
-  const partes = limpio.split(/[\/\-\.]/)
-  if (partes.length < 3) return null
-  const [d, m, a] = partes
-  const fecha = new Date(`${a.length===2?'20'+a:a}-${m.padStart(2,'0')}-${d.padStart(2,'0')}T12:00:00`)
-  return isNaN(fecha) ? null : fecha
-}
-function diasRestantes(plazoStr) {
-  const fecha = parseFechaCL(plazoStr)
-  if (!fecha) return null
-  // ✅ Mismo ajuste que en utils.js: comparar al mediodía (igual que queda
-  // parseada "fecha") en vez de a medianoche, para no quedar ±1 día corrido.
-  const hoy = new Date(); hoy.setHours(12,0,0,0)
-  return Math.round((fecha - hoy) / (1000*60*60*24))
-}
 
 // ✅ NUEVO: prop `soloEmail` — cuando viene con un correo, el panel funciona
 // en "modo propio": una sola persona viendo SU PROPIA actividad (pensado
@@ -240,7 +221,7 @@ function PanelActividad({ onClose, onVerCausa, soloEmail }) {
   )
 }
 
-function PanelAlertas({ onClose, esTitular, alertaCounts, tareas, audienciasProximas, diligenciasSinRespuesta, onVerCausa, onAgregarTarea, onCompletarTarea }) {
+function PanelAlertas({ onClose, esTitular, tareas, audienciasProximas, diligenciasSinRespuesta, onVerCausa, onAgregarTarea, onCompletarTarea }) {
   const [nuevaTarea, setNuevaTarea] = useState('')
   const [guardando, setGuardando] = useState(false)
 
@@ -264,7 +245,7 @@ function PanelAlertas({ onClose, esTitular, alertaCounts, tareas, audienciasProx
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
             <div>
               <div style={{ fontSize:18, fontWeight:800, color:'#fff', letterSpacing:'-0.5px' }}>🔔 Centro de Alertas</div>
-              <div style={{ fontSize:11, color:'#fecaca', marginTop:2, textTransform:'uppercase', letterSpacing:1 }}>Advertencias y tareas del equipo</div>
+              <div style={{ fontSize:11, color:'#fecaca', marginTop:2, textTransform:'uppercase', letterSpacing:1 }}>Lo que necesitas revisar</div>
             </div>
             <button onClick={onClose} style={{ background:'rgba(255,255,255,0.15)', border:'none', borderRadius:10, padding:'6px 12px', color:'#fff', cursor:'pointer', fontSize:13 }}>✕ Cerrar</button>
           </div>
@@ -313,36 +294,23 @@ function PanelAlertas({ onClose, esTitular, alertaCounts, tareas, audienciasProx
             </div>
           )}
 
-          {/* Advertencias del sistema */}
-          <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, fontWeight:700, marginBottom:10, ...f }}>Advertencias del sistema</div>
-          {alertaCounts.vencido === 0 && alertaCounts.proximo === 0 ? (
-            <div style={{ background:'#ecfdf5', border:'1.5px solid #a7f3d0', borderRadius:12, padding:'14px 16px', marginBottom:24, fontSize:13, color:'#065f46', fontWeight:600, ...f }}>✓ Todas las causas vigentes están al día</div>
-          ) : (
-            <div style={{ marginBottom:24 }}>
-              {alertaCounts.vencido > 0 && (
-                <div style={{ background:'#fef2f2', border:'1px solid #fecaca', borderLeft:'4px solid #991b1b', borderRadius:10, padding:'12px 16px', marginBottom:8, display:'flex', alignItems:'center', gap:10 }}>
-                  <span style={{fontSize:16, flexShrink:0}}>⚠</span>
-                  <span style={{fontSize:13, color:'#991b1b', fontWeight:600, ...f}}>{alertaCounts.vencido} causa{alertaCounts.vencido>1?'s':''} con plazo vencido — revisión urgente</span>
-                </div>
-              )}
-              {alertaCounts.proximo > 0 && (
-                <div style={{ background:'#fff7ed', border:'1px solid #fed7aa', borderLeft:'4px solid #92400e', borderRadius:10, padding:'12px 16px', display:'flex', alignItems:'center', gap:10 }}>
-                  <span style={{fontSize:16, flexShrink:0}}>⏱</span>
-                  <span style={{fontSize:13, color:'#92400e', fontWeight:600, ...f}}>{alertaCounts.proximo} causa{alertaCounts.proximo>1?'s':''} por vencer en los próximos 3 días</span>
-                </div>
-              )}
-            </div>
-          )}
+          {/* ✅ Se sacó "Advertencias del sistema" (plazo vencido/próximo) —
+              pedido de Joaquín, esa misma información ya se ve en la lista de
+              Causas (los filtros de arriba), quedaba duplicada acá. */}
 
-          {/* Tareas pendientes */}
-          <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, fontWeight:700, marginBottom:10, ...f }}>Tareas pendientes ({pendientes.length})</div>
+          {/* ✅ Ya no se enmarca como "encargar al equipo" — mientras Joaquín
+              trabaje solo (cuenta de Adolfo suspendida), esto es simplemente
+              su lista personal de pendientes que no alcanza a hacer al
+              tiro. Si más adelante vuelve a haber equipo, sigue sirviendo
+              igual — solo cambió el texto, no la función. */}
+          <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, fontWeight:700, marginBottom:10, ...f }}>Pendientes ({pendientes.length})</div>
 
           {esTitular && (
             <div style={{ display:'flex', gap:8, marginBottom:16 }}>
               <input
                 value={nuevaTarea}
                 onChange={e=>setNuevaTarea(e.target.value)}
-                placeholder="Encargar algo al equipo..."
+                placeholder="Anotar algo pendiente..."
                 onKeyDown={e=>{ if(e.key==='Enter') handleAgregar() }}
                 style={{ flex:1, padding:'9px 12px', border:'1.5px solid #E2E8F0', borderRadius:8, fontSize:13, fontFamily:"'Manrope','Inter',sans-serif", color:'#1E293B' }}/>
               <button onClick={handleAgregar} disabled={guardando||!nuevaTarea.trim()} style={{ background:'#dc2626', color:'#fff', border:'none', borderRadius:8, padding:'9px 16px', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:"'Manrope','Inter',sans-serif", flexShrink:0 }}>{guardando?'...':'+ Agregar'}</button>
@@ -357,7 +325,7 @@ function PanelAlertas({ onClose, esTitular, alertaCounts, tareas, audienciasProx
                 style={{ width:20, height:20, borderRadius:6, border:'1.5px solid #d97706', background:'#fff', cursor:'pointer', flexShrink:0, marginTop:1, padding:0 }}/>
               <div style={{ flex:1 }}>
                 <div style={{ fontSize:13, fontWeight:600, color:'#1E293B', ...f }}>{t.texto}</div>
-                <div style={{ fontSize:11, color:'#94a3b8', marginTop:3, ...f }}>Encargado por {t.creado_por} · {new Date(t.created_at).toLocaleString('es-CL')}</div>
+                <div style={{ fontSize:11, color:'#94a3b8', marginTop:3, ...f }}>Anotado por {t.creado_por} · {new Date(t.created_at).toLocaleString('es-CL')}</div>
               </div>
             </div>
           ))}
@@ -427,7 +395,6 @@ export default function App() {
   // 🔔 Estado del Centro de Alertas (advertencias + tareas del equipo)
   const [showAlerta, setShowAlerta] = useState(false)
   const [tareas, setTareas] = useState([])
-  const [alertaCounts, setAlertaCounts] = useState({ vencido: 0, proximo: 0 })
   const [audienciasProximas, setAudienciasProximas] = useState([])
   // ✅ NUEVO: diligencias de Fiscalía tipo audiencia/entrevista/declaración
   // (donde la respuesta que se espera ES un agendamiento o su rechazo) que
@@ -451,17 +418,8 @@ export default function App() {
   }, [])
 
   // 🔔 Cargar advertencias de plazo (mismo criterio que la lista de Causas)
-  const cargarAlertaData = useCallback(async () => {
-    const { data } = await supabase.from('causas').select('plazo').eq('estado', 'vigente')
-    let vencido = 0, proximo = 0
-    ;(data || []).forEach(c => {
-      const diff = diasRestantes(c.plazo)
-      if (diff === null) return
-      if (diff < 0) vencido++
-      else if (diff <= 3) proximo++
-    })
-    setAlertaCounts({ vencido, proximo })
-  }, [])
+  // ✅ Se sacó cargarAlertaData (plazo vencido/próximo) — esa cuenta ya se
+  // ve en la lista de Causas, quedaba duplicada en el Centro de Alertas.
 
   const cargarTareas = useCallback(async () => {
     const { data } = await supabase.from('tareas').select('*').order('created_at', { ascending: false }).limit(100)
@@ -476,6 +434,23 @@ export default function App() {
     const { data } = await supabase.from('audiencias').select('*').gte('fecha', fmt(hoy)).lte('fecha', fmt(manana)).order('fecha', { ascending: true }).order('hora', { ascending: true })
     setAudienciasProximas(data || [])
   }, [])
+
+  // ✅ NUEVO: pedido de Joaquín — que las audiencias de HOY se vayan
+  // "limpiando" del Centro de Alertas apenas ya pasaron, en vez de quedar
+  // ahí dando vueltas todo el día. Se compara la hora contra el momento
+  // actual; si no tiene hora registrada, se deja visible todo el día (no
+  // hay forma de saber si ya pasó). Las de mañana nunca se filtran por
+  // hora, da igual qué hora sea hoy.
+  const audienciasProximasVigentes = useMemo(() => {
+    const ahora = new Date()
+    const hoyStr = ahora.toISOString().slice(0,10)
+    const horaActual = `${String(ahora.getHours()).padStart(2,'0')}:${String(ahora.getMinutes()).padStart(2,'0')}`
+    return audienciasProximas.filter(a => {
+      if (a.fecha !== hoyStr) return true // de mañana, se deja igual
+      if (!a.hora) return true // sin hora registrada, se deja visible todo el día
+      return a.hora >= horaActual
+    })
+  }, [audienciasProximas])
 
   // ✅ NUEVO: diligencias pendientes de causas vigentes, tipo audiencia/
   // entrevista/declaración (por palabra clave, para no depender de que el
@@ -539,7 +514,6 @@ export default function App() {
 
   useEffect(() => {
     if (!session) return
-    cargarAlertaData()
     cargarTareas()
     cargarAudienciasProximas()
     cargarDiligenciasSinRespuesta()
@@ -553,9 +527,6 @@ export default function App() {
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tareas' }, () => {
         cargarTareas()
       })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'causas' }, () => {
-        cargarAlertaData()
-      })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'audiencias' }, () => {
         cargarAudienciasProximas()
       })
@@ -564,7 +535,7 @@ export default function App() {
       })
       .subscribe()
     return () => supabase.removeChannel(channel)
-  }, [session, cargarAlertaData, cargarTareas, cargarAudienciasProximas, cargarDiligenciasSinRespuesta])
+  }, [session, cargarTareas, cargarAudienciasProximas, cargarDiligenciasSinRespuesta])
 
   if (loading) return (
     <div style={{ minHeight:'100vh', background:'#F8F9FC', display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -579,7 +550,7 @@ export default function App() {
 
   const esTitular = userRol?.rol === 'titular'
   const tareasPendientesCount = tareas.filter(t => !t.completada).length
-  const alertaTotal = alertaCounts.vencido + alertaCounts.proximo + tareasPendientesCount + audienciasProximas.length + diligenciasSinRespuesta.length
+  const alertaTotal = tareasPendientesCount + audienciasProximasVigentes.length + diligenciasSinRespuesta.length
   const handleSignOut = async () => { await supabase.auth.signOut() }
 
   // ✅ Handler: desde calendario → abrir causa en Dashboard
@@ -611,9 +582,8 @@ export default function App() {
         <PanelAlertas
           onClose={() => setShowAlerta(false)}
           esTitular={esTitular}
-          alertaCounts={alertaCounts}
           tareas={tareas}
-          audienciasProximas={audienciasProximas}
+          audienciasProximas={audienciasProximasVigentes}
           diligenciasSinRespuesta={diligenciasSinRespuesta}
           onVerCausa={irACausaPorRuc}
           onAgregarTarea={agregarTarea}
