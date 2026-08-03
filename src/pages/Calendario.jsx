@@ -190,7 +190,12 @@ export default function Calendario({ onVerCausa }) {
 
   const loadAudiencias = async () => {
     setLoading(true)
-    const { data, error } = await supabase.from("audiencias").select("*").order("fecha", { ascending: true })
+    // ✅ FIX: solo se ordenaba por fecha — dos audiencias del mismo día
+    // quedaban en el orden en que se guardaron en la base de datos (ej. una
+    // de las 15:00 detectada por correo antes que la de las 09:00 agregada
+    // después), no por hora real. Se agrega "hora" como segundo criterio de
+    // orden, así el día siempre queda de mañana a tarde.
+    const { data, error } = await supabase.from("audiencias").select("*").order("fecha", { ascending: true }).order("hora", { ascending: true })
     if (!error) setAudiencias(data || [])
     setLoading(false)
   }

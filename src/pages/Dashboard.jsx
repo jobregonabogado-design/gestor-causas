@@ -193,7 +193,11 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
     // modificando la cautelar de la causa que se estaba abandonando.
     setAudiencias([]);setAumentos([]);setImputados([]);setApelaciones([]);setCautelares([]);setOrdenesDetencion([])
     const[{data:a},{data:au},{data:imp},{data:apel},{data:caut},{data:ords}]=await Promise.all([
-      supabase.from('audiencias').select('*').or(`causa_id.eq.${c.id},ruc.eq.${c.ruc}`).order('fecha',{ascending:false}),
+      // ✅ FIX: solo ordenaba por fecha — dos audiencias del mismo día quedaban
+      // en el orden en que se guardaron, no por hora (ej. la de las 15:00
+      // aparecía antes que la de las 09:00). Se agrega "hora" como segundo
+      // criterio, mismo arreglo que en Calendario.jsx.
+      supabase.from('audiencias').select('*').or(`causa_id.eq.${c.id},ruc.eq.${c.ruc}`).order('fecha',{ascending:false}).order('hora',{ascending:true}),
       supabase.from('aumentos_plazo').select('*').eq('causa_id',c.id).order('fecha_audiencia',{ascending:true}),
       supabase.from('imputados').select('*').eq('causa_id',c.id).order('created_at',{ascending:true}),
       supabase.from('apelaciones_corte').select('*').eq('causa_id',c.id).order('created_at',{ascending:true}),
