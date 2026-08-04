@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { DELITOS_CATALOGO, CENTROS_PENALES, calcularEdadActual, calcularFechaTerminoCondena, getBadgeConfig, normRut, formatearRut, fechaDDMM, hoyISO } from './utils'
 import { SearchableSelect, DelitosChips } from './primitives'
-import { calcularTotalAbono, diasEntreFechasCaut } from './cautelares'
+import { calcularTotalAbono, diasEntreFechasCaut, TIPOS_DETENCION_PENAL } from './cautelares'
 import { OrdenesDetencionPanel } from './ordenes-detencion'
 
 export function AudienciaCard({ a, onUpdate, onUpdateResultado }) {
@@ -143,6 +143,16 @@ export function ImputadoCard({ imp, idx, totalImputados, cautelares, ordenesDete
   const [guardandoVisita, setGuardandoVisita] = useState(false)
   const diasSinVisita = imp.ultima_visita ? diasEntreFechasCaut(imp.ultima_visita, hoyISO()) : null
   const historialVisitas = (imp.visitas_historial||'').split('\n').filter(Boolean).reverse()
+  // ✅ FIX: "esta_detenido" es un campo que se guarda aparte y se supone que
+  // se sincroniza solo cada vez que se agrega/edita/borra una cautelar —
+  // pero se encontró un caso real (Paulo y Gabriel, causa San Bernardo)
+  // donde quedó en falso a pesar de tener Prisión Preventiva vigente,
+  // tapando por completo el botón de registrar visita sin ningún aviso. En
+  // vez de confiar solo en ese campo guardado, se cruza también contra la
+  // cautelar real (que esta tarjeta ya recibe como prop) — si CUALQUIERA de
+  // los dos dice que está detenido, se muestra como detenido. Así nunca
+  // vuelve a taparse la sección de visitas por un dato desincronizado.
+  const estaDetenidoReal = imp.esta_detenido || (cautelares||[]).some(ct => TIPOS_DETENCION_PENAL.includes(ct.tipo) && !ct.fecha_termino)
 
   const guardarVisita = async () => {
     if (!fechaVisita) return
@@ -393,14 +403,20 @@ export function ImputadoCard({ imp, idx, totalImputados, cautelares, ordenesDete
           </button>
         </div>
       )}
-      <div style={{marginTop:14,background:imp.esta_detenido?'#fef2f2':'#f0fdf4',border:`1.5px solid ${imp.esta_detenido?'#fecaca':'#a7f3d0'}`,borderRadius:10,padding:14}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:imp.esta_detenido?12:0}}>
-          <div style={{fontSize:13,fontWeight:600,color:imp.esta_detenido?'#dc2626':'#059669',...f}}>{imp.esta_detenido?'🔒 Privado de libertad':'🔓 En libertad'}</div>
-          <button onClick={()=>onUpdate('esta_detenido',!imp.esta_detenido)} style={{background:'#fff',border:`1.5px solid ${imp.esta_detenido?'#fecaca':'#a7f3d0'}`,borderRadius:7,padding:'5px 14px',fontSize:11,cursor:'pointer',fontWeight:600,color:imp.esta_detenido?'#dc2626':'#059669',...f}}>
-            {imp.esta_detenido?'Marcar liberado':'Marcar detenido'}
+      <div style={{marginTop:14,background:estaDetenidoReal?'#fef2f2':'#f0fdf4',border:`1.5px solid ${estaDetenidoReal?'#fecaca':'#a7f3d0'}`,borderRadius:10,padding:14}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:estaDetenidoReal?12:0}}>
+          <div style={{fontSize:13,fontWeight:600,color:estaDetenidoReal?'#dc2626':'#059669',...f}}>{estaDetenidoReal?'🔒 Privado de libertad':'🔓 En libertad'}</div>
+          {/* El botón sigue tocando el campo guardado (para casos sin
+              cautelar formal, ej. una orden de detención sin resolver) —
+              pero si hay una cautelar de Prisión Preventiva/Internación
+              Provisoria vigente, esta siempre manda: no se puede "marcar
+              liberado" mientras esa cautelar siga abierta, hay que
+              cerrarla o corregirla primero en Cautelares. */}
+          <button onClick={()=>onUpdate('esta_detenido',!imp.esta_detenido)} title={estaDetenidoReal && !imp.esta_detenido ? 'Hay una cautelar de Prisión Preventiva/Internación Provisoria vigente — para que aparezca como liberado, ciérrala primero en Cautelares' : undefined} style={{background:'#fff',border:`1.5px solid ${estaDetenidoReal?'#fecaca':'#a7f3d0'}`,borderRadius:7,padding:'5px 14px',fontSize:11,cursor:'pointer',fontWeight:600,color:estaDetenidoReal?'#dc2626':'#059669',...f}}>
+            {estaDetenidoReal?'Marcar liberado':'Marcar detenido'}
           </button>
         </div>
-        {imp.esta_detenido&&(
+        {estaDetenidoReal&&(
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginTop:8}}>
             <Field2 label="Recinto penitenciario" field="lugar_detencion"/>
             <Field2 label="Fecha de detención" field="fecha_detencion"/>
@@ -411,7 +427,7 @@ export function ImputadoCard({ imp, idx, totalImputados, cautelares, ordenesDete
             justo cuando "esta_detenido" se marca solo). Muestra hace
             cuántos días fue la última visita, para priorizar a quién
             visitar primero. */}
-        {imp.esta_detenido&&onRegistrarVisita&&(
+        {estaDetenidoReal&&onRegistrarVisita&&(
           <div style={{marginTop:12,paddingTop:12,borderTop:'1px solid #fecaca'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
               <div style={{fontSize:12,fontWeight:600,...f}}>
