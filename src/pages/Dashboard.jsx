@@ -582,7 +582,10 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
       // deja calcularSubestado cuando todo está al día) como las que tienen
       // literalmente "plazo_vigente" guardado (elegido a mano alguna vez) —
       // mismo criterio que el contador de arriba (stats.plazoVigente).
-      const estadoMatch=!filterEstado||(filterEstado==='vigente'?c.estado==='vigente':filterEstado==='terminada'?(c.estado==='terminada'&&!c.subestado):filterEstado==='top'?(c.subestado==='juicio_oral'||c.tiene_top===true):filterEstado==='plazo_vigente'?(c.estado==='vigente'&&(!c.subestado||c.subestado==='plazo_vigente')):c.subestado===filterEstado)
+      // ✅ FIX: "top" (Juicio Oral) ahora exige además que la causa esté
+      // vigente — antes mezclaba causas ya Terminadas que pasaron por Juicio
+      // Oral. Esas tienen su propio filtro nuevo, "top_terminada".
+      const estadoMatch=!filterEstado||(filterEstado==='vigente'?c.estado==='vigente':filterEstado==='terminada'?(c.estado==='terminada'&&!c.subestado):filterEstado==='top'?(c.estado==='vigente'&&(c.subestado==='juicio_oral'||c.tiene_top===true)):filterEstado==='top_terminada'?(c.estado==='terminada'&&c.tiene_top===true):filterEstado==='plazo_vigente'?(c.estado==='vigente'&&(!c.subestado||c.subestado==='plazo_vigente')):c.subestado===filterEstado)
       // ✅ Se compara solo el nombre del delito (sin el sufijo de grado, ej.
       // "(FRUSTRADO)") — así filtrar por "Robo" encuentra tanto el consumado
       // como el frustrado o tentado, sin importar la etapa en que quedó.
@@ -601,7 +604,15 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
   const stats=useMemo(()=>({
     total:causas.length, vigente:causas.filter(c=>c.estado==='vigente').length, terminada:causas.filter(c=>c.estado==='terminada').length,
     vencido:causas.filter(c=>c.subestado==='vencido').length, proximo:causas.filter(c=>c.subestado==='proximo').length,
-    apjo:causas.filter(c=>c.subestado==='apjo').length, juicioOral:causas.filter(c=>c.subestado==='juicio_oral'||c.tiene_top===true).length,
+    apjo:causas.filter(c=>c.subestado==='apjo').length,
+    // ✅ FIX: "tiene_top" (pasó por Juicio Oral) es independiente del estado
+    // de la causa — puede seguir vigente en JO, o ya haber terminado (ej.
+    // condenada después del juicio). Antes esto contaba TODAS las causas con
+    // tiene_top, sin importar si ya estaban Terminadas, así que se inflaba
+    // el número que aparecía bajo "Vigente". Ahora se separan en dos
+    // contadores — uno para cada estado.
+    juicioOral:causas.filter(c=>c.estado==='vigente'&&(c.subestado==='juicio_oral'||c.tiene_top===true)).length,
+    juicioOralTerminada:causas.filter(c=>c.estado==='terminada'&&c.tiene_top===true).length,
     sinFormalizacion:causas.filter(c=>c.subestado==='sin_formalizacion').length,
     // ✅ NUEVO: faltaban estos — "Plazo Vigente" es el subestado más común de
     // todos (la causa está simplemente al día) y no tenía ni chip ni
@@ -1443,6 +1454,18 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
         )}
         {grupoAbierto==='terminada' && (
           <div className="chip-group" style={{display:'flex',justifyContent:'center',gap:10,flexWrap:'wrap',marginBottom:24,marginTop:4}}>
+            {/* ✅ NUEVO: "Juicio Oral" para causas ya Terminadas — antes no
+                existía este chip acá, así que esas causas (condenadas
+                después del juicio, por ejemplo) solo se contaban de más en
+                el chip de Juicio Oral de Vigente, aunque ya no lo estuvieran. */}
+            {stats.juicioOralTerminada>0 && (() => {
+              const active=filterEstado==='top_terminada'
+              return(<button key="top_terminada" className="chip-btn" onClick={()=>setFilterEstado(active?'terminada':'top_terminada')}
+                style={{fontSize:13,fontWeight:600,padding:'9px 16px',borderRadius:100,cursor:'pointer',border:'none',
+                  color:active?'#334155':'#48484A', background:active?'#F1F5F9':'#fff',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}}>
+                🏛 Juicio Oral · {stats.juicioOralTerminada}
+              </button>)
+            })()}
             {SUBESTADOS_TERMINADA.map(sub=>{
               const num = causas.filter(c=>c.estado==='terminada'&&c.subestado===sub).length
               if (num===0) return null
