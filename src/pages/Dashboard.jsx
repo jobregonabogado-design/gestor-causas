@@ -578,7 +578,11 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
       // ✅ "Terminada" (general, sin subestado elegido) funciona como cola de pendientes:
       // solo muestra las terminadas que TODAVÍA no tienen subestado. Apenas se le pone
       // un subestado a una causa, desaparece de aquí y solo aparece en su subestado específico.
-      const estadoMatch=!filterEstado||(filterEstado==='vigente'?c.estado==='vigente':filterEstado==='terminada'?(c.estado==='terminada'&&!c.subestado):filterEstado==='top'?(c.subestado==='juicio_oral'||c.tiene_top===true):c.subestado===filterEstado)
+      // ✅ NUEVO: "plazo_vigente" agrupa tanto las causas sin subestado (lo que
+      // deja calcularSubestado cuando todo está al día) como las que tienen
+      // literalmente "plazo_vigente" guardado (elegido a mano alguna vez) —
+      // mismo criterio que el contador de arriba (stats.plazoVigente).
+      const estadoMatch=!filterEstado||(filterEstado==='vigente'?c.estado==='vigente':filterEstado==='terminada'?(c.estado==='terminada'&&!c.subestado):filterEstado==='top'?(c.subestado==='juicio_oral'||c.tiene_top===true):filterEstado==='plazo_vigente'?(c.estado==='vigente'&&(!c.subestado||c.subestado==='plazo_vigente')):c.subestado===filterEstado)
       // ✅ Se compara solo el nombre del delito (sin el sufijo de grado, ej.
       // "(FRUSTRADO)") — así filtrar por "Robo" encuentra tanto el consumado
       // como el frustrado o tentado, sin importar la etapa en que quedó.
@@ -599,6 +603,19 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
     vencido:causas.filter(c=>c.subestado==='vencido').length, proximo:causas.filter(c=>c.subestado==='proximo').length,
     apjo:causas.filter(c=>c.subestado==='apjo').length, juicioOral:causas.filter(c=>c.subestado==='juicio_oral'||c.tiene_top===true).length,
     sinFormalizacion:causas.filter(c=>c.subestado==='sin_formalizacion').length,
+    // ✅ NUEVO: faltaban estos — "Plazo Vigente" es el subestado más común de
+    // todos (la causa está simplemente al día) y no tenía ni chip ni
+    // contador. calcularSubestado() deja el subestado en null cuando todo
+    // está al día (no se guarda "plazo_vigente" solo), pero también existe
+    // como opción manual en el selector — por eso se cuentan las dos formas
+    // juntas. De paso se agregan los otros subestados de causa vigente que
+    // tampoco tenían chip (Cumpliendo condena, Orden de detención,
+    // Revocación pena sustitutiva, Sobreseimiento).
+    plazoVigente:causas.filter(c=>c.estado==='vigente'&&(c.subestado===null||c.subestado==='plazo_vigente')).length,
+    cumpliendoCondena:causas.filter(c=>c.subestado==='cumpliendo_condena').length,
+    ordenDetencion:causas.filter(c=>c.estado==='vigente'&&c.subestado==='orden_detencion').length,
+    revocacionPS:causas.filter(c=>c.subestado==='revocacion_pena_sustitutiva').length,
+    sobreseimientoVig:causas.filter(c=>c.estado==='vigente'&&c.subestado==='sobreseimiento').length,
   }),[causas])
 
   // ✅ Los gráficos respetan TODOS los filtros activos (búsqueda, tribunal, estado, delito) —
@@ -1405,10 +1422,15 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
           <div className="chip-group" style={{display:'flex',justifyContent:'center',gap:10,flexWrap:'wrap',marginBottom:24,marginTop:4}}>
             {[
               {key:'sin_formalizacion',label:'📋 Sin formalización',num:stats.sinFormalizacion,activeColor:'#1e40af',activeBg:'#eff6ff'},
+              {key:'plazo_vigente',label:'✓ Plazo vigente',num:stats.plazoVigente,activeColor:'#059669',activeBg:'#ecfdf5'},
               {key:'vencido',label:'⚠ Plazo vencido',num:stats.vencido,activeColor:'#dc2626',activeBg:'#fef2f2'},
               {key:'proximo',label:'⏱ Por vencer',num:stats.proximo,activeColor:'#d97706',activeBg:'#fffbeb'},
               {key:'apjo',label:'⚖ APJO',num:stats.apjo,activeColor:'#334155',activeBg:'#F1F5F9'},
               {key:'top',label:'🏛 Juicio Oral',num:stats.juicioOral,activeColor:'#334155',activeBg:'#F1F5F9'},
+              {key:'cumpliendo_condena',label:'⛓ Cumpliendo condena',num:stats.cumpliendoCondena,activeColor:'#991b1b',activeBg:'#fef2f2'},
+              {key:'orden_detencion',label:'🚨 Orden de detención',num:stats.ordenDetencion,activeColor:'#c2410c',activeBg:'#fff7ed'},
+              {key:'revocacion_pena_sustitutiva',label:'↩ Revocación pena sustitutiva',num:stats.revocacionPS,activeColor:'#dc2626',activeBg:'#fef2f2'},
+              {key:'sobreseimiento',label:'✓ Sobreseimiento',num:stats.sobreseimientoVig,activeColor:'#059669',activeBg:'#ecfdf5'},
             ].filter(ch=>ch.num>0).map(ch=>{
               const active=filterEstado===ch.key
               return(<button key={ch.key} className="chip-btn" onClick={()=>setFilterEstado(filterEstado===ch.key?'vigente':ch.key)}
