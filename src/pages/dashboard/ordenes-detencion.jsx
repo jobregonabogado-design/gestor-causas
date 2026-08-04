@@ -5,15 +5,15 @@
 // nunca se sobrescribe una orden anterior.
 import { useState } from 'react'
 import { f } from './primitives'
-import { fechaDDMM } from './utils'
+import { fechaDDMM, hoyISO } from './utils'
 
 export function OrdenesDetencionPanel({ ordenes, onGuardar, onActualizar, onEliminar, esTitular, isMobile }) {
-  const hoyISO = new Date().toISOString().slice(0,10)
+  const hoyStr = hoyISO()
   const [expanded, setExpanded] = useState(false)
-  const [form, setForm] = useState({ fecha_orden: hoyISO, motivo: '' })
+  const [form, setForm] = useState({ fecha_orden: hoyStr, motivo: '' })
   const [guardando, setGuardando] = useState(false)
   const [levantandoId, setLevantandoId] = useState(null)
-  const [fechaLevanta, setFechaLevanta] = useState(hoyISO)
+  const [fechaLevanta, setFechaLevanta] = useState(hoyStr)
 
   const lista = ordenes || []
   const vigentes = lista.filter(o => !o.fecha_levantamiento).length
@@ -23,13 +23,13 @@ export function OrdenesDetencionPanel({ ordenes, onGuardar, onActualizar, onElim
     if (!form.motivo.trim()) { alert('Ingresa el motivo de la orden de detención.'); return }
     setGuardando(true)
     await onGuardar(form)
-    setForm({ fecha_orden: hoyISO, motivo: '' })
+    setForm({ fecha_orden: hoyISO(), motivo: '' })
     setGuardando(false)
   }
 
   const iniciarLevantamiento = (o) => {
     setLevantandoId(o.id)
-    setFechaLevanta(hoyISO)
+    setFechaLevanta(hoyISO())
   }
 
   const guardarLevantamiento = async (o) => {

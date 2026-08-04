@@ -8,6 +8,7 @@ import CodigosLeyes from './pages/CodigosLeyes'
 import Contabilidad from './pages/Contabilidad'
 import { diasHabilesDesde } from './pages/dashboard/diligencias'
 import { diasEntreFechasCaut } from './pages/dashboard/cautelares'
+import { hoyISO } from './pages/dashboard/utils'
 
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
@@ -228,7 +229,7 @@ function PanelAlertas({ onClose, esTitular, tareas, audienciasProximas, diligenc
 
   const pendientes = tareas.filter(t => !t.completada)
   const completadas = tareas.filter(t => t.completada)
-  const hoyStr = new Date().toISOString().slice(0,10)
+  const hoyStr = hoyISO()
 
   const handleAgregar = async () => {
     if (!nuevaTarea.trim()) return
@@ -451,10 +452,12 @@ export default function App() {
 
   // 📅 Recordatorio de audiencias — hoy y mañana, para el Centro de Alertas
   const cargarAudienciasProximas = useCallback(async () => {
-    const hoy = new Date(); hoy.setHours(0,0,0,0)
-    const manana = new Date(hoy); manana.setDate(manana.getDate() + 1)
-    const fmt = (d) => d.toISOString().slice(0,10)
-    const { data } = await supabase.from('audiencias').select('*').gte('fecha', fmt(hoy)).lte('fecha', fmt(manana)).order('fecha', { ascending: true }).order('hora', { ascending: true })
+    const hoyStr = hoyISO()
+    // "Mañana" en fecha LOCAL — se arma a mano en vez de con toISOString()
+    // (que siempre da la fecha en UTC) por el mismo motivo que hoyISO().
+    const mananaDate = new Date(); mananaDate.setDate(mananaDate.getDate() + 1)
+    const mananaStr = `${mananaDate.getFullYear()}-${String(mananaDate.getMonth()+1).padStart(2,'0')}-${String(mananaDate.getDate()).padStart(2,'0')}`
+    const { data } = await supabase.from('audiencias').select('*').gte('fecha', hoyStr).lte('fecha', mananaStr).order('fecha', { ascending: true }).order('hora', { ascending: true })
     setAudienciasProximas(data || [])
   }, [])
 
@@ -466,7 +469,7 @@ export default function App() {
   // hora, da igual qué hora sea hoy.
   const audienciasProximasVigentes = useMemo(() => {
     const ahora = new Date()
-    const hoyStr = ahora.toISOString().slice(0,10)
+    const hoyStr = hoyISO()
     const horaActual = `${String(ahora.getHours()).padStart(2,'0')}:${String(ahora.getMinutes()).padStart(2,'0')}`
     return audienciasProximas.filter(a => {
       if (a.fecha !== hoyStr) return true // de mañana, se deja igual
@@ -513,9 +516,8 @@ export default function App() {
       .eq('causas.estado', 'vigente')
       .in('cautelares_causa.tipo', ['Prisión Preventiva', 'Internación Provisoria'])
       .is('cautelares_causa.fecha_termino', null)
-    const hoyISO = new Date().toISOString().slice(0,10)
     const conAviso = (data || [])
-      .map(im => ({ ...im, ruc: im.causas?.ruc, diasSinVisita: im.ultima_visita ? diasEntreFechasCaut(im.ultima_visita, hoyISO) : null }))
+      .map(im => ({ ...im, ruc: im.causas?.ruc, diasSinVisita: im.ultima_visita ? diasEntreFechasCaut(im.ultima_visita, hoyISO()) : null }))
       // ✅ Solo se avisa de los que llevan 30+ días sin visita (o nunca
       // registrada) — igual que con Fiscalía, si se mostrara TODOS
       // (incluso a alguien visitado ayer) dejaría de servir como aviso.

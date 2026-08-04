@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { loginGmail, isGmailConnected, logoutGmail, fetchNotificacionesPJUD, exchangeCodeForToken } from '../lib/gmail'
 import { supabase } from '../lib/supabase'
-import { fechaDDMM } from '../pages/dashboard/utils'
+import { fechaDDMM, hoyISO } from '../pages/dashboard/utils'
 import { ESTADOS_DILIGENCIA } from '../pages/dashboard/diligencias'
 
 const f = { fontFamily:"'Manrope','Inter',sans-serif" }
@@ -143,7 +143,7 @@ export default function GmailIntegracion({ onImportComplete }) {
           fechaCitacion: n.respuestaFiscalia.fechaCitacion,
           fechaEsFuerte: n.respuestaFiscalia.fechaCitacionEsFuerte !== false,
           detalle: n.respuestaFiscalia.detalle,
-          fechaRespuestaEmail: n.fecha_correo ? n.fecha_correo.slice(0, 10) : new Date().toISOString().slice(0, 10),
+          fechaRespuestaEmail: n.fecha_correo ? n.fecha_correo.slice(0, 10) : hoyISO(),
           asunto: n.asunto,
         }
 

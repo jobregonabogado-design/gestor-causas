@@ -17,7 +17,7 @@ import { HonorariosTab } from './dashboard/honorarios'
 import { TeoriaDelCaso } from './dashboard/teoria'
 import { BotonResumenImprimible } from './dashboard/resumen'
 import { PlazoCalculador } from './dashboard/plazo'
-import { calcularRegimenAlMomento, calcularVencimiento, parseFechaCL, diasRestantes, calcularSubestado, calcularEdadActual, TRIBUNAL_RPA, normRut, normalizarBusqueda, formatearRut, fechaDDMM, parsearDelito } from './dashboard/utils'
+import { calcularRegimenAlMomento, calcularVencimiento, parseFechaCL, diasRestantes, calcularSubestado, calcularEdadActual, TRIBUNAL_RPA, normRut, normalizarBusqueda, formatearRut, fechaDDMM, parsearDelito, hoyISO } from './dashboard/utils'
 import { ImputadoDatosCard } from './dashboard/imputado-datos'
 import { CautelaresPanel, TIPOS_ABONO_DIRECTO, TIPOS_DETENCION_PENAL, CAUTELAR_NOCTURNO, CAUTELAR_SENAME, TIPOS_CAUTELARES_TODAS, diasEntreFechasCaut } from './dashboard/cautelares'
 
@@ -1728,7 +1728,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                     <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Cautelar</div>
                     <select style={inp} value={imp.cautelar} onChange={e=>{
                       const nuevoTipo = e.target.value
-                      setNuevaCausa(p=>({...p, imputados: p.imputados.map((x,i)=>i!==idx?x:{...x, cautelar:nuevoTipo, cautelar_fecha_inicio: x.cautelar_fecha_inicio || new Date().toISOString().slice(0,10)})}))
+                      setNuevaCausa(p=>({...p, imputados: p.imputados.map((x,i)=>i!==idx?x:{...x, cautelar:nuevoTipo, cautelar_fecha_inicio: x.cautelar_fecha_inicio || hoyISO()})}))
                     }}>
                       <option value="">Seleccionar...</option>
                       {TIPOS_CAUTELARES_TODAS.map(t => <option key={t} value={t}>{t}</option>)}
@@ -1741,7 +1741,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                         </div>
                         <div style={{display:'flex',alignItems:'center',gap:8,paddingTop:16}}>
                           <span style={{fontSize:16}}>🔒</span>
-                          <strong style={{...f}}>{diasEntreFechasCaut(imp.cautelar_fecha_inicio, new Date().toISOString().slice(0,10))} días{imp.cautelar === CAUTELAR_SENAME ? ' (SENAME, aparte)' : ' de abono'}</strong>
+                          <strong style={{...f}}>{diasEntreFechasCaut(imp.cautelar_fecha_inicio, hoyISO())} días{imp.cautelar === CAUTELAR_SENAME ? ' (SENAME, aparte)' : ' de abono'}</strong>
                         </div>
                       </div>
                     )}

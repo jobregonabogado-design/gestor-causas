@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { f } from './primitives'
 import { SearchableSelect, DelitoCard, Field } from './primitives'
-import { DELITOS_CATALOGO, CENTROS_PENALES, calcularEdadActual, fechaDDMM } from './utils'
+import { DELITOS_CATALOGO, CENTROS_PENALES, calcularEdadActual, fechaDDMM, hoyISO } from './utils'
 import { CautelaresPanel, TIPOS_ABONO_DIRECTO, CAUTELAR_NOCTURNO, diasEntreFechasCaut } from './cautelares'
 
 export function ImputadoDatosCard({ imp, numero, causaId, ruc, cautelares, esTitular, isMobile, registrarActividad, onUpdateCampo, onDelitoChange, onGuardarCautelar, onActualizarCautelar, onEliminarCautelar }) {
@@ -15,9 +15,8 @@ export function ImputadoDatosCard({ imp, numero, causaId, ruc, cautelares, esTit
   // Resumen — visible aunque la tarjeta esté colapsada, para no tener que abrirla
   // solo para ver lo esencial. Texto plano, sin emojis.
   const numDelitos = (imp.delitos||'').split('|').map(s=>s.trim()).filter(Boolean).length
-  const hoyISO = new Date().toISOString().slice(0,10)
   const totalAbonoImp = (cautelares||[]).reduce((sum,ct)=>{
-    if (TIPOS_ABONO_DIRECTO.includes(ct.tipo)) return sum + diasEntreFechasCaut(ct.fecha_inicio, ct.fecha_termino || hoyISO)
+    if (TIPOS_ABONO_DIRECTO.includes(ct.tipo)) return sum + diasEntreFechasCaut(ct.fecha_inicio, ct.fecha_termino || hoyISO())
     if (ct.tipo === CAUTELAR_NOCTURNO && ct.sumado_a_abono) return sum + (parseFloat(ct.abono_nocturno_calculado)||0)
     return sum
   },0)

@@ -1,7 +1,7 @@
 // Tarjetas de Audiencia e Imputado usadas dentro de la lista de una causa.
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
-import { DELITOS_CATALOGO, CENTROS_PENALES, calcularEdadActual, calcularFechaTerminoCondena, getBadgeConfig, normRut, formatearRut, fechaDDMM } from './utils'
+import { DELITOS_CATALOGO, CENTROS_PENALES, calcularEdadActual, calcularFechaTerminoCondena, getBadgeConfig, normRut, formatearRut, fechaDDMM, hoyISO } from './utils'
 import { SearchableSelect, DelitosChips } from './primitives'
 import { calcularTotalAbono, diasEntreFechasCaut } from './cautelares'
 import { OrdenesDetencionPanel } from './ordenes-detencion'
@@ -137,19 +137,18 @@ export function ImputadoCard({ imp, idx, totalImputados, cautelares, ordenesDete
   // llevar el control de hace cuánto no visita a alguien que está en
   // Prisión Preventiva/Internación Provisoria. Queda historial completo
   // (no solo la última fecha), igual patrón que cautelares/condena.
-  const hoyISO = new Date().toISOString().slice(0,10)
   const [showFormVisita, setShowFormVisita] = useState(false)
-  const [fechaVisita, setFechaVisita] = useState(hoyISO)
+  const [fechaVisita, setFechaVisita] = useState(hoyISO())
   const [notaVisita, setNotaVisita] = useState('')
   const [guardandoVisita, setGuardandoVisita] = useState(false)
-  const diasSinVisita = imp.ultima_visita ? diasEntreFechasCaut(imp.ultima_visita, hoyISO) : null
+  const diasSinVisita = imp.ultima_visita ? diasEntreFechasCaut(imp.ultima_visita, hoyISO()) : null
   const historialVisitas = (imp.visitas_historial||'').split('\n').filter(Boolean).reverse()
 
   const guardarVisita = async () => {
     if (!fechaVisita) return
     setGuardandoVisita(true)
     await onRegistrarVisita(fechaVisita, notaVisita.trim())
-    setFechaVisita(hoyISO); setNotaVisita(''); setShowFormVisita(false)
+    setFechaVisita(hoyISO()); setNotaVisita(''); setShowFormVisita(false)
     setGuardandoVisita(false)
   }
   const f = { fontFamily:"'Manrope','Inter',sans-serif" }

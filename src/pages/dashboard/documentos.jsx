@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { parsearComprobanteFiscalia, extraerTextoPdf, TIPOS_DILIGENCIA } from './diligencias'
 import { f } from './primitives'
 import { BotonImprimirDocumentos } from './resumen'
-import { sanitizarNombreArchivo } from './utils'
+import { sanitizarNombreArchivo, hoyISO } from './utils'
 
 export function FallosReferencia({ causaId, ruc, email, onAccion }) {
   const [fallos, setFallos] = useState([])
@@ -127,7 +127,7 @@ async function guardarComprobanteComoDiligencia(file, texto, { causaId, ruc, ema
   const tipo = datos.tipoDetectado || TIPOS_DILIGENCIA[0]
   const detalleCompleto = [datos.detalleServicio, datos.observacion].filter(Boolean).join(' — ')
   const { data, error } = await supabase.from('diligencias_fiscalia').insert({
-    causa_id: causaId, tipo, fecha_solicitud: datos.fechaSolicitud || new Date().toISOString().slice(0,10),
+    causa_id: causaId, tipo, fecha_solicitud: datos.fechaSolicitud || hoyISO(),
     folio: datos.folio || 'SIN FOLIO DETECTADO', observacion: detalleCompleto || null, estado:'pendiente', registrado_por: email
   }).select().single()
   if (error || !data) throw (error || new Error('No se pudo crear el registro de la diligencia'))

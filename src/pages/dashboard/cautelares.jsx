@@ -2,7 +2,7 @@
 // fórmula de arresto nocturno.
 import { useState } from 'react'
 import { f } from './primitives'
-import { fechaDDMM } from './utils'
+import { fechaDDMM, hoyISO } from './utils'
 
 export const TIPOS_ABONO_DIRECTO = ['Prisión Preventiva','Internación Provisoria','Arresto Total']
 // ✅ Subconjunto que implica que la persona está privada de libertad en un
@@ -27,10 +27,10 @@ export function diasEntreFechasCaut(inicio, fin) {
 // ✅ Abono total EN VIVO de un imputado — misma fórmula que usa CautelaresPanel,
 // exportada para reutilizarla también en el cálculo de fecha de término de
 // condena (pestaña Imputado), sin duplicar el criterio en dos lugares.
-export function calcularTotalAbono(cautelares, hoyISO = new Date().toISOString().slice(0,10)) {
+export function calcularTotalAbono(cautelares, hoyStr = hoyISO()) {
   return (cautelares || []).reduce((sum,ct) => {
     if (TIPOS_ABONO_DIRECTO.includes(ct.tipo)) {
-      return sum + diasEntreFechasCaut(ct.fecha_inicio, ct.fecha_termino || hoyISO)
+      return sum + diasEntreFechasCaut(ct.fecha_inicio, ct.fecha_termino || hoyStr)
     }
     if (ct.tipo === CAUTELAR_NOCTURNO && ct.sumado_a_abono) {
       return sum + (parseFloat(ct.abono_nocturno_calculado)||0)
@@ -40,12 +40,12 @@ export function calcularTotalAbono(cautelares, hoyISO = new Date().toISOString()
 }
 
 export function CautelaresPanel({ causaId, cautelares, esRPA, onGuardar, onActualizar, onEliminar, esTitular, registrarActividad, ruc, nombreImputado, isMobile }) {
-  const hoyISO = new Date().toISOString().slice(0,10)
+  const hoyStr = hoyISO()
   const TIPOS = esRPA ? TIPOS_CAUTELARES_RPA : TIPOS_CAUTELARES_ADULTO
   const [expanded,setExpanded] = useState(true) // la casilla queda visible; al abrir se ve el detalle
-  const [form,setForm] = useState({ tipo:TIPOS[0], fecha_inicio:hoyISO, fecha_termino:'', frecuencia:'Mensual' })
+  const [form,setForm] = useState({ tipo:TIPOS[0], fecha_inicio:hoyStr, fecha_termino:'', frecuencia:'Mensual' })
   const [guardando,setGuardando] = useState(false)
-  const [fechaCalc,setFechaCalc] = useState(hoyISO) // calculadora ad-hoc, no se guarda
+  const [fechaCalc,setFechaCalc] = useState(hoyStr) // calculadora ad-hoc, no se guarda
   const [showCalc,setShowCalc] = useState(false) // la calculadora se abre en una ventana chica, no ocupa espacio fijo
   const [nocturnoEdit,setNocturnoEdit] = useState({}) // {id: {bruto, calculado}} temporal por fila
   // ✅ No se borran las cautelares por defecto (queda el historial) — solo se
@@ -65,7 +65,7 @@ export function CautelaresPanel({ causaId, cautelares, esRPA, onGuardar, onActua
   // ✅ Abono total EN VIVO — SOLO cuenta Prisión Preventiva / Internación Provisoria /
   // Arresto Total (y Arresto Nocturno ya sumado explícitamente). Sujeción a SENAME
   // NUNCA suma acá — se cuenta aparte, para no duplicar el cómputo 1x1.
-  const totalAbono = calcularTotalAbono(cautelares, hoyISO)
+  const totalAbono = calcularTotalAbono(cautelares, hoyStr)
   // ✅ NUEVO: el contador "X días de abono" solo tiene sentido si hay al
   // menos una cautelar del tipo que da abono (misma condición que ya se
   // usaba para la calculadora, más abajo) — antes se mostraba siempre,
@@ -76,7 +76,7 @@ export function CautelaresPanel({ causaId, cautelares, esRPA, onGuardar, onActua
 
   // Días de SENAME — solo informativo, no entra al abono 1x1
   const totalDiasSename = cautelares.reduce((sum,ct)=>{
-    if (ct.tipo === CAUTELAR_SENAME) return sum + diasEntreFechasCaut(ct.fecha_inicio, ct.fecha_termino || hoyISO)
+    if (ct.tipo === CAUTELAR_SENAME) return sum + diasEntreFechasCaut(ct.fecha_inicio, ct.fecha_termino || hoyStr)
     return sum
   },0)
 
@@ -84,13 +84,13 @@ export function CautelaresPanel({ causaId, cautelares, esRPA, onGuardar, onActua
     if (!form.fecha_inicio) return
     setGuardando(true)
     await onGuardar(form)
-    setForm({ tipo:TIPOS[0], fecha_inicio:hoyISO, fecha_termino:'', frecuencia:'Mensual' })
+    setForm({ tipo:TIPOS[0], fecha_inicio:hoyStr, fecha_termino:'', frecuencia:'Mensual' })
     setGuardando(false)
   }
 
   const iniciarCierre = (ct) => {
     setCerrandoId(ct.id)
-    setCierreForm({ fecha_inicio: ct.fecha_inicio || '', fecha_termino: hoyISO })
+    setCierreForm({ fecha_inicio: ct.fecha_inicio || '', fecha_termino: hoyStr })
   }
 
   const guardarCierre = async (ct) => {
@@ -187,8 +187,8 @@ export function CautelaresPanel({ causaId, cautelares, esRPA, onGuardar, onActua
             const esNocturno = ct.tipo === CAUTELAR_NOCTURNO
             const esSename = ct.tipo === CAUTELAR_SENAME
             const vigente = !ct.fecha_termino
-            const diasDirecto = esDirecto ? diasEntreFechasCaut(ct.fecha_inicio, ct.fecha_termino||hoyISO) : 0
-            const diasSename = esSename ? diasEntreFechasCaut(ct.fecha_inicio, ct.fecha_termino||hoyISO) : 0
+            const diasDirecto = esDirecto ? diasEntreFechasCaut(ct.fecha_inicio, ct.fecha_termino||hoyStr) : 0
+            const diasSename = esSename ? diasEntreFechasCaut(ct.fecha_inicio, ct.fecha_termino||hoyStr) : 0
             const calcLocal = nocturnoEdit[ct.id]
             const editando = editandoId === ct.id
             const cerrando = cerrandoId === ct.id
@@ -319,8 +319,8 @@ export function CautelaresPanel({ causaId, cautelares, esRPA, onGuardar, onActua
                 <div style={{fontSize:11,color:'#94a3b8',marginBottom:12,...f}}>Solo es una previsualización — no guarda nada.</div>
                 <div style={{display:'flex',flexDirection:'column',gap:10}}>
                   <input type="date" style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}} value={fechaCalc} onChange={e=>setFechaCalc(e.target.value)}/>
-                  {fechaCalc !== hoyISO && (
-                    <button onClick={()=>setFechaCalc(hoyISO)} style={{fontSize:11,color:'#2563eb',background:'none',border:'none',cursor:'pointer',fontWeight:600,alignSelf:'flex-start',...f}}>↺ Volver a hoy</button>
+                  {fechaCalc !== hoyStr && (
+                    <button onClick={()=>setFechaCalc(hoyStr)} style={{fontSize:11,color:'#2563eb',background:'none',border:'none',cursor:'pointer',fontWeight:600,alignSelf:'flex-start',...f}}>↺ Volver a hoy</button>
                   )}
                   <div style={{background:'#F8F9FC',borderRadius:10,padding:'12px 14px',fontSize:13,color:'#475569',...f}}>
                     Abono proyectado: <strong style={{color:'#1E293B',fontSize:16}}>{cautelares.reduce((s,ct)=>{

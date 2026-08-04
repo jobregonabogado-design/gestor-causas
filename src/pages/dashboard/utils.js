@@ -44,6 +44,22 @@ export function getBadgeConfig(estado, subestado) {
   return estadoConfig[estado] || { label:estado||'—', color:'#64748b', bg:'#F8F9FC', border:'#e2e8f0' }
 }
 
+// ✅ FIX: "new Date().toISOString().slice(0,10)" se usaba por todo el
+// proyecto (17 lugares) para obtener la fecha de "hoy" — pero toISOString()
+// SIEMPRE convierte a hora UTC, nunca a la hora local. Como Chile va varias
+// horas atrás de UTC, en la noche (aprox. desde las 20-21 hrs en adelante,
+// según horario de verano/invierno) esa "fecha de hoy" calculada así ya caía
+// en el día SIGUIENTE según UTC — haciendo que una audiencia de HOY se
+// mostrara como "MAÑANA" en el Centro de Alertas, entre otros efectos:
+// fecha de inicio de una cautelar nueva mal puesta un día adelantada, un día
+// de más contado en el abono 1x1, etc. Esta función usa getFullYear/
+// getMonth/getDate, que sí son locales, para que "hoy" sea siempre el día
+// real en la hora de Chile, sin importar a qué hora del día se use.
+export function hoyISO() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+}
+
 // ─── AUTOCORRECCIÓN ORTOGRÁFICA ──────────────────────────────────────────────
 // Diccionario de correcciones: siempre se aplican automáticamente al guardar
 export const CORRECCIONES = [

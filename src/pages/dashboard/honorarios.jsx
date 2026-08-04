@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { f } from './primitives'
 import { CUENTAS_TRANSFERENCIA } from './documentos'
-import { fechaDDMM } from './utils'
+import { fechaDDMM, hoyISO } from './utils'
 
 export function HonorariosTab({ causaId, ruc, imputado, email, registrarActividad, onAccion, esTitular, isMobile }) {
   const [honorario, setHonorario] = useState(null)
@@ -11,7 +11,7 @@ export function HonorariosTab({ causaId, ruc, imputado, email, registrarActivida
   const [editandoMonto, setEditandoMonto] = useState(false)
   const [montoTemp, setMontoTemp] = useState('')
   const [showForm, setShowForm] = useState(false)
-  const [nuevoAbono, setNuevoAbono] = useState({ monto:'', fecha:new Date().toISOString().slice(0,10), forma_pago:'Transferencia', cuenta_transferencia:CUENTAS_TRANSFERENCIA[0], observacion:'', imputado_nombre:'' })
+  const [nuevoAbono, setNuevoAbono] = useState({ monto:'', fecha:hoyISO(), forma_pago:'Transferencia', cuenta_transferencia:CUENTAS_TRANSFERENCIA[0], observacion:'', imputado_nombre:'' })
   const [guardando, setGuardando] = useState(false)
   // ✅ Editar un abono ya registrado pide motivo (igual que Cautelares/Condena);
   // eliminarlo definitivamente es solo para el titular — es dinero, no un dato menor.
@@ -61,7 +61,7 @@ export function HonorariosTab({ causaId, ruc, imputado, email, registrarActivida
       observacion: nuevoAbono.observacion, registrado_por: email,
       imputado_nombre: tieneVarios ? nuevoAbono.imputado_nombre : (listaImputados[0] || null),
     })
-    setNuevoAbono({ monto:'', fecha:new Date().toISOString().slice(0,10), forma_pago:'Transferencia', cuenta_transferencia:CUENTAS_TRANSFERENCIA[0], observacion:'', imputado_nombre:'' })
+    setNuevoAbono({ monto:'', fecha:hoyISO(), forma_pago:'Transferencia', cuenta_transferencia:CUENTAS_TRANSFERENCIA[0], observacion:'', imputado_nombre:'' })
     setShowForm(false)
     setGuardando(false)
     await cargar()

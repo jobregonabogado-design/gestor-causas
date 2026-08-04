@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { BotonImprimirLista } from './resumen'
-import { fechaDDMM, sanitizarNombreArchivo } from './utils'
+import { fechaDDMM, sanitizarNombreArchivo, hoyISO } from './utils'
 
 // ✅ FIX: se deja SOLO la lista oficial, tal cual aparece en el desplegable
 // "Seleccione Solicitud" de Mi Fiscalía en Línea (agenda.minpublico.cl) — a
@@ -222,13 +222,13 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
   const [diligencias, setDiligencias] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ tipo: TIPOS_DILIGENCIA[0], fecha_solicitud: new Date().toISOString().slice(0,10), folio:'', observacion:'' })
+  const [form, setForm] = useState({ tipo: TIPOS_DILIGENCIA[0], fecha_solicitud: hoyISO(), folio:'', observacion:'' })
   const [guardando, setGuardando] = useState(false)
   const [respondiendoId, setRespondiendoId] = useState(null)
   const [editandoDatosId, setEditandoDatosId] = useState(null)
   const [formEdit, setFormEdit] = useState({ tipo:'', fecha_solicitud:'', folio:'', observacion:'' })
   const [motivoEditDatos, setMotivoEditDatos] = useState('')
-  const [formResp, setFormResp] = useState({ estado:'aprobada', fecha_respuesta:new Date().toISOString().slice(0,10), fecha_citacion:'', respuesta_detalle:'' })
+  const [formResp, setFormResp] = useState({ estado:'aprobada', fecha_respuesta:hoyISO(), fecha_citacion:'', respuesta_detalle:'' })
   const [subiendoId, setSubiendoId] = useState(null) // id de la diligencia que está subiendo un archivo (comprobante o respuesta)
   const [analizandoPdf, setAnalizandoPdf] = useState(false)
   const [dragPdf, setDragPdf] = useState(false)
@@ -281,7 +281,7 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
     setDiligencias(prev => [dataFinal, ...prev])
     if (registrarActividad) registrarActividad('accion', `Registró diligencia "${form.tipo}" (folio ${form.folio}) en RUC ${ruc}`)
     if (onAccion) onAccion()
-    setForm({ tipo: TIPOS_DILIGENCIA[0], fecha_solicitud: new Date().toISOString().slice(0,10), folio:'', observacion:'' })
+    setForm({ tipo: TIPOS_DILIGENCIA[0], fecha_solicitud: hoyISO(), folio:'', observacion:'' })
     setComprobantePendiente(null)
     setAvisoRuc('')
     setShowForm(false)
@@ -319,7 +319,7 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
     setRespondiendoId(d.id)
     setFormResp({
       estado: d.estado !== 'pendiente' ? d.estado : 'aprobada',
-      fecha_respuesta: d.fecha_respuesta || new Date().toISOString().slice(0,10),
+      fecha_respuesta: d.fecha_respuesta || hoyISO(),
       fecha_citacion: d.fecha_citacion || '',
       respuesta_detalle: d.respuesta_detalle || '',
     })
@@ -424,7 +424,7 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
       const detalleCompleto = [datos.detalleServicio, datos.observacion].filter(Boolean).join(' — ')
       const rucNoCoincide = datos.ruc && normalizarRuc(datos.ruc) !== normalizarRuc(ruc)
       const tipoDetectado = datos.tipoDetectado || TIPOS_DILIGENCIA[0]
-      const fechaDetectada = datos.fechaSolicitud || new Date().toISOString().slice(0,10)
+      const fechaDetectada = datos.fechaSolicitud || hoyISO()
       const folioDetectado = datos.folio || ''
 
       if (folioDetectado && !rucNoCoincide) {
