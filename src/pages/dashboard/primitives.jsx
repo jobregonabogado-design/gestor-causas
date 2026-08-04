@@ -409,7 +409,11 @@ export function BadgeEditor({ estado, subestado, isMobile, onChangeEstado, onCha
 
 export function Field({ label, value, editable, editField, setEditField, editValue, setEditValue, onSave, full, fieldKey }) {
   const inp = { width:'100%', padding:'11px 14px', border:'none', borderRadius:14, fontSize:13, color:'#1E293B', background:'#fff', boxShadow:'0 1px 2px rgba(15,23,42,0.06)', ...f }
-  const isTribunal = fieldKey === 'tribunal'
+  // ✅ FIX: "Tribunal TOP" (pestaña Juicio Oral) usa fieldKey="tribunal_top",
+  // que nunca calzaba con esta comparación exacta — se mostraba como texto
+  // libre en vez de la lista desplegable de tribunales, a diferencia del
+  // campo "Tribunal" normal que sí la tiene.
+  const isTribunal = fieldKey === 'tribunal' || fieldKey === 'tribunal_top'
   const isDelito = fieldKey === 'delito'
   const isCentroPenal = fieldKey === 'centro_penal'
   const useDropdown = isTribunal || isDelito || isCentroPenal
