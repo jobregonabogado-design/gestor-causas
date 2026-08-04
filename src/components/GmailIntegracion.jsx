@@ -130,6 +130,19 @@ export default function GmailIntegracion({ onImportComplete }) {
         if (foliosVistos.has(folioDetectado)) continue
         foliosVistos.add(folioDetectado)
         const causa = causasPorId[diligencia.causa_id]
+        // ✅ REGLA DE JOAQUÍN: una respuesta solo puede traer una citación de
+        // verdad si el TIPO de la solicitud original es de los que de verdad
+        // terminan en audiencia/entrevista/declaración (ej. "Solicitud de
+        // audiencia o entrevista"). Tipos como "Solicitud de devolución de
+        // especies/dinero" o "Solicitud de copia de la carpeta" NUNCA
+        // deberían traer una cita — si el parser encontró una fecha ahí,
+        // casi seguro agarró algo que no es (la fecha del correo, por
+        // ejemplo), no una cita real. Se corrige ANTES de decidir si se
+        // aplica sola, para no agendar una audiencia falsa por el solo
+        // hecho de que el folio coincidió.
+        const puedeSerCitacion = /audiencia|entrevista|declaraci[oó]n|citaci[oó]n/i.test(diligencia.tipo || '')
+        const estadoDetectado = n.respuestaFiscalia.estado
+        const fechaCitacionDetectada = n.respuestaFiscalia.fechaCitacion
         const item = {
           diligenciaId: diligencia.id,
           causaId: diligencia.causa_id,
@@ -139,8 +152,8 @@ export default function GmailIntegracion({ onImportComplete }) {
           ruc: causa?.ruc || '',
           imputado: causa?.imputado || '',
           tribunal: causa?.tribunal || '',
-          estado: n.respuestaFiscalia.estado,
-          fechaCitacion: n.respuestaFiscalia.fechaCitacion,
+          estado: (estadoDetectado === 'con_citacion' && !puedeSerCitacion) ? 'aprobada' : estadoDetectado,
+          fechaCitacion: puedeSerCitacion ? fechaCitacionDetectada : null,
           fechaEsFuerte: n.respuestaFiscalia.fechaCitacionEsFuerte !== false,
           detalle: n.respuestaFiscalia.detalle,
           fechaRespuestaEmail: n.fecha_correo ? n.fecha_correo.slice(0, 10) : hoyISO(),
