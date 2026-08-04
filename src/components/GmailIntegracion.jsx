@@ -170,7 +170,7 @@ export default function GmailIntegracion({ onImportComplete }) {
         if (item.estado === 'con_citacion' && item.fechaCitacion) {
           const resultado = await guardarRespuestaEnBD(item)
           if (resultado.ok) {
-            nuevasAutoAplicadas.push({ ...item, audienciaId: resultado.audienciaId, fallóCalendario: !!resultado.errorAudiencia })
+            nuevasAutoAplicadas.push({ ...item, audienciaId: resultado.audienciaId, fallóCalendario: !!resultado.errorAudiencia, posibleDuplicado: resultado.posibleDuplicado })
           } else {
             // Si por algún motivo no se pudo guardar sola, no se pierde —
             // queda para que Joaquín la aplique a mano.
@@ -451,7 +451,21 @@ export default function GmailIntegracion({ onImportComplete }) {
 
     let audienciaId = null
     let errorAudiencia = null
+    let posibleDuplicado = null
     if (item.estado === 'con_citacion' && item.fechaCitacion && item.causaId) {
+      // ✅ FIX: a diferencia del resto de la detección de audiencias (que sí
+      // revisa si ya existe algo para la misma causa/fecha y avisa como
+      // "INCONSISTENCIA"), esta vía de aplicar citaciones solas nunca
+      // revisaba nada — insertaba siempre, aunque ya hubiera una audiencia
+      // cargada a mano para esa misma fecha. Pasó de verdad con Camilo
+      // Sepúlveda: ya tenía la audiencia agendada manualmente, y esto le
+      // agregó una segunda, sin hora, sin avisar. No se deja de aplicar la
+      // citación (la regla sigue siendo que nunca se debe perder una), pero
+      // ahora se revisa antes y se marca como posible duplicado para que se
+      // pueda limpiar la que sobre.
+      const { data: existentes } = await supabase.from('audiencias').select('id, tipo, hora, sala').eq('causa_id', item.causaId).eq('fecha', item.fechaCitacion)
+      if (existentes && existentes.length > 0) posibleDuplicado = existentes[0]
+
       const t = (item.tipoDiligencia || '').toUpperCase()
       const tipoAudiencia = /audiencia|entrevista/.test(t) ? 'ENTREVISTA'
         : /declaraci[oó]n/.test(t) ? 'DECLARACIÓN'
@@ -470,7 +484,7 @@ export default function GmailIntegracion({ onImportComplete }) {
       audienciaId = data?.id || null
       errorAudiencia = errAudiencia
     }
-    return { ok: true, audienciaId, errorAudiencia }
+    return { ok: true, audienciaId, errorAudiencia, posibleDuplicado }
   }
 
   // ✅ Aplicar a mano — se usa solo para respuestas SIN fecha de
@@ -484,6 +498,9 @@ export default function GmailIntegracion({ onImportComplete }) {
     if (!resultado.ok) { setAplicandoId(null); alert('No se pudo aplicar la respuesta: ' + resultado.error.message); return }
     if (resultado.errorAudiencia) {
       alert('La diligencia se marcó como respondida, pero no se pudo agregar la fecha al calendario: ' + resultado.errorAudiencia.message + '\n\nAgrégala manualmente en Audiencias.')
+    }
+    if (resultado.posibleDuplicado) {
+      alert(`⚠ Ya existía otra audiencia para esta misma causa y fecha (${resultado.posibleDuplicado.tipo || 'sin tipo'}${resultado.posibleDuplicado.hora ? ' · ' + resultado.posibleDuplicado.hora : ''}) — revisa el Calendario, puede que haya quedado duplicada.`)
     }
     setAplicandoId(null)
     setRespuestasDetectadas(prev => prev.filter(x => x.diligenciaId !== item.diligenciaId))
@@ -542,6 +559,21 @@ export default function GmailIntegracion({ onImportComplete }) {
     if (error) { alert('No se pudo eliminar la audiencia anterior: ' + error.message); return }
     await descartarCorreo(item.correoId)
     setAgregados(prev => prev.map(x => x.id === item.id ? { ...x, audienciaAnterior: null } : x))
+    if (onImportComplete) onImportComplete()
+  }
+
+  // ✅ NUEVO: para cuando una citación aplicada sola (desde una respuesta de
+  // Fiscalía) coincide en causa/fecha con una audiencia que ya existía —
+  // típicamente porque Joaquín ya la había agendado a mano. Borra la
+  // EXISTENTE (la que quedó marcada como "posibleDuplicado"), dejando la
+  // recién aplicada — que es la que tiene el detalle de la respuesta real.
+  const eliminarPosibleDuplicadoRespuesta = async (item) => {
+    const dup = item.posibleDuplicado
+    if (!dup) return
+    if (!window.confirm(`¿Eliminar la audiencia que ya existía (${dup.tipo||'sin tipo'}${dup.hora?' · '+dup.hora:''}) para esta misma causa y fecha? La que se acaba de aplicar desde la respuesta de Fiscalía se queda.`)) return
+    const { error } = await supabase.from('audiencias').delete().eq('id', dup.id)
+    if (error) { alert('No se pudo eliminar: ' + error.message); return }
+    setRespuestasAutoAplicadas(prev => prev.map(x => x.diligenciaId === item.diligenciaId ? { ...x, posibleDuplicado: null } : x))
     if (onImportComplete) onImportComplete()
   }
 
@@ -650,6 +682,17 @@ export default function GmailIntegracion({ onImportComplete }) {
                   </div>
                   {item.detalle && <div style={{ fontSize:11, color:'#64748b', marginTop:4, fontStyle:'italic', ...f }}>"{item.detalle}"</div>}
                   {item.fallóCalendario && <div style={{ fontSize:11, color:'#dc2626', marginTop:4, fontWeight:600, ...f }}>⚠ No se pudo agregar al calendario — agrégala manualmente en Audiencias.</div>}
+                  {/* ✅ NUEVO: ya existía otra audiencia para esta misma causa
+                      y fecha (típicamente porque Joaquín ya la había
+                      agendado a mano) — pasó de verdad con Camilo Sepúlveda.
+                      No se deja de aplicar la citación, pero se avisa para
+                      poder limpiar la que sobra. */}
+                  {item.posibleDuplicado && (
+                    <div style={{ fontSize:11, color:'#9a3412', background:'#fff7ed', border:'1px solid #fdba74', borderRadius:7, padding:'6px 8px', marginTop:6, fontWeight:600, ...f, display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, flexWrap:'wrap' }}>
+                      <span>⚠ Ya existía otra audiencia para esta causa el {fechaDDMM(item.fechaCitacion)} ({item.posibleDuplicado.tipo||'sin tipo'}{item.posibleDuplicado.hora?' · '+item.posibleDuplicado.hora:''}) — revisa cuál es la correcta.</span>
+                      <button onClick={() => eliminarPosibleDuplicadoRespuesta(item)} style={{ background:'#fff', border:'1px solid #fdba74', borderRadius:6, padding:'4px 10px', fontSize:10, cursor:'pointer', fontWeight:700, color:'#9a3412', flexShrink:0, ...f }}>Eliminar la anterior</button>
+                    </div>
+                  )}
                   {/* ✅ NUEVO: como esto se aplica sin pedir confirmación, es
                       justo donde más importa avisar si la fecha se encontró
                       con el método menos confiable — se sigue aplicando
