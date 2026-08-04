@@ -130,7 +130,13 @@ export function TeoriaDelCaso({ causaId, ruc, session, registrarActividad, onAcc
           })}
         </div>
       )}
-      <div style={{ display:'flex', flexDirection:'column', background:'#fff' }}>
+      {/* ✅ FIX: sin minWidth:0, un ítem de CSS Grid nunca se achica más chico
+          que el ancho natural de su contenido (comportamiento por defecto
+          del navegador) — en el celular esto obligaba a toda la sección a
+          quedar más ancha que la pantalla y a hacer scroll horizontal,
+          cortando texto y botones por el lado derecho (ej. "Carpeta y
+          Documentos"). */}
+      <div style={{ display:'flex', flexDirection:'column', background:'#fff', minWidth:0 }}>
         <div style={{ padding:isMobile?'12px 14px':'16px 20px', borderBottom:'1px solid #E2E8F0', display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:8, background:'#F8F9FC' }}>
           <div>
             <div style={{ fontSize:15, fontWeight:700, color:'#1E293B', ...f }}>{seccionActual?.icon} {seccionActual?.label}</div>
