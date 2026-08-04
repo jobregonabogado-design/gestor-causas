@@ -3,7 +3,7 @@ import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveCo
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../lib/supabase'
 import {
-  estadoConfig, SUBESTADOS_VIGENTE, SUBESTADOS_TERMINADA, getBadgeConfig,
+  estadoConfig, SUBESTADOS_VIGENTE, SUBESTADOS_TERMINADA, SUBESTADOS_ESPECIALES, getBadgeConfig,
   corregirOrtografia, getCorteApelaciones, TRIBUNALES_CHILE, DELITOS_CATALOGO,
   CENTROS_PENALES,
 } from './dashboard/utils'
@@ -155,12 +155,8 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
     const { data, error } = await supabase.from('causas').select('*').order('created_at', { ascending:false })
     if (!error) {
       const causasActualizadas = (data||[]).map(c => {
-        // ✅ NUEVO: "sin_formalizacion" se agrega acá también — es un
-        // subestado que Joaquín pone a mano (igual que APJO/Juicio Oral),
-        // así que no debe pisarse solo con el cálculo automático de plazo.
-        const subestadosEspeciales = ['apjo','juicio_oral','sin_formalizacion']
         let subestado = c.subestado
-        if (c.estado === 'vigente' && !subestadosEspeciales.includes(c.subestado)) {
+        if (c.estado === 'vigente' && !SUBESTADOS_ESPECIALES.includes(c.subestado)) {
           const autoSub = calcularSubestado(c.plazo)
           if (autoSub !== 'vencido' && c.subestado === 'vencido') subestado = autoSub
           else if (autoSub) subestado = autoSub
@@ -1242,7 +1238,13 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                   const activos=nuevosAumentos.filter(a=>!a.eliminado)
                   const ultima=activos[activos.length-1]
                   const nuevoVenc= ultima ? 'VENCE '+calcularVencimiento(ultima.fecha_audiencia,ultima.dias_plazo) : ''
-                  const nuevoSub=calcularSubestado(nuevoVenc)
+                  // ✅ FIX: si la causa está en un subestado especial puesto a
+                  // mano (APJO, Juicio Oral, Sin Formalización), agregar una
+                  // audiencia de aumento de plazo NO debe pisarlo con el
+                  // cálculo automático — pasó de verdad en la causa de
+                  // Jonnier Garces (6 JG STGO, en APJO), que perdió la
+                  // etiqueta solo por agregar un aumento.
+                  const nuevoSub=SUBESTADOS_ESPECIALES.includes(c.subestado)?c.subestado:calcularSubestado(nuevoVenc)
                   await supabase.from('causas').update({plazo:nuevoVenc,subestado:nuevoSub,updated_at:new Date()}).eq('id',c.id)
                   const u={...selectedCausa,plazo:nuevoVenc,subestado:nuevoSub,updated_at:new Date().toISOString()}
                   setSelectedCausa(u);setCausas(prev=>prev.map(x=>x.id===u.id?u:x))
@@ -1261,7 +1263,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                   const activos=nuevosAumentos.filter(a=>!a.eliminado)
                   const ultima=activos[activos.length-1]
                   const nuevoVenc = ultima ? 'VENCE '+calcularVencimiento(ultima.fecha_audiencia,ultima.dias_plazo) : ''
-                  const nuevoSub=calcularSubestado(nuevoVenc)
+                  const nuevoSub=SUBESTADOS_ESPECIALES.includes(c.subestado)?c.subestado:calcularSubestado(nuevoVenc)
                   await supabase.from('causas').update({plazo:nuevoVenc,subestado:nuevoSub,updated_at:new Date()}).eq('id',c.id)
                   const u={...selectedCausa,plazo:nuevoVenc,subestado:nuevoSub,updated_at:new Date().toISOString()}
                   setSelectedCausa(u);setCausas(prev=>prev.map(x=>x.id===u.id?u:x))
@@ -1278,7 +1280,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                   const activos=nuevosAumentos.filter(a=>!a.eliminado)
                   const ultima=activos[activos.length-1]
                   const nuevoVenc = ultima ? 'VENCE '+calcularVencimiento(ultima.fecha_audiencia,ultima.dias_plazo) : ''
-                  const nuevoSub = ultima ? calcularSubestado(nuevoVenc) : null
+                  const nuevoSub = SUBESTADOS_ESPECIALES.includes(c.subestado) ? c.subestado : (ultima ? calcularSubestado(nuevoVenc) : null)
                   await supabase.from('causas').update({plazo:nuevoVenc,subestado:nuevoSub,updated_at:new Date()}).eq('id',c.id)
                   const u={...selectedCausa,plazo:nuevoVenc,subestado:nuevoSub,updated_at:new Date().toISOString()}
                   setSelectedCausa(u);setCausas(prev=>prev.map(x=>x.id===u.id?u:x))

@@ -37,6 +37,14 @@ export const estadoConfig = {
 }
 
 export const SUBESTADOS_VIGENTE = ['sin_formalizacion','plazo_vigente','proximo','vencido','apjo','juicio_oral','cumpliendo_condena','orden_detencion','revocacion_pena_sustitutiva','sobreseimiento']
+
+// ✅ Subestados que Joaquín pone A MANO (no los calcula el sistema solo a
+// partir del plazo) — APJO, Juicio Oral y Sin Formalización marcan una etapa
+// procesal, no un plazo por vencer. Se usa en varios lugares para que el
+// cálculo automático de plazo (calcularSubestado) nunca los pise sin darse
+// cuenta — ni al recargar la lista de causas, ni al agregar/editar/eliminar
+// una audiencia de aumento de plazo (que también recalcula el subestado).
+export const SUBESTADOS_ESPECIALES = ['apjo','juicio_oral','sin_formalizacion']
 export const SUBESTADOS_TERMINADA = ['renuncia','revocacion','revocacion_pena_sustitutiva','condena_preso','condena_libertad','absuelto','dnp','scp','salida_ar','orden_detencion','sobreseimiento']
 
 export function getBadgeConfig(estado, subestado) {
