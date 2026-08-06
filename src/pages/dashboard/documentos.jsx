@@ -191,9 +191,19 @@ export function DocumentosGuardados({ causaId, ruc, email, registrarActividad, o
       const { error: uploadError } = await supabase.storage.from('documentos').upload(path, file)
       if (uploadError) throw uploadError
       const { data: urlData } = supabase.storage.from('documentos').getPublicUrl(path)
-      const { error: insertError } = await supabase.from('documentos_causa').insert({ causa_id: causaId, nombre: nombreFinal, storage_path: path, url: urlData.publicUrl, tipo_mime: file.type || '', subido_por: email })
+      const { data: nuevoDoc, error: insertError } = await supabase.from('documentos_causa').insert({ causa_id: causaId, nombre: nombreFinal, storage_path: path, url: urlData.publicUrl, tipo_mime: file.type || '', subido_por: email }).select().single()
       if (insertError) throw insertError
-      await cargarDocs()
+      // ✅ FIX: antes se hacía cargarDocs() (recarga completa de la lista)
+      // después de cada subida. Si se suben varios archivos seguidos
+      // (arrastrando varios a la vez), cada uno dispara su propia recarga en
+      // paralelo — y si una de esas recargas alcanza a completarse con una
+      // foto vieja de la lista justo después de renombrar otro documento,
+      // pisa el renombre sin avisar. Pasó de verdad en la causa RUC
+      // 2601171833-6. Ahora cada subida solo agrega SU propia fila nueva al
+      // estado local, sin tocar ni volver a pedir el resto de la lista —
+      // así nunca puede chocar con un renombre (u otra edición) que esté
+      // pasando al mismo tiempo en otro documento.
+      if (nuevoDoc) setDocs(prev => [nuevoDoc, ...prev])
       if (onAccion) onAccion()
     } catch (err) {
       console.error('Error al subir documento:', err)
