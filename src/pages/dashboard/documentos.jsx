@@ -160,6 +160,12 @@ export function DocumentosGuardados({ causaId, ruc, email, registrarActividad, o
   // enterara — el documento igual se guardaba bien en la app y parecía
   // que todo había salido bien.
   const [erroresOneDrive, setErroresOneDrive] = useState([])
+  // ✅ NUEVO: los documentos que se subieron ANTES de que existiera la
+  // sincronización automática nunca llegaron a OneDrive — esto migra los
+  // que ya están guardados en la app, uno por uno, con tu sesión de
+  // OneDrive abierta (no se puede hacer desde el servidor).
+  const [migrando, setMigrando] = useState(false)
+  const [migracion, setMigracion] = useState(null) // { hecho, total, fallidos:[] }
 
   useEffect(() => { cargarDocs() }, [causaId])
   useEffect(() => { if (getMSToken()) cargarArchivosOneDrive() }, [causaId, docs.length])
@@ -175,6 +181,29 @@ export function DocumentosGuardados({ causaId, ruc, email, registrarActividad, o
     } finally {
       setCargandoOneDrive(false)
     }
+  }
+
+  // Sube a OneDrive los documentos que ya estaban guardados en la app
+  // desde antes (los que tienen storage_path — los agregados desde
+  // OneDrive con "agregarDesdeOneDrive" ya están allá, no se tocan).
+  const migrarExistentesAOneDrive = async () => {
+    const pendientes = docs.filter(d => d.storage_path)
+    if (pendientes.length === 0) return
+    setMigrando(true)
+    const fallidos = []
+    for (let i = 0; i < pendientes.length; i++) {
+      const doc = pendientes[i]
+      setMigracion({ hecho: i, total: pendientes.length, fallidos })
+      try {
+        const blob = await fetch(doc.url).then(r => { if (!r.ok) throw new Error('descarga falló'); return r.blob() })
+        const file = new File([blob], doc.nombre, { type: doc.tipo_mime || blob.type })
+        await uploadFile(ruc, file)
+      } catch (err) {
+        fallidos.push(`${doc.nombre}: ${err.message}`)
+      }
+    }
+    setMigracion({ hecho: pendientes.length, total: pendientes.length, fallidos })
+    setMigrando(false)
   }
 
   // Deja registrado en la app un archivo que Joaquín subió directo a
@@ -303,10 +332,25 @@ export function DocumentosGuardados({ causaId, ruc, email, registrarActividad, o
           <div style={{ fontSize:13, fontWeight:700, color:'#1E293B', ...f }}>Documentos guardados en la app</div>
           <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>{getMSToken() ? 'Sincronizado con OneDrive: lo que subas acá también se sube allá, y lo que agregues abajo desde OneDrive queda listado acá.' : 'Solo lo que subas acá explícitamente. Conecta OneDrive en "Teoría del Caso" para sincronizar.'}</div>
         </div>
-        <div style={{ flexShrink:0 }}>
+        <div style={{ flexShrink:0, display:'flex', gap:8 }}>
+          {getMSToken() && docs.some(d => d.storage_path) && (
+            <button onClick={migrarExistentesAOneDrive} disabled={migrando} className="btn-secondary" style={{ fontSize:11, padding:'5px 10px' }}>
+              {migrando ? `Subiendo ${migracion?.hecho ?? 0}/${migracion?.total ?? 0}...` : '📤 Subir existentes a OneDrive'}
+            </button>
+          )}
           <BotonImprimirDocumentos items={docs}/>
         </div>
       </div>
+      {migracion && !migrando && (
+        <div style={{ display:'flex', alignItems:'flex-start', gap:8, background: migracion.fallidos.length ? '#fef2f2' : '#ecfdf5', border: `1px solid ${migracion.fallidos.length ? '#fecaca' : '#a7f3d0'}`, borderRadius:10, padding:'10px 14px', marginBottom:12 }}>
+          <div style={{ flex:1, fontSize:12, color: migracion.fallidos.length ? '#dc2626' : '#065f46', ...f }}>
+            {migracion.fallidos.length === 0
+              ? `✅ Se subieron ${migracion.total} documento${migracion.total !== 1 ? 's' : ''} a OneDrive.`
+              : `Se subieron ${migracion.total - migracion.fallidos.length} de ${migracion.total}. Fallaron: ${migracion.fallidos.join(' · ')}`}
+          </div>
+          <button onClick={() => setMigracion(null)} style={{ background:'none', border:'none', color:'inherit', cursor:'pointer', fontWeight:700, fontSize:13, flexShrink:0 }}>✕</button>
+        </div>
+      )}
       {erroresOneDrive.length > 0 && (
         <div style={{ display:'flex', alignItems:'flex-start', gap:8, background:'#fef2f2', border:'1px solid #fecaca', borderRadius:10, padding:'10px 14px', marginBottom:12 }}>
           <div style={{ flex:1, fontSize:12, color:'#dc2626', ...f }}>⚠ No se pudo subir a OneDrive — el documento igual quedó guardado acá: {erroresOneDrive.join(' · ')}</div>
