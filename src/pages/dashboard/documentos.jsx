@@ -155,6 +155,11 @@ export function DocumentosGuardados({ causaId, ruc, email, registrarActividad, o
   const [archivosOneDrive, setArchivosOneDrive] = useState([])
   const [cargandoOneDrive, setCargandoOneDrive] = useState(false)
   const [agregandoId, setAgregandoId] = useState(null)
+  // ✅ NUEVO: si falla la subida a OneDrive (ej. sesión vencida, archivo
+  // muy grande) antes quedaba solo en la consola, sin que Joaquín se
+  // enterara — el documento igual se guardaba bien en la app y parecía
+  // que todo había salido bien.
+  const [erroresOneDrive, setErroresOneDrive] = useState([])
 
   useEffect(() => { cargarDocs() }, [causaId])
   useEffect(() => { if (getMSToken()) cargarArchivosOneDrive() }, [causaId, docs.length])
@@ -249,7 +254,10 @@ export function DocumentosGuardados({ causaId, ruc, email, registrarActividad, o
       // tener que subirlo dos veces a mano. No bloquea el guardado en la
       // app si falla (ej. sesión de OneDrive vencida).
       if (getMSToken()) {
-        uploadFile(ruc, file).catch(err => console.warn('No se pudo subir a OneDrive:', err.message))
+        uploadFile(ruc, file).catch(err => {
+          console.warn('No se pudo subir a OneDrive:', err.message)
+          setErroresOneDrive(prev => [...prev, `${nombreFinal}: ${err.message}`])
+        })
       }
       if (onAccion) onAccion()
     } catch (err) {
@@ -299,6 +307,12 @@ export function DocumentosGuardados({ causaId, ruc, email, registrarActividad, o
           <BotonImprimirDocumentos items={docs}/>
         </div>
       </div>
+      {erroresOneDrive.length > 0 && (
+        <div style={{ display:'flex', alignItems:'flex-start', gap:8, background:'#fef2f2', border:'1px solid #fecaca', borderRadius:10, padding:'10px 14px', marginBottom:12 }}>
+          <div style={{ flex:1, fontSize:12, color:'#dc2626', ...f }}>⚠ No se pudo subir a OneDrive — el documento igual quedó guardado acá: {erroresOneDrive.join(' · ')}</div>
+          <button onClick={() => setErroresOneDrive([])} style={{ background:'none', border:'none', color:'#dc2626', cursor:'pointer', fontWeight:700, fontSize:13, flexShrink:0 }}>✕</button>
+        </div>
+      )}
       <div style={{ marginBottom:14 }}/>
       {/* ✅ FIX: mismo arreglo que en diligencias.jsx — algunos navegadores en
           Windows (ej. Edge) necesitan que "dragenter" también prevenga el

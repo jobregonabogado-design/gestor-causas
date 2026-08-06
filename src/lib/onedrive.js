@@ -104,7 +104,43 @@ export async function getFileDownloadUrl(fileId) {
   return data['@microsoft.graph.downloadUrl'] || data.webUrl
 }
 
+// ✅ FIX: la subida simple (PUT directo a ":/content") solo la acepta
+// Microsoft Graph para archivos de hasta 4MB — por eso documentos reales
+// (escaneados, con varias páginas) se subían bien a la app pero fallaban
+// en silencio al intentar subirlos a OneDrive. Para esos se usa una sesión
+// de subida por partes (createUploadSession), que no tiene ese límite.
+const LIMITE_SUBIDA_SIMPLE = 4 * 1024 * 1024
+
+async function subirArchivoGrande(ruc, file) {
+  const token = getMSToken()
+  if (!token) throw new Error('No token')
+  const path = `/${FOLDER_NAME}/${ruc}/${file.name}`
+  const sessionRes = await fetch(`https://graph.microsoft.com/v1.0/me/drive/root:${path}:/createUploadSession`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ item: { '@microsoft.graph.conflictBehavior': 'replace' } }),
+  })
+  if (!sessionRes.ok) throw new Error(`No se pudo iniciar la subida (${sessionRes.status})`)
+  const { uploadUrl } = await sessionRes.json()
+
+  const CHUNK = 5 * 1024 * 1024 // múltiplo de 320KiB, como exige Graph
+  let start = 0
+  let ultimaRes
+  while (start < file.size) {
+    const end = Math.min(start + CHUNK, file.size)
+    ultimaRes = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Length': String(end - start), 'Content-Range': `bytes ${start}-${end - 1}/${file.size}` },
+      body: file.slice(start, end),
+    })
+    if (!ultimaRes.ok && ultimaRes.status !== 202) throw new Error(`Error subiendo el archivo (${ultimaRes.status})`)
+    start = end
+  }
+  return ultimaRes.json()
+}
+
 export async function uploadFile(ruc, file) {
+  if (file.size > LIMITE_SUBIDA_SIMPLE) return subirArchivoGrande(ruc, file)
   const token = getMSToken()
   if (!token) throw new Error('No token')
   const path = `/${FOLDER_NAME}/${ruc}/${file.name}`
