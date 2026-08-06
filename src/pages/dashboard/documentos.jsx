@@ -5,6 +5,7 @@ import { parsearComprobanteFiscalia, extraerTextoPdf, TIPOS_DILIGENCIA } from '.
 import { f } from './primitives'
 import { BotonImprimirDocumentos } from './resumen'
 import { sanitizarNombreArchivo, hoyISO } from './utils'
+import { getMSToken, uploadFile, getFolderFiles, getFileIcon } from '../../lib/onedrive'
 
 export function FallosReferencia({ causaId, ruc, email, onAccion }) {
   const [fallos, setFallos] = useState([])
@@ -149,8 +150,47 @@ export function DocumentosGuardados({ causaId, ruc, email, registrarActividad, o
   const [subiendo, setSubiendo] = useState(false)
   const [drag, setDrag] = useState(false)
   const inputRef = useRef(null)
+  // ✅ NUEVO: archivos que están en la carpeta de OneDrive pero todavía no
+  // están en esta lista (porque se subieron directo ahí, no desde la app).
+  const [archivosOneDrive, setArchivosOneDrive] = useState([])
+  const [cargandoOneDrive, setCargandoOneDrive] = useState(false)
+  const [agregandoId, setAgregandoId] = useState(null)
 
   useEffect(() => { cargarDocs() }, [causaId])
+  useEffect(() => { if (getMSToken()) cargarArchivosOneDrive() }, [causaId, docs.length])
+
+  const cargarArchivosOneDrive = async () => {
+    setCargandoOneDrive(true)
+    try {
+      const items = await getFolderFiles(ruc)
+      const nombresYaEnApp = new Set(docs.map(d => d.nombre))
+      setArchivosOneDrive(items.filter(it => it.file && !nombresYaEnApp.has(it.name)))
+    } catch {
+      setArchivosOneDrive([])
+    } finally {
+      setCargandoOneDrive(false)
+    }
+  }
+
+  // Deja registrado en la app un archivo que Joaquín subió directo a
+  // OneDrive (sin pasar por acá) — no se vuelve a descargar/subir el
+  // archivo, solo se guarda el enlace de OneDrive como si fuera el suyo.
+  const agregarDesdeOneDrive = async (item) => {
+    setAgregandoId(item.id)
+    try {
+      const { data: nuevoDoc, error } = await supabase.from('documentos_causa')
+        .insert({ causa_id: causaId, nombre: item.name, storage_path: null, url: item.webUrl, tipo_mime: item.file?.mimeType || '', subido_por: email })
+        .select().single()
+      if (error) throw error
+      if (nuevoDoc) setDocs(prev => [nuevoDoc, ...prev])
+      setArchivosOneDrive(prev => prev.filter(a => a.id !== item.id))
+      if (onAccion) onAccion()
+    } catch (err) {
+      alert('No se pudo agregar el archivo: ' + (err?.message || 'Error desconocido.'))
+    } finally {
+      setAgregandoId(null)
+    }
+  }
 
   const cargarDocs = async () => {
     const { data } = await supabase.from('documentos_causa').select('*').eq('causa_id', causaId).order('created_at', { ascending: false })
@@ -204,6 +244,13 @@ export function DocumentosGuardados({ causaId, ruc, email, registrarActividad, o
       // así nunca puede chocar con un renombre (u otra edición) que esté
       // pasando al mismo tiempo en otro documento.
       if (nuevoDoc) setDocs(prev => [nuevoDoc, ...prev])
+      // ✅ NUEVO: si OneDrive está conectado, el mismo archivo se sube
+      // también a la carpeta de la causa — así queda en ambos lados sin
+      // tener que subirlo dos veces a mano. No bloquea el guardado en la
+      // app si falla (ej. sesión de OneDrive vencida).
+      if (getMSToken()) {
+        uploadFile(ruc, file).catch(err => console.warn('No se pudo subir a OneDrive:', err.message))
+      }
       if (onAccion) onAccion()
     } catch (err) {
       console.error('Error al subir documento:', err)
@@ -227,7 +274,10 @@ export function DocumentosGuardados({ causaId, ruc, email, registrarActividad, o
 
   const eliminar = async (doc) => {
     if (!window.confirm(`¿Eliminar "${doc.nombre}"?`)) return
-    await supabase.storage.from('documentos').remove([doc.storage_path])
+    // Los agregados desde OneDrive (agregarDesdeOneDrive) no tienen
+    // storage_path — el archivo vive solo en OneDrive, no hay nada que
+    // borrar en Supabase Storage.
+    if (doc.storage_path) await supabase.storage.from('documentos').remove([doc.storage_path])
     await supabase.from('documentos_causa').delete().eq('id', doc.id)
     setDocs(prev => prev.filter(d => d.id !== doc.id))
     if (onAccion) onAccion()
@@ -243,7 +293,7 @@ export function DocumentosGuardados({ causaId, ruc, email, registrarActividad, o
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:10, marginBottom:4 }}>
         <div>
           <div style={{ fontSize:13, fontWeight:700, color:'#1E293B', ...f }}>Documentos guardados en la app</div>
-          <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>Solo lo que subas acá explícitamente. El resto del Drive queda solo enlazado, sin ocupar espacio.</div>
+          <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>{getMSToken() ? 'Sincronizado con OneDrive: lo que subas acá también se sube allá, y lo que agregues abajo desde OneDrive queda listado acá.' : 'Solo lo que subas acá explícitamente. Conecta OneDrive en "Teoría del Caso" para sincronizar.'}</div>
         </div>
         <div style={{ flexShrink:0 }}>
           <BotonImprimirDocumentos items={docs}/>
@@ -275,6 +325,26 @@ export function DocumentosGuardados({ causaId, ruc, email, registrarActividad, o
           <button onClick={() => eliminar(doc)} style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:7, padding:'5px 10px', fontSize:11, color:'#dc2626', cursor:'pointer', fontWeight:600, ...f }}>✕</button>
         </div>
       ))}
+
+      {/* ✅ NUEVO: archivos que están en OneDrive pero se subieron directo
+          ahí (no desde acá) — se pueden agregar a esta lista con un clic,
+          sin volver a subir el archivo. */}
+      {getMSToken() && archivosOneDrive.length > 0 && (
+        <div style={{ marginTop:16, paddingTop:16, borderTop:'1px dashed #e2e8f0' }}>
+          <div style={{ fontSize:12, fontWeight:700, color:'#64748b', marginBottom:8, ...f }}>📁 En OneDrive, sin agregar acá ({archivosOneDrive.length})</div>
+          {archivosOneDrive.map(item => (
+            <div key={item.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 16px', background:'#f8fafc', border:'1px dashed #cbd5e1', borderRadius:10, marginBottom:8 }}>
+              <div style={{ width:32, height:32, background:'#fff', border:'1px solid #e2e8f0', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, flexShrink:0 }}>{getFileIcon(item.name)}</div>
+              <div style={{ flex:1, minWidth:0, fontSize:13, fontWeight:600, color:'#475569', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', ...f }}>{item.name}</div>
+              <button onClick={() => agregarDesdeOneDrive(item)} disabled={agregandoId === item.id}
+                style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:7, padding:'5px 12px', fontSize:11, color:'#2563eb', cursor:'pointer', fontWeight:600, ...f }}>
+                {agregandoId === item.id ? 'Agregando...' : '＋ Agregar a la lista'}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      {cargandoOneDrive && <div style={{ fontSize:11, color:'#94a3b8', textAlign:'center', marginTop:10, ...f }}>Revisando OneDrive...</div>}
     </div>
   )
 }

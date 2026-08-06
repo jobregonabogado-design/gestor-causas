@@ -3,17 +3,72 @@
 // en una vista limpia que se imprime con Cmd/Ctrl+P o "Guardar como PDF"
 // desde el propio diálogo de impresión del navegador — sin depender de
 // ninguna librería nueva.
-import { useState, Fragment } from 'react'
+import { useState, useEffect, useRef, Fragment } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from '../../lib/supabase'
 import { f } from './primitives'
 import { calcularVencimiento, calcularSubestado, calcularEdadActual, calcularFechaTerminoCondena, estadoConfig, fechaDDMM } from './utils'
 import { calcularTotalAbono, diasEntreFechasCaut } from './cautelares'
+import { getMSToken, uploadFile } from '../../lib/onedrive'
+
+// ✅ NUEVO: convierte el resumen ya renderizado en un PDF (foto del
+// contenido, vía html2canvas + jsPDF cargados desde CDN, mismo patrón que
+// pdf-lib más abajo) y lo sube a la carpeta de OneDrive de la causa,
+// reemplazando el "Resumen.pdf" anterior — así siempre queda la última
+// versión ahí, sin acumular copias viejas cada vez que se abre.
+let _pdfImgLibsCargando = null
+function cargarPdfImgLibs() {
+  if (typeof window !== 'undefined' && window.html2canvas && window.jspdf) return Promise.resolve()
+  if (_pdfImgLibsCargando) return _pdfImgLibsCargando
+  const cargarScript = (src) => new Promise((resolve, reject) => {
+    const script = document.createElement('script')
+    script.src = src
+    script.onload = resolve
+    script.onerror = () => reject(new Error('No se pudo cargar una librería necesaria'))
+    document.body.appendChild(script)
+  })
+  _pdfImgLibsCargando = Promise.all([
+    cargarScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'),
+    cargarScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'),
+  ])
+  return _pdfImgLibsCargando
+}
 
 export function BotonResumenImprimible({ causa, imputados, audiencias, aumentos, cautelares, esTitular }) {
   const [cargando, setCargando] = useState(false)
   const [datos, setDatos] = useState(null)
   const [mostrar, setMostrar] = useState(false)
+  const [estadoOneDrive, setEstadoOneDrive] = useState(null) // null | 'guardando' | 'ok' | 'error'
+  const resumenRef = useRef(null)
+
+  // Se guarda solo, en segundo plano, apenas el resumen queda renderizado —
+  // no bloquea ni interrumpe la vista previa ni la impresión.
+  useEffect(() => {
+    if (!mostrar || !datos || !getMSToken() || !resumenRef.current) return
+    let cancelado = false
+    const guardar = async () => {
+      setEstadoOneDrive('guardando')
+      try {
+        await cargarPdfImgLibs()
+        const canvas = await window.html2canvas(resumenRef.current, {
+          scale: 2, backgroundColor: '#ffffff',
+          ignoreElements: el => el.classList && el.classList.contains('no-imprimir'),
+        })
+        const { jsPDF } = window.jspdf
+        const pdf = new jsPDF({ unit: 'px', format: [canvas.width, canvas.height] })
+        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, canvas.width, canvas.height)
+        const blob = pdf.output('blob')
+        const file = new File([blob], 'Resumen.pdf', { type: 'application/pdf' })
+        await uploadFile(causa.ruc, file)
+        if (!cancelado) setEstadoOneDrive('ok')
+      } catch (err) {
+        console.warn('No se pudo guardar el resumen en OneDrive:', err.message)
+        if (!cancelado) setEstadoOneDrive('error')
+      }
+    }
+    guardar()
+    return () => { cancelado = true }
+  }, [mostrar, datos])
 
   if (!esTitular) return null
 
@@ -67,9 +122,14 @@ export function BotonResumenImprimible({ causa, imputados, audiencias, aumentos,
 
       {createPortal(
       <div className="resumen-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.5)', zIndex: 400, overflowY: 'auto', padding: '4vh 0' }}>
-        <div className="resumen-imprimible" style={{ background: '#fff', maxWidth: 760, margin: '0 auto', padding: '40px 48px', borderRadius: 14, boxShadow: '0 24px 80px rgba(15,23,42,0.25)', ...f }}>
+        <div ref={resumenRef} className="resumen-imprimible" style={{ background: '#fff', maxWidth: 760, margin: '0 auto', padding: '40px 48px', borderRadius: 14, boxShadow: '0 24px 80px rgba(15,23,42,0.25)', ...f }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }} className="no-imprimir">
-            <div style={{ fontSize: 12, color: '#94a3b8' }}>Vista previa — usa el botón de abajo para imprimir o guardar como PDF</div>
+            <div style={{ fontSize: 12, color: '#94a3b8' }}>
+              Vista previa — usa el botón de abajo para imprimir o guardar como PDF
+              {estadoOneDrive === 'guardando' && <span style={{ marginLeft: 10, color: '#2563eb' }}>· Guardando en OneDrive...</span>}
+              {estadoOneDrive === 'ok' && <span style={{ marginLeft: 10, color: '#16a34a' }}>· ✅ Guardado en OneDrive</span>}
+              {estadoOneDrive === 'error' && <span style={{ marginLeft: 10, color: '#dc2626' }}>· No se pudo guardar en OneDrive</span>}
+            </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={() => window.print()} className="btn-primary" style={{ fontSize: 12 }}>🖨 Imprimir / Guardar PDF</button>
               <button onClick={() => setMostrar(false)} className="btn-secondary" style={{ fontSize: 12, border: '1.5px solid #e5e7eb' }}>✕ Cerrar</button>
