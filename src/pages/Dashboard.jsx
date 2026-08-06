@@ -20,6 +20,7 @@ import { PlazoCalculador } from './dashboard/plazo'
 import { calcularRegimenAlMomento, calcularVencimiento, parseFechaCL, diasRestantes, calcularSubestado, calcularEdadActual, TRIBUNAL_RPA, normRut, normalizarBusqueda, formatearRut, fechaDDMM, parsearDelito, hoyISO } from './dashboard/utils'
 import { ImputadoDatosCard } from './dashboard/imputado-datos'
 import { CautelaresPanel, TIPOS_ABONO_DIRECTO, TIPOS_DETENCION_PENAL, CAUTELAR_NOCTURNO, CAUTELAR_SENAME, TIPOS_CAUTELARES_TODAS, diasEntreFechasCaut } from './dashboard/cautelares'
+import { getMSToken, getOrCreateRucFolder } from '../lib/onedrive'
 
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
@@ -563,6 +564,16 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
       setRutEncontrado({})
       if (registrarActividad) registrarActividad('accion', `Nueva causa: RUC ${causaData.ruc}`)
       setNuevaCausa({ruc:'',rit:'',tribunal:'',delito:'',imputados:[{nombre:'',rut:'',fecha_nac:'',domicilio:'',nacionalidad:'',delito:'',centro_penal:'',cautelar:'',cautelar_fecha_inicio:''}],fiscal:'',plazo:'',fecha_inicio:'',dias_plazo:'',fecha_hechos:'',estado:'vigente',subestado:''})
+      // ✅ NUEVO: crear sola la carpeta de OneDrive para la causa nueva — esto
+      // era lo que Joaquín recordaba, ya existía el código pero nunca se
+      // llamaba desde ningún lado. Solo se intenta si ya está conectado a
+      // OneDrive (getMSToken); si no lo está, o si falla por el motivo que
+      // sea, no bloquea ni avisa nada — crear la causa nunca debe depender
+      // de que OneDrive esté disponible. Puede crearla a mano después desde
+      // "Carpeta y Documentos" con el botón que se agregó ahí.
+      if (getMSToken()) {
+        getOrCreateRucFolder(causaData.ruc).catch(err => console.warn('No se pudo crear la carpeta en OneDrive automáticamente:', err.message))
+      }
     }
     setSaving(false)
   }
