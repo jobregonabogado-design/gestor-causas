@@ -1,6 +1,12 @@
 const CLIENT_ID = import.meta.env.VITE_MS_CLIENT_ID
 const TENANT_ID = import.meta.env.VITE_MS_TENANT_ID
-const FOLDER_NAME = import.meta.env.VITE_ONEDRIVE_FOLDER || 'CAUSAS JOA'
+// ✅ FIX: antes esto creaba la carpeta directo en la raíz de OneDrive
+// ("/CAUSAS JOA/{ruc}"), pero el enlace "Abrir carpeta en OneDrive" (y toda
+// la organización real de Joaquín) espera que esté dentro de
+// "Documentos/JOAQUIN OBREGON/CAUSAS JOA/{ruc}" — por eso la carpeta se
+// creaba igual, pero en otro lugar distinto al que se abría, mostrando
+// error de "elemento no disponible". Ahora la ruta completa queda fija acá.
+const FOLDER_NAME = 'Documents/JOAQUIN OBREGON/' + (import.meta.env.VITE_ONEDRIVE_FOLDER || 'CAUSAS JOA')
 
 const SCOPES = ['Files.ReadWrite', 'User.Read']
 const REDIRECT_URI = window.location.origin + '/ms-callback.html'
