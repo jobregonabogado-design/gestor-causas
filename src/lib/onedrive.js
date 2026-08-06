@@ -1,12 +1,12 @@
 const CLIENT_ID = import.meta.env.VITE_MS_CLIENT_ID
 const TENANT_ID = import.meta.env.VITE_MS_TENANT_ID
 // ✅ FIX: antes esto creaba la carpeta directo en la raíz de OneDrive
-// ("/CAUSAS JOA/{ruc}"), pero el enlace "Abrir carpeta en OneDrive" (y toda
-// la organización real de Joaquín) espera que esté dentro de
-// "Documentos/JOAQUIN OBREGON/CAUSAS JOA/{ruc}" — por eso la carpeta se
-// creaba igual, pero en otro lugar distinto al que se abría, mostrando
-// error de "elemento no disponible". Ahora la ruta completa queda fija acá.
-const FOLDER_NAME = 'Documents/JOAQUIN OBREGON/' + (import.meta.env.VITE_ONEDRIVE_FOLDER || 'CAUSAS JOA')
+// ("/CAUSAS JOA/{ruc}"), pero la organización real de Joaquín la espera
+// dentro de "JOAQUIN OBREGON/CAUSAS JOA/{ruc}" (así aparece en la miga de
+// pan de OneDrive: Mis archivos › JOAQUIN OBREGON › CAUSAS JOA). "Documents"
+// NO es una carpeta real navegable vía la API — es solo parte del enlace
+// visual de OneDrive, así que no va en esta ruta.
+const FOLDER_NAME = 'JOAQUIN OBREGON/' + (import.meta.env.VITE_ONEDRIVE_FOLDER || 'CAUSAS JOA')
 
 const SCOPES = ['Files.ReadWrite', 'User.Read']
 const REDIRECT_URI = window.location.origin + '/ms-callback.html'
