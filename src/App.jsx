@@ -461,20 +461,19 @@ export default function App() {
     setAudienciasProximas(data || [])
   }, [])
 
-  // ✅ NUEVO: pedido de Joaquín — que las audiencias de HOY se vayan
-  // "limpiando" del Centro de Alertas apenas ya pasaron, en vez de quedar
-  // ahí dando vueltas todo el día. Se compara la hora contra el momento
-  // actual; si no tiene hora registrada, se deja visible todo el día (no
-  // hay forma de saber si ya pasó). Las de mañana nunca se filtran por
-  // hora, da igual qué hora sea hoy.
+  // ✅ Pedido de Joaquín — las audiencias de HOY se van "limpiando" del
+  // Centro de Alertas, pero NO apenas pasa la hora de cada una (eso quedó
+  // muy inmediato) — se quedan visibles TODAS hasta las 20:00 del mismo
+  // día, y recién ahí se limpian todas juntas. Las de mañana nunca se
+  // tocan, da igual qué hora sea hoy.
+  const HORA_LIMPIEZA_AUDIENCIAS_HOY = '20:00'
   const audienciasProximasVigentes = useMemo(() => {
     const ahora = new Date()
     const hoyStr = hoyISO()
     const horaActual = `${String(ahora.getHours()).padStart(2,'0')}:${String(ahora.getMinutes()).padStart(2,'0')}`
     return audienciasProximas.filter(a => {
       if (a.fecha !== hoyStr) return true // de mañana, se deja igual
-      if (!a.hora) return true // sin hora registrada, se deja visible todo el día
-      return a.hora >= horaActual
+      return horaActual < HORA_LIMPIEZA_AUDIENCIAS_HOY
     })
   }, [audienciasProximas])
 
