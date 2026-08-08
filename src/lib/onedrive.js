@@ -114,6 +114,7 @@ const LIMITE_SUBIDA_SIMPLE = 4 * 1024 * 1024
 async function subirArchivoGrande(ruc, file) {
   const token = getMSToken()
   if (!token) throw new Error('No token')
+  await getOrCreateRucFolder(ruc)
   const path = `/${FOLDER_NAME}/${ruc}/${file.name}`
   const sessionRes = await fetch(`https://graph.microsoft.com/v1.0/me/drive/root:${path}:/createUploadSession`, {
     method: 'POST',
@@ -143,6 +144,11 @@ export async function uploadFile(ruc, file) {
   if (file.size > LIMITE_SUBIDA_SIMPLE) return subirArchivoGrande(ruc, file)
   const token = getMSToken()
   if (!token) throw new Error('No token')
+  // ✅ FIX: causas creadas antes de que existiera esta sincronización (o
+  // donde nunca se apretó "Crear/verificar carpeta") no tenían la carpeta
+  // en OneDrive todavía — la subida fallaba con 404/409 porque el destino
+  // no existía. Se asegura acá, antes de cada subida.
+  await getOrCreateRucFolder(ruc)
   const path = `/${FOLDER_NAME}/${ruc}/${file.name}`
   const res = await fetch(`https://graph.microsoft.com/v1.0/me/drive/root:${path}:/content`, {
     method: 'PUT',
