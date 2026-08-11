@@ -61,7 +61,7 @@ export function corteCompleta(codigo) {
 
 const FUENTE = 'helvetica'
 const TAMANO = 11
-const INTERLINEA = 1.5
+const INTERLINEA = 2
 const MARGEN = 25 // mm
 const SANGRIA = 12 // mm, sangría de primera línea de párrafo
 
