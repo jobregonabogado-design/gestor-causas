@@ -186,9 +186,16 @@ export function DocumentosGuardados({ causaId, ruc, email, registrarActividad, o
   // Sube a OneDrive los documentos que ya estaban guardados en la app
   // desde antes (los que tienen storage_path — los agregados desde
   // OneDrive con "agregarDesdeOneDrive" ya están allá, no se tocan).
+  const esErrorDeSesion = (mensaje) => /No token|401|jwt|unauthorized/i.test(mensaje || '')
+
   const migrarExistentesAOneDrive = async () => {
-    const pendientes = docs.filter(d => d.storage_path)
-    if (pendientes.length === 0) return
+    // ✅ FIX: antes volvía a subir TODO cada vez que se apretaba el botón,
+    // aunque ya estuviera allá — igual que "Crear/verificar carpeta" revisa
+    // antes de crear, acá se revisa primero qué ya está en OneDrive y solo
+    // se sube lo que falta.
+    const yaEnOneDrive = new Set((await getFolderFiles(ruc).catch(() => [])).map(it => it.name))
+    const pendientes = docs.filter(d => d.storage_path && !yaEnOneDrive.has(d.nombre))
+    if (pendientes.length === 0) { setMigracion({ hecho: 0, total: 0, fallidos: [] }); return }
     setMigrando(true)
     const fallidos = []
     for (let i = 0; i < pendientes.length; i++) {
@@ -200,6 +207,14 @@ export function DocumentosGuardados({ causaId, ruc, email, registrarActividad, o
         await uploadFile(ruc, file)
       } catch (err) {
         fallidos.push(`${doc.nombre}: ${err.message}`)
+        // Si la sesión de OneDrive venció, seguir intentando con el resto
+        // solo repite el mismo error una y otra vez — se corta altiro y se
+        // pide reconectar en vez de mostrar una lista larga confusa.
+        if (esErrorDeSesion(err.message)) {
+          fallidos.length = 1
+          fallidos[0] = 'La conexión con OneDrive venció — reconéctate (en "Teoría del Caso") y vuelve a intentar.'
+          break
+        }
       }
     }
     setMigracion({ hecho: pendientes.length, total: pendientes.length, fallidos })
@@ -345,7 +360,7 @@ export function DocumentosGuardados({ causaId, ruc, email, registrarActividad, o
         <div style={{ display:'flex', alignItems:'flex-start', gap:8, background: migracion.fallidos.length ? '#fef2f2' : '#ecfdf5', border: `1px solid ${migracion.fallidos.length ? '#fecaca' : '#a7f3d0'}`, borderRadius:10, padding:'10px 14px', marginBottom:12 }}>
           <div style={{ flex:1, fontSize:12, color: migracion.fallidos.length ? '#dc2626' : '#065f46', ...f }}>
             {migracion.fallidos.length === 0
-              ? `✅ Se subieron ${migracion.total} documento${migracion.total !== 1 ? 's' : ''} a OneDrive.`
+              ? (migracion.total === 0 ? '✅ Ya estaban todos en OneDrive — no había nada nuevo que subir.' : `✅ Se subieron ${migracion.total} documento${migracion.total !== 1 ? 's' : ''} a OneDrive.`)
               : `Se subieron ${migracion.total - migracion.fallidos.length} de ${migracion.total}. Fallaron: ${migracion.fallidos.join(' · ')}`}
           </div>
           <button onClick={() => setMigracion(null)} style={{ background:'none', border:'none', color:'inherit', cursor:'pointer', fontWeight:700, fontSize:13, flexShrink:0 }}>✕</button>
