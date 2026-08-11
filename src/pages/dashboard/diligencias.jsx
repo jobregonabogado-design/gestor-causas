@@ -29,6 +29,10 @@ export const TIPOS_DILIGENCIA = [
   'Solicitud de documentos específicos de la causa',
   'Activar/Anular acreditación de representación',
 ]
+// Este tipo es distinto a los demás: Fiscalía no manda una respuesta
+// escrita para él, solo habilita el acceso en el portal — así que nunca
+// debería contar para "días sin respuesta" ni las alertas de seguimiento.
+export const TIPO_ACREDITACION = 'Activar/Anular acreditación de representación'
 export const ESTADOS_DILIGENCIA = {
   pendiente:    { label:'Pendiente de respuesta',   color:'#92400e', bg:'#fff7ed', border:'#fed7aa' },
   aprobada:     { label:'Aprobada',                 color:'#065f46', bg:'#ecfdf5', border:'#a7f3d0' },
@@ -193,6 +197,23 @@ function cargarTesseract() {
   return _tesseractCargando
 }
 
+// Si se logra ingresar una diligencia de OTRO tipo para la misma causa, es
+// prueba de que la representación ya quedó habilitada en el portal de
+// Fiscalía — no hace falta esperar una respuesta escrita para saberlo (esas
+// solicitudes de activación/anulación nunca la tienen). Se marca sola como
+// aprobada cualquier solicitud de acreditación que hubiera quedado
+// pendiente para esta causa. Devuelve las filas actualizadas para que quien
+// llame pueda reflejarlo en su propio estado local sin recargar todo.
+export async function marcarAcreditacionHabilitada(causaId, tipoNuevaDiligencia) {
+  if (tipoNuevaDiligencia === TIPO_ACREDITACION) return []
+  const { data } = await supabase.from('diligencias_fiscalia').select('id')
+    .eq('causa_id', causaId).eq('tipo', TIPO_ACREDITACION).eq('estado', 'pendiente')
+  if (!data || data.length === 0) return []
+  const campos = { estado: 'aprobada', fecha_respuesta: hoyISO(), respuesta_detalle: 'Habilitación confirmada: se pudo ingresar una nueva diligencia para esta causa en el portal de Fiscalía.' }
+  await supabase.from('diligencias_fiscalia').update(campos).in('id', data.map(d => d.id))
+  return data.map(d => ({ id: d.id, ...campos }))
+}
+
 async function extraerTextoImagen(file) {
   const Tesseract = await cargarTesseract()
   const { data } = await Tesseract.recognize(file, 'spa')
@@ -279,6 +300,8 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
       } catch { /* si falla el adjunto, la diligencia igual queda guardada */ }
     }
     setDiligencias(prev => [dataFinal, ...prev])
+    const actualizadas = await marcarAcreditacionHabilitada(causaId, form.tipo)
+    if (actualizadas.length) setDiligencias(prev => prev.map(d => actualizadas.find(a => a.id === d.id) ? { ...d, ...actualizadas.find(a => a.id === d.id) } : d))
     if (registrarActividad) registrarActividad('accion', `Registró diligencia "${form.tipo}" (folio ${form.folio}) en RUC ${ruc}`)
     if (onAccion) onAccion()
     setForm({ tipo: TIPOS_DILIGENCIA[0], fecha_solicitud: hoyISO(), folio:'', observacion:'' })
@@ -454,6 +477,8 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
           }
         } catch { /* si falla el adjunto, la diligencia igual queda guardada */ }
         setDiligencias(prev => [dataFinal, ...prev])
+        const actualizadas = await marcarAcreditacionHabilitada(causaId, tipoDetectado)
+        if (actualizadas.length) setDiligencias(prev => prev.map(d => actualizadas.find(a => a.id === d.id) ? { ...d, ...actualizadas.find(a => a.id === d.id) } : d))
         if (registrarActividad) registrarActividad('accion', `Registró diligencia "${tipoDetectado}" (folio ${folioDetectado}) en RUC ${ruc} — guardado automático desde comprobante`)
         if (onAccion) onAccion()
         setGuardando(false)
@@ -491,7 +516,7 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
 
   if (loading) return <div style={{ textAlign:'center', padding:40, color:'#94a3b8', fontSize:13, ...f }}>Cargando diligencias...</div>
 
-  const pendientesConAviso = diligencias.filter(d => d.estado === 'pendiente' && diasHabilesDesde(d.fecha_solicitud) >= 5).length
+  const pendientesConAviso = diligencias.filter(d => d.estado === 'pendiente' && d.tipo !== TIPO_ACREDITACION && diasHabilesDesde(d.fecha_solicitud) >= 5).length
 
   return (
     <div>
@@ -518,7 +543,7 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
       {diligencias.map(d => {
         const cfg = ESTADOS_DILIGENCIA[d.estado] || ESTADOS_DILIGENCIA.pendiente
         const diasHabiles = d.estado === 'pendiente' ? diasHabilesDesde(d.fecha_solicitud) : 0
-        const avisoSeguimiento = d.estado === 'pendiente' && diasHabiles >= 5
+        const avisoSeguimiento = d.estado === 'pendiente' && d.tipo !== TIPO_ACREDITACION && diasHabiles >= 5
         return (
           <div key={d.id} style={{ background:'#F8F9FC', border:'1px solid #e2e8f0', borderRadius:12, padding:'14px 16px', marginBottom:10 }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:8 }}>

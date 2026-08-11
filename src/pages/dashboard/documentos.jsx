@@ -1,7 +1,7 @@
 // Panel de Fallos de Referencia y Documentos Guardados dentro de una causa.
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
-import { parsearComprobanteFiscalia, extraerTextoPdf, TIPOS_DILIGENCIA } from './diligencias'
+import { parsearComprobanteFiscalia, extraerTextoPdf, TIPOS_DILIGENCIA, marcarAcreditacionHabilitada } from './diligencias'
 import { f } from './primitives'
 import { BotonImprimirDocumentos } from './resumen'
 import { sanitizarNombreArchivo, hoyISO } from './utils'
@@ -132,6 +132,7 @@ async function guardarComprobanteComoDiligencia(file, texto, { causaId, ruc, ema
     folio: datos.folio || 'SIN FOLIO DETECTADO', observacion: detalleCompleto || null, estado:'pendiente', registrado_por: email
   }).select().single()
   if (error || !data) throw (error || new Error('No se pudo crear el registro de la diligencia'))
+  await marcarAcreditacionHabilitada(causaId, tipo)
   try {
     const path = `diligencias/${data.id}/comprobante_${Date.now()}_${sanitizarNombreArchivo(file.name)}`
     const { error: upErr } = await supabase.storage.from('documentos').upload(path, file)
