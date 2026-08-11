@@ -60,24 +60,31 @@ function resolverPlaceholders(texto, datos) {
   return (texto || '').replace(/\{(\w+)\}/g, (m, key) => (datos[key] !== undefined && datos[key] !== '') ? datos[key] : m)
 }
 
-// Arma el bloque de "suma" ("EN LO PRINCIPAL: X" / "OTROSÍ: Y" / "PRIMER
+// Arma las líneas de "suma" ("EN LO PRINCIPAL: X" / "OTROSÍ: Y" / "PRIMER
 // OTROSÍ..." según cuántos capítulos se combinen) y el cuerpo completo,
 // anteponiendo la misma etiqueta al inicio del cuerpo de cada otrosí (menos
 // el principal, que no la repite — igual que en los escritos reales).
 function armarSumaYCuerpo(capitulos) {
-  if (capitulos.length === 1) return { sumaBlock: `# ${capitulos[0].suma}`, cuerpoBlock: capitulos[0].cuerpo }
+  if (capitulos.length === 1) return { sumaLineas: [capitulos[0].suma], cuerpoBlock: capitulos[0].cuerpo }
   const etiquetas = capitulos.length === 2
     ? ['EN LO PRINCIPAL', 'OTROSÍ']
     : ['EN LO PRINCIPAL', ...ORDINALES.slice(0, capitulos.length - 1).map(o => `${o} OTROSÍ`)]
-  const sumaBlock = capitulos.map((c, i) => `# ${etiquetas[i]}: ${c.suma}`).join('\n')
+  const sumaLineas = capitulos.map((c, i) => `${etiquetas[i]}: ${c.suma}`)
   const cuerpoBlock = capitulos.map((c, i) => i === 0 ? c.cuerpo : `${etiquetas[i]}: ${c.cuerpo}`).join('\n\n')
-  return { sumaBlock, cuerpoBlock }
+  return { sumaLineas, cuerpoBlock }
 }
 
 // Patrocinio y Poder tiene una estructura propia: primero van los datos del
 // IMPUTADO (es quien "digo" en el escrito, no el abogado), a diferencia de
 // todos los demás, donde el abogado se identifica primero. Por eso no se
 // puede combinar con otros escritos en el mismo documento.
+//
+// ✅ Devuelve un objeto { sumaLineas, destinatario, cuerpo } en vez de un
+// solo texto con las marcas "#"/"##" — esas marcas son solo para el
+// generador de PDF (ver generarPdf.js) y confundían a Joaquín al verlas tal
+// cual en el cuadro de edición. La suma y el destinatario se muestran y
+// editan aparte, ya con el estilo (negrita/centrado) real; el cuadro de
+// texto grande solo tiene la identificación + el cuerpo, sin marcas.
 function construirEscrito({ causa, imputado, abogado, capitulos, delegado }) {
   const datosBase = construirDatos(causa, imputado, abogado)
   const datos = {
@@ -92,7 +99,7 @@ function construirEscrito({ causa, imputado, abogado, capitulos, delegado }) {
     suma: resolverPlaceholders(p.suma_defecto, datos),
     cuerpo: resolverPlaceholders(p.cuerpo_defecto, datos),
   }))
-  const { sumaBlock, cuerpoBlock } = armarSumaYCuerpo(capitulosResueltos)
+  const { sumaLineas, cuerpoBlock } = armarSumaYCuerpo(capitulosResueltos)
 
   const primero = capitulos[0]
   const destinatario = primero.destinatario_tipo === 'custom'
@@ -104,7 +111,20 @@ function construirEscrito({ causa, imputado, abogado, capitulos, delegado }) {
     ? `${datos.IMPUTADO_NOMBRE}, Cédula Nacional de Identidad Nº ${datos.IMPUTADO_RUT}, ${datos.SITUACION_LIBERTAD}, en causa RUC. ${datos.RUC} RIT ${datos.RIT} a SS., respetuosamente digo:`
     : `${datos.ABOGADO_NOMBRE}, abogado, en representación de ${datos.IMPUTADO_NOMBRE}, en causa RUC. ${datos.RUC} y RIT. ${datos.RIT}${datos.DELITO_TEXTO ? `, por el delito de ${datos.DELITO_TEXTO}` : ''}, a S.S. respetuosamente digo:`
 
-  return `${sumaBlock}\n\n## ${destinatario}\n\n${identificacion}\n\n${cuerpoBlock}`
+  return { sumaLineas, destinatario, cuerpo: `${identificacion}\n\n${cuerpoBlock}` }
+}
+
+// Junta todo de nuevo en el formato con "#"/"##" que necesita el generador
+// de PDF (ver generarPdf.js) — solo en este punto, justo antes de generar
+// el archivo, nunca se le muestra así a Joaquín.
+function textoParaPdf({ sumaLineas, destinatario, cuerpo }) {
+  return `${sumaLineas.map(l => `# ${l}`).join('\n')}\n\n## ${destinatario}\n\n${cuerpo}`
+}
+
+// Versión limpia para copiar al portapapeles o guardar en el historial —
+// sin las marcas de negrita/centrado, que no sirven fuera de esta app.
+function textoLimpio({ sumaLineas, destinatario, cuerpo }) {
+  return `${sumaLineas.join('\n')}\n\n${destinatario}\n\n${cuerpo}`.replace(/\*\*(.+?)\*\*/g, '$1')
 }
 
 function PerfilAbogado({ abogado, setAbogado, onGuardar, guardando }) {
@@ -184,7 +204,7 @@ export default function Escritos({ session, registrarActividad }) {
   const [impSel, setImpSel] = useState(null)
   const [plantillas, setPlantillas] = useState([])
   const [capitulosSel, setCapitulosSel] = useState([]) // orden = orden de selección
-  const [preview, setPreview] = useState('')
+  const [escrito, setEscrito] = useState(null) // { sumaLineas, destinatario, cuerpo }
   const [delegados, setDelegados] = useState([])
   const [delegadoSel, setDelegadoSel] = useState(null)
   const [delegadoNuevo, setDelegadoNuevo] = useState(false)
@@ -238,7 +258,7 @@ export default function Escritos({ session, registrarActividad }) {
     setCausas([])
     setSearch('')
     setCapitulosSel([])
-    setPreview('')
+    setEscrito(null)
     setResultado(null)
     setImpSel(null)
     const { data } = await supabase.from('imputados').select('*').eq('causa_id', c.id).order('created_at', { ascending: true })
@@ -269,8 +289,8 @@ export default function Escritos({ session, registrarActividad }) {
   const puedeGenerar = causaSel && (imputados.length <= 1 || impSel) && capitulosSel.length > 0 && delegadoListo
 
   const generarPreview = () => {
-    const texto = construirEscrito({ causa: causaSel, imputado: impSel, abogado, capitulos: capitulosSel, delegado: delegadoSel || delegadoNuevo || null })
-    setPreview(texto)
+    const nuevoEscrito = construirEscrito({ causa: causaSel, imputado: impSel, abogado, capitulos: capitulosSel, delegado: delegadoSel || delegadoNuevo || null })
+    setEscrito(nuevoEscrito)
     setResultado(null)
   }
 
@@ -290,7 +310,7 @@ export default function Escritos({ session, registrarActividad }) {
 
       const nombreEscrito = capitulosSel.map(c => c.nombre).join(' + ')
       const nombreArchivo = `${nombreEscrito} - ${hoyISO()}.pdf`
-      const blob = await generarPdfEscrito(preview)
+      const blob = await generarPdfEscrito(textoParaPdf(escrito))
       const file = new File([blob], nombreArchivo, { type: 'application/pdf' })
 
       // Descarga en el navegador — igual que antes, pero en PDF real.
@@ -318,7 +338,7 @@ export default function Escritos({ session, registrarActividad }) {
 
       await supabase.from('escritos_generados').insert({
         causa_id: causaSel.id, ruc: causaSel.ruc, imputado_id: impSel?.id || null,
-        tipo_escrito: nombreEscrito, contenido_texto: preview, generado_por: session?.user?.email || 'usuario',
+        tipo_escrito: nombreEscrito, contenido_texto: textoLimpio(escrito), generado_por: session?.user?.email || 'usuario',
       })
 
       if (registrarActividad) registrarActividad('accion', `Generó escrito "${nombreEscrito}" en RUC ${causaSel.ruc}`)
@@ -332,7 +352,7 @@ export default function Escritos({ session, registrarActividad }) {
   }
 
   const handleCopiar = async () => {
-    await navigator.clipboard.writeText(preview)
+    await navigator.clipboard.writeText(textoLimpio(escrito))
     alert('Texto copiado al portapapeles.')
   }
 
@@ -358,7 +378,7 @@ export default function Escritos({ session, registrarActividad }) {
                 <div style={{ fontSize: 13, fontWeight: 700, color: '#1E293B', ...f }}>RUC {causaSel.ruc} · RIT {causaSel.rit || '—'}</div>
                 <div style={{ fontSize: 12, color: '#64748b', marginTop: 2, ...f }}>{causaSel.tribunal} · {causaSel.imputado}</div>
               </div>
-              <button className="btn-secondary" style={{ fontSize: 12 }} onClick={() => { setCausaSel(null); setImputados([]); setImpSel(null); setCapitulosSel([]); setPreview(''); setResultado(null) }}>Cambiar</button>
+              <button className="btn-secondary" style={{ fontSize: 12 }} onClick={() => { setCausaSel(null); setImputados([]); setImpSel(null); setCapitulosSel([]); setEscrito(null); setResultado(null) }}>Cambiar</button>
             </div>
           ) : (
             <div>
@@ -420,25 +440,41 @@ export default function Escritos({ session, registrarActividad }) {
           <SelectorDelegado delegados={delegados} delegadoSel={delegadoSel} setDelegadoSel={setDelegadoSel} nuevo={delegadoNuevo} setNuevo={setDelegadoNuevo} />
         )}
 
-        {puedeGenerar && !preview && (
+        {puedeGenerar && !escrito && (
           <div style={{ marginBottom: 20 }}>
             <button className="btn-primary" onClick={generarPreview}>Generar vista previa</button>
           </div>
         )}
 
         {/* Paso 4: editor / preview */}
-        {preview && (
+        {escrito && (
           <div style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 14, padding: 20 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: '#1E293B', ...f }}>Revisa y edita antes de descargar</div>
-              <span style={{ fontSize: 11, color: '#94a3b8', ...f }}>Puedes escribir directo en el cuadro · **texto** = negrita</span>
+              <span style={{ fontSize: 11, color: '#94a3b8', ...f }}>Así queda en el PDF: título a la izquierda, tribunal centrado, cuerpo justificado</span>
             </div>
-            <textarea value={preview} onChange={e => setPreview(e.target.value)}
-              style={{ width: '100%', minHeight: 420, padding: 20, border: '1.5px solid #E2E8F0', borderRadius: 10, fontSize: 13, lineHeight: 1.7, color: '#1E293B', fontFamily: "'Times New Roman',serif", resize: 'vertical' }} />
+
+            {/* ✅ Título(s) y tribunal se muestran y editan aparte, ya con el
+                estilo con el que van a salir en el PDF (negrita, izquierda /
+                centrado) — antes iban dentro del mismo cuadro de texto con
+                marcas "#"/"##" al inicio de la línea, y eso confundía. */}
+            <div style={{ border: '1.5px solid #E2E8F0', borderRadius: 10, padding: '16px 20px', marginBottom: 2 }}>
+              {escrito.sumaLineas.map((linea, i) => (
+                <input key={i} value={linea} onChange={e => setEscrito(prev => ({ ...prev, sumaLineas: prev.sumaLineas.map((l, j) => j === i ? e.target.value : l) }))}
+                  style={{ width: '100%', border: 'none', outline: 'none', fontSize: 13, fontWeight: 700, color: '#1E293B', marginBottom: 4, padding: '2px 0', fontFamily: "'Times New Roman',serif" }} />
+              ))}
+              <input value={escrito.destinatario} onChange={e => setEscrito(prev => ({ ...prev, destinatario: e.target.value }))}
+                style={{ width: '100%', border: 'none', outline: 'none', fontSize: 13, fontWeight: 700, color: '#1E293B', textAlign: 'center', marginTop: 10, padding: '2px 0', fontFamily: "'Times New Roman',serif" }} />
+            </div>
+            <div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 12, ...f }}>Puedes editar el título y el tribunal directo ahí arriba.</div>
+
+            <textarea value={escrito.cuerpo} onChange={e => setEscrito(prev => ({ ...prev, cuerpo: e.target.value }))}
+              style={{ width: '100%', minHeight: 380, padding: 20, border: '1.5px solid #E2E8F0', borderRadius: 10, fontSize: 13, lineHeight: 1.7, color: '#1E293B', fontFamily: "'Times New Roman',serif", textAlign: 'justify', resize: 'vertical' }} />
+            <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 6, ...f }}>**texto** = negrita en el PDF</div>
             <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
               <button className="btn-primary" onClick={handleDescargarYGuardar} disabled={generando}>{generando ? 'Generando...' : '📄 Descargar PDF'}</button>
               <button className="btn-secondary" onClick={handleCopiar}>📋 Copiar texto</button>
-              <button className="btn-secondary" onClick={() => { setCapitulosSel([]); setPreview(''); setResultado(null); setDelegadoSel(null); setDelegadoNuevo(false) }}>Empezar de nuevo</button>
+              <button className="btn-secondary" onClick={() => { setCapitulosSel([]); setEscrito(null); setResultado(null); setDelegadoSel(null); setDelegadoNuevo(false) }}>Empezar de nuevo</button>
             </div>
             {resultado && (
               <div style={{ marginTop: 12, fontSize: 12, fontWeight: 600, color: resultado.ok ? '#065f46' : '#dc2626', background: resultado.ok ? '#ecfdf5' : '#fef2f2', border: `1px solid ${resultado.ok ? '#a7f3d0' : '#fecaca'}`, borderRadius: 8, padding: '10px 12px', ...f }}>
