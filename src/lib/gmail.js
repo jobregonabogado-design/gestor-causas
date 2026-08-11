@@ -3,7 +3,10 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs
 
 const CLIENT_ID = import.meta.env.VITE_GMAIL_CLIENT_ID
 const REDIRECT_URI = window.location.origin + '/gmail-callback.html'
-const SCOPES = 'https://www.googleapis.com/auth/gmail.readonly'
+// ✅ NUEVO: se agrega gmail.send (antes solo leía correo) para poder mandar
+// solo la solicitud de visita a Santiago 1 — hay que reconectar Gmail una
+// vez para que este permiso nuevo quede autorizado.
+const SCOPES = 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send'
 
 const SUPABASE_FUNCTION_URL = 'https://qttwthpgzzjzidimlkkh.supabase.co/functions/v1/gmail-token'
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
@@ -93,8 +96,43 @@ async function gmailFetch(path, options = {}) {
     }
     if (res.status === 401) { logoutGmail(); throw new Error('Token expirado') }
   }
-  if (!res.ok) throw new Error(`Error ${res.status}`)
+  if (!res.ok) {
+    // ✅ El 403 "insufficient authentication scopes" pasa cuando la sesión
+    // de Gmail guardada es de ANTES de agregar el permiso de enviar — el
+    // token existe pero no alcanza. Se distingue del resto de errores para
+    // poder pedir reconectar en vez de un mensaje genérico.
+    if (res.status === 403) throw new Error('Falta el permiso de enviar (403) — reconecta Gmail')
+    throw new Error(`Error ${res.status}`)
+  }
   return res.json()
+}
+
+// Codifica un string UTF-8 en base64url (lo que exige la API de Gmail para
+// el campo "raw") — btoa() por sí solo no sirve con tildes/ñ porque solo
+// entiende Latin1, hay que pasar primero por los bytes UTF-8 reales.
+function base64UrlEncode(texto) {
+  const bytes = new TextEncoder().encode(texto)
+  let binario = ''
+  bytes.forEach(b => { binario += String.fromCharCode(b) })
+  return btoa(binario).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
+// ✅ NUEVO: envía un correo de verdad desde la cuenta de Gmail conectada
+// (requiere el permiso "gmail.send" agregado arriba). Arma el mensaje en
+// formato RFC 2822 y lo manda codificado en base64url, como pide la API.
+export async function enviarCorreo({ to, subject, body }) {
+  const mensaje = [
+    `To: ${to}`,
+    `Subject: ${subject}`,
+    'Content-Type: text/plain; charset="UTF-8"',
+    '',
+    body,
+  ].join('\r\n')
+  return gmailFetch('/gmail/v1/users/me/messages/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ raw: base64UrlEncode(mensaje) }),
+  })
 }
 
 export async function fetchNotificacionesPJUD(rucsVigentes) {

@@ -9,6 +9,7 @@ import Contabilidad from './pages/Contabilidad'
 import { diasHabilesDesde } from './pages/dashboard/diligencias'
 import { diasEntreFechasCaut } from './pages/dashboard/cautelares'
 import { hoyISO } from './pages/dashboard/utils'
+import SolicitudVisitaSantiagoI from './components/SolicitudVisitaSantiagoI'
 
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
@@ -223,7 +224,7 @@ function PanelActividad({ onClose, onVerCausa, soloEmail }) {
   )
 }
 
-function PanelAlertas({ onClose, esTitular, tareas, audienciasProximas, diligenciasSinRespuesta, visitasPendientes, onVerCausa, onAgregarTarea, onCompletarTarea }) {
+function PanelAlertas({ onClose, esTitular, tareas, audienciasProximas, diligenciasSinRespuesta, visitasPendientes, onVerCausa, onAgregarTarea, onCompletarTarea, session, registrarActividad }) {
   const [nuevaTarea, setNuevaTarea] = useState('')
   const [guardando, setGuardando] = useState(false)
 
@@ -317,6 +318,8 @@ function PanelAlertas({ onClose, esTitular, tareas, audienciasProximas, diligenc
               ))}
             </div>
           )}
+
+          {esTitular && <SolicitudVisitaSantiagoI session={session} registrarActividad={registrarActividad} />}
 
           {/* ✅ Se sacó "Advertencias del sistema" (plazo vencido/próximo) —
               pedido de Joaquín, esa misma información ya se ve en la lista de
@@ -650,6 +653,8 @@ export default function App() {
           onVerCausa={irACausaPorRuc}
           onAgregarTarea={agregarTarea}
           onCompletarTarea={completarTarea}
+          session={session}
+          registrarActividad={registrarActividad}
         />
       )}
 
