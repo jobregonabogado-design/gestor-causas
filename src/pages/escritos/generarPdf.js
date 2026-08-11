@@ -33,16 +33,30 @@ export function cargarJsPdf() {
 // también corrige el mismo problema que ya tenía Patrocinio y Poder, que
 // hoy usa el código corto tal cual.
 const CIUDAD_MAP = { STGO: 'SANTIAGO' }
-export function tribunalCompleto(codigo) {
-  if (!codigo) return '[TRIBUNAL]'
-  const m = codigo.trim().match(/^(\d+)?\s*(JG|TOP)\s+(.+)$/i)
-  if (!m) return codigo.trim()
+function extraerCiudad(codigo) {
+  const m = (codigo || '').trim().match(/^(\d+)?\s*(JG|TOP)\s+(.+)$/i)
+  if (!m) return null
   const [, numero, tipo, ciudadRaw] = m
   const ciudad = ciudadRaw.trim().toUpperCase().split(' ').map(w => CIUDAD_MAP[w] || w).join(' ')
-  const ordinal = numero ? ` (${numero}°)` : ''
-  return tipo.toUpperCase() === 'TOP'
-    ? `TRIBUNAL DE JUICIO ORAL EN LO PENAL DE ${ciudad}${ordinal}`
-    : `S.J. DE GARANTÍA DE ${ciudad}${ordinal}`
+  return { ciudad, numero, tipo: tipo.toUpperCase() }
+}
+export function tribunalCompleto(codigo) {
+  if (!codigo) return '[TRIBUNAL]'
+  const info = extraerCiudad(codigo)
+  if (!info) return codigo.trim()
+  const ordinal = info.numero ? ` (${info.numero}°)` : ''
+  return info.tipo === 'TOP'
+    ? `TRIBUNAL DE JUICIO ORAL EN LO PENAL DE ${info.ciudad}${ordinal}`
+    : `S.J. DE GARANTÍA DE ${info.ciudad}${ordinal}`
+}
+// ✅ NUEVO: para escritos dirigidos a la Corte de Apelaciones (ej. "Anuncio
+// para alegar") — usa la ciudad del tribunal de origen de la causa, que en
+// la gran mayoría de los casos coincide con la jurisdicción de la Corte
+// (Joaquín pidió explícitamente que acá vaya el nombre de la CORTE, no el
+// del tribunal de origen).
+export function corteCompleta(codigo) {
+  const info = extraerCiudad(codigo)
+  return `ILUSTRÍSIMA CORTE DE APELACIONES DE ${info ? info.ciudad : '[CIUDAD]'}`
 }
 
 const FUENTE = 'helvetica'

@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { generarPdfEscrito, tribunalCompleto } from './escritos/generarPdf'
+import { generarPdfEscrito, tribunalCompleto, corteCompleta } from './escritos/generarPdf'
 import { getMSToken, uploadFile } from '../lib/onedrive'
-import { sanitizarNombreArchivo, hoyISO } from './dashboard/utils'
+import { sanitizarNombreArchivo, hoyISO, fechaDDMM } from './dashboard/utils'
 
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
@@ -85,7 +85,7 @@ function armarSumaYCuerpo(capitulos) {
 // cual en el cuadro de edición. La suma y el destinatario se muestran y
 // editan aparte, ya con el estilo (negrita/centrado) real; el cuadro de
 // texto grande solo tiene la identificación + el cuerpo, sin marcas.
-function construirEscrito({ causa, imputado, abogado, capitulos, delegado }) {
+function construirEscrito({ causa, imputado, abogado, capitulos, delegado, apelacionCorte }) {
   const datosBase = construirDatos(causa, imputado, abogado)
   const datos = {
     ...datosBase,
@@ -94,6 +94,12 @@ function construirEscrito({ causa, imputado, abogado, capitulos, delegado }) {
     DELEGADO_CORREO: delegado?.correo || '[CORREO DEL ABOGADO DELEGADO]',
     DELEGADO_DOMICILIO: delegado?.domicilio || '',
     DELEGADO_DOMICILIO_FRASE: delegado?.domicilio ? `con domicilio en ${delegado.domicilio}` : 'de mi mismo domicilio',
+    // ✅ Rol/sala/fecha de la apelación ya registrada en la pestaña
+    // "Apelaciones a la Corte" de esta causa — para no volver a tipearlo en
+    // el escrito de Anuncio.
+    ROL_CORTE: apelacionCorte?.rol_corte || '[ROL DE CORTE — regístralo primero en "Apelaciones a la Corte"]',
+    SALA_CORTE: apelacionCorte?.sala_corte || '[SALA]',
+    FECHA_AUDIENCIA_CORTE: apelacionCorte?.fecha_audiencia_corte ? fechaDDMM(apelacionCorte.fecha_audiencia_corte) : '[FECHA]',
   }
   const capitulosResueltos = capitulos.map(p => ({
     suma: resolverPlaceholders(p.suma_defecto, datos),
@@ -102,9 +108,11 @@ function construirEscrito({ causa, imputado, abogado, capitulos, delegado }) {
   const { sumaLineas, cuerpoBlock } = armarSumaYCuerpo(capitulosResueltos)
 
   const primero = capitulos[0]
-  const destinatario = primero.destinatario_tipo === 'custom'
-    ? resolverPlaceholders(primero.destinatario_texto || '[DESTINATARIO]', datos)
-    : tribunalCompleto(causa?.tribunal)
+  const destinatario = primero.destinatario_tipo === 'corte'
+    ? corteCompleta(causa?.tribunal)
+    : primero.destinatario_tipo === 'custom'
+      ? resolverPlaceholders(primero.destinatario_texto || '[DESTINATARIO]', datos)
+      : tribunalCompleto(causa?.tribunal)
 
   const esSoloPatrocinio = capitulos.length === 1 && capitulos[0].categoria === 'patrocinio_poder'
   const identificacion = esSoloPatrocinio
@@ -205,6 +213,9 @@ export default function Escritos({ session, registrarActividad }) {
   const [plantillas, setPlantillas] = useState([])
   const [capitulosSel, setCapitulosSel] = useState([]) // orden = orden de selección
   const [escrito, setEscrito] = useState(null) // { sumaLineas, destinatario, cuerpo }
+  // ✅ Apelación a la Corte más reciente de la causa (rol/sala/fecha) — se
+  // usa para rellenar sola el escrito de "Anuncio para alegar en Corte".
+  const [apelacionCorte, setApelacionCorte] = useState(null)
   const [delegados, setDelegados] = useState([])
   const [delegadoSel, setDelegadoSel] = useState(null)
   const [delegadoNuevo, setDelegadoNuevo] = useState(false)
@@ -264,6 +275,8 @@ export default function Escritos({ session, registrarActividad }) {
     const { data } = await supabase.from('imputados').select('*').eq('causa_id', c.id).order('created_at', { ascending: true })
     setImputados(data || [])
     if ((data || []).length === 1) setImpSel(data[0])
+    const { data: apelaciones } = await supabase.from('apelaciones_corte').select('*').eq('causa_id', c.id).order('fecha_audiencia_corte', { ascending: false }).limit(1)
+    setApelacionCorte((apelaciones && apelaciones[0]) || null)
   }
 
   // ✅ Patrocinio y Poder no se puede combinar con otros escritos en el
@@ -289,7 +302,7 @@ export default function Escritos({ session, registrarActividad }) {
   const puedeGenerar = causaSel && (imputados.length <= 1 || impSel) && capitulosSel.length > 0 && delegadoListo
 
   const generarPreview = () => {
-    const nuevoEscrito = construirEscrito({ causa: causaSel, imputado: impSel, abogado, capitulos: capitulosSel, delegado: delegadoSel || delegadoNuevo || null })
+    const nuevoEscrito = construirEscrito({ causa: causaSel, imputado: impSel, abogado, capitulos: capitulosSel, delegado: delegadoSel || delegadoNuevo || null, apelacionCorte })
     setEscrito(nuevoEscrito)
     setResultado(null)
   }
