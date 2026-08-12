@@ -7,6 +7,10 @@
 // de texto de Escritos.jsx, así que tiene que seguir siendo legible ahí):
 //   "# texto"   → línea de suma/título: negrita, alineada a la izquierda.
 //   "## texto"  → línea de tribunal/destinatario: negrita, centrada.
+//   "% texto"   → línea de "pre-suma" (Rol de Ingreso, Materia, etc.):
+//                 alineada a la izquierda, SIN sangría ni justificar, peso
+//                 normal salvo lo marcado con "**" — para que el rótulo
+//                 (ej. "**ROL DE INGRESO:**") quede en negrita y el valor no.
 //   línea vacía → separación de párrafo (y sangra la primera línea del
 //                 párrafo que sigue).
 //   cualquier otra línea → párrafo normal, justificado.
@@ -198,6 +202,9 @@ export async function generarPdfEscrito(texto) {
       y += lineHeight
     } else if (linea.trim().startsWith('#')) {
       const palabras = tokenizarPalabras(linea.trim().replace(/^#\s*/, ''), true)
+      y = dibujarParrafo(doc, palabras, MARGEN, y, maxWidth, 0, false, altoPagina)
+    } else if (linea.trim().startsWith('%')) {
+      const palabras = tokenizarPalabras(linea.trim().replace(/^%\s*/, ''), false)
       y = dibujarParrafo(doc, palabras, MARGEN, y, maxWidth, 0, false, altoPagina)
     } else {
       const esPorTanto = /^POR TANTO/i.test(linea.trim())

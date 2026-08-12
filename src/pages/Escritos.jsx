@@ -115,24 +115,42 @@ function construirEscrito({ causa, imputado, abogado, capitulos, delegado, apela
       : tribunalCompleto(causa?.tribunal)
 
   const esSoloPatrocinio = capitulos.length === 1 && capitulos[0].categoria === 'patrocinio_poder'
+  // ✅ Los escritos dirigidos a la Corte de Apelaciones (ej. Anuncio para
+  // alegar) no llevan RUC/RIT del tribunal de origen — se identifican por
+  // el Rol de Ingreso Corte, y llevan "por la parte recurrente" antes de
+  // "en representación de", como en los modelos reales de Joaquín.
+  const esCorte = primero.destinatario_tipo === 'corte'
   const identificacion = esSoloPatrocinio
     ? `${datos.IMPUTADO_NOMBRE}, Cédula Nacional de Identidad Nº ${datos.IMPUTADO_RUT}, ${datos.SITUACION_LIBERTAD}, en causa RUC. ${datos.RUC} RIT ${datos.RIT} a SS., respetuosamente digo:`
-    : `${datos.ABOGADO_NOMBRE}, abogado, en representación de ${datos.IMPUTADO_NOMBRE}, en causa RUC. ${datos.RUC} y RIT. ${datos.RIT}${datos.DELITO_TEXTO ? `, por el delito de ${datos.DELITO_TEXTO}` : ''}, a S.S. respetuosamente digo:`
+    : esCorte
+      ? `${datos.ABOGADO_NOMBRE}, abogado, por la parte recurrente, en representación de ${datos.IMPUTADO_NOMBRE} autos Rol de Ingreso Corte ${datos.ROL_CORTE} a SS., Iltma., respetuosamente digo:`
+      : `${datos.ABOGADO_NOMBRE}, abogado, en representación de ${datos.IMPUTADO_NOMBRE}, en causa RUC. ${datos.RUC} y RIT. ${datos.RIT}${datos.DELITO_TEXTO ? `, por el delito de ${datos.DELITO_TEXTO}` : ''}, a S.S. respetuosamente digo:`
 
-  return { sumaLineas, destinatario, cuerpo: `${identificacion}\n\n${cuerpoBlock}` }
+  // ✅ NUEVO: "pre-suma" — bloque de datos (Rol de Ingreso, Secretaría,
+  // Materia, Parte, Tabla, Vista de la causa) que va ANTES del título en
+  // los escritos a la Corte, tal como en los modelos reales de Joaquín.
+  // Solo la primera plantilla puede traerlo (pre_suma_defecto en la BD);
+  // el resto de los escritos no lo usan y queda como arreglo vacío.
+  const preSumaLineas = primero.pre_suma_defecto
+    ? resolverPlaceholders(primero.pre_suma_defecto, datos).split('\n').filter(Boolean)
+    : []
+
+  return { preSumaLineas, sumaLineas, destinatario, cuerpo: `${identificacion}\n\n${cuerpoBlock}` }
 }
 
 // Junta todo de nuevo en el formato con "#"/"##" que necesita el generador
 // de PDF (ver generarPdf.js) — solo en este punto, justo antes de generar
 // el archivo, nunca se le muestra así a Joaquín.
-function textoParaPdf({ sumaLineas, destinatario, cuerpo }) {
-  return `${sumaLineas.map(l => `# ${l}`).join('\n')}\n\n## ${destinatario}\n\n${cuerpo}`
+function textoParaPdf({ preSumaLineas, sumaLineas, destinatario, cuerpo }) {
+  const preSuma = preSumaLineas?.length ? `${preSumaLineas.map(l => `% ${l}`).join('\n')}\n\n` : ''
+  return `${preSuma}${sumaLineas.map(l => `# ${l}`).join('\n')}\n\n## ${destinatario}\n\n${cuerpo}`
 }
 
 // Versión limpia para copiar al portapapeles o guardar en el historial —
 // sin las marcas de negrita/centrado, que no sirven fuera de esta app.
-function textoLimpio({ sumaLineas, destinatario, cuerpo }) {
-  return `${sumaLineas.join('\n')}\n\n${destinatario}\n\n${cuerpo}`.replace(/\*\*(.+?)\*\*/g, '$1')
+function textoLimpio({ preSumaLineas, sumaLineas, destinatario, cuerpo }) {
+  const preSuma = preSumaLineas?.length ? `${preSumaLineas.join('\n')}\n\n` : ''
+  return `${preSuma}${sumaLineas.join('\n')}\n\n${destinatario}\n\n${cuerpo}`.replace(/\*\*(.+?)\*\*/g, '$1')
 }
 
 function PerfilAbogado({ abogado, setAbogado, onGuardar, guardando }) {
@@ -275,7 +293,10 @@ export default function Escritos({ session, registrarActividad }) {
     const { data } = await supabase.from('imputados').select('*').eq('causa_id', c.id).order('created_at', { ascending: true })
     setImputados(data || [])
     if ((data || []).length === 1) setImpSel(data[0])
-    const { data: apelaciones } = await supabase.from('apelaciones_corte').select('*').eq('causa_id', c.id).order('fecha_audiencia_corte', { ascending: false }).limit(1)
+    // ✅ FIX: puede haber más de una apelación en la misma causa — el
+    // Anuncio siempre es respecto a la ÚLTIMA que se registró (por fecha de
+    // creación, no por fecha de audiencia, que a veces todavía no está).
+    const { data: apelaciones } = await supabase.from('apelaciones_corte').select('*').eq('causa_id', c.id).order('created_at', { ascending: false }).limit(1)
     setApelacionCorte((apelaciones && apelaciones[0]) || null)
   }
 
@@ -466,6 +487,19 @@ export default function Escritos({ session, registrarActividad }) {
               <div style={{ fontSize: 13, fontWeight: 700, color: '#1E293B', ...f }}>Revisa y edita antes de descargar</div>
               <span style={{ fontSize: 11, color: '#94a3b8', ...f }}>Así queda en el PDF: título a la izquierda, tribunal centrado, cuerpo justificado</span>
             </div>
+
+            {/* ✅ NUEVO: "pre-suma" — Rol de Ingreso, Secretaría, Materia,
+                Parte, Tabla, Vista de la causa — solo aparece en escritos a
+                la Corte que la traen (ej. Anuncio para alegar), va ANTES
+                del título, tal como en los modelos reales. */}
+            {escrito.preSumaLineas?.length > 0 && (
+              <div style={{ border: '1.5px solid #E2E8F0', borderRadius: 10, padding: '14px 20px', marginBottom: 10 }}>
+                {escrito.preSumaLineas.map((linea, i) => (
+                  <input key={i} value={linea} onChange={e => setEscrito(prev => ({ ...prev, preSumaLineas: prev.preSumaLineas.map((l, j) => j === i ? e.target.value : l) }))}
+                    style={{ width: '100%', border: 'none', outline: 'none', fontSize: 12, color: '#475569', marginBottom: 2, padding: '2px 0', fontFamily: "'Times New Roman',serif" }} />
+                ))}
+              </div>
+            )}
 
             {/* ✅ Título(s) y tribunal se muestran y editan aparte, ya con el
                 estilo con el que van a salir en el PDF (negrita, izquierda /

@@ -849,42 +849,50 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                       + Agregar apelación
                     </button>
                   </div>
+                  {/* ✅ FIX: antes cada apelación ocupaba una tarjeta grande (3
+                      campos apilados, con su propio label arriba de cada
+                      uno) — pero Rol/Sala/Fecha son datos que casi nunca
+                      cambian una vez registrados (es solo un registro de
+                      contexto), así que Joaquín pidió que quepa en una sola
+                      línea compacta en vez de ocupar tanto espacio. De paso
+                      se corrige un bug: los <Field> de Rol/Sala usaban el
+                      mismo "label" como llave de edición para TODAS las
+                      apelaciones de la causa (no el fieldKey único), así que
+                      con 2+ apelaciones, editar el Rol de una abría también
+                      el campo de la otra. Acá cada llave sí es única. */}
                   {apelaciones.length > 0 && (
-                    <div style={{display:'flex',flexDirection:'column',gap:8,marginTop:8}}>
-                      {apelaciones.map((apel,i)=>(
-                        <div key={apel.id} style={{background:'#faf5ff',border:'1.5px solid #ddd6fe',borderRadius:10,padding:14}}>
-                          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
-                            <div style={{fontSize:11,fontWeight:700,color:'#5b21b6',...f}}>⚖ Apelación {i+1}</div>
+                    <div style={{display:'flex',flexDirection:'column',gap:6,marginTop:8}}>
+                      {apelaciones.map((apel,i)=>{
+                        const chip = (fieldKey, valor, placeholder, tipo='text') => (
+                          editField===fieldKey ? (
+                            <span style={{display:'inline-flex',gap:4,alignItems:'center'}}>
+                              <input type={tipo} autoFocus value={editValue} onChange={e=>setEditValue(e.target.value)}
+                                onKeyDown={e=>{if(e.key==='Enter')e.target.blur();if(e.key==='Escape')setEditField(null)}}
+                                onBlur={async()=>{const campo=fieldKey.split('_').slice(0,-1).join('_');await supabase.from('apelaciones_corte').update({[campo]:editValue||null}).eq('id',apel.id);setApelaciones(prev=>prev.map(x=>x.id===apel.id?{...x,[campo]:editValue||null}:x));setEditField(null)}}
+                                style={{width:tipo==='date'?130:110,padding:'4px 8px',border:'1.5px solid #c4b5fd',borderRadius:7,fontSize:12,color:'#1E293B',background:'#fff',...f}}/>
+                            </span>
+                          ) : (
+                            <span onClick={()=>{setEditField(fieldKey);setEditValue(valor||'')}}
+                              style={{cursor:'pointer',color:valor?'#1E293B':'#a78bfa',fontWeight:valor?600:500,...f}}
+                              title="Clic para editar">{valor?(tipo==='date'?fechaDDMM(valor):valor):placeholder}</span>
+                          )
+                        )
+                        return (
+                          <div key={apel.id} style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',background:'#faf5ff',border:'1.5px solid #ddd6fe',borderRadius:10,padding:'8px 12px',fontSize:12,...f}}>
+                            <span style={{fontWeight:700,color:'#5b21b6',flexShrink:0}}>⚖ {i+1}</span>
+                            <span style={{color:'#a78bfa'}}>Rol</span>{chip(`rol_corte_${apel.id}`,apel.rol_corte,'agregar...')}
+                            <span style={{color:'#ddd6fe'}}>·</span>
+                            <span style={{color:'#a78bfa'}}>Sala</span>{chip(`sala_corte_${apel.id}`,apel.sala_corte,'agregar...')}
+                            <span style={{color:'#ddd6fe'}}>·</span>
+                            <span style={{color:'#a78bfa'}}>Audiencia</span>{chip(`fecha_audiencia_corte_${apel.id}`,apel.fecha_audiencia_corte,'agregar...','date')}
                             <button onClick={async()=>{
                               if(!window.confirm('¿Eliminar esta apelación?'))return
                               await supabase.from('apelaciones_corte').delete().eq('id',apel.id)
                               setApelaciones(prev=>prev.filter(x=>x.id!==apel.id))
-                            }} style={{background:'transparent',border:'none',cursor:'pointer',fontSize:12,color:'#dc2626',...f}}>✕ Eliminar</button>
+                            }} style={{marginLeft:'auto',background:'transparent',border:'none',cursor:'pointer',fontSize:12,color:'#dc2626',flexShrink:0,...f}}>✕</button>
                           </div>
-                          <div className="grid2-mobile" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-                            <Field label="Rol Corte" value={apel.rol_corte} editable fieldKey={`rol_corte_${apel.id}`} editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={async()=>{await supabase.from('apelaciones_corte').update({rol_corte:editValue}).eq('id',apel.id);setApelaciones(prev=>prev.map(x=>x.id===apel.id?{...x,rol_corte:editValue}:x));setEditField(null)}}/>
-                            <Field label="Sala" value={apel.sala_corte} editable fieldKey={`sala_corte_${apel.id}`} editField={editField} setEditField={setEditField} editValue={editValue} setEditValue={setEditValue} onSave={async()=>{await supabase.from('apelaciones_corte').update({sala_corte:editValue}).eq('id',apel.id);setApelaciones(prev=>prev.map(x=>x.id===apel.id?{...x,sala_corte:editValue}:x));setEditField(null)}}/>
-                            <div style={{gridColumn:'1/-1'}}>
-                              <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Fecha de audiencia en la Corte</div>
-                              {editField===`fecha_audiencia_corte_${apel.id}`?(
-                                <div style={{display:'flex',gap:6}}>
-                                  <input type="date" style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}}
-                                    value={editValue} onChange={e=>setEditValue(e.target.value)}
-                                    onBlur={async()=>{if(editValue){await supabase.from('apelaciones_corte').update({fecha_audiencia_corte:editValue}).eq('id',apel.id);setApelaciones(prev=>prev.map(x=>x.id===apel.id?{...x,fecha_audiencia_corte:editValue}:x))}}} autoFocus/>
-                                  <button className="btn-primary" style={{padding:'8px 14px',fontSize:12}} onClick={async()=>{await supabase.from('apelaciones_corte').update({fecha_audiencia_corte:editValue}).eq('id',apel.id);setApelaciones(prev=>prev.map(x=>x.id===apel.id?{...x,fecha_audiencia_corte:editValue}:x));setEditField(null)}}>✓</button>
-                                  <button className="btn-secondary" style={{padding:'8px 12px',fontSize:12}} onClick={()=>setEditField(null)}>✗</button>
-                                </div>
-                              ):(
-                                <div className="fld" onClick={()=>{setEditField(`fecha_audiencia_corte_${apel.id}`);setEditValue(apel.fecha_audiencia_corte||'')}}
-                                  style={{padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:apel.fecha_audiencia_corte?'#1E293B':'#94a3b8',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
-                                  <span>{fechaDDMM(apel.fecha_audiencia_corte) || 'Clic para agregar...'}</span>
-                                  <span style={{fontSize:11,color:'#94a3b8'}}>✏</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   )}
                 </div>
