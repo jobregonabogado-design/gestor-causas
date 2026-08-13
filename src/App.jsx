@@ -224,6 +224,29 @@ function PanelActividad({ onClose, onVerCausa, soloEmail }) {
   )
 }
 
+// ✅ FIX: las tarjetas del Centro de Alertas (audiencias, Fiscalía sin
+// responder, visitas) ocupaban mucho espacio — cada una repetía casi el
+// mismo bloque de código, con título/subtítulo que se podían ir a una
+// segunda línea con nombres largos, haciendo la tarjeta más alta todavía.
+// Se junta en un solo componente compacto: una línea por tarjeta (con
+// "..." si no cabe el texto), badge y botón más chicos, y sin duplicar el
+// mismo layout 3 veces — pedido de Joaquín, "muy grande, mejor
+// redistribuido".
+function AlertaCard({ badge, color, bg, border, titulo, subtitulo, ruc, onVerCausa }) {
+  return (
+    <div style={{ display:'flex', gap:8, alignItems:'center', background:bg, border:`1px solid ${border}`, borderRadius:9, padding:'7px 10px', marginBottom:5 }}>
+      <span style={{ fontSize:9, fontWeight:800, color, flexShrink:0, whiteSpace:'nowrap', ...f }}>{badge}</span>
+      <div style={{ flex:1, minWidth:0 }}>
+        <div style={{ fontSize:12, fontWeight:600, color:'#1E293B', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', ...f }}>{titulo}</div>
+        <div style={{ fontSize:10, color:'#94a3b8', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', ...f }}>{subtitulo}</div>
+      </div>
+      {ruc && onVerCausa && (
+        <button onClick={()=>onVerCausa(ruc)} style={{ background:'transparent', border:'none', padding:'2px 4px', fontSize:11, color, cursor:'pointer', fontWeight:700, flexShrink:0, ...f }}>Ver</button>
+      )}
+    </div>
+  )
+}
+
 function PanelAlertas({ onClose, esTitular, tareas, audienciasProximas, diligenciasSinRespuesta, visitasPendientes, onVerCausa, onAgregarTarea, onCompletarTarea, session, registrarActividad }) {
   const [nuevaTarea, setNuevaTarea] = useState('')
   const [guardando, setGuardando] = useState(false)
@@ -244,33 +267,29 @@ function PanelAlertas({ onClose, esTitular, tareas, audienciasProximas, diligenc
     <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', justifyContent:'flex-end' }}>
       <div style={{ position:'absolute', inset:0, background:'rgba(15,23,42,0.35)', backdropFilter:'blur(2px)' }} onClick={onClose}/>
       <div style={{ position:'relative', width:480, background:'#fff', height:'100vh', overflowY:'auto', boxShadow:'-16px 0 48px rgba(15,23,42,0.12)', animation:'slideIn 0.3s ease', fontFamily:"'Manrope','Inter',sans-serif" }}>
-        <div style={{ background:'#dc2626', padding:'24px 24px 20px', position:'sticky', top:0, zIndex:10 }}>
+        <div style={{ background:'#dc2626', padding:'16px 20px 14px', position:'sticky', top:0, zIndex:10 }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
             <div>
-              <div style={{ fontSize:18, fontWeight:800, color:'#fff', letterSpacing:'-0.5px' }}>🔔 Centro de Alertas</div>
-              <div style={{ fontSize:11, color:'#fecaca', marginTop:2, textTransform:'uppercase', letterSpacing:1 }}>Lo que necesitas revisar</div>
+              <div style={{ fontSize:16, fontWeight:800, color:'#fff', letterSpacing:'-0.5px' }}>🔔 Centro de Alertas</div>
+              <div style={{ fontSize:10, color:'#fecaca', marginTop:1, textTransform:'uppercase', letterSpacing:1 }}>Lo que necesitas revisar</div>
             </div>
             <button onClick={onClose} style={{ background:'rgba(255,255,255,0.15)', border:'none', borderRadius:10, padding:'6px 12px', color:'#fff', cursor:'pointer', fontSize:13 }}>✕ Cerrar</button>
           </div>
         </div>
-        <div style={{ padding:20 }}>
+        <div style={{ padding:'16px 20px' }}>
           {/* Audiencias próximas (hoy / mañana) */}
           {audienciasProximas.length > 0 && (
-            <div style={{ marginBottom:24 }}>
-              <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, fontWeight:700, marginBottom:10, ...f }}>Audiencias próximas</div>
+            <div style={{ marginBottom:16 }}>
+              <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, fontWeight:700, marginBottom:6, ...f }}>Audiencias próximas</div>
               {audienciasProximas.map(a => {
                 const esHoy = a.fecha === hoyStr
                 return (
-                  <div key={a.id} style={{ display:'flex', gap:10, alignItems:'center', background: esHoy?'#eff6ff':'#F8F9FC', border:`1px solid ${esHoy?'#bfdbfe':'#e2e8f0'}`, borderRadius:10, padding:'12px 14px', marginBottom:8 }}>
-                    <span style={{ fontSize:10, fontWeight:800, color: esHoy?'#1e40af':'#64748b', background: esHoy?'#dbeafe':'#F1F5F9', borderRadius:8, padding:'4px 8px', flexShrink:0, whiteSpace:'nowrap', ...f }}>{esHoy?'HOY':'MAÑANA'}{a.hora?' · '+a.hora:''}</span>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ fontSize:13, fontWeight:600, color:'#1E293B', ...f }}>{a.tipo || 'Audiencia'}{a.imputado?' · '+a.imputado:''}</div>
-                      <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>{a.tribunal || '—'}{a.sala?' · Sala '+a.sala:''}</div>
-                    </div>
-                    {a.ruc && onVerCausa && (
-                      <button onClick={()=>onVerCausa(a.ruc)} style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:7, padding:'5px 10px', fontSize:11, color:'#1e40af', cursor:'pointer', fontWeight:600, flexShrink:0, fontFamily:"'Manrope','Inter',sans-serif" }}>→ Ver causa</button>
-                    )}
-                  </div>
+                  <AlertaCard key={a.id}
+                    badge={`${esHoy?'HOY':'MAÑANA'}${a.hora?' · '+a.hora:''}`}
+                    color={esHoy?'#1e40af':'#64748b'} bg={esHoy?'#eff6ff':'#F8F9FC'} border={esHoy?'#bfdbfe':'#e2e8f0'}
+                    titulo={`${a.tipo || 'Audiencia'}${a.imputado?' · '+a.imputado:''}`}
+                    subtitulo={`${a.tribunal || '—'}${a.sala?' · Sala '+a.sala:''}`}
+                    ruc={a.ruc} onVerCausa={onVerCausa}/>
                 )
               })}
             </div>
@@ -280,19 +299,14 @@ function PanelAlertas({ onClose, esTitular, tareas, audienciasProximas, diligenc
               respuesta hace más de 5 días hábiles — antes solo se veía
               entrando a la pestaña Diligencias de cada causa puntual. */}
           {diligenciasSinRespuesta && diligenciasSinRespuesta.length > 0 && (
-            <div style={{ marginBottom:24 }}>
-              <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, fontWeight:700, marginBottom:10, ...f }}>Fiscalía sin responder ({diligenciasSinRespuesta.length})</div>
+            <div style={{ marginBottom:16 }}>
+              <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, fontWeight:700, marginBottom:6, ...f }}>Fiscalía sin responder ({diligenciasSinRespuesta.length})</div>
               {diligenciasSinRespuesta.map(d => (
-                <div key={d.id} style={{ display:'flex', gap:10, alignItems:'center', background:'#fef2f2', border:'1px solid #fecaca', borderRadius:10, padding:'12px 14px', marginBottom:8 }}>
-                  <span style={{ fontSize:10, fontWeight:800, color:'#991b1b', background:'#fee2e2', borderRadius:8, padding:'4px 8px', flexShrink:0, whiteSpace:'nowrap', ...f }}>{d.diasHabiles}d hábiles</span>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontSize:13, fontWeight:600, color:'#1E293B', ...f }}>{d.tipo}{d.imputado ? ' · ' + d.imputado.split('|')[0] : ''}</div>
-                    <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>RUC {d.ruc || '—'} · Folio {d.folio || '—'}</div>
-                  </div>
-                  {d.ruc && onVerCausa && (
-                    <button onClick={()=>onVerCausa(d.ruc)} style={{ background:'#fff', border:'1px solid #fecaca', borderRadius:7, padding:'5px 10px', fontSize:11, color:'#991b1b', cursor:'pointer', fontWeight:600, flexShrink:0, fontFamily:"'Manrope','Inter',sans-serif" }}>→ Ver causa</button>
-                  )}
-                </div>
+                <AlertaCard key={d.id}
+                  badge={`${d.diasHabiles}d hábiles`} color="#991b1b" bg="#fef2f2" border="#fecaca"
+                  titulo={`${d.tipo}${d.imputado ? ' · ' + d.imputado.split('|')[0] : ''}`}
+                  subtitulo={`RUC ${d.ruc || '—'} · Folio ${d.folio || '—'}`}
+                  ruc={d.ruc} onVerCausa={onVerCausa}/>
               ))}
             </div>
           )}
@@ -302,19 +316,14 @@ function PanelAlertas({ onClose, esTitular, tareas, audienciasProximas, diligenc
               ninguna visita nunca — pedido de Joaquín para saber de un
               vistazo a quién le urge más ir a ver. */}
           {visitasPendientes && visitasPendientes.length > 0 && (
-            <div style={{ marginBottom:24 }}>
-              <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, fontWeight:700, marginBottom:10, ...f }}>Visitas a centros penales ({visitasPendientes.length})</div>
+            <div style={{ marginBottom:16 }}>
+              <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, fontWeight:700, marginBottom:6, ...f }}>Visitas a centros penales ({visitasPendientes.length})</div>
               {visitasPendientes.map(v => (
-                <div key={v.id} style={{ display:'flex', gap:10, alignItems:'center', background:'#fef2f2', border:'1px solid #fecaca', borderRadius:10, padding:'12px 14px', marginBottom:8 }}>
-                  <span style={{ fontSize:10, fontWeight:800, color:'#991b1b', background:'#fee2e2', borderRadius:8, padding:'4px 8px', flexShrink:0, whiteSpace:'nowrap', ...f }}>{v.diasSinVisita===null?'Sin visitas':`${v.diasSinVisita}d sin visita`}</span>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontSize:13, fontWeight:600, color:'#1E293B', ...f }}>{v.nombre||'—'}</div>
-                    <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>RUC {v.ruc || '—'}{v.lugar_detencion?' · '+v.lugar_detencion:''}</div>
-                  </div>
-                  {v.ruc && onVerCausa && (
-                    <button onClick={()=>onVerCausa(v.ruc)} style={{ background:'#fff', border:'1px solid #fecaca', borderRadius:7, padding:'5px 10px', fontSize:11, color:'#991b1b', cursor:'pointer', fontWeight:600, flexShrink:0, fontFamily:"'Manrope','Inter',sans-serif" }}>→ Ver causa</button>
-                  )}
-                </div>
+                <AlertaCard key={v.id}
+                  badge={v.diasSinVisita===null?'Sin visitas':`${v.diasSinVisita}d sin visita`} color="#991b1b" bg="#fef2f2" border="#fecaca"
+                  titulo={v.nombre||'—'}
+                  subtitulo={`RUC ${v.ruc || '—'}${v.lugar_detencion?' · '+v.lugar_detencion:''}`}
+                  ruc={v.ruc} onVerCausa={onVerCausa}/>
               ))}
             </div>
           )}
@@ -330,42 +339,42 @@ function PanelAlertas({ onClose, esTitular, tareas, audienciasProximas, diligenc
               su lista personal de pendientes que no alcanza a hacer al
               tiro. Si más adelante vuelve a haber equipo, sigue sirviendo
               igual — solo cambió el texto, no la función. */}
-          <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, fontWeight:700, marginBottom:10, ...f }}>Pendientes ({pendientes.length})</div>
+          <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, fontWeight:700, marginBottom:6, ...f }}>Pendientes ({pendientes.length})</div>
 
           {esTitular && (
-            <div style={{ display:'flex', gap:8, marginBottom:16 }}>
+            <div style={{ display:'flex', gap:8, marginBottom:10 }}>
               <input
                 value={nuevaTarea}
                 onChange={e=>setNuevaTarea(e.target.value)}
                 placeholder="Anotar algo pendiente..."
                 onKeyDown={e=>{ if(e.key==='Enter') handleAgregar() }}
-                style={{ flex:1, padding:'9px 12px', border:'1.5px solid #E2E8F0', borderRadius:8, fontSize:13, fontFamily:"'Manrope','Inter',sans-serif", color:'#1E293B' }}/>
-              <button onClick={handleAgregar} disabled={guardando||!nuevaTarea.trim()} style={{ background:'#dc2626', color:'#fff', border:'none', borderRadius:8, padding:'9px 16px', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:"'Manrope','Inter',sans-serif", flexShrink:0 }}>{guardando?'...':'+ Agregar'}</button>
+                style={{ flex:1, padding:'7px 10px', border:'1.5px solid #E2E8F0', borderRadius:8, fontSize:12, fontFamily:"'Manrope','Inter',sans-serif", color:'#1E293B' }}/>
+              <button onClick={handleAgregar} disabled={guardando||!nuevaTarea.trim()} style={{ background:'#dc2626', color:'#fff', border:'none', borderRadius:8, padding:'7px 14px', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:"'Manrope','Inter',sans-serif", flexShrink:0 }}>{guardando?'...':'+ Agregar'}</button>
             </div>
           )}
 
           {pendientes.length === 0 ? (
-            <div style={{ fontSize:12, color:'#cbd5e1', textAlign:'center', padding:'16px 0', ...f }}>Sin tareas pendientes.</div>
+            <div style={{ fontSize:12, color:'#cbd5e1', textAlign:'center', padding:'12px 0', ...f }}>Sin tareas pendientes.</div>
           ) : pendientes.map(t => (
-            <div key={t.id} style={{ display:'flex', gap:10, alignItems:'flex-start', background:'#fff7ed', border:'1px solid #fed7aa', borderRadius:10, padding:'12px 14px', marginBottom:8 }}>
+            <div key={t.id} style={{ display:'flex', gap:8, alignItems:'flex-start', background:'#fff7ed', border:'1px solid #fed7aa', borderRadius:9, padding:'8px 10px', marginBottom:5 }}>
               <button onClick={()=>onCompletarTarea(t.id)} title="Marcar como realizada"
-                style={{ width:20, height:20, borderRadius:6, border:'1.5px solid #d97706', background:'#fff', cursor:'pointer', flexShrink:0, marginTop:1, padding:0 }}/>
-              <div style={{ flex:1 }}>
-                <div style={{ fontSize:13, fontWeight:600, color:'#1E293B', ...f }}>{t.texto}</div>
-                <div style={{ fontSize:11, color:'#94a3b8', marginTop:3, ...f }}>Anotado por {t.creado_por} · {new Date(t.created_at).toLocaleString('es-CL')}</div>
+                style={{ width:16, height:16, borderRadius:5, border:'1.5px solid #d97706', background:'#fff', cursor:'pointer', flexShrink:0, marginTop:1, padding:0 }}/>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontSize:12, fontWeight:600, color:'#1E293B', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', ...f }}>{t.texto}</div>
+                <div style={{ fontSize:10, color:'#94a3b8', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', ...f }}>Anotado por {t.creado_por} · {new Date(t.created_at).toLocaleString('es-CL')}</div>
               </div>
             </div>
           ))}
 
           {completadas.length > 0 && (
-            <div style={{ marginTop:24 }}>
-              <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, fontWeight:700, marginBottom:10, ...f }}>Completadas ({completadas.length})</div>
+            <div style={{ marginTop:16 }}>
+              <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, fontWeight:700, marginBottom:6, ...f }}>Completadas ({completadas.length})</div>
               {completadas.map(t => (
-                <div key={t.id} style={{ display:'flex', gap:10, alignItems:'flex-start', background:'#F8F9FC', border:'1px solid #E2E8F0', borderRadius:10, padding:'10px 14px', marginBottom:6 }}>
-                  <span style={{ fontSize:14, color:'#059669', marginTop:1, flexShrink:0 }}>✓</span>
-                  <div style={{ flex:1 }}>
-                    <div style={{ fontSize:13, color:'#94a3b8', textDecoration:'line-through', ...f }}>{t.texto}</div>
-                    <div style={{ fontSize:11, color:'#cbd5e1', marginTop:3, ...f }}>Realizada por {t.completada_por || '—'} · {t.completada_en ? new Date(t.completada_en).toLocaleString('es-CL') : ''}</div>
+                <div key={t.id} style={{ display:'flex', gap:8, alignItems:'flex-start', background:'#F8F9FC', border:'1px solid #E2E8F0', borderRadius:9, padding:'7px 10px', marginBottom:4 }}>
+                  <span style={{ fontSize:12, color:'#059669', marginTop:1, flexShrink:0 }}>✓</span>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:12, color:'#94a3b8', textDecoration:'line-through', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', ...f }}>{t.texto}</div>
+                    <div style={{ fontSize:10, color:'#cbd5e1', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', ...f }}>Realizada por {t.completada_por || '—'} · {t.completada_en ? new Date(t.completada_en).toLocaleString('es-CL') : ''}</div>
                   </div>
                 </div>
               ))}
