@@ -26,9 +26,25 @@ const f = { fontFamily:"'Manrope','Inter',sans-serif" }
 // escritos combinados; con 2 va simplemente "OTROSÍ" sin numerar.
 const ORDINALES = ['PRIMER','SEGUNDO','TERCER','CUARTO','QUINTO','SEXTO','SÉPTIMO','OCTAVO','NOVENO','DÉCIMO']
 
-function construirDatos(causa, imputado, abogado) {
-  const estaDetenido = imputado?.esta_detenido
-  const centroPenal = imputado?.lugar_detencion || causa?.centro_penal
+// Junta varios nombres en una lista legal ("A y B" / "A, B y C") — se usa
+// cuando el escrito es respecto de más de un imputado a la vez.
+function listaNombres(nombres) {
+  if (nombres.length <= 1) return nombres[0] || ''
+  if (nombres.length === 2) return `${nombres[0]} y ${nombres[1]}`
+  return `${nombres.slice(0, -1).join(', ')} y ${nombres[nombres.length - 1]}`
+}
+
+// ✅ Ahora recibe un ARREGLO de imputados (antes uno solo) — Joaquín pidió
+// poder elegir uno, varios, o todos, ya que a veces el escrito es respecto
+// de más de una persona a la vez (ej. una Delegación de Poder para dos
+// imputados). El RUT/domicilio/situación de libertad siguen tomando al
+// PRIMER imputado elegido, porque esos datos no tienen cómo combinarse en
+// una sola frase con sentido si son dos personas distintas.
+function construirDatos(causa, imputados, abogado) {
+  const lista = imputados && imputados.length ? imputados : [null]
+  const primero = lista[0]
+  const estaDetenido = primero?.esta_detenido
+  const centroPenal = primero?.lugar_detencion || causa?.centro_penal
   const delitos = (causa?.delito || '').split('|').map(d => d.trim()).filter(Boolean)
   return {
     TRIBUNAL: causa?.tribunal || '[TRIBUNAL]',
@@ -38,13 +54,13 @@ function construirDatos(causa, imputado, abogado) {
     // ✅ Si hay más de un delito, se nombra solo el primero + "y otros" — así
     // lo pidió Joaquín, en vez de listarlos todos en la identificación.
     DELITO_TEXTO: delitos.length > 1 ? `${delitos[0]} y otros` : (delitos[0] || ''),
-    IMPUTADO_NOMBRE: imputado?.nombre || causa?.imputado?.split('|')[0] || '[NOMBRE IMPUTADO]',
-    IMPUTADO_RUT: imputado?.rut || '[RUT IMPUTADO]',
-    IMPUTADO_DOMICILIO: imputado?.domicilio || '[DOMICILIO IMPUTADO]',
-    IMPUTADO_NACIONALIDAD: imputado?.nacionalidad || 'CHILENA',
+    IMPUTADO_NOMBRE: listaNombres(lista.map(i => i?.nombre).filter(Boolean)) || causa?.imputado?.split('|')[0] || '[NOMBRE IMPUTADO]',
+    IMPUTADO_RUT: primero?.rut || '[RUT IMPUTADO]',
+    IMPUTADO_DOMICILIO: primero?.domicilio || '[DOMICILIO IMPUTADO]',
+    IMPUTADO_NACIONALIDAD: primero?.nacionalidad || 'CHILENA',
     SITUACION_LIBERTAD: estaDetenido
       ? `actualmente privado de libertad en ${centroPenal || '[CENTRO PENAL]'}`
-      : `domiciliado(a) en ${imputado?.domicilio || '[DOMICILIO IMPUTADO]'}`,
+      : `domiciliado(a) en ${primero?.domicilio || '[DOMICILIO IMPUTADO]'}`,
     ABOGADO_NOMBRE: abogado?.nombre || '[NOMBRE ABOGADO]',
     ABOGADO_RUN: abogado?.run || '[RUN ABOGADO]',
     ABOGADO_DOMICILIO: abogado?.domicilio || '[DOMICILIO ABOGADO]',
@@ -85,8 +101,8 @@ function armarSumaYCuerpo(capitulos) {
 // cual en el cuadro de edición. La suma y el destinatario se muestran y
 // editan aparte, ya con el estilo (negrita/centrado) real; el cuadro de
 // texto grande solo tiene la identificación + el cuerpo, sin marcas.
-function construirEscrito({ causa, imputado, abogado, capitulos, delegado, apelacionCorte }) {
-  const datosBase = construirDatos(causa, imputado, abogado)
+function construirEscrito({ causa, imputados, abogado, capitulos, delegado, apelacionCorte }) {
+  const datosBase = construirDatos(causa, imputados, abogado)
   const datos = {
     ...datosBase,
     DELEGADO_NOMBRE: delegado?.nombre || '[NOMBRE DEL ABOGADO DELEGADO]',
@@ -131,8 +147,15 @@ function construirEscrito({ causa, imputado, abogado, capitulos, delegado, apela
   // los escritos a la Corte, tal como en los modelos reales de Joaquín.
   // Solo la primera plantilla puede traerlo (pre_suma_defecto en la BD);
   // el resto de los escritos no lo usan y queda como arreglo vacío.
+  // ✅ FIX: se guarda como {rotulo, valor} en vez del texto crudo con
+  // "**rótulo:**" — Joaquín veía los asteriscos literales en el cuadro de
+  // edición. Acá se separan una sola vez; el rótulo queda fijo (en negrita,
+  // no se edita) y solo el valor es editable, sin marcas de por medio.
   const preSumaLineas = primero.pre_suma_defecto
-    ? resolverPlaceholders(primero.pre_suma_defecto, datos).split('\n').filter(Boolean)
+    ? resolverPlaceholders(primero.pre_suma_defecto, datos).split('\n').filter(Boolean).map(linea => {
+        const m = linea.match(/^\*\*(.+?):\*\*\s*(.*)$/)
+        return m ? { rotulo: m[1], valor: m[2] } : { rotulo: '', valor: linea }
+      })
     : []
 
   return { preSumaLineas, sumaLineas, destinatario, cuerpo: `${identificacion}\n\n${cuerpoBlock}` }
@@ -141,15 +164,17 @@ function construirEscrito({ causa, imputado, abogado, capitulos, delegado, apela
 // Junta todo de nuevo en el formato con "#"/"##" que necesita el generador
 // de PDF (ver generarPdf.js) — solo en este punto, justo antes de generar
 // el archivo, nunca se le muestra así a Joaquín.
+const lineaPreSuma = ({ rotulo, valor }) => rotulo ? `**${rotulo}:** ${valor}` : valor
+
 function textoParaPdf({ preSumaLineas, sumaLineas, destinatario, cuerpo }) {
-  const preSuma = preSumaLineas?.length ? `${preSumaLineas.map(l => `% ${l}`).join('\n')}\n\n` : ''
+  const preSuma = preSumaLineas?.length ? `${preSumaLineas.map(l => `% ${lineaPreSuma(l)}`).join('\n')}\n\n` : ''
   return `${preSuma}${sumaLineas.map(l => `# ${l}`).join('\n')}\n\n## ${destinatario}\n\n${cuerpo}`
 }
 
 // Versión limpia para copiar al portapapeles o guardar en el historial —
 // sin las marcas de negrita/centrado, que no sirven fuera de esta app.
 function textoLimpio({ preSumaLineas, sumaLineas, destinatario, cuerpo }) {
-  const preSuma = preSumaLineas?.length ? `${preSumaLineas.join('\n')}\n\n` : ''
+  const preSuma = preSumaLineas?.length ? `${preSumaLineas.map(lineaPreSuma).join('\n')}\n\n` : ''
   return `${preSuma}${sumaLineas.join('\n')}\n\n${destinatario}\n\n${cuerpo}`.replace(/\*\*(.+?)\*\*/g, '$1')
 }
 
@@ -227,7 +252,10 @@ export default function Escritos({ session, registrarActividad }) {
   const [loading, setLoading] = useState(false)
   const [causaSel, setCausaSel] = useState(null)
   const [imputados, setImputados] = useState([])
-  const [impSel, setImpSel] = useState(null)
+  // ✅ Antes era uno solo (impSel) — ahora es un arreglo: se puede elegir
+  // uno, varios, o todos los imputados de la causa para el mismo escrito
+  // (ej. una Delegación de Poder que aplica a dos imputados a la vez).
+  const [impsSel, setImpsSel] = useState([])
   const [plantillas, setPlantillas] = useState([])
   const [capitulosSel, setCapitulosSel] = useState([]) // orden = orden de selección
   const [escrito, setEscrito] = useState(null) // { sumaLineas, destinatario, cuerpo }
@@ -289,10 +317,10 @@ export default function Escritos({ session, registrarActividad }) {
     setCapitulosSel([])
     setEscrito(null)
     setResultado(null)
-    setImpSel(null)
+    setImpsSel([])
     const { data } = await supabase.from('imputados').select('*').eq('causa_id', c.id).order('created_at', { ascending: true })
     setImputados(data || [])
-    if ((data || []).length === 1) setImpSel(data[0])
+    if ((data || []).length === 1) setImpsSel([data[0]])
     // ✅ FIX: puede haber más de una apelación en la misma causa — el
     // Anuncio siempre es respecto a la ÚLTIMA que se registró (por fecha de
     // creación, no por fecha de audiencia, que a veces todavía no está).
@@ -318,12 +346,16 @@ export default function Escritos({ session, registrarActividad }) {
     setCapitulosSel(prev => [...prev, p])
   }
 
+  const toggleImputado = (imp) => {
+    setImpsSel(prev => prev.some(i => i.id === imp.id) ? prev.filter(i => i.id !== imp.id) : [...prev, imp])
+  }
+
   const necesitaDelegado = capitulosSel.some(c => c.categoria === 'delegacion_poder')
   const delegadoListo = !necesitaDelegado || delegadoSel || (delegadoNuevo && delegadoNuevo.nombre?.trim())
-  const puedeGenerar = causaSel && (imputados.length <= 1 || impSel) && capitulosSel.length > 0 && delegadoListo
+  const puedeGenerar = causaSel && (imputados.length <= 1 || impsSel.length > 0) && capitulosSel.length > 0 && delegadoListo
 
   const generarPreview = () => {
-    const nuevoEscrito = construirEscrito({ causa: causaSel, imputado: impSel, abogado, capitulos: capitulosSel, delegado: delegadoSel || delegadoNuevo || null, apelacionCorte })
+    const nuevoEscrito = construirEscrito({ causa: causaSel, imputados: impsSel, abogado, capitulos: capitulosSel, delegado: delegadoSel || delegadoNuevo || null, apelacionCorte })
     setEscrito(nuevoEscrito)
     setResultado(null)
   }
@@ -371,7 +403,7 @@ export default function Escritos({ session, registrarActividad }) {
       if (getMSToken()) uploadFile(causaSel.ruc, file).catch(() => {})
 
       await supabase.from('escritos_generados').insert({
-        causa_id: causaSel.id, ruc: causaSel.ruc, imputado_id: impSel?.id || null,
+        causa_id: causaSel.id, ruc: causaSel.ruc, imputado_id: impsSel[0]?.id || null,
         tipo_escrito: nombreEscrito, contenido_texto: textoLimpio(escrito), generado_por: session?.user?.email || 'usuario',
       })
 
@@ -412,7 +444,7 @@ export default function Escritos({ session, registrarActividad }) {
                 <div style={{ fontSize: 13, fontWeight: 700, color: '#1E293B', ...f }}>RUC {causaSel.ruc} · RIT {causaSel.rit || '—'}</div>
                 <div style={{ fontSize: 12, color: '#64748b', marginTop: 2, ...f }}>{causaSel.tribunal} · {causaSel.imputado}</div>
               </div>
-              <button className="btn-secondary" style={{ fontSize: 12 }} onClick={() => { setCausaSel(null); setImputados([]); setImpSel(null); setCapitulosSel([]); setEscrito(null); setResultado(null) }}>Cambiar</button>
+              <button className="btn-secondary" style={{ fontSize: 12 }} onClick={() => { setCausaSel(null); setImputados([]); setImpsSel([]); setCapitulosSel([]); setEscrito(null); setResultado(null) }}>Cambiar</button>
             </div>
           ) : (
             <div>
@@ -432,22 +464,30 @@ export default function Escritos({ session, registrarActividad }) {
           )}
         </div>
 
-        {/* Paso 2: elegir imputado si hay más de uno */}
+        {/* Paso 2: elegir imputado(s) si hay más de uno — selección múltiple,
+            porque un mismo escrito a veces es respecto de varios a la vez
+            (ej. una Delegación de Poder para dos imputados). */}
         {causaSel && imputados.length > 1 && (
           <div style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 14, padding: 20, marginBottom: 20 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#1E293B', marginBottom: 12, ...f }}>2. Esta causa tiene varios imputados — ¿para cuál es el escrito?</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#1E293B', marginBottom: 12, ...f }}>2. Esta causa tiene varios imputados — ¿respecto de quién es el escrito?</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {imputados.map(imp => (
-                <button key={imp.id} onClick={() => setImpSel(imp)} style={{ padding: '8px 16px', borderRadius: 20, fontSize: 12, fontWeight: 600, border: `1.5px solid ${impSel?.id === imp.id ? '#1E293B' : '#E2E8F0'}`, background: impSel?.id === imp.id ? '#1E293B' : '#fff', color: impSel?.id === imp.id ? '#fff' : '#64748b', cursor: 'pointer', ...f }}>
-                  {imp.nombre || 'Sin nombre'}
-                </button>
-              ))}
+              {imputados.map(imp => {
+                const marcado = impsSel.some(i => i.id === imp.id)
+                return (
+                  <button key={imp.id} onClick={() => toggleImputado(imp)} style={{ padding: '8px 16px', borderRadius: 20, fontSize: 12, fontWeight: 600, border: `1.5px solid ${marcado ? '#1E293B' : '#E2E8F0'}`, background: marcado ? '#1E293B' : '#fff', color: marcado ? '#fff' : '#64748b', cursor: 'pointer', ...f }}>
+                    {marcado ? '✓ ' : ''}{imp.nombre || 'Sin nombre'}
+                  </button>
+                )
+              })}
+              <button onClick={() => setImpsSel(impsSel.length === imputados.length ? [] : imputados)} style={{ padding: '8px 16px', borderRadius: 20, fontSize: 12, fontWeight: 600, border: '1.5px dashed #cbd5e1', background: '#fff', color: '#64748b', cursor: 'pointer', ...f }}>
+                {impsSel.length === imputados.length ? 'Ninguno' : 'Todos'}
+              </button>
             </div>
           </div>
         )}
 
         {/* Paso 3: elegir escrito(s) — selección múltiple */}
-        {causaSel && (imputados.length <= 1 || impSel) && (
+        {causaSel && (imputados.length <= 1 || impsSel.length > 0) && (
           <div style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 14, padding: 20, marginBottom: 20 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: '#1E293B', marginBottom: 12, ...f }}>{imputados.length > 1 ? '3' : '2'}. Elige el o los escritos</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
@@ -494,9 +534,16 @@ export default function Escritos({ session, registrarActividad }) {
                 del título, tal como en los modelos reales. */}
             {escrito.preSumaLineas?.length > 0 && (
               <div style={{ border: '1.5px solid #E2E8F0', borderRadius: 10, padding: '14px 20px', marginBottom: 10 }}>
+                {/* ✅ FIX: antes se editaba el texto crudo con "**rótulo:**"
+                    — se veían los asteriscos literales. El rótulo va fijo
+                    (no se edita, no tiene por qué cambiar) y solo el valor
+                    es un campo editable, sin ninguna marca de por medio. */}
                 {escrito.preSumaLineas.map((linea, i) => (
-                  <input key={i} value={linea} onChange={e => setEscrito(prev => ({ ...prev, preSumaLineas: prev.preSumaLineas.map((l, j) => j === i ? e.target.value : l) }))}
-                    style={{ width: '100%', border: 'none', outline: 'none', fontSize: 12, color: '#475569', marginBottom: 2, padding: '2px 0', fontFamily: "'Times New Roman',serif" }} />
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                    {linea.rotulo && <span style={{ fontSize: 12, fontWeight: 700, color: '#1E293B', flexShrink: 0, fontFamily: "'Times New Roman',serif" }}>{linea.rotulo}:</span>}
+                    <input value={linea.valor} onChange={e => setEscrito(prev => ({ ...prev, preSumaLineas: prev.preSumaLineas.map((l, j) => j === i ? { ...l, valor: e.target.value } : l) }))}
+                      style={{ flex: 1, border: 'none', outline: 'none', fontSize: 12, color: '#475569', padding: '2px 0', fontFamily: "'Times New Roman',serif" }} />
+                  </div>
                 ))}
               </div>
             )}
