@@ -149,8 +149,19 @@ export default function GmailIntegracion({ onImportComplete }) {
         // si el propio correo de respuesta declara un tipo de audiencia/
         // entrevista/declaración/citación (ver tipoEnRespuesta), sin
         // depender de que la clasificación local haya sido correcta.
+        // ✅ NUEVO: pasó de verdad con Eladio Llempi — su "Solicitud de
+        // revisión de evidencia" (un tipo que a propósito NO está en la
+        // lista de arriba) recibió una respuesta que literalmente dice "SE
+        // CITA A FISCALIA... EL DIA 21-08-2026" — un citatorio real que se
+        // estaba descartando igual por el tipo. citaExplicita solo es true
+        // cuando la fecha se ancló con confianza alta justo en "se cita" o
+        // "citación" (ver extraerRespuestaFiscalia en lib/gmail.js) — no
+        // basta un "aprueba"/"agendamiento" más ambiguo — así que el tipo de
+        // solicitud ya no importa para un citatorio inequívoco, sin abrir la
+        // puerta a los falsos positivos que motivaron la regla original.
         const puedeSerCitacion = /audiencia|entrevista|declaraci[oó]n|citaci[oó]n/i.test(diligencia.tipo || '')
           || /audiencia|entrevista|declaraci[oó]n|citaci[oó]n/i.test(n.respuestaFiscalia.tipoEnRespuesta || '')
+          || n.respuestaFiscalia.citaExplicita === true
         const estadoDetectado = n.respuestaFiscalia.estado
         const fechaCitacionDetectada = n.respuestaFiscalia.fechaCitacion
         const item = {
@@ -164,6 +175,7 @@ export default function GmailIntegracion({ onImportComplete }) {
           tribunal: causa?.tribunal || '',
           estado: (estadoDetectado === 'con_citacion' && !puedeSerCitacion) ? 'aprobada' : estadoDetectado,
           fechaCitacion: puedeSerCitacion ? fechaCitacionDetectada : null,
+          horaCitacion: puedeSerCitacion ? (n.respuestaFiscalia.horaCitacion || '') : '',
           fechaEsFuerte: n.respuestaFiscalia.fechaCitacionEsFuerte !== false,
           detalle: n.respuestaFiscalia.detalle,
           fechaRespuestaEmail: n.fecha_correo ? n.fecha_correo.slice(0, 10) : hoyISO(),
@@ -496,7 +508,7 @@ export default function GmailIntegracion({ onImportComplete }) {
         ruc: item.ruc,
         tipo: tipoAudiencia,
         fecha: item.fechaCitacion,
-        hora: '',
+        hora: item.horaCitacion || '',
         tribunal: item.tribunal || 'FISCALÍA',
         imputado: item.imputado || '',
         resultado: '',

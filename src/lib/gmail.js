@@ -392,8 +392,12 @@ function extraerRespuestaFiscalia(cuerpo, asunto) {
   if (!pareceRespuesta) return null
 
   // Estado: rechazada tiene prioridad si aparece esa palabra explícita.
+  // ✅ FIX: "rechaza" (verbo) no calzaba con "Rechazo" (sustantivo) — un
+  // correo real de Fiscalía respondía "Rechazo. Aclare solicitud." y quedaba
+  // marcado como APROBADA por no reconocerlo. Se usa la raíz "rechaz" para
+  // cubrir cualquier forma (rechaza/rechazo/rechazada/rechazar/etc.).
   let estado = 'aprobada'
-  if (/rechaza|deniega|no\s+ha\s+lugar|improcedente|no\s+se\s+acoge/i.test(textoCompleto)) {
+  if (/rechaz|deniega|no\s+ha\s+lugar|improcedente|no\s+se\s+acoge/i.test(textoCompleto)) {
     estado = 'rechazada'
   }
 
@@ -421,6 +425,8 @@ function extraerRespuestaFiscalia(cuerpo, asunto) {
   // importante poder distinguir visualmente cuáles conviene revisar con más
   // atención — no se deja de aplicar, solo se marca.
   let fechaCitacionEsFuerte = false
+  let citaExplicita = false
+  let horaCitacion = null
   if (estado !== 'rechazada') {
     const meses = {enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,julio:7,agosto:8,septiembre:9,octubre:10,noviembre:11,diciembre:12}
     const buscarFechaProsa = (texto) => {
@@ -457,6 +463,27 @@ function extraerRespuestaFiscalia(cuerpo, asunto) {
     fechaCitacion = fechaEnBloque || buscarFechaProsa(textoCompleto) || buscarFechaNumerica(textoCompleto)
     fechaCitacionEsFuerte = !!fechaEnBloque
     if (fechaCitacion) estado = 'con_citacion'
+    // ✅ NUEVO: "SE CITA A FISCALIA... EL DIA 21-08-2026" en la respuesta a
+    // una "Solicitud de revisión de evidencia" de Eladio Llempi — un citatorio
+    // real (hay que presentarse en persona) que quedaba descartado igual en
+    // GmailIntegracion.jsx porque ese tipo de solicitud no está en la lista de
+    // tipos que "pueden traer citación" (regla puesta a propósito para no
+    // agendar audiencias falsas en solicitudes de documentos/dinero). Se
+    // distingue acá con una bandera aparte: solo cuando el ancla encontrada
+    // es explícitamente "se cita"/"citación" (no basta "aprueba" o
+    // "agendamiento", más ambiguos) Y la fecha se encontró con confianza
+    // alta — así el tipo de solicitud ya no importa para reconocer un
+    // citatorio real, sin abrir la puerta a los falsos positivos que
+    // motivaron la regla original.
+    citaExplicita = fechaCitacionEsFuerte && /se\s+cita\b|citaci[oó]n\b/i.test(bloqueCita)
+    // ✅ NUEVO: la hora de la cita ("A LAS 09:00 HRS.") — antes esta función
+    // no la buscaba para nada, así que las audiencias creadas desde una
+    // respuesta de Fiscalía siempre quedaban con la hora en blanco aunque el
+    // correo la trajera. Se busca cerca del mismo bloque donde se encontró
+    // la fecha, mismo criterio que ya usa extraerAudienciaPJUD.
+    const matchHora = (bloqueCita || textoCompleto).match(/a\s+las\s*(\d{1,2})[:.](\d{2})\s*(?:hrs?|horas?)?/i)
+      || (bloqueCita || textoCompleto).match(/(\d{1,2})[:.](\d{2})\s*(?:hrs?|horas?)\b/i)
+    if (matchHora) horaCitacion = `${String(matchHora[1]).padStart(2, '0')}:${matchHora[2]}`
   }
 
   // Motivo/detalle (útil sobre todo si fue rechazada)
@@ -479,7 +506,7 @@ function extraerRespuestaFiscalia(cuerpo, asunto) {
   const matchTipoBullet = textoCompleto.match(/[•·]\s*([^\n]+?)\s*\n?\s*Respuesta\s*:/i)
   const tipoEnRespuesta = matchTipoBullet ? matchTipoBullet[1].trim() : ''
 
-  return { folio, estado, fechaCitacion, detalle, fechaCitacionEsFuerte, tipoEnRespuesta }
+  return { folio, estado, fechaCitacion, detalle, fechaCitacionEsFuerte, tipoEnRespuesta, citaExplicita, horaCitacion }
 }
 
 // ─── PARSER PRINCIPAL PJUD ────────────────────────────────────────────────────
