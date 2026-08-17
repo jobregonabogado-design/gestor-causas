@@ -109,7 +109,10 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
   const [loading,setLoading]=useState(true)
   const [search,setSearch]=useState('')
   const [filterTribunal,setFilterTribunal]=useState('')
-  const [filterEstado,setFilterEstado]=useState('')
+  // ✅ Arranca mostrando solo las causas vigentes (no todas) — Joaquín pidió
+  // que "Total causas" siga siendo el botón para ver todo, pero que la
+  // pantalla no empiece ahí cada vez que se abre/actualiza/vuelve a Causas.
+  const [filterEstado,setFilterEstado]=useState('vigente')
   const [filterDelito,setFilterDelito]=useState('')
   const [filterRegimen,setFilterRegimen]=useState('') // '' | 'RPA' | 'ADULTO' | 'MIXTO'
   const [regimenesPorCausa,setRegimenesPorCausa]=useState({}) // { causa_id: Set(['ADULTO','RPA']) }
@@ -142,7 +145,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
     window.addEventListener('resize',onResize)
     return ()=>window.removeEventListener('resize',onResize)
   },[])
-  const [grupoAbierto,setGrupoAbierto]=useState('') // '' | 'vigente' | 'terminada' — controla qué chips de subestado se muestran
+  const [grupoAbierto,setGrupoAbierto]=useState('vigente') // '' | 'vigente' | 'terminada' — controla qué chips de subestado se muestran (arranca en 'vigente', ver filterEstado más arriba)
   const [nuevaCausa,setNuevaCausa]=useState({ruc:'',rit:'',tribunal:'',delito:'',imputados:[{nombre:'',rut:'',fecha_nac:'',domicilio:'',nacionalidad:'',delito:'',centro_penal:'',cautelar:'',cautelar_fecha_inicio:''}],fiscal:'',plazo:'',fecha_inicio:'',dias_plazo:'',fecha_hechos:'',estado:'vigente',subestado:''})
   const [rutBuscando,setRutBuscando]=useState({})
   const [rutEncontrado,setRutEncontrado]=useState({})
@@ -639,7 +642,10 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
   },[causas,search,filterTribunal,filterEstado,filterDelito,filterRegimen,regimenesPorCausa,sortCol,sortDir])
 
   const hayFiltrosActivos = !!(search||filterTribunal||filterEstado||filterDelito||filterRegimen)
-  const limpiarFiltros = () => { setSearch(''); setFilterTribunal(''); setFilterEstado(''); setFilterDelito(''); setFilterRegimen('') }
+  // ✅ FIX: no tocaba grupoAbierto — como ahora arranca en 'vigente' (no en
+  // ''), "Limpiar filtros" dejaba la tarjeta "Vigentes" con su estilo de
+  // seleccionada aunque ya se estuvieran mostrando TODAS las causas.
+  const limpiarFiltros = () => { setSearch(''); setFilterTribunal(''); setFilterEstado(''); setFilterDelito(''); setFilterRegimen(''); setGrupoAbierto('') }
 
   const stats=useMemo(()=>({
     total:causas.length, vigente:causas.filter(c=>c.estado==='vigente').length, terminada:causas.filter(c=>c.estado==='terminada').length,
