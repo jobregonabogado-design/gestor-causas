@@ -214,9 +214,34 @@ export async function marcarAcreditacionHabilitada(causaId, tipoNuevaDiligencia)
   return data.map(d => ({ id: d.id, ...campos }))
 }
 
+// ✅ FIX: una foto sacada con el celular (a diferencia de un screenshot)
+// suele guardarse "de lado" en los píxeles reales, con la orientación
+// correcta puesta solo como metadato EXIF — el celular la muestra derecha
+// porque respeta ese metadato al mostrarla, pero Tesseract lee el archivo
+// tal cual, sin rotarla, e intenta reconocer el texto en diagonal. Pasó de
+// verdad: una diligencia de Paulo Urrutia se guardó con tipo genérico y sin
+// observación porque la foto del comprobante estaba así. Se redibuja la
+// imagen en un canvas primero (el navegador sí aplica la rotación EXIF al
+// decodificarla con createImageBitmap), y de ahí en adelante Tesseract
+// siempre recibe la imagen ya derecha.
+async function corregirOrientacionImagen(file) {
+  try {
+    const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' })
+    const canvas = document.createElement('canvas')
+    canvas.width = bitmap.width
+    canvas.height = bitmap.height
+    canvas.getContext('2d').drawImage(bitmap, 0, 0)
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'))
+    return blob || file
+  } catch {
+    return file // si algo falla, se sigue intentando con el archivo tal cual
+  }
+}
+
 async function extraerTextoImagen(file) {
   const Tesseract = await cargarTesseract()
-  const { data } = await Tesseract.recognize(file, 'spa')
+  const imagenDerecha = await corregirOrientacionImagen(file)
+  const { data } = await Tesseract.recognize(imagenDerecha, 'spa')
   return data.text || ''
 }
 
