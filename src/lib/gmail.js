@@ -464,7 +464,22 @@ function extraerRespuestaFiscalia(cuerpo, asunto) {
   const matchMotivo = textoCompleto.match(/motivo[:\s]+([^\n.]{5,200})/i)
   if (matchMotivo) detalle = matchMotivo[1].trim()
 
-  return { folio, estado, fechaCitacion, detalle, fechaCitacionEsFuerte }
+  // ✅ FIX: el correo de "Comunicacion Respuesta" trae su PROPIO rótulo del
+  // tipo de solicitud (ej. "• Solicitud de audiencia o entrevista", justo
+  // antes de "Respuesta:") — pero GmailIntegracion.jsx solo confiaba en el
+  // tipo GUARDADO en la diligencia local para decidir si una fecha podía
+  // ser una citación real (regla de seguridad para no agendar una cita
+  // falsa). Pasó de verdad con Darlyn Medina: la solicitud original quedó
+  // mal clasificada como "Solicitud de diligencias de investigación" al
+  // detectarse sola desde el comprobante — así que aunque acá SÍ se
+  // encontraba bien la fecha de la entrevista (26.08.2026), la citación se
+  // descartaba igual por no confiar en el tipo local, equivocado. Ahora se
+  // devuelve también el tipo que el propio correo de respuesta declara, para
+  // que sirva de respaldo si el tipo local está mal.
+  const matchTipoBullet = textoCompleto.match(/[•·]\s*([^\n]+?)\s*\n?\s*Respuesta\s*:/i)
+  const tipoEnRespuesta = matchTipoBullet ? matchTipoBullet[1].trim() : ''
+
+  return { folio, estado, fechaCitacion, detalle, fechaCitacionEsFuerte, tipoEnRespuesta }
 }
 
 // ─── PARSER PRINCIPAL PJUD ────────────────────────────────────────────────────

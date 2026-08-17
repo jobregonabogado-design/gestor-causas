@@ -140,7 +140,17 @@ export default function GmailIntegracion({ onImportComplete }) {
         // ejemplo), no una cita real. Se corrige ANTES de decidir si se
         // aplica sola, para no agendar una audiencia falsa por el solo
         // hecho de que el folio coincidió.
+        // ✅ FIX: antes solo se confiaba en el tipo GUARDADO en la
+        // diligencia local — si esa clasificación original había quedado
+        // mal hecha (pasó con Darlyn Medina: quedó como "Solicitud de
+        // diligencias de investigación" en vez de "Solicitud de audiencia o
+        // entrevista"), la citación real se perdía igual aunque el correo
+        // de respuesta trajera la fecha correcta. Ahora también se acepta
+        // si el propio correo de respuesta declara un tipo de audiencia/
+        // entrevista/declaración/citación (ver tipoEnRespuesta), sin
+        // depender de que la clasificación local haya sido correcta.
         const puedeSerCitacion = /audiencia|entrevista|declaraci[oó]n|citaci[oó]n/i.test(diligencia.tipo || '')
+          || /audiencia|entrevista|declaraci[oó]n|citaci[oó]n/i.test(n.respuestaFiscalia.tipoEnRespuesta || '')
         const estadoDetectado = n.respuestaFiscalia.estado
         const fechaCitacionDetectada = n.respuestaFiscalia.fechaCitacion
         const item = {
