@@ -390,11 +390,17 @@ export default function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('gmail_connected') === '1') {
-      const code = localStorage.getItem('gmail_auth_code')
+      // ✅ FIX: antes el código venía por localStorage (escrito por
+      // gmail-callback.html justo antes de navegar a "/") — en iOS Safari
+      // esa escritura puede perder la carrera contra la navegación y el
+      // código nunca llegaba, fallando en silencio sin ningún aviso (pasó
+      // de verdad en el celular). Ahora viaja directo en la URL, que no
+      // tiene ese problema.
+      const code = params.get('code')
+      const legacyToken = params.get('legacy_token')
       window.history.replaceState({}, '', window.location.pathname)
       if (code) {
         exchangeCodeForToken(code).then(ok => {
-          localStorage.removeItem('gmail_auth_code')
           if (ok) {
             setGmailMensaje({ ok: true, texto: '✅ Gmail conectado.' })
             setPagina('calendario')
@@ -403,6 +409,13 @@ export default function App() {
             setGmailMensaje({ ok: false, texto: '❌ No se pudo conectar Gmail — intenta de nuevo.' })
           }
         })
+      } else if (legacyToken) {
+        localStorage.setItem('gmail_access_token', legacyToken)
+        setGmailMensaje({ ok: true, texto: '✅ Gmail conectado.' })
+        setPagina('calendario')
+        setAbrirGmailAlEntrar(true)
+      } else {
+        setGmailMensaje({ ok: false, texto: '❌ No se pudo conectar Gmail — intenta de nuevo.' })
       }
     } else if (params.get('gmail_error') === '1') {
       window.history.replaceState({}, '', window.location.pathname)
