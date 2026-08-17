@@ -258,6 +258,12 @@ export default function Escritos({ session, registrarActividad }) {
   const [causas, setCausas] = useState([])
   const [loading, setLoading] = useState(false)
   const [causaSel, setCausaSel] = useState(null)
+  // ✅ NUEVO: causas que ya pasaron a Juicio Oral tienen un RIT/Tribunal
+  // aparte (TOP) del original (Juzgado de Garantía) bajo el mismo RUC — hay
+  // que elegir a propósito a cuál de los dos va dirigido el escrito, porque
+  // un escrito presentado en el tribunal que no corresponde no sirve.
+  // null = todavía no se elige (obliga a elegir antes de poder generar).
+  const [destinoJudicial, setDestinoJudicial] = useState(null) // 'garantia' | 'top'
   const [imputados, setImputados] = useState([])
   // ✅ Antes era uno solo (impSel) — ahora es un arreglo: se puede elegir
   // uno, varios, o todos los imputados de la causa para el mismo escrito
@@ -325,6 +331,9 @@ export default function Escritos({ session, registrarActividad }) {
     setEscrito(null)
     setResultado(null)
     setImpsSel([])
+    // Si no tiene Juicio Oral no hay nada que elegir — se usa directo el
+    // tribunal/RIT de siempre, sin pedirle nada de más a Joaquín.
+    setDestinoJudicial(c.tiene_top ? null : 'garantia')
     const { data } = await supabase.from('imputados').select('*').eq('causa_id', c.id).order('created_at', { ascending: true })
     setImputados(data || [])
     if ((data || []).length === 1) setImpsSel([data[0]])
@@ -359,10 +368,18 @@ export default function Escritos({ session, registrarActividad }) {
 
   const necesitaDelegado = capitulosSel.some(c => c.categoria === 'delegacion_poder')
   const delegadoListo = !necesitaDelegado || delegadoSel || (delegadoNuevo && delegadoNuevo.nombre?.trim())
-  const puedeGenerar = causaSel && (imputados.length <= 1 || impsSel.length > 0) && capitulosSel.length > 0 && delegadoListo
+  const puedeGenerar = causaSel && !!destinoJudicial && (imputados.length <= 1 || impsSel.length > 0) && capitulosSel.length > 0 && delegadoListo
+
+  // Si eligió Tribunal Oral, el escrito se arma con el tribunal/RIT del
+  // Juicio Oral en vez de los del Juzgado de Garantía original — todo el
+  // resto de los datos de la causa (RUC, imputados, etc.) siguen siendo los
+  // mismos, es el mismo RUC bajo el mismo cuadro.
+  const causaParaEscrito = destinoJudicial === 'top'
+    ? { ...causaSel, tribunal: causaSel.tribunal_top, rit: causaSel.rit_top }
+    : causaSel
 
   const generarPreview = () => {
-    const nuevoEscrito = construirEscrito({ causa: causaSel, imputados: impsSel, abogado, capitulos: capitulosSel, delegado: delegadoSel || delegadoNuevo || null, apelacionCorte })
+    const nuevoEscrito = construirEscrito({ causa: causaParaEscrito, imputados: impsSel, abogado, capitulos: capitulosSel, delegado: delegadoSel || delegadoNuevo || null, apelacionCorte })
     setEscrito(nuevoEscrito)
     setResultado(null)
   }
@@ -431,6 +448,16 @@ export default function Escritos({ session, registrarActividad }) {
 
   const inp = { width: '100%', padding: '9px 12px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 13, color: '#1E293B', background: '#fff', ...f }
 
+  // Numeración de pasos — cambia según si la causa tiene Juicio Oral (paso
+  // extra para elegir el tribunal) y/o varios imputados (paso extra para
+  // elegir a quién corresponde), para que el "1. 2. 3." de la pantalla
+  // siempre calce con lo que realmente se está mostrando.
+  let _paso = 1
+  const pasoCausa = _paso++
+  const pasoDestino = causaSel?.tiene_top ? _paso++ : null
+  const pasoImputados = imputados.length > 1 ? _paso++ : null
+  const pasoEscritos = _paso++
+
   return (
     <div style={{ background: '#F8F9FC', minHeight: '100vh', ...f }}>
       <style>{CSS}</style>
@@ -444,14 +471,14 @@ export default function Escritos({ session, registrarActividad }) {
 
         {/* Paso 1: elegir causa */}
         <div style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 14, padding: 20, marginBottom: 20 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#1E293B', marginBottom: 12, ...f }}>1. Elige la causa</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#1E293B', marginBottom: 12, ...f }}>{pasoCausa}. Elige la causa</div>
           {causaSel ? (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#F8F9FC', border: '1px solid #E2E8F0', borderRadius: 10, padding: '12px 16px' }}>
               <div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: '#1E293B', ...f }}>RUC {causaSel.ruc} · RIT {causaSel.rit || '—'}</div>
                 <div style={{ fontSize: 12, color: '#64748b', marginTop: 2, ...f }}>{causaSel.tribunal} · {causaSel.imputado}</div>
               </div>
-              <button className="btn-secondary" style={{ fontSize: 12 }} onClick={() => { setCausaSel(null); setImputados([]); setImpsSel([]); setCapitulosSel([]); setEscrito(null); setResultado(null) }}>Cambiar</button>
+              <button className="btn-secondary" style={{ fontSize: 12 }} onClick={() => { setCausaSel(null); setImputados([]); setImpsSel([]); setCapitulosSel([]); setEscrito(null); setResultado(null); setDestinoJudicial(null) }}>Cambiar</button>
             </div>
           ) : (
             <div>
@@ -471,12 +498,33 @@ export default function Escritos({ session, registrarActividad }) {
           )}
         </div>
 
+        {/* Paso extra: si la causa ya pasó a Juicio Oral, tiene un RIT/
+            Tribunal aparte (TOP) del original (Juzgado de Garantía) bajo el
+            mismo RUC — hay que elegir a propósito a cuál de los dos va
+            dirigido el escrito, sin default silencioso, porque presentarlo
+            en el tribunal que no corresponde no sirve. */}
+        {causaSel?.tiene_top && (
+          <div style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 14, padding: 20, marginBottom: 20 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#1E293B', marginBottom: 12, ...f }}>{pasoDestino}. Esta causa tiene Juicio Oral — ¿a qué tribunal va este escrito?</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button onClick={() => setDestinoJudicial('garantia')} style={{ padding: '10px 16px', borderRadius: 10, fontSize: 12, fontWeight: 600, textAlign: 'left', border: `1.5px solid ${destinoJudicial === 'garantia' ? '#1E293B' : '#E2E8F0'}`, background: destinoJudicial === 'garantia' ? '#F8F9FC' : '#fff', color: '#1E293B', cursor: 'pointer', ...f }}>
+                {destinoJudicial === 'garantia' ? '✓ ' : ''}Juzgado de Garantía<br/>
+                <span style={{ fontWeight: 400, color: '#64748b', fontSize: 11 }}>{causaSel.tribunal} · RIT {causaSel.rit}</span>
+              </button>
+              <button onClick={() => setDestinoJudicial('top')} style={{ padding: '10px 16px', borderRadius: 10, fontSize: 12, fontWeight: 600, textAlign: 'left', border: `1.5px solid ${destinoJudicial === 'top' ? '#1E293B' : '#E2E8F0'}`, background: destinoJudicial === 'top' ? '#F8F9FC' : '#fff', color: '#1E293B', cursor: 'pointer', ...f }}>
+                {destinoJudicial === 'top' ? '✓ ' : ''}Tribunal Oral en lo Penal<br/>
+                <span style={{ fontWeight: 400, color: '#64748b', fontSize: 11 }}>{causaSel.tribunal_top} · RIT {causaSel.rit_top}</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Paso 2: elegir imputado(s) si hay más de uno — selección múltiple,
             porque un mismo escrito a veces es respecto de varios a la vez
             (ej. una Delegación de Poder para dos imputados). */}
         {causaSel && imputados.length > 1 && (
           <div style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 14, padding: 20, marginBottom: 20 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#1E293B', marginBottom: 12, ...f }}>2. Esta causa tiene varios imputados — ¿respecto de quién es el escrito?</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#1E293B', marginBottom: 12, ...f }}>{pasoImputados}. Esta causa tiene varios imputados — ¿respecto de quién es el escrito?</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {imputados.map(imp => {
                 const marcado = impsSel.some(i => i.id === imp.id)
@@ -496,7 +544,7 @@ export default function Escritos({ session, registrarActividad }) {
         {/* Paso 3: elegir escrito(s) — selección múltiple */}
         {causaSel && (imputados.length <= 1 || impsSel.length > 0) && (
           <div style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 14, padding: 20, marginBottom: 20 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#1E293B', marginBottom: 12, ...f }}>{imputados.length > 1 ? '3' : '2'}. Elige el o los escritos</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#1E293B', marginBottom: 12, ...f }}>{pasoEscritos}. Elige el o los escritos</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
               {plantillas.map(p => {
                 const posicion = capitulosSel.findIndex(c => c.id === p.id)
