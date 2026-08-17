@@ -136,11 +136,18 @@ function construirEscrito({ causa, imputados, abogado, capitulos, delegado, apel
   // el Rol de Ingreso Corte, y llevan "por la parte recurrente" antes de
   // "en representación de", como en los modelos reales de Joaquín.
   const esCorte = primero.destinatario_tipo === 'corte'
+  // ✅ NUEVO: escritos donde Joaquín YA NO representa a nadie en la causa
+  // (ej. pedir que se eliminen sus correos de notificación como EX
+  // interviniente, ya con otro abogado a cargo) — no tiene sentido decir
+  // "en representación de X" si justamente el punto es que ya no lo es.
+  const esSinRepresentacion = primero.categoria === 'sin_representacion'
   const identificacion = esSoloPatrocinio
     ? `${datos.IMPUTADO_NOMBRE}, Cédula Nacional de Identidad Nº ${datos.IMPUTADO_RUT}, ${datos.SITUACION_LIBERTAD}, en causa RUC. ${datos.RUC} RIT ${datos.RIT} a SS., respetuosamente digo:`
     : esCorte
       ? `${datos.ABOGADO_NOMBRE}, abogado, por la parte recurrente, en representación de ${datos.IMPUTADO_NOMBRE} autos Rol de Ingreso Corte ${datos.ROL_CORTE} a SS., Iltma., respetuosamente digo:`
-      : `${datos.ABOGADO_NOMBRE}, abogado, en representación de ${datos.IMPUTADO_NOMBRE}, en causa RUC. ${datos.RUC} y RIT. ${datos.RIT}${datos.DELITO_TEXTO ? `, por el delito de ${datos.DELITO_TEXTO}` : ''}, a S.S. respetuosamente digo:`
+      : esSinRepresentacion
+        ? `${datos.ABOGADO_NOMBRE}, abogado, como ex interviniente en causa RIT ${datos.RIT} RUC ${datos.RUC}${datos.DELITO_TEXTO ? `, por el delito de ${datos.DELITO_TEXTO}` : ''}, a SS., con respeto digo:`
+        : `${datos.ABOGADO_NOMBRE}, abogado, en representación de ${datos.IMPUTADO_NOMBRE}, en causa RUC. ${datos.RUC} y RIT. ${datos.RIT}${datos.DELITO_TEXTO ? `, por el delito de ${datos.DELITO_TEXTO}` : ''}, a S.S. respetuosamente digo:`
 
   // ✅ NUEVO: "pre-suma" — bloque de datos (Rol de Ingreso, Secretaría,
   // Materia, Parte, Tabla, Vista de la causa) que va ANTES del título en
