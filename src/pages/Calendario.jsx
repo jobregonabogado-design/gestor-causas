@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import GmailIntegracion from '../components/GmailIntegracion'
-import { fechaDDMM } from './dashboard/utils'
+import { fechaDDMM, colorAudiencia } from './dashboard/utils'
 
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
@@ -22,31 +22,27 @@ const CSS = `
   input:focus,select:focus,textarea:focus { outline:none; border-color:#93c5fd !important; box-shadow:0 0 0 3px rgba(37,99,235,0.08); }
 `
 
-function tipoColor(tipo) {
-  const t = (tipo||"").toUpperCase()
-  if (t.includes("JUICIO ORAL") || t === "JO") return { bg:"#fef2f2", border:"#fecdd3", dot:"#9f1239", text:"#9f1239" }
-  if (t.includes("ABREVIADO")) return { bg:"#eff6ff", border:"#bfdbfe", dot:"#1e40af", text:"#1e40af" }
-  if (t.includes("APJO")) return { bg:"#f5f3ff", border:"#ddd6fe", dot:"#5b21b6", text:"#5b21b6" }
-  if (t.includes("REV PP") || t.includes("REVPP")) return { bg:"#fff7ed", border:"#fed7aa", dot:"#92400e", text:"#92400e" }
-  if (t.includes("AUMENTO") || t.includes("CIERRE")) return { bg:"#ecfdf5", border:"#a7f3d0", dot:"#065f46", text:"#065f46" }
-  if (t.includes("ENTREVISTA") || t.includes("DECLARACION")) return { bg:"#fefce8", border:"#fef08a", dot:"#854d0e", text:"#854d0e" }
-  if (t.includes("CAUTELA") || t.includes("APELACION") || t.includes("APELACIÓN")) return { bg:"#fdf4ff", border:"#e9d5ff", dot:"#701a75", text:"#701a75" }
-  return { bg:"#F8F9FC", border:"#e2e8f0", dot:"#475569", text:"#334155" }
-}
+// ✅ FIX: esta función y la leyenda de abajo tenían cada una su propia
+// paleta de colores, distinta a la del resto de la app (ver
+// dashboard/utils.js — colorAudiencia) — la leyenda ni siquiera coincidía
+// con los colores reales de las tarjetas de este mismo archivo. Ahora las
+// dos salen de la misma función compartida, para que nunca más se
+// desincronicen entre sí.
+const tipoColor = colorAudiencia
 
 const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"]
 const DIAS = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"]
 const f = { fontFamily:"'Manrope','Inter', sans-serif" }
 
 const leyenda = [
-  { label:"Juicio Oral", color:"#e11d48" },
-  { label:"Abreviado", color:"#2563eb" },
-  { label:"APJO", color:"#7c3aed" },
-  { label:"Rev PP", color:"#ea580c" },
-  { label:"Aumento/Cierre", color:"#16a34a" },
-  { label:"Entrevista", color:"#ca8a04" },
-  { label:"Cautela/Apel.", color:"#a21caf" },
-]
+  { label:"Juicio Oral" },
+  { label:"Abreviado" },
+  { label:"APJO" },
+  { label:"Rev PP" },
+  { label:"Aumento/Cierre" },
+  { label:"Entrevista" },
+  { label:"Cautela/Apel." },
+].map(item => ({ ...item, color: tipoColor(item.label).dot }))
 
 const TIPOS = ["JUICIO ORAL","ABREVIADO","APJO","REV PP","AUMENTO PLAZO","CIERRE","ENTREVISTA","DECLARACION","FORMALIZACION","CAUTELA DE GARANTIAS","APELACIÓN CAUTELAR","SCP","OTRO"]
 

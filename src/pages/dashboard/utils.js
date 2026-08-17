@@ -52,6 +52,48 @@ export function getBadgeConfig(estado, subestado) {
   return estadoConfig[estado] || { label:estado||'—', color:'#64748b', bg:'#F8F9FC', border:'#e2e8f0' }
 }
 
+// ✅ FIX: había TRES lugares distintos clasificando/coloreando el tipo de
+// audiencia (Calendario.jsx tenía sus propios colores para las tarjetas Y
+// otros distintos para la leyenda que las explica, y dashboard/cards.jsx
+// tenía un tercer juego más) — la misma audiencia (ej. Juicio Oral) se veía
+// de un color en el Calendario y de otro en la tarjeta del imputado, y la
+// leyenda del Calendario ni siquiera coincidía con sus propias tarjetas. Se
+// deja UNA sola función de la que salen todos, para que no puedan volver a
+// desincronizarse entre sí. De paso se corrige que "REVISION PP" (como lo
+// escribe el lector del PJUD) no calzaba con el filtro "REV PP", así que
+// esas audiencias quedaban sin color (gris, la opción por defecto).
+export function categoriaAudiencia(tipo) {
+  const t = (tipo || '').toUpperCase()
+  if (t.includes('JUICIO ORAL') || t === 'JO') return 'JUICIO ORAL'
+  if (t.includes('ABREVIADO')) return 'ABREVIADO'
+  if (t.includes('APJO')) return 'APJO'
+  if (t.includes('REV PP') || t.includes('REVPP') || (t.includes('REVISION') && t.includes('PP')) || (t.includes('REVISIÓN') && t.includes('PP'))) return 'REV PP'
+  if (t.includes('AUMENTO') || t.includes('CIERRE')) return 'AUMENTO/CIERRE'
+  if (t.includes('ENTREVISTA') || t.includes('DECLARACION') || t.includes('DECLARACIÓN')) return 'ENTREVISTA'
+  if (t.includes('CAUTELA') || t.includes('APELACION') || t.includes('APELACIÓN')) return 'CAUTELA/APELACION'
+  // ✅ Si no calza con ninguna categoría conocida, se devuelve el texto tal
+  // cual (no vacío) — así dos tipos distintos sin categoría (ej. dos
+  // "FORMALIZACION" con matices distintos) siguen distinguiéndose entre sí
+  // en la comparación de duplicados; para el color da lo mismo, ninguno de
+  // los dos calza con la paleta y cae igual en el color por defecto.
+  return t
+}
+
+const COLORES_AUDIENCIA = {
+  'JUICIO ORAL':        { bg:'#fef2f2', border:'#fecdd3', dot:'#9f1239', text:'#9f1239' },
+  'ABREVIADO':           { bg:'#eff6ff', border:'#bfdbfe', dot:'#1e40af', text:'#1e40af' },
+  'APJO':                { bg:'#f5f3ff', border:'#ddd6fe', dot:'#5b21b6', text:'#5b21b6' },
+  'REV PP':              { bg:'#fff7ed', border:'#fed7aa', dot:'#92400e', text:'#92400e' },
+  'AUMENTO/CIERRE':      { bg:'#ecfdf5', border:'#a7f3d0', dot:'#065f46', text:'#065f46' },
+  'ENTREVISTA':          { bg:'#fefce8', border:'#fef08a', dot:'#854d0e', text:'#854d0e' },
+  'CAUTELA/APELACION':   { bg:'#fdf4ff', border:'#e9d5ff', dot:'#701a75', text:'#701a75' },
+}
+const COLOR_AUDIENCIA_DEFECTO = { bg:'#F8F9FC', border:'#e2e8f0', dot:'#475569', text:'#334155' }
+
+export function colorAudiencia(tipo) {
+  return COLORES_AUDIENCIA[categoriaAudiencia(tipo)] || COLOR_AUDIENCIA_DEFECTO
+}
+
 // ✅ FIX: "new Date().toISOString().slice(0,10)" se usaba por todo el
 // proyecto (17 lugares) para obtener la fecha de "hoy" — pero toISOString()
 // SIEMPRE convierte a hora UTC, nunca a la hora local. Como Chile va varias

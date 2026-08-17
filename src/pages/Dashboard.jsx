@@ -1227,15 +1227,30 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                     await marcarAccion(c.id)
                   }} onDelete={async()=>{
                     if(!window.confirm('¿Eliminar este imputado?'))return
-                    await supabase.from('imputados').delete().eq('id',imp.id)
+                    // ✅ FIX: si el imputado tiene cautelares registradas, la base de
+                    // datos RECHAZA el borrado (para no dejar esas cautelares sin
+                    // dueño) — pero como nunca se revisaba el error, la tarjeta
+                    // igual desaparecía de la pantalla como si se hubiera borrado,
+                    // aunque en la base de datos siguiera existiendo (volvía a
+                    // aparecer solo al recargar). Ahora se avisa y no se saca de la
+                    // vista si el borrado de verdad falló.
+                    const { error: errorBorrado } = await supabase.from('imputados').delete().eq('id',imp.id)
+                    if (errorBorrado) {
+                      alert('No se pudo eliminar: este imputado tiene cautelares u otros registros asociados. Elimínalos primero.')
+                      return
+                    }
                     const restantes = imputados.filter(x=>x.id!==imp.id)
                     setImputados(restantes)
                     // Recalcular agregado de delitos sin este imputado
                     const acumulados = []
                     restantes.forEach(r => { (r.delitos||'').split('|').map(d=>d.trim()).filter(Boolean).forEach(d=>{ if(!acumulados.includes(d)) acumulados.push(d) }) })
                     const agregado = acumulados.join('|')
-                    await supabase.from('causas').update({ delito: agregado }).eq('id', c.id)
-                    const u = { ...selectedCausa, delito: agregado }
+                    // ✅ FIX: "causas.imputado" (la copia que aparece en la lista de
+                    // Causas y arriba en Datos) no se recalculaba al eliminar un
+                    // imputado — quedaba el nombre del que ya se borró.
+                    const nombresActualizados = restantes.map(r => r.nombre).filter(Boolean).join('|')
+                    await supabase.from('causas').update({ delito: agregado, imputado: nombresActualizados }).eq('id', c.id)
+                    const u = { ...selectedCausa, delito: agregado, imputado: nombresActualizados }
                     setSelectedCausa(u)
                     setCausas(prev=>prev.map(x=>x.id===u.id?u:x))
                     await marcarAccion(c.id) // ✅ actualiza semáforo
@@ -1259,7 +1274,17 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                 ))}
                 <button className="btn-secondary" style={{marginTop:16}} onClick={async()=>{
                   const{data}=await supabase.from('imputados').insert({causa_id:c.id,nombre:'Nuevo imputado'}).select().single()
-                  if(data){ setImputados(prev=>[...prev,data]); await marcarAccion(c.id) }
+                  if(data){
+                    setImputados(prev=>[...prev,data])
+                    // ✅ FIX: mismo caso que al eliminar — "causas.imputado" no se
+                    // actualizaba al agregar uno nuevo desde esta pestaña.
+                    const nombresActualizados = [...imputados.map(x=>x.nombre), data.nombre].filter(Boolean).join('|')
+                    await supabase.from('causas').update({ imputado: nombresActualizados }).eq('id', c.id)
+                    const u = { ...selectedCausa, imputado: nombresActualizados }
+                    setSelectedCausa(u)
+                    setCausas(prev=>prev.map(x=>x.id===u.id?u:x))
+                    await marcarAccion(c.id)
+                  }
                 }}>+ Agregar imputado</button>
               </div>
             )}

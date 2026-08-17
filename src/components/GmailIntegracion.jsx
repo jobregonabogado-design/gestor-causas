@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { loginGmail, isGmailConnected, logoutGmail, fetchNotificacionesPJUD, exchangeCodeForToken } from '../lib/gmail'
 import { supabase } from '../lib/supabase'
-import { fechaDDMM, hoyISO } from '../pages/dashboard/utils'
+import { fechaDDMM, hoyISO, categoriaAudiencia } from '../pages/dashboard/utils'
 import { ESTADOS_DILIGENCIA } from '../pages/dashboard/diligencias'
 
 const f = { fontFamily:"'Manrope','Inter',sans-serif" }
@@ -230,20 +230,11 @@ export default function GmailIntegracion({ onImportComplete }) {
       // comparación de tipo era texto exacto, nunca se reconocían como la
       // MISMA audiencia y se agregaba una segunda, marcada como
       // "INCONSISTENCIA" — aunque fuera literalmente el mismo Juicio Oral,
-      // mismo RUC, misma fecha, misma hora. Se agrupa por categoría (mismo
-      // criterio que ya usa el color de las audiencias en el Calendario:
-      // ver tipoColor en Calendario.jsx) en vez de por texto exacto.
-      const categoriaTipo = (tipo) => {
-        const t = (tipo || '').toUpperCase()
-        if (t.includes('JUICIO ORAL') || t === 'JO') return 'JUICIO ORAL'
-        if (t.includes('ABREVIADO')) return 'ABREVIADO'
-        if (t.includes('APJO')) return 'APJO'
-        if (t.includes('REV PP') || t.includes('REVPP')) return 'REV PP'
-        if (t.includes('AUMENTO') || t.includes('CIERRE')) return 'AUMENTO/CIERRE'
-        if (t.includes('ENTREVISTA') || t.includes('DECLARACION') || t.includes('DECLARACIÓN')) return 'ENTREVISTA'
-        if (t.includes('CAUTELA') || t.includes('APELACION') || t.includes('APELACIÓN')) return 'CAUTELA/APELACION'
-        return t
-      }
+      // mismo RUC, misma fecha, misma hora. Se agrupa por categoría — misma
+      // función que ya usa el color de las audiencias en todo el resto de
+      // la app (ver categoriaAudiencia en dashboard/utils.js) — en vez de
+      // por texto exacto.
+      const categoriaTipo = categoriaAudiencia
 
       // ✅ FIX: antes esto usaba `a.ruc` tal cual (con guión, ej "1801167745-9")
       // mientras que el RUC de los correos se normaliza sin guión. Como nunca

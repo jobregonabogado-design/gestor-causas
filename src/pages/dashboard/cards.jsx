@@ -1,7 +1,7 @@
 // Tarjetas de Audiencia e Imputado usadas dentro de la lista de una causa.
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
-import { DELITOS_CATALOGO, CENTROS_PENALES, calcularEdadActual, calcularFechaTerminoCondena, getBadgeConfig, normRut, formatearRut, fechaDDMM, hoyISO } from './utils'
+import { DELITOS_CATALOGO, CENTROS_PENALES, calcularEdadActual, calcularFechaTerminoCondena, getBadgeConfig, normRut, formatearRut, fechaDDMM, hoyISO, colorAudiencia } from './utils'
 import { SearchableSelect, DelitosChips } from './primitives'
 import { calcularTotalAbono, diasEntreFechasCaut, TIPOS_DETENCION_PENAL } from './cautelares'
 import { OrdenesDetencionPanel } from './ordenes-detencion'
@@ -28,16 +28,13 @@ export function AudienciaCard({ a, onUpdate, onUpdateResultado }) {
     setGuardandoResultado(false)
   }
 
-  const tipoColor = (tipo) => {
-    const t = (tipo||'').toUpperCase()
-    if (t.includes('JUICIO ORAL')||t==='JO') return '#e11d48'
-    if (t.includes('ABREVIADO')) return '#2563eb'
-    if (t.includes('APJO')) return '#7c3aed'
-    if (t.includes('REV PP')||t.includes('REVPP')) return '#ea580c'
-    if (t.includes('AUMENTO')||t.includes('CIERRE')) return '#16a34a'
-    if (t.includes('ENTREVISTA')||t.includes('DECLARACION')) return '#ca8a04'
-    return '#475569'
-  }
+  // ✅ FIX: esta tarjeta tenía su propia paleta de colores para el tipo de
+  // audiencia, distinta a la del Calendario — la misma audiencia se veía de
+  // un color acá y de otro allá. Ahora sale de la misma función compartida
+  // (ver dashboard/utils.js — colorAudiencia), que de paso reconoce
+  // "REVISION PP" (como lo escribe el lector del PJUD), que antes quedaba
+  // sin color por no calzar con "REV PP".
+  const tipoColor = (tipo) => colorAudiencia(tipo).dot
 
   const handleSave = async () => {
     if (!motivo.trim()) { alert('Ingresa el motivo de la modificación'); return }
