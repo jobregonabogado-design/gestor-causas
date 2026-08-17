@@ -159,6 +159,37 @@ export async function uploadFile(ruc, file) {
   return res.json()
 }
 
+// 💾 Carpeta de respaldos generales (Excel con toda la info de la app) —
+// separada de "CAUSAS JOA" porque no es un documento de una causa
+// específica, es un respaldo de todo. Vive junto a ella, dentro de
+// "JOAQUIN OBREGON".
+const CARPETA_RESPALDOS = 'JOAQUIN OBREGON/Respaldos'
+
+async function getOrCreateCarpetaRespaldos() {
+  try {
+    return await graphFetch(`/me/drive/root:/${CARPETA_RESPALDOS}`)
+  } catch {
+    return await graphFetch(`/me/drive/root:/JOAQUIN OBREGON:/children`, {
+      method: 'POST',
+      body: JSON.stringify({ name: 'Respaldos', folder: {}, '@microsoft.graph.conflictBehavior': 'fail' }),
+    })
+  }
+}
+
+export async function subirArchivoRespaldo(file) {
+  const token = getMSToken()
+  if (!token) throw new Error('No hay sesión de OneDrive activa — conéctate primero')
+  await getOrCreateCarpetaRespaldos()
+  const path = `/${CARPETA_RESPALDOS}/${file.name}`
+  const res = await fetch(`https://graph.microsoft.com/v1.0/me/drive/root:${path}:/content`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': file.type || 'application/octet-stream' },
+    body: file,
+  })
+  if (!res.ok) throw new Error(`Upload failed: ${res.status}`)
+  return res.json()
+}
+
 export function getFileIcon(name) {
   const ext = name.split('.').pop().toLowerCase()
   if (['pdf'].includes(ext)) return '📄'

@@ -12,6 +12,7 @@ import { hoyISO } from './pages/dashboard/utils'
 import SolicitudVisitaSantiagoI from './components/SolicitudVisitaSantiagoI'
 import Notas from './pages/Notas'
 import { useEstadoConexion } from './lib/offline'
+import { generarYRespaldar } from './lib/backup'
 
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
@@ -377,6 +378,26 @@ export default function App() {
   const [causaDesdeCalendario, setCausaDesdeCalendario] = useState(null)
   // 📴 Estado de conexión / cambios pendientes de mandar (modo sin señal)
   const { online, pendientes } = useEstadoConexion()
+  // 💾 Respaldo manual a Excel (+ OneDrive)
+  const [generandoRespaldo, setGenerandoRespaldo] = useState(false)
+  const [progresoRespaldo, setProgresoRespaldo] = useState('')
+  const [mensajeRespaldo, setMensajeRespaldo] = useState(null)
+  const handleGenerarRespaldo = async () => {
+    setGenerandoRespaldo(true); setMensajeRespaldo(null)
+    try {
+      const { nombreArchivo, subidoOneDrive, errorOneDrive } = await generarYRespaldar({ onProgress: setProgresoRespaldo })
+      setMensajeRespaldo({
+        ok: true,
+        texto: subidoOneDrive
+          ? `✅ "${nombreArchivo}" descargado y subido a OneDrive (Respaldos).`
+          : `✅ "${nombreArchivo}" descargado a tu computador. ⚠️ No se pudo subir a OneDrive: ${errorOneDrive}`
+      })
+    } catch (err) {
+      setMensajeRespaldo({ ok: false, texto: `❌ No se pudo generar el respaldo: ${err.message}` })
+    } finally {
+      setGenerandoRespaldo(false); setProgresoRespaldo('')
+    }
+  }
   // 🔔 Estado del Centro de Alertas (advertencias + tareas del equipo)
   const [showAlerta, setShowAlerta] = useState(false)
   const [tareas, setTareas] = useState([])
@@ -600,6 +621,14 @@ export default function App() {
     <div className="app-shell" style={{ background:'#F8F9FC', minHeight:'100vh' }}>
       <style>{css}</style>
       {notifTarea && <TareaToast tarea={notifTarea} onClose={() => setNotifTarea(null)} />}
+      {mensajeRespaldo && (
+        <div style={{ position:'fixed', bottom:24, right:24, zIndex:2000, background:'#fff', border: mensajeRespaldo.ok ? '1.5px solid #bbf7d0' : '1.5px solid #fecaca', borderRadius:14, padding:'14px 18px', minWidth:300, maxWidth:420, boxShadow:'0 16px 40px rgba(15,23,42,0.14)', fontFamily:"'Manrope','Inter',sans-serif" }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12 }}>
+            <div style={{ fontSize:13, fontWeight:600, color:'#1E293B', lineHeight:1.5 }}>{mensajeRespaldo.texto}</div>
+            <button onClick={() => setMensajeRespaldo(null)} style={{ background:'transparent', border:'none', cursor:'pointer', color:'#94a3b8', fontSize:16, padding:2, flexShrink:0 }}>✕</button>
+          </div>
+        </div>
+      )}
       {showPanel && <PanelActividad onClose={() => { setShowPanel(false); setSolicitudesPendientes(0) }} onVerCausa={irACausaPorRuc} />}
       {showPanelPropio && <PanelActividad onClose={() => setShowPanelPropio(false)} onVerCausa={irACausaPorRuc} soloEmail={session.user.email} />}
       {showAlerta && (
@@ -682,6 +711,15 @@ export default function App() {
                   {esTitular && (
                     <button onClick={() => { setShowUserMenu(false); setPagina('contabilidad') }} style={{ width:'100%', textAlign:'left', background:'none', border:'none', borderTop:'1px solid #F1F5F9', padding:'12px 16px', fontSize:13, cursor:'pointer', color:'#374151', fontFamily:"'Manrope','Inter',sans-serif", textTransform:'uppercase', letterSpacing:0.3 }}>
                       💰 Contabilidad
+                    </button>
+                  )}
+                  {esTitular && (
+                    // 💾 Respaldo manual: descarga un Excel con toda la info de la
+                    // app (causas, imputados, audiencias, honorarios, etc.) y de
+                    // paso lo sube a OneDrive — dos copias fuera de la base de
+                    // datos misma, para no depender solo de ella.
+                    <button onClick={() => { setShowUserMenu(false); handleGenerarRespaldo() }} disabled={generandoRespaldo} style={{ width:'100%', textAlign:'left', background:'none', border:'none', borderTop:'1px solid #F1F5F9', padding:'12px 16px', fontSize:13, cursor: generandoRespaldo ? 'default' : 'pointer', color:'#374151', fontFamily:"'Manrope','Inter',sans-serif", textTransform:'uppercase', letterSpacing:0.3, opacity: generandoRespaldo ? 0.6 : 1 }}>
+                      💾 {generandoRespaldo ? (progresoRespaldo || 'Generando...') : 'Generar respaldo'}
                     </button>
                   )}
                   <button onClick={handleSignOut} style={{ width:'100%', textAlign:'left', background:'none', border:'none', borderTop:'1px solid #F1F5F9', padding:'12px 16px', fontSize:13, cursor:'pointer', color:'#dc2626', fontWeight:600, fontFamily:"'Manrope','Inter',sans-serif", textTransform:'uppercase', letterSpacing:0.3 }}>
