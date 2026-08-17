@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { loginGmail, isGmailConnected, logoutGmail, fetchNotificacionesPJUD, exchangeCodeForToken } from '../lib/gmail'
+import { loginGmail, isGmailConnected, logoutGmail, fetchNotificacionesPJUD } from '../lib/gmail'
 import { supabase } from '../lib/supabase'
 import { fechaDDMM, hoyISO, categoriaAudiencia } from '../pages/dashboard/utils'
 import { ESTADOS_DILIGENCIA } from '../pages/dashboard/diligencias'
@@ -26,19 +26,17 @@ export default function GmailIntegracion({ onImportComplete }) {
   const [respuestasAutoAplicadas, setRespuestasAutoAplicadas] = useState([])
   const [aplicandoId, setAplicandoId] = useState(null)
 
+  // ✅ FIX: el intercambio del código de Google (tras volver del consentimiento)
+  // vivía acá, pero este componente solo existe montado si ya estabas en
+  // Calendario CON el panel de Gmail abierto — algo que nunca es cierto justo
+  // después de un login fresco (la app siempre vuelve a la pestaña "Causas").
+  // Pasó de verdad en el celular: se completaba el consentimiento en Google,
+  // volvía a la app, y como este componente no estaba montado, el código
+  // nunca se canjeaba — quedaba "sin conectar" para siempre sin ningún
+  // aviso. Ahora ese intercambio se hace en App.jsx (siempre montado, sin
+  // importar la pestaña), y este componente solo LEE si ya quedó conectado.
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    if (params.get('gmail_connected') === '1') {
-      const code = localStorage.getItem('gmail_auth_code')
-      if (code) {
-        setCargando(true)
-        exchangeCodeForToken(code).then(ok => {
-          if (ok) { setConectado(true); localStorage.removeItem('gmail_auth_code') }
-          setCargando(false)
-          window.history.replaceState({}, '', window.location.pathname)
-        })
-      }
-    }
+    setConectado(isGmailConnected())
   }, [])
 
   const revisarCorreos = async () => {

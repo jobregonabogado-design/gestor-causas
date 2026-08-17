@@ -119,7 +119,7 @@ function AudienciaEditCard({ a, onDelete, onUpdate, f, isMobile }) {
   )
 }
 
-export default function Calendario({ onVerCausa }) {
+export default function Calendario({ onVerCausa, abrirGmailAlEntrar }) {
   const hoy = new Date()
   const [mes, setMes] = useState(hoy.getMonth())
   const [anio, setAnio] = useState(hoy.getFullYear())
@@ -143,6 +143,12 @@ export default function Calendario({ onVerCausa }) {
   const [nueva, setNueva] = useState({ fecha:"", hora:"", tipo:"", tribunal:"", sala:"", imputado:"", rit:"", ruc:"", notas:"" })
 
   useEffect(() => { loadAudiencias() }, [])
+
+  // ✅ Después de conectar Gmail desde afuera (ver App.jsx — el intercambio
+  // del código de Google se maneja ahí, no acá, para que funcione sin
+  // importar en qué pestaña haya quedado la app al volver de Google), se
+  // abre solo el panel para que quede a la vista que sí se conectó.
+  useEffect(() => { if (abrirGmailAlEntrar) setShowGmail(true) }, [abrirGmailAlEntrar])
 
   // ✅ FIX: recarga audiencias cuando se cierra el panel Gmail (por si se agregaron nuevas)
   const handleGmailToggle = () => {

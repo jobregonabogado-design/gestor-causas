@@ -13,6 +13,7 @@ import SolicitudVisitaSantiagoI from './components/SolicitudVisitaSantiagoI'
 import Notas from './pages/Notas'
 import { useEstadoConexion } from './lib/offline'
 import { generarYRespaldar } from './lib/backup'
+import { exchangeCodeForToken } from './lib/gmail'
 
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
@@ -376,6 +377,38 @@ export default function App() {
   const [solicitudesPendientes, setSolicitudesPendientes] = useState(0)
   // ✅ Estado para causa seleccionada desde el calendario
   const [causaDesdeCalendario, setCausaDesdeCalendario] = useState(null)
+
+  // 📧 Conexión de Gmail: se vuelve acá desde Google (accounts.google.com)
+  // después de aceptar el permiso, siempre a "/" — sin importar en qué
+  // pestaña haya quedado la app antes de salir a conectar. Por eso el
+  // intercambio del código va acá arriba (siempre montado) y no dentro del
+  // panel de Gmail (que solo existe si ya estabas en Calendario con el panel
+  // abierto, algo que nunca es cierto justo después de un login fresco —
+  // así fallaba en silencio desde el celular).
+  const [gmailMensaje, setGmailMensaje] = useState(null)
+  const [abrirGmailAlEntrar, setAbrirGmailAlEntrar] = useState(false)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('gmail_connected') === '1') {
+      const code = localStorage.getItem('gmail_auth_code')
+      window.history.replaceState({}, '', window.location.pathname)
+      if (code) {
+        exchangeCodeForToken(code).then(ok => {
+          localStorage.removeItem('gmail_auth_code')
+          if (ok) {
+            setGmailMensaje({ ok: true, texto: '✅ Gmail conectado.' })
+            setPagina('calendario')
+            setAbrirGmailAlEntrar(true)
+          } else {
+            setGmailMensaje({ ok: false, texto: '❌ No se pudo conectar Gmail — intenta de nuevo.' })
+          }
+        })
+      }
+    } else if (params.get('gmail_error') === '1') {
+      window.history.replaceState({}, '', window.location.pathname)
+      setGmailMensaje({ ok: false, texto: '❌ No se pudo conectar Gmail — intenta de nuevo.' })
+    }
+  }, [])
   // 📴 Estado de conexión / cambios pendientes de mandar (modo sin señal)
   const { online, pendientes } = useEstadoConexion()
   // 💾 Respaldo manual a Excel (+ OneDrive)
@@ -629,6 +662,14 @@ export default function App() {
           </div>
         </div>
       )}
+      {gmailMensaje && (
+        <div style={{ position:'fixed', bottom:24, right:24, zIndex:2000, background:'#fff', border: gmailMensaje.ok ? '1.5px solid #bbf7d0' : '1.5px solid #fecaca', borderRadius:14, padding:'14px 18px', minWidth:300, maxWidth:420, boxShadow:'0 16px 40px rgba(15,23,42,0.14)', fontFamily:"'Manrope','Inter',sans-serif" }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12 }}>
+            <div style={{ fontSize:13, fontWeight:600, color:'#1E293B', lineHeight:1.5 }}>{gmailMensaje.texto}</div>
+            <button onClick={() => setGmailMensaje(null)} style={{ background:'transparent', border:'none', cursor:'pointer', color:'#94a3b8', fontSize:16, padding:2, flexShrink:0 }}>✕</button>
+          </div>
+        </div>
+      )}
       {showPanel && <PanelActividad onClose={() => { setShowPanel(false); setSolicitudesPendientes(0) }} onVerCausa={irACausaPorRuc} />}
       {showPanelPropio && <PanelActividad onClose={() => setShowPanelPropio(false)} onVerCausa={irACausaPorRuc} soloEmail={session.user.email} />}
       {showAlerta && (
@@ -747,7 +788,7 @@ export default function App() {
         )}
         {/* ✅ Calendario recibe onVerCausa para navegar */}
         {pagina === 'calendario' && (
-          <Calendario onVerCausa={handleVerCausa} />
+          <Calendario onVerCausa={handleVerCausa} abrirGmailAlEntrar={abrirGmailAlEntrar} />
         )}
         {pagina === 'escritos' && (
           <Escritos session={session} registrarActividad={registrarActividad} />
