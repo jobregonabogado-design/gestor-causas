@@ -777,8 +777,16 @@ function extraerAudienciaPJUD(cuerpo, asunto, soloFuerte = false) {
   }
 
   if (!tribunal) {
-    const matchTrib = cuerpo.match(/((?:\d+[°º]?\s+)?(?:Juzgado\s+de\s+Garantía|Juzgado\s+de\s+Garantia|Tribunal\s+de\s+Juicio\s+Oral)[^\n,]{3,50})/i)
-    if (matchTrib) tribunal = matchTrib[1].trim().replace(/\s+/g, ' ').substring(0, 60)
+    const matchTrib = cuerpo.match(/((?:\d+[°º]?\s+)?(?:Juzgado\s+de\s+Garantía|Juzgado\s+de\s+Garantia|Tribunal\s+de\s+Juicio\s+Oral)[^\n,.]{3,50})/i)
+    if (matchTrib) {
+      tribunal = matchTrib[1].trim().replace(/\s+/g, ' ').substring(0, 60)
+      // ✅ FIX: sin coma ni punto cerca, el tope de 50 caracteres a veces
+      // cortaba a mitad de la frase siguiente en vez de al final del
+      // nombre del tribunal — pasó de verdad: "TRIBUNAL DE JUICIO ORAL EN
+      // LO PENAL SAN BERNARDO ha dictado " quedó guardado así, con el
+      // verbo de la oración siguiente pegado. Se recorta ahí si aparece.
+      tribunal = tribunal.split(/\s+(?:ha\s+dictado|ha\s+resuelto|resolvi[oó]|dict[oó]|se\s+ha)\b/i)[0].trim()
+    }
   }
 
   // ═══════════════════════════════════════════════════════

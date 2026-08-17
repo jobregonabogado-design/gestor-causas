@@ -224,13 +224,33 @@ export default function GmailIntegracion({ onImportComplete }) {
 
       const normalizarParaClave = (v) => (v || '').toString().trim().toLowerCase()
       const normalizarRuc = (ruc) => ruc?.replace(/[\s\-]/g, '').toLowerCase() || ''
+      // ✅ FIX: distintas lecturas del mismo Juicio Oral llegaban a veces
+      // como "JO" (si Joaquín lo había escrito a mano) y otras como
+      // "JUICIO ORAL" (si lo detectó el parser del PJUD) — como la
+      // comparación de tipo era texto exacto, nunca se reconocían como la
+      // MISMA audiencia y se agregaba una segunda, marcada como
+      // "INCONSISTENCIA" — aunque fuera literalmente el mismo Juicio Oral,
+      // mismo RUC, misma fecha, misma hora. Se agrupa por categoría (mismo
+      // criterio que ya usa el color de las audiencias en el Calendario:
+      // ver tipoColor en Calendario.jsx) en vez de por texto exacto.
+      const categoriaTipo = (tipo) => {
+        const t = (tipo || '').toUpperCase()
+        if (t.includes('JUICIO ORAL') || t === 'JO') return 'JUICIO ORAL'
+        if (t.includes('ABREVIADO')) return 'ABREVIADO'
+        if (t.includes('APJO')) return 'APJO'
+        if (t.includes('REV PP') || t.includes('REVPP')) return 'REV PP'
+        if (t.includes('AUMENTO') || t.includes('CIERRE')) return 'AUMENTO/CIERRE'
+        if (t.includes('ENTREVISTA') || t.includes('DECLARACION') || t.includes('DECLARACIÓN')) return 'ENTREVISTA'
+        if (t.includes('CAUTELA') || t.includes('APELACION') || t.includes('APELACIÓN')) return 'CAUTELA/APELACION'
+        return t
+      }
 
       // ✅ FIX: antes esto usaba `a.ruc` tal cual (con guión, ej "1801167745-9")
       // mientras que el RUC de los correos se normaliza sin guión. Como nunca
       // calzaban, el sistema nunca reconocía nada como "ya existente" y volvía
       // a insertar todo de nuevo cada vez que se revisaban los correos.
       const claveExistente = new Set(
-        (audienciasExistentes || []).map(a => `${normalizarRuc(a.ruc)}-${a.fecha}-${normalizarParaClave(a.tipo)}-${normalizarParaClave(a.hora)}`)
+        (audienciasExistentes || []).map(a => `${normalizarRuc(a.ruc)}-${a.fecha}-${categoriaTipo(a.tipo)}-${normalizarParaClave(a.hora)}`)
       )
       // ✅ FIX: antes se agrupaba por RUC+fecha+TIPO — si el tipo también
       // cambiaba entre una lectura y otra (ej. "CIERRE" vs "AUDIENCIA" para la
@@ -305,7 +325,7 @@ export default function GmailIntegracion({ onImportComplete }) {
         }
 
         // Corroborar: clave con fecha+tipo+HORA (sin sala, por el motivo de arriba).
-        const clave = `${rucNorm}-${n.audiencia.fecha}-${normalizarParaClave(n.audiencia.tipo)}-${normalizarParaClave(n.audiencia.hora)}`
+        const clave = `${rucNorm}-${n.audiencia.fecha}-${categoriaTipo(n.audiencia.tipo)}-${normalizarParaClave(n.audiencia.hora)}`
         const yaExiste = claveExistente.has(clave)
 
         // ¿Ya existía algo con este mismo RUC+fecha (sin importar tipo/hora)?
@@ -322,7 +342,7 @@ export default function GmailIntegracion({ onImportComplete }) {
         if (n.audiencia.esReprogramacion && posiblesAnteriores.length === 0) {
           const todasDeLaCausa = audienciasPorRuc.get(rucNorm) || []
           const candidatas = todasDeLaCausa.filter(a =>
-            a.fecha !== n.audiencia.fecha && normalizarParaClave(a.tipo) === normalizarParaClave(n.audiencia.tipo)
+            a.fecha !== n.audiencia.fecha && categoriaTipo(a.tipo) === categoriaTipo(n.audiencia.tipo)
           )
           if (candidatas.length === 1) posibleReemplazo = candidatas[0]
         }
@@ -336,7 +356,7 @@ export default function GmailIntegracion({ onImportComplete }) {
             clavesProcesadas.add(claveDup)
             const actual = (audienciasExistentes || []).find(a =>
               normalizarRuc(a.ruc) === rucNorm && a.fecha === n.audiencia.fecha &&
-              normalizarParaClave(a.tipo) === normalizarParaClave(n.audiencia.tipo) &&
+              categoriaTipo(a.tipo) === categoriaTipo(n.audiencia.tipo) &&
               normalizarParaClave(a.hora) === normalizarParaClave(n.audiencia.hora)
             )
             nuevosDuplicados.push({
