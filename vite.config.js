@@ -31,6 +31,15 @@ export default defineConfig({
         // No intenta cachear las llamadas a la API de Supabase — esas se
         // manejan con la caché propia en src/lib/offline.js.
         navigateFallbackDenylist: [/^\/rest\//, /^\/auth\//],
+        // ✅ FIX: sin esto, un Service Worker nuevo (con una corrección recién
+        // desplegada) queda "esperando" y la pestaña sigue usando el viejo
+        // hasta que se cierren TODAS las pestañas del sitio — cerrar sesión
+        // adentro de la app no cuenta. Pasó de verdad: varias correcciones
+        // (Fiscalía, Gmail) parecían no aplicarse aunque el deploy ya estaba
+        // hecho. skipWaiting + clientsClaim hacen que el nuevo Service Worker
+        // tome el control apenas se detecta, sin esperar a cerrar pestañas.
+        skipWaiting: true,
+        clientsClaim: true,
       },
     }),
   ],
