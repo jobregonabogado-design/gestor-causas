@@ -647,7 +647,11 @@ export default function GmailIntegracion({ onImportComplete }) {
             style={{ background:'linear-gradient(135deg,#2563eb,#1d4ed8)', color:'#fff', border:'none', borderRadius:8, padding:'9px 20px', fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:'0 4px 12px rgba(37,99,235,0.25)', ...f }}>
             {cargando ? '⏳ Revisando...' : '🔄 Revisar correos'}
           </button>
-          <button onClick={() => { logoutGmail(); setConectado(false) }}
+          {/* ✅ FIX: quedaba justo al lado de "Revisar correos" sin ningún
+              aviso — en el celular (pantalla angosta, dedo grande) era fácil
+              tocarlo por error y desconectar Gmail sin querer, lo que corta
+              la importación automática hasta reconectar a mano. */}
+          <button onClick={() => { if (window.confirm('¿Desconectar Gmail? Se detiene la importación automática de audiencias y respuestas de Fiscalía hasta que vuelvas a conectarlo.')) { logoutGmail(); setConectado(false) } }}
             style={{ background:'#fff', border:'1.5px solid #e2e8f0', borderRadius:8, padding:'8px 14px', fontSize:12, color:'#94a3b8', cursor:'pointer', ...f }}>
             Desconectar
           </button>
