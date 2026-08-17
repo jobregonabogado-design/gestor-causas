@@ -11,6 +11,7 @@ import { diasEntreFechasCaut } from './pages/dashboard/cautelares'
 import { hoyISO } from './pages/dashboard/utils'
 import SolicitudVisitaSantiagoI from './components/SolicitudVisitaSantiagoI'
 import Notas from './pages/Notas'
+import { useEstadoConexion } from './lib/offline'
 
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
@@ -374,6 +375,8 @@ export default function App() {
   const [solicitudesPendientes, setSolicitudesPendientes] = useState(0)
   // ✅ Estado para causa seleccionada desde el calendario
   const [causaDesdeCalendario, setCausaDesdeCalendario] = useState(null)
+  // 📴 Estado de conexión / cambios pendientes de mandar (modo sin señal)
+  const { online, pendientes } = useEstadoConexion()
   // 🔔 Estado del Centro de Alertas (advertencias + tareas del equipo)
   const [showAlerta, setShowAlerta] = useState(false)
   const [tareas, setTareas] = useState([])
@@ -626,6 +629,13 @@ export default function App() {
           ))}
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:10, order:3, flexShrink:0 }}>
+          {(!online || pendientes > 0) && (
+            <div title={!online ? 'Sin conexión — se sigue trabajando igual, se manda todo solo apenas vuelva la señal' : `${pendientes} cambio(s) esperando para enviarse`}
+              style={{ display:'flex', alignItems:'center', gap:5, fontSize:11, fontWeight:700, padding:'5px 11px', borderRadius:20, fontFamily:"'Manrope','Inter',sans-serif",
+                background: !online ? '#fef2f2' : '#fffbeb', color: !online ? '#dc2626' : '#92400e' }}>
+              {!online ? '📴 Sin conexión' : `🔄 ${pendientes} por enviar`}
+            </div>
+          )}
           <button onClick={() => setShowAlerta(true)} className={alertaTotal > 0 ? 'alerta-btn-active' : 'alerta-btn'}>
             🔔 Alerta
             {alertaTotal > 0 && (

@@ -21,6 +21,7 @@ import { calcularRegimenAlMomento, calcularVencimiento, parseFechaCL, diasRestan
 import { ImputadoDatosCard } from './dashboard/imputado-datos'
 import { CautelaresPanel, TIPOS_ABONO_DIRECTO, TIPOS_DETENCION_PENAL, CAUTELAR_NOCTURNO, CAUTELAR_SENAME, TIPOS_CAUTELARES_TODAS, diasEntreFechasCaut } from './dashboard/cautelares'
 import { getMSToken, getOrCreateRucFolder } from '../lib/onedrive'
+import { estaOnline, guardarCausaEnCache, leerCausaDeCache, actualizarConCola } from '../lib/offline'
 
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
@@ -116,6 +117,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
   const [sortDir,setSortDir]=useState('desc')
   const [view,setView]=useState('list')
   const [selectedCausa,setSelectedCausa]=useState(null)
+  const [causaSinConexion,setCausaSinConexion]=useState(false) // true = se está mostrando la última versión guardada en el teléfono, sin señal
   const [activeTab,setActiveTab]=useState('datos')
   const [editField,setEditField]=useState(null)
   const [editValue,setEditValue]=useState('')
@@ -181,7 +183,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
   }
 
   const openCausa=async(c)=>{
-    setSelectedCausa(c);setView('detail');setActiveTab('datos')
+    setSelectedCausa(c);setView('detail');setActiveTab('datos');setCausaSinConexion(false)
     // ✅ FIX: se limpian los datos de la causa anterior ANTES de esperar los
     // nuevos — antes quedaban en pantalla (audiencias, cautelares, etc. de
     // la causa que se estaba dejando) durante el instante en que se cargan
@@ -192,19 +194,43 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
     // hoy al entrar a una "causa asociada" desde el imputado y terminó
     // modificando la cautelar de la causa que se estaba abandonando.
     setAudiencias([]);setAumentos([]);setImputados([]);setApelaciones([]);setCautelares([]);setOrdenesDetencion([])
-    const[{data:a},{data:au},{data:imp},{data:apel},{data:caut},{data:ords}]=await Promise.all([
-      // ✅ FIX: solo ordenaba por fecha — dos audiencias del mismo día quedaban
-      // en el orden en que se guardaron, no por hora (ej. la de las 15:00
-      // aparecía antes que la de las 09:00). Se agrega "hora" como segundo
-      // criterio, mismo arreglo que en Calendario.jsx.
-      supabase.from('audiencias').select('*').or(`causa_id.eq.${c.id},ruc.eq.${c.ruc}`).order('fecha',{ascending:false}).order('hora',{ascending:true}),
-      supabase.from('aumentos_plazo').select('*').eq('causa_id',c.id).order('fecha_audiencia',{ascending:true}),
-      supabase.from('imputados').select('*').eq('causa_id',c.id).order('created_at',{ascending:true}),
-      supabase.from('apelaciones_corte').select('*').eq('causa_id',c.id).order('created_at',{ascending:true}),
-      supabase.from('cautelares_causa').select('*').eq('causa_id',c.id).order('fecha_inicio',{ascending:true}),
-      supabase.from('ordenes_detencion').select('*').eq('causa_id',c.id).order('fecha_orden',{ascending:true}),
-    ])
-    setAudiencias(a||[]);setAumentos(au||[]);setImputados(imp||[]);setApelaciones(apel||[]);setCautelares(caut||[]);setOrdenesDetencion(ords||[])
+    // 📴 Sin señal: se muestra directo la última versión guardada en el
+    // teléfono (si esta causa se abrió antes alguna vez) en vez de esperar
+    // a que las consultas fallen.
+    if (!estaOnline()) {
+      const cache = leerCausaDeCache(c.id)
+      if (cache) {
+        setAudiencias(cache.audiencias||[]);setAumentos(cache.aumentos||[]);setImputados(cache.imputados||[])
+        setApelaciones(cache.apelaciones||[]);setCautelares(cache.cautelares||[]);setOrdenesDetencion(cache.ordenesDetencion||[])
+        setCausaSinConexion(true)
+      }
+      return
+    }
+    try {
+      const[{data:a},{data:au},{data:imp},{data:apel},{data:caut},{data:ords}]=await Promise.all([
+        // ✅ FIX: solo ordenaba por fecha — dos audiencias del mismo día quedaban
+        // en el orden en que se guardaron, no por hora (ej. la de las 15:00
+        // aparecía antes que la de las 09:00). Se agrega "hora" como segundo
+        // criterio, mismo arreglo que en Calendario.jsx.
+        supabase.from('audiencias').select('*').or(`causa_id.eq.${c.id},ruc.eq.${c.ruc}`).order('fecha',{ascending:false}).order('hora',{ascending:true}),
+        supabase.from('aumentos_plazo').select('*').eq('causa_id',c.id).order('fecha_audiencia',{ascending:true}),
+        supabase.from('imputados').select('*').eq('causa_id',c.id).order('created_at',{ascending:true}),
+        supabase.from('apelaciones_corte').select('*').eq('causa_id',c.id).order('created_at',{ascending:true}),
+        supabase.from('cautelares_causa').select('*').eq('causa_id',c.id).order('fecha_inicio',{ascending:true}),
+        supabase.from('ordenes_detencion').select('*').eq('causa_id',c.id).order('fecha_orden',{ascending:true}),
+      ])
+      setAudiencias(a||[]);setAumentos(au||[]);setImputados(imp||[]);setApelaciones(apel||[]);setCautelares(caut||[]);setOrdenesDetencion(ords||[])
+      guardarCausaEnCache(c.id, { causa:c, audiencias:a||[], aumentos:au||[], imputados:imp||[], apelaciones:apel||[], cautelares:caut||[], ordenesDetencion:ords||[] })
+    } catch {
+      // El fetch falló (típico de quedarse sin señal justo en ese momento) —
+      // se cae a la última versión guardada en el teléfono, si existe.
+      const cache = leerCausaDeCache(c.id)
+      if (cache) {
+        setAudiencias(cache.audiencias||[]);setAumentos(cache.aumentos||[]);setImputados(cache.imputados||[])
+        setApelaciones(cache.apelaciones||[]);setCautelares(cache.cautelares||[]);setOrdenesDetencion(cache.ordenesDetencion||[])
+        setCausaSinConexion(true)
+      }
+    }
   }
 
   // ✅ Abrir otra causa desde adentro de la actual (ej. "Causas asociadas al
@@ -220,7 +246,10 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
   // ✅ Función central para marcar acción real — actualiza updated_at y semáforo
   const marcarAccion = useCallback(async (causaId) => {
     const ahora = new Date()
-    await supabase.from('causas').update({ updated_at: ahora }).eq('id', causaId)
+    // 📴 Es solo el semáforo — si no hay señal, no vale la pena encolarlo
+    // (se va a corregir solo la próxima vez que se marque una acción con
+    // conexión); lo importante es que no reviente por un fetch fallido.
+    try { await supabase.from('causas').update({ updated_at: ahora }).eq('id', causaId) } catch { /* sin señal, se ignora */ }
     setCausas(prev => prev.map(c => c.id === causaId ? { ...c, updated_at: ahora.toISOString() } : c))
     setSelectedCausa(prev => prev ? { ...prev, updated_at: ahora.toISOString() } : prev)
   }, [])
@@ -706,6 +735,11 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
             <button className="btn-secondary" onClick={()=>setView('list')} style={{fontSize:13,border:'none',borderRadius:14,boxShadow:'0 1px 2px rgba(15,23,42,0.06)'}}>← Volver</button>
             <BotonResumenImprimible causa={c} imputados={imputados} audiencias={audiencias} aumentos={aumentos} cautelares={cautelares} esTitular={esTitular}/>
           </div>
+          {causaSinConexion&&(
+            <div className="no-imprimir" style={{background:'#fffbeb',border:'1px solid #fde68a',borderRadius:12,padding:'10px 16px',marginBottom:16,fontSize:12,color:'#92400e',fontWeight:600,...f}}>
+              📴 Sin conexión — mostrando la última versión guardada en este teléfono. Los cambios que hagas se mandarán solos apenas vuelva la señal.
+            </div>
+          )}
           <div style={{background:'#fff',borderRadius:20,boxShadow:'0 1px 3px rgba(15,23,42,0.06)'}}>
           <div style={{padding:'28px 28px 20px',borderRadius:'20px 20px 0 0'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:12}}>
@@ -1365,8 +1399,11 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                 {audiencias.map(a=>(
                   <AudienciaCard key={a.id} a={a} onUpdate={async(updated,motivo)=>{
                     const historial = a.notas ? a.notas + `\n[${new Date().toLocaleDateString('es-CL')}] Modificado: ${motivo}` : `[${new Date().toLocaleDateString('es-CL')}] Modificado: ${motivo}`
-                    const{error}=await supabase.from('audiencias').update({...updated,notas:historial}).eq('id',a.id)
-                    if(!error){
+                    // 📴 Si no hay señal (o falla la red), el cambio se encola y
+                    // se manda solo apenas vuelva la conexión — igual se ve
+                    // reflejado al tiro en pantalla, como si hubiera funcionado.
+                    const{ok}=await actualizarConCola('audiencias',a.id,{...updated,notas:historial})
+                    if(ok){
                       setAudiencias(prev=>prev.map(x=>x.id===a.id?{...x,...updated,notas:historial}:x))
                       await marcarAccion(c.id) // ✅ actualiza semáforo
                     }
@@ -1376,8 +1413,8 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                   // Joaquín, no es una edición/corrección, es anotar lo normal
                   // después de que la audiencia ya pasó.
                   onUpdateResultado={async(resultado)=>{
-                    const{error}=await supabase.from('audiencias').update({resultado}).eq('id',a.id)
-                    if(!error){
+                    const{ok}=await actualizarConCola('audiencias',a.id,{resultado})
+                    if(ok){
                       setAudiencias(prev=>prev.map(x=>x.id===a.id?{...x,resultado}:x))
                       await marcarAccion(c.id)
                     }
