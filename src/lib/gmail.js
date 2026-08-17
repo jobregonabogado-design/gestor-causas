@@ -11,21 +11,6 @@ const SCOPES = 'https://www.googleapis.com/auth/gmail.readonly https://www.googl
 const SUPABASE_FUNCTION_URL = 'https://qttwthpgzzjzidimlkkh.supabase.co/functions/v1/gmail-token'
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 
-export async function exchangeCodeForToken(code) {
-  const res = await fetch(SUPABASE_FUNCTION_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
-    body: JSON.stringify({ code }),
-  })
-  const data = await res.json()
-  if (data.access_token) {
-    localStorage.setItem('gmail_access_token', data.access_token)
-    if (data.refresh_token) localStorage.setItem('gmail_refresh_token', data.refresh_token)
-    return true
-  }
-  return false
-}
-
 export async function refreshAccessToken() {
   const refresh_token = localStorage.getItem('gmail_refresh_token')
   if (!refresh_token) return false

@@ -13,7 +13,6 @@ import SolicitudVisitaSantiagoI from './components/SolicitudVisitaSantiagoI'
 import Notas from './pages/Notas'
 import { useEstadoConexion } from './lib/offline'
 import { generarYRespaldar } from './lib/backup'
-import { exchangeCodeForToken } from './lib/gmail'
 
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
@@ -378,45 +377,21 @@ export default function App() {
   // ✅ Estado para causa seleccionada desde el calendario
   const [causaDesdeCalendario, setCausaDesdeCalendario] = useState(null)
 
-  // 📧 Conexión de Gmail: se vuelve acá desde Google (accounts.google.com)
-  // después de aceptar el permiso, siempre a "/" — sin importar en qué
-  // pestaña haya quedado la app antes de salir a conectar. Por eso el
-  // intercambio del código va acá arriba (siempre montado) y no dentro del
-  // panel de Gmail (que solo existe si ya estabas en Calendario con el panel
-  // abierto, algo que nunca es cierto justo después de un login fresco —
-  // así fallaba en silencio desde el celular).
+  // 📧 Conexión de Gmail: se vuelve acá desde /gmail-callback.html (ver ese
+  // archivo) después de aceptar el permiso en Google — el canje del código
+  // ya se hizo AHÍ MISMO (esa página es un archivo estático, siempre fresco,
+  // sin depender de que este JS de React ni el Service Worker estén al día
+  // en el celular). Acá solo queda mostrar el aviso y llevar a Joaquín
+  // directo al Calendario con el panel de Gmail ya abierto.
   const [gmailMensaje, setGmailMensaje] = useState(null)
   const [abrirGmailAlEntrar, setAbrirGmailAlEntrar] = useState(false)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('gmail_connected') === '1') {
-      // ✅ FIX: antes el código venía por localStorage (escrito por
-      // gmail-callback.html justo antes de navegar a "/") — en iOS Safari
-      // esa escritura puede perder la carrera contra la navegación y el
-      // código nunca llegaba, fallando en silencio sin ningún aviso (pasó
-      // de verdad en el celular). Ahora viaja directo en la URL, que no
-      // tiene ese problema.
-      const code = params.get('code')
-      const legacyToken = params.get('legacy_token')
       window.history.replaceState({}, '', window.location.pathname)
-      if (code) {
-        exchangeCodeForToken(code).then(ok => {
-          if (ok) {
-            setGmailMensaje({ ok: true, texto: '✅ Gmail conectado.' })
-            setPagina('calendario')
-            setAbrirGmailAlEntrar(true)
-          } else {
-            setGmailMensaje({ ok: false, texto: '❌ No se pudo conectar Gmail — intenta de nuevo.' })
-          }
-        })
-      } else if (legacyToken) {
-        localStorage.setItem('gmail_access_token', legacyToken)
-        setGmailMensaje({ ok: true, texto: '✅ Gmail conectado.' })
-        setPagina('calendario')
-        setAbrirGmailAlEntrar(true)
-      } else {
-        setGmailMensaje({ ok: false, texto: '❌ No se pudo conectar Gmail — intenta de nuevo.' })
-      }
+      setGmailMensaje({ ok: true, texto: '✅ Gmail conectado.' })
+      setPagina('calendario')
+      setAbrirGmailAlEntrar(true)
     } else if (params.get('gmail_error') === '1') {
       window.history.replaceState({}, '', window.location.pathname)
       setGmailMensaje({ ok: false, texto: '❌ No se pudo conectar Gmail — intenta de nuevo.' })
