@@ -10,6 +10,7 @@ import { diasHabilesDesde } from './pages/dashboard/diligencias'
 import { diasEntreFechasCaut } from './pages/dashboard/cautelares'
 import { hoyISO } from './pages/dashboard/utils'
 import SolicitudVisitaSantiagoI from './components/SolicitudVisitaSantiagoI'
+import Notas from './pages/Notas'
 
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
@@ -247,21 +248,8 @@ function AlertaCard({ badge, color, bg, border, titulo, subtitulo, ruc, onVerCau
   )
 }
 
-function PanelAlertas({ onClose, esTitular, tareas, audienciasProximas, diligenciasSinRespuesta, visitasPendientes, onVerCausa, onAgregarTarea, onCompletarTarea, session, registrarActividad }) {
-  const [nuevaTarea, setNuevaTarea] = useState('')
-  const [guardando, setGuardando] = useState(false)
-
-  const pendientes = tareas.filter(t => !t.completada)
-  const completadas = tareas.filter(t => t.completada)
+function PanelAlertas({ onClose, esTitular, audienciasProximas, diligenciasSinRespuesta, visitasPendientes, onVerCausa, session, registrarActividad }) {
   const hoyStr = hoyISO()
-
-  const handleAgregar = async () => {
-    if (!nuevaTarea.trim()) return
-    setGuardando(true)
-    await onAgregarTarea(nuevaTarea.trim())
-    setNuevaTarea('')
-    setGuardando(false)
-  }
 
   return (
     <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', justifyContent:'flex-end' }}>
@@ -334,52 +322,10 @@ function PanelAlertas({ onClose, esTitular, tareas, audienciasProximas, diligenc
               pedido de Joaquín, esa misma información ya se ve en la lista de
               Causas (los filtros de arriba), quedaba duplicada acá. */}
 
-          {/* ✅ Ya no se enmarca como "encargar al equipo" — mientras Joaquín
-              trabaje solo (cuenta de Adolfo suspendida), esto es simplemente
-              su lista personal de pendientes que no alcanza a hacer al
-              tiro. Si más adelante vuelve a haber equipo, sigue sirviendo
-              igual — solo cambió el texto, no la función. */}
-          <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, fontWeight:700, marginBottom:6, ...f }}>Pendientes ({pendientes.length})</div>
-
-          {esTitular && (
-            <div style={{ display:'flex', gap:8, marginBottom:10 }}>
-              <input
-                value={nuevaTarea}
-                onChange={e=>setNuevaTarea(e.target.value)}
-                placeholder="Anotar algo pendiente..."
-                onKeyDown={e=>{ if(e.key==='Enter') handleAgregar() }}
-                style={{ flex:1, padding:'7px 10px', border:'1.5px solid #E2E8F0', borderRadius:8, fontSize:12, fontFamily:"'Manrope','Inter',sans-serif", color:'#1E293B' }}/>
-              <button onClick={handleAgregar} disabled={guardando||!nuevaTarea.trim()} style={{ background:'#dc2626', color:'#fff', border:'none', borderRadius:8, padding:'7px 14px', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:"'Manrope','Inter',sans-serif", flexShrink:0 }}>{guardando?'...':'+ Agregar'}</button>
-            </div>
-          )}
-
-          {pendientes.length === 0 ? (
-            <div style={{ fontSize:12, color:'#cbd5e1', textAlign:'center', padding:'12px 0', ...f }}>Sin tareas pendientes.</div>
-          ) : pendientes.map(t => (
-            <div key={t.id} style={{ display:'flex', gap:8, alignItems:'flex-start', background:'#fff7ed', border:'1px solid #fed7aa', borderRadius:9, padding:'8px 10px', marginBottom:5 }}>
-              <button onClick={()=>onCompletarTarea(t.id)} title="Marcar como realizada"
-                style={{ width:16, height:16, borderRadius:5, border:'1.5px solid #d97706', background:'#fff', cursor:'pointer', flexShrink:0, marginTop:1, padding:0 }}/>
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontSize:12, fontWeight:600, color:'#1E293B', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', ...f }}>{t.texto}</div>
-                <div style={{ fontSize:10, color:'#94a3b8', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', ...f }}>Anotado por {t.creado_por} · {new Date(t.created_at).toLocaleString('es-CL')}</div>
-              </div>
-            </div>
-          ))}
-
-          {completadas.length > 0 && (
-            <div style={{ marginTop:16 }}>
-              <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, fontWeight:700, marginBottom:6, ...f }}>Completadas ({completadas.length})</div>
-              {completadas.map(t => (
-                <div key={t.id} style={{ display:'flex', gap:8, alignItems:'flex-start', background:'#F8F9FC', border:'1px solid #E2E8F0', borderRadius:9, padding:'7px 10px', marginBottom:4 }}>
-                  <span style={{ fontSize:12, color:'#059669', marginTop:1, flexShrink:0 }}>✓</span>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontSize:12, color:'#94a3b8', textDecoration:'line-through', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', ...f }}>{t.texto}</div>
-                    <div style={{ fontSize:10, color:'#cbd5e1', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', ...f }}>Realizada por {t.completada_por || '—'} · {t.completada_en ? new Date(t.completada_en).toLocaleString('es-CL') : ''}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          {/* ✅ "Pendientes" (notas/tareas personales) se sacó de acá — pedido
+              de Joaquín: quería que quedaran separadas de las alertas
+              reactivas, en su propia pestaña siempre visible. Ver
+              src/pages/Notas.jsx. */}
         </div>
       </div>
     </div>
@@ -622,8 +568,10 @@ export default function App() {
   if (!session) return <Login />
 
   const esTitular = userRol?.rol === 'titular'
-  const tareasPendientesCount = tareas.filter(t => !t.completada).length
-  const alertaTotal = tareasPendientesCount + audienciasProximasVigentes.length + diligenciasSinRespuesta.length + visitasPendientes.length
+  // ✅ Las notas/tareas ya no cuentan para el número de la campanita de
+  // Alertas — se sacaron de ese panel a su propia pestaña "Notas", así que
+  // ese número ahora corresponde solo a lo que de verdad se ve al abrirlo.
+  const alertaTotal = audienciasProximasVigentes.length + diligenciasSinRespuesta.length + visitasPendientes.length
   const handleSignOut = async () => { await supabase.auth.signOut() }
 
   // ✅ Handler: desde calendario → abrir causa en Dashboard
@@ -655,13 +603,10 @@ export default function App() {
         <PanelAlertas
           onClose={() => setShowAlerta(false)}
           esTitular={esTitular}
-          tareas={tareas}
           audienciasProximas={audienciasProximasVigentes}
           diligenciasSinRespuesta={diligenciasSinRespuesta}
           visitasPendientes={visitasPendientes}
           onVerCausa={irACausaPorRuc}
-          onAgregarTarea={agregarTarea}
-          onCompletarTarea={completarTarea}
           session={session}
           registrarActividad={registrarActividad}
         />
@@ -676,7 +621,7 @@ export default function App() {
           </div>
         </div>
         <div className="app-navlinks" style={{ display:'flex', gap:4, background:'#F8F9FC', padding:'4px', borderRadius:12, border:'1px solid #E2E8F0', order:2 }}>
-          {[{id:'causas',label:'Causas'},{id:'calendario',label:'Calendario'},{id:'escritos',label:'Escritos'},{id:'codigos',label:'Códigos y Leyes'}].map(item => (
+          {[{id:'causas',label:'Causas'},{id:'calendario',label:'Calendario'},{id:'escritos',label:'Escritos'},{id:'notas',label:'Notas'},{id:'codigos',label:'Códigos y Leyes'}].map(item => (
             <button key={item.id} className={`nav-link${pagina===item.id?' active':''}`} onClick={() => setPagina(item.id)}>{item.label}</button>
           ))}
         </div>
@@ -758,6 +703,9 @@ export default function App() {
         )}
         {pagina === 'escritos' && (
           <Escritos session={session} registrarActividad={registrarActividad} />
+        )}
+        {pagina === 'notas' && (
+          <Notas tareas={tareas} esTitular={esTitular} onAgregarTarea={agregarTarea} onCompletarTarea={completarTarea} />
         )}
         {pagina === 'codigos' && (
           <CodigosLeyes />
