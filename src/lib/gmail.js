@@ -629,6 +629,19 @@ function extraerAudienciaPJUD(cuerpo, asunto, soloFuerte = false) {
     }
   }
 
+  // Patrón 2c: "Fecha  11/09/2026" — tabla del PDF, formato DD/MM/YYYY (con
+  // barras, día primero) — distinto del patrón 2a, que es AAAA/MM/DD. Visto
+  // real en las notificaciones de "Reprogramación" del PJUD con tabla
+  // RUC/RIT/Ámbito/Detalle del Hito/Valor: pasaba de largo porque ningún
+  // patrón anterior reconocía este orden día/mes/año.
+  if (!fecha && !esNotificacionDePlazo) {
+    const matchTablaFechaDMA = cuerpo.match(/Fecha\s+(\d{2})\/(\d{2})\/(\d{4})/i)
+    if (matchTablaFechaDMA) {
+      const posible = `${matchTablaFechaDMA[3]}-${matchTablaFechaDMA[2]}-${matchTablaFechaDMA[1]}`
+      if (esFechaFuturaOReciente(posible)) { fecha = posible; posFecha = matchTablaFechaDMA.index }
+    }
+  }
+
   // Patrón 3: "fijada para el DD de MES de YYYY"
   if (!fecha && !esNotificacionDePlazo) {
     const matchFijada = cuerpo.match(/fijada?\s+para\s+el\s+(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/i)
