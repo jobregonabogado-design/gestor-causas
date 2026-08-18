@@ -459,6 +459,32 @@ export default function App() {
   const [diligenciasSinRespuesta, setDiligenciasSinRespuesta] = useState([])
   const [notifTarea, setNotifTarea] = useState(null)
 
+  // ✅ FIX: en el celular, cerrar la app (o cambiar a otra) NO la mata de
+  // verdad — iOS solo la deja "pausada" en segundo plano, con TODO el
+  // estado de React tal cual quedó (por eso al volver aparece justo donde
+  // se dejó, ej. en Escritos). El problema es que si el menú del botón "J"
+  // (arriba a la derecha) había quedado abierto en ese momento, al volver
+  // sigue "abierto" de verdad — pero el toque para cerrarlo (el fondo
+  // invisible que cubre toda la pantalla) a veces no alcanza a registrar
+  // bien el primer toque justo al reactivarse la pestaña, así que quedaba
+  // pegado y costaba sacarlo. Ahora, apenas la app vuelve a primer plano,
+  // se cierran solos el menú y el panel de Alertas si habían quedado
+  // abiertos — así nunca hay nada "pegado" esperando al volver.
+  useEffect(() => {
+    const cerrarMenusAlVolver = () => {
+      if (document.visibilityState === 'visible') {
+        setShowUserMenu(false)
+        setShowAlerta(false)
+      }
+    }
+    document.addEventListener('visibilitychange', cerrarMenusAlVolver)
+    window.addEventListener('pageshow', cerrarMenusAlVolver)
+    return () => {
+      document.removeEventListener('visibilitychange', cerrarMenusAlVolver)
+      window.removeEventListener('pageshow', cerrarMenusAlVolver)
+    }
+  }, [])
+
   const cargarRol = useCallback(async (userId) => {
     const { data } = await supabase.from('user_roles').select('*').eq('user_id', userId).single()
     setUserRol(data)
