@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { generarPdfEscrito, tribunalCompleto, corteCompleta } from './escritos/generarPdf'
 import { getMSToken, uploadFile } from '../lib/onedrive'
-import { sanitizarNombreArchivo, hoyISO, fechaDDMM } from './dashboard/utils'
+import { sanitizarNombreArchivo, fechaDDMM } from './dashboard/utils'
 
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
@@ -399,7 +399,12 @@ export default function Escritos({ session, registrarActividad }) {
       }
 
       const nombreEscrito = capitulosSel.map(c => c.nombre).join(' + ')
-      const nombreArchivo = `${nombreEscrito} - ${hoyISO()}.pdf`
+      // ✅ RIT en vez de la fecha en el nombre del archivo — Joaquín pidió
+      // poder identificar de qué causa es cada escrito descargado con solo
+      // mirar el nombre. Se usa el RIT del tribunal que realmente se eligió
+      // (Garantía o Juicio Oral, ver causaParaEscrito más arriba), no
+      // siempre el RIT original de la causa.
+      const nombreArchivo = `${nombreEscrito} - RIT ${causaParaEscrito.rit || causaSel.ruc}.pdf`
       const blob = await generarPdfEscrito(textoParaPdf(escrito))
       const file = new File([blob], nombreArchivo, { type: 'application/pdf' })
 
