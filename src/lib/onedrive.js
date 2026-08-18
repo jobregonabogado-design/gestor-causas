@@ -19,43 +19,19 @@ export function loginOneDrive() {
     scope: SCOPES.join(' '),
     response_mode: 'fragment',
   })
-  localStorage.setItem('ms_login_pending', '1')
   window.location.href = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${params}`
 }
 
-export function checkTokenOnLoad() {
-  const hash = window.location.hash
-  if (hash.includes('access_token')) {
-    const params = new URLSearchParams(hash.substring(1))
-    const token = params.get('access_token')
-    if (token) {
-      sessionStorage.setItem('ms_token', token)
-      localStorage.removeItem('ms_login_pending')
-      window.history.replaceState({}, '', window.location.pathname)
-      return token
-    }
-  }
-  return sessionStorage.getItem('ms_token')
-}
-
-export function getTokenFromHash() {
-  const hash = window.location.hash.substring(1)
-  const params = new URLSearchParams(hash)
-  const token = params.get('access_token')
-  if (token) {
-    sessionStorage.setItem('ms_token', token)
-    window.location.hash = ''
-    return token
-  }
-  return sessionStorage.getItem('ms_token')
-}
-
+// ✅ FIX: el token vivía en sessionStorage, que se borra solo al cerrar la
+// pestaña/el navegador — así que había que reconectar OneDrive cada vez que
+// se volvía a abrir la app, no solo cuando el token realmente vencía (~1
+// hora). localStorage sí sobrevive cerrar y volver a abrir.
 export function getMSToken() {
-  return sessionStorage.getItem('ms_token')
+  return localStorage.getItem('ms_token')
 }
 
 export function logoutOneDrive() {
-  sessionStorage.removeItem('ms_token')
+  localStorage.removeItem('ms_token')
 }
 
 async function graphFetch(path, options = {}) {

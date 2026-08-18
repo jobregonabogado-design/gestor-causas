@@ -3,11 +3,16 @@
 <head><title>Conectando...</title></head>
 <body>
 <script>
+  // ✅ FIX: antes esto guardaba el token en sessionStorage, que se borra
+  // solo al cerrar la pestaña/el navegador — así que había que reconectar
+  // OneDrive cada vez que se volvía a abrir la app, no solo cuando el token
+  // realmente vencía (~1 hora). localStorage sí sobrevive cerrar y volver a
+  // abrir, así que la conexión dura lo que dura el token de verdad.
   const hash = window.location.hash.substring(1)
   const params = new URLSearchParams(hash)
   const token = params.get('access_token')
   if (token) {
-    sessionStorage.setItem('ms_token', token)
+    localStorage.setItem('ms_token', token)
     window.location.href = '/'
   } else {
     window.location.href = '/'
