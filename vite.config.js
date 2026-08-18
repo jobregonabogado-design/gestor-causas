@@ -41,7 +41,18 @@ export default defineConfig({
         // fallando en el celular. Estas dos páginas son la vuelta desde el
         // login de Google/Microsoft — TIENEN que cargar siempre la versión
         // real desde el servidor, nunca una copia guardada.
-        navigateFallbackDenylist: [/^\/rest\//, /^\/auth\//, /^\/gmail-callback\.html$/, /^\/ms-callback\.html$/],
+        // ✅ FIX (la causa real, encontrada recién probando con las
+        // herramientas de desarrollador en el PC): el "$" al final de estos
+        // dos patrones exige que la URL termine JUSTO en ".html" — pero la
+        // vuelta real de Google SIEMPRE trae "?code=..." después. Como el
+        // patrón nunca calzaba, el Service Worker no la reconocía como
+        // excluida y el navigateFallback (pensado para las rutas internas
+        // de la app) le servía la APP ENTERA en vez de esta página — se
+        // confirmó viendo document.title mostrar "Gestor de Causas Penales"
+        // en vez de "Conectando Gmail..." con la URL correcta en la barra.
+        // Esto explica por qué fallaba SIEMPRE (celular, PC, incógnito, otro
+        // navegador) — no era caché ni el celular, era este "$" de más.
+        navigateFallbackDenylist: [/^\/rest\//, /^\/auth\//, /^\/gmail-callback\.html/, /^\/ms-callback\.html/],
         globIgnores: ['gmail-callback.html', 'ms-callback.html'],
         // ✅ FIX: sin esto, un Service Worker nuevo (con una corrección recién
         // desplegada) queda "esperando" y la pestaña sigue usando el viejo
