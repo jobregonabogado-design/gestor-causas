@@ -94,12 +94,13 @@ export function contarCausasPendientes() {
 // señal, y devuelve un objeto "optimista" (con un id temporal, prefijo
 // "temp_") listo para mostrar en la lista de causas mientras tanto — así
 // Joaquín la ve y puede seguir trabajando con ella sin esperar a
-// sincronizar. `imputados` es un arreglo de {datos, cautelar} — cautelar
-// puede ser null si ese imputado no tiene una medida con fecha que registrar.
-export function encolarCausaNueva({ causaData, imputados }) {
+// sincronizar. `imputados` es un arreglo de {datos, cautelares} — cautelares
+// es un arreglo (puede tener 0, 1 o varias). `aumentoPlazo` es opcional (la
+// audiencia de plazo/ACD inicial, si se completó "Fecha inicio"+"Días plazo").
+export function encolarCausaNueva({ causaData, imputados, aumentoPlazo }) {
   const tempId = 'temp_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)
   const pendientes = leerCausasPendientes()
-  pendientes.push({ tempId, causaData, imputados, creadoEn: Date.now() })
+  pendientes.push({ tempId, causaData, imputados, aumentoPlazo: aumentoPlazo || null, creadoEn: Date.now() })
   guardarCausasPendientes(pendientes)
   notificarCambioCola()
   return { id: tempId, ...causaData, _pendienteSync: true }
@@ -132,10 +133,13 @@ export async function sincronizarCausasPendientes(onCausaSincronizada) {
         causaReal = data
         for (const imp of item.imputados) {
           const { data: impData } = await supabase.from('imputados').insert({ ...imp.datos, causa_id: causaReal.id }).select().single()
-          if (impData && imp.cautelar) {
-            await supabase.from('cautelares_causa').insert({ ...imp.cautelar, causa_id: causaReal.id, imputado_id: impData.id })
+          if (impData) {
+            for (const cautelar of (imp.cautelares || [])) {
+              await supabase.from('cautelares_causa').insert({ ...cautelar, causa_id: causaReal.id, imputado_id: impData.id })
+            }
           }
         }
+        if (item.aumentoPlazo) await supabase.from('aumentos_plazo').insert({ ...item.aumentoPlazo, causa_id: causaReal.id })
       } catch {
         break
       }
