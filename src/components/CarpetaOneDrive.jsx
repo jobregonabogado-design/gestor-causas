@@ -10,11 +10,18 @@ const f = { fontFamily: "'Manrope','Inter', sans-serif" }
 // crear la carpeta a mano — útil tanto para causas nuevas (si por algún
 // motivo no se creó sola) como para todas las causas ya existentes, que
 // nunca tuvieron esta opción disponible.
+// ✅ FIX: la tarjeta tenía 3 botones apilados + un cuadro aparte de "Cómo
+// acceder" explicando lo que los botones ya decían — Joaquín: "creo que es
+// muy grande la dinámica y muchas cosas". Ahora queda 1 botón principal
+// (Abrir carpeta) + 2 enlaces chicos abajo (verificar/crear la carpeta,
+// copiar RUC), sin el cuadro de instrucciones. "Crear/verificar" ya no
+// necesita que lo apreten: se hace solo al entrar a esta pestaña.
 export default function CarpetaOneDrive({ ruc }) {
   const [copiado, setCopiado] = useState(false)
   const [conectado, setConectado] = useState(!!getMSToken())
   const [creando, setCreando] = useState(false)
   const [creada, setCreada] = useState(false)
+  const [errorCrear, setErrorCrear] = useState(false)
 
   const oneDriveUrl = 'https://onedrive.live.com/?id=%2Fpersonal%2F0cfb783f3c750a65%2FDocuments%2FJOAQUIN%20OBREGON%2FCAUSAS%20JOA%2F'
     + ruc.replace(/-/g, '%2D')
@@ -28,6 +35,7 @@ export default function CarpetaOneDrive({ ruc }) {
 
   const crearCarpeta = async () => {
     setCreando(true)
+    setErrorCrear(false)
     try {
       await getOrCreateRucFolder(ruc)
       setCreada(true)
@@ -37,69 +45,49 @@ export default function CarpetaOneDrive({ ruc }) {
       // error críptico.
       if (/No token|401|token/i.test(err.message)) {
         setConectado(false)
-        alert('La conexión con OneDrive venció — vuelve a conectar y prueba de nuevo.')
       } else {
-        alert('No se pudo crear la carpeta: ' + err.message)
+        setErrorCrear(true)
       }
     } finally {
       setCreando(false)
     }
   }
 
+  useEffect(() => { if (conectado) crearCarpeta() }, [ruc, conectado])
+
   return (
-    <div>
-      {/* Card principal */}
-      <div style={{ background:'linear-gradient(135deg,#f0f7ff,#e8f0fe)', border:'1.5px solid #bfdbfe', borderRadius:14, padding:'20px 24px', marginBottom:16 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:16 }}>
-          <div style={{ width:48, height:48, background:'linear-gradient(135deg,#2563eb,#1d4ed8)', borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center', fontSize:24, flexShrink:0 }}>📁</div>
-          <div>
-            <div style={{ fontSize:14, fontWeight:700, color:'#1e3a8a', ...f }}>Carpeta OneDrive</div>
-            <div style={{ fontSize:12, color:'#3b82f6', marginTop:2, fontFamily:'monospace' }}>CAUSAS JOA / {ruc}</div>
-          </div>
+    <div style={{ background:'#FDFCF8', border:'1px solid #DDD7C6', borderRadius:14, padding:'18px 20px', marginBottom:16 }}>
+      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:14 }}>
+        <div style={{ width:40, height:40, background:'#2F5D48', borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, flexShrink:0, boxShadow:'0 0 0 1px rgba(168,146,95,.35)' }}>📁</div>
+        <div>
+          <div style={{ fontSize:13.5, fontWeight:700, color:'#1E3A2F', ...f }}>Carpeta OneDrive</div>
+          <div style={{ fontSize:11.5, color:'#A6A397', marginTop:1, fontVariantNumeric:'tabular-nums' }}>CAUSAS JOA / {ruc}</div>
         </div>
+      </div>
 
-        {/* ✅ NUEVO: conectar OneDrive / crear la carpeta a mano */}
-        {!conectado ? (
-          <button onClick={loginOneDrive}
-            style={{ width:'100%', background:'#fff', border:'1.5px solid #bfdbfe', borderRadius:10, padding:'9px 20px', fontSize:13, fontWeight:600, color:'#2563eb', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8, marginBottom:10, ...f }}>
-            🔗 Conectar OneDrive (para crear carpetas automáticamente)
-          </button>
-        ) : (
-          <button onClick={crearCarpeta} disabled={creando||creada}
-            style={{ width:'100%', background: creada ? '#ecfdf5' : '#fff', border:`1.5px solid ${creada?'#a7f3d0':'#bfdbfe'}`, borderRadius:10, padding:'9px 20px', fontSize:13, fontWeight:600, color: creada?'#065f46':'#2563eb', cursor: creada?'default':'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8, marginBottom:10, ...f }}>
-            {creada ? '✅ Carpeta creada (o ya existía)' : creando ? 'Creando...' : '📁 Crear/verificar carpeta en OneDrive'}
-          </button>
-        )}
-
-        {/* Botón principal — abrir en OneDrive */}
-        <a href={oneDriveUrl} target="_blank" rel="noreferrer"
-          style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:10, background:'linear-gradient(135deg,#2563eb,#1d4ed8)', color:'#fff', borderRadius:10, padding:'12px 20px', fontSize:14, fontWeight:600, textDecoration:'none', boxShadow:'0 4px 14px rgba(37,99,235,0.3)', marginBottom:10, ...f }}>
-          <span style={{ fontSize:18 }}>📂</span>
-          Abrir carpeta en OneDrive
-          <span style={{ fontSize:12, opacity:0.8 }}>↗</span>
-        </a>
-
-        {/* Botón copiar RUC */}
-        <button onClick={copiarRuc}
-          style={{ width:'100%', background:'#fff', border:'1.5px solid #bfdbfe', borderRadius:10, padding:'9px 20px', fontSize:13, fontWeight:500, color:'#2563eb', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8, ...f }}>
-          {copiado ? '✅ RUC copiado' : '📋 Copiar RUC para buscar en OneDrive'}
+      {!conectado ? (
+        <button onClick={loginOneDrive}
+          style={{ width:'100%', background:'#1E3A2F', border:'none', borderRadius:9, padding:'11px 18px', fontSize:12.5, fontWeight:600, color:'#FDFCF8', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8, ...f }}>
+          🔗 Conectar OneDrive
         </button>
-      </div>
-
-      {/* Instrucciones */}
-      <div style={{ background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:10, padding:'14px 18px' }}>
-        <div style={{ fontSize:11, fontWeight:700, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, marginBottom:10, ...f }}>Cómo acceder</div>
-        {[
-          { icon:'1️⃣', texto:'Haz clic en "Abrir carpeta en OneDrive"' },
-          { icon:'2️⃣', texto:'Si no carga directo, usa "Copiar RUC" y búscalo en OneDrive' },
-          { icon:'3️⃣', texto:'La carpeta está en: Documentos → JOAQUIN OBREGON → CAUSAS JOA → ' + ruc },
-        ].map((item, i) => (
-          <div key={i} style={{ display:'flex', gap:10, alignItems:'flex-start', marginBottom:8 }}>
-            <span style={{ fontSize:14, flexShrink:0 }}>{item.icon}</span>
-            <div style={{ fontSize:12, color:'#64748b', lineHeight:1.5, ...f }}>{item.texto}</div>
+      ) : (
+        <>
+          <a href={oneDriveUrl} target="_blank" rel="noreferrer"
+            style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, background:'#1E3A2F', color:'#FDFCF8', borderRadius:9, padding:'11px 18px', fontSize:13, fontWeight:600, textDecoration:'none', ...f }}>
+            📂 Abrir carpeta en OneDrive ↗
+          </a>
+          <div style={{ display:'flex', justifyContent:'center', gap:18, marginTop:11 }}>
+            <span onClick={errorCrear ? crearCarpeta : undefined}
+              style={{ fontSize:11.5, fontWeight:600, color: errorCrear ? '#8C2F26' : '#6F7B6F', cursor: errorCrear ? 'pointer' : 'default', borderBottom: errorCrear ? '1px solid #8C2F26' : 'none', ...f }}>
+              {creando ? 'Verificando carpeta…' : errorCrear ? '⚠ No se pudo verificar — reintentar' : creada ? '✓ Carpeta verificada' : ''}
+            </span>
+            <span onClick={copiarRuc}
+              style={{ fontSize:11.5, fontWeight:600, color:'#6F7B6F', cursor:'pointer', borderBottom:'1px solid #DDD7C6', ...f }}>
+              {copiado ? '✓ RUC copiado' : '📋 Copiar RUC'}
+            </span>
           </div>
-        ))}
-      </div>
+        </>
+      )}
     </div>
   )
 }

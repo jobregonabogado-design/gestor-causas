@@ -362,84 +362,99 @@ export function DocumentosGuardados({ causaId, ruc, email, registrarActividad, o
     Array.from(e.dataTransfer.files).forEach(f => subirArchivo(f))
   }
 
+  // ✅ NUEVO: separa los PDF generados desde "Escritos" (siempre se guardan
+  // acá con el nombre "{tipo de escrito} - RIT {rit}.pdf", ver
+  // Escritos.jsx) del resto de documentos subidos a mano — Joaquín pidió
+  // que quedaran en su propia sección para no mezclarlos con todo lo demás.
+  const escritos = docs.filter(d => / - RIT .+\.pdf$/i.test(d.nombre))
+  const otros = docs.filter(d => !/ - RIT .+\.pdf$/i.test(d.nombre))
+
+  const fila = (doc) => (
+    <div key={doc.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', background:'#fff', border:'1px solid #E2DDCD', borderRadius:9, marginBottom:6 }}>
+      <div style={{ width:30, height:30, background:'#FAF7F0', border:'1px solid #E2DDCD', borderRadius:7, display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, flexShrink:0 }}>{iconoDocumento(doc.nombre)}</div>
+      <div style={{ flex:1, minWidth:0 }}>
+        <div style={{ fontSize:12.5, fontWeight:600, color:'#1E3A2F', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', ...f }}>{doc.nombre}</div>
+        <div style={{ fontSize:10.5, color:'#A6A397', marginTop:1, ...f }}>{doc.subido_por || 'usuario'} · {new Date(doc.created_at).toLocaleDateString('es-CL')}</div>
+      </div>
+      <a href={doc.url} target="_blank" rel="noreferrer" style={{ background:'#FAF7F0', border:'1px solid #DDD7C6', borderRadius:6, padding:'4px 10px', fontSize:10.5, color:'#1E3A2F', cursor:'pointer', fontWeight:600, textDecoration:'none', ...f }}>Ver</a>
+      <button onClick={() => renombrar(doc)} title="Renombrar" style={{ background:'none', border:'none', padding:'4px 4px', fontSize:12, color:'#A6A397', cursor:'pointer' }}>✏️</button>
+      <button onClick={() => eliminar(doc)} title="Eliminar" style={{ background:'none', border:'none', padding:'4px 4px', fontSize:12, color:'#c4988e', cursor:'pointer' }}>✕</button>
+    </div>
+  )
+
   return (
     <div>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:10, marginBottom:4 }}>
-        <div>
-          <div style={{ fontSize:13, fontWeight:700, color:'#2F5D48', ...f }}>Documentos guardados en la app</div>
-          <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>{getMSToken() ? 'Sincronizado con OneDrive: lo que subas acá también se sube allá, y lo que agregues abajo desde OneDrive queda listado acá.' : 'Solo lo que subas acá explícitamente. Conecta OneDrive en "Teoría del Caso" para sincronizar.'}</div>
-        </div>
-        <div style={{ flexShrink:0, display:'flex', gap:8 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:10, marginBottom:10 }}>
+        <div style={{ fontSize:12.5, fontWeight:700, color:'#1E3A2F', ...f }}>Documentos</div>
+        <div style={{ flexShrink:0, display:'flex', gap:6 }}>
           {getMSToken() && docs.some(d => d.storage_path) && (
-            <button onClick={migrarExistentesAOneDrive} disabled={migrando} className="btn-secondary" style={{ fontSize:11, padding:'5px 10px' }}>
-              {migrando ? `Subiendo ${migracion?.hecho ?? 0}/${migracion?.total ?? 0}...` : '📤 Subir existentes a OneDrive'}
+            <button onClick={migrarExistentesAOneDrive} disabled={migrando} className="btn-secondary" style={{ fontSize:10.5, padding:'4px 9px' }}>
+              {migrando ? `${migracion?.hecho ?? 0}/${migracion?.total ?? 0}...` : '📤 Subir existentes'}
             </button>
           )}
           <BotonImprimirDocumentos items={docs}/>
         </div>
       </div>
       {migracion && !migrando && (
-        <div style={{ display:'flex', alignItems:'flex-start', gap:8, background: migracion.fallidos.length ? '#fef2f2' : '#ecfdf5', border: `1px solid ${migracion.fallidos.length ? '#fecaca' : '#a7f3d0'}`, borderRadius:10, padding:'10px 14px', marginBottom:12 }}>
-          <div style={{ flex:1, fontSize:12, color: migracion.fallidos.length ? '#dc2626' : '#065f46', ...f }}>
+        <div style={{ display:'flex', alignItems:'flex-start', gap:8, background: migracion.fallidos.length ? '#FBEAEA' : '#EAF2EC', border: `1px solid ${migracion.fallidos.length ? '#E9C6C2' : '#c9dfd0'}`, borderRadius:9, padding:'8px 12px', marginBottom:10 }}>
+          <div style={{ flex:1, fontSize:11, color: migracion.fallidos.length ? '#8C2F26' : '#2F6B4F', ...f }}>
             {migracion.fallidos.length === 0
-              ? (migracion.total === 0 ? '✅ Ya estaban todos en OneDrive — no había nada nuevo que subir.' : `✅ Se subieron ${migracion.total} documento${migracion.total !== 1 ? 's' : ''} a OneDrive.`)
+              ? (migracion.total === 0 ? '✅ Ya estaban todos en OneDrive.' : `✅ Se subieron ${migracion.total} documento${migracion.total !== 1 ? 's' : ''}.`)
               : `Se subieron ${migracion.total - migracion.fallidos.length} de ${migracion.total}. Fallaron: ${migracion.fallidos.join(' · ')}`}
           </div>
-          <button onClick={() => setMigracion(null)} style={{ background:'none', border:'none', color:'inherit', cursor:'pointer', fontWeight:700, fontSize:13, flexShrink:0 }}>✕</button>
+          <button onClick={() => setMigracion(null)} style={{ background:'none', border:'none', color:'inherit', cursor:'pointer', fontWeight:700, fontSize:12, flexShrink:0 }}>✕</button>
         </div>
       )}
       {erroresOneDrive.length > 0 && (
-        <div style={{ display:'flex', alignItems:'flex-start', gap:8, background:'#fef2f2', border:'1px solid #fecaca', borderRadius:10, padding:'10px 14px', marginBottom:12 }}>
-          <div style={{ flex:1, fontSize:12, color:'#dc2626', ...f }}>⚠ No se pudo subir a OneDrive — el documento igual quedó guardado acá: {erroresOneDrive.join(' · ')}</div>
-          <button onClick={() => setErroresOneDrive([])} style={{ background:'none', border:'none', color:'#dc2626', cursor:'pointer', fontWeight:700, fontSize:13, flexShrink:0 }}>✕</button>
+        <div style={{ display:'flex', alignItems:'flex-start', gap:8, background:'#FBEAEA', border:'1px solid #E9C6C2', borderRadius:9, padding:'8px 12px', marginBottom:10 }}>
+          <div style={{ flex:1, fontSize:11, color:'#8C2F26', ...f }}>⚠ No se pudo subir a OneDrive (quedó guardado igual acá): {erroresOneDrive.join(' · ')}</div>
+          <button onClick={() => setErroresOneDrive([])} style={{ background:'none', border:'none', color:'#8C2F26', cursor:'pointer', fontWeight:700, fontSize:12, flexShrink:0 }}>✕</button>
         </div>
       )}
-      <div style={{ marginBottom:14 }}/>
       {/* ✅ FIX: mismo arreglo que en diligencias.jsx — algunos navegadores en
           Windows (ej. Edge) necesitan que "dragenter" también prevenga el
           default y que se fije dropEffect="copy", si no muestran el
           símbolo rojo de "no permitido" y nunca aceptan el archivo. */}
       <div onDragEnter={e => { e.preventDefault(); setDrag(true) }} onDragOver={e => { e.preventDefault(); if(e.dataTransfer) e.dataTransfer.dropEffect='copy'; setDrag(true) }} onDragLeave={() => setDrag(false)} onDrop={onDrop} onClick={() => inputRef.current?.click()}
-        style={{ border: `2px dashed ${drag ? '#2563eb' : '#e2e8f0'}`, borderRadius: 12, padding: '24px 20px', textAlign: 'center', background: drag ? '#eff6ff' : '#FAF7F0', cursor: 'pointer', transition: 'all 0.2s', marginBottom: 16 }}>
+        style={{ border: `1.5px dashed ${drag ? '#A8925F' : '#DDD7C6'}`, borderRadius: 10, padding: '14px 16px', textAlign: 'center', background: drag ? '#F5EFE2' : '#FAF7F0', cursor: 'pointer', transition: 'all 0.2s', marginBottom: 14, ...f }}>
         <input ref={inputRef} type="file" multiple style={{ display:'none' }} onChange={e => Array.from(e.target.files).forEach(f => subirArchivo(f))}/>
-        <div style={{ fontSize: 28, marginBottom: 6 }}>{subiendo ? '⏳' : '📎'}</div>
-        <div style={{ fontSize: 13, fontWeight: 600, color: drag ? '#2563eb' : '#475569', ...f }}>{subiendo ? 'Subiendo...' : drag ? 'Suelta aquí el documento' : 'Arrastra un documento aquí'}</div>
-        <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, ...f }}>o haz clic para seleccionar — cualquier tipo de archivo</div>
+        <span style={{ fontSize:12.5, fontWeight:600, color: drag ? '#8A7D55' : '#6F7B6F' }}>{subiendo ? '⏳ Subiendo...' : drag ? 'Suelta aquí el documento' : '📎 Arrastra un documento aquí, o haz clic'}</span>
       </div>
-      {docs.length === 0 ? (
-        <div style={{ fontSize: 13, color: '#94a3b8', textAlign: 'center', padding: '12px 0', ...f }}>Sin documentos guardados aún.</div>
-      ) : docs.map((doc, i) => (
-        <div key={i} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', background:'#fff', border:'1px solid #e2e8f0', borderRadius:10, marginBottom:8 }}>
-          <div style={{ width:36, height:36, background:'#FAF7F0', border:'1px solid #e2e8f0', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, flexShrink:0 }}>{iconoDocumento(doc.nombre)}</div>
-          <div style={{ flex:1, minWidth:0 }}>
-            <div style={{ fontSize:13, fontWeight:600, color:'#2F5D48', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', ...f }}>{doc.nombre}</div>
-            <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>Subido por {doc.subido_por || 'usuario'} · {new Date(doc.created_at).toLocaleDateString('es-CL')}</div>
-          </div>
-          <a href={doc.url} target="_blank" rel="noreferrer" style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:7, padding:'5px 12px', fontSize:11, color:'#2563eb', cursor:'pointer', fontWeight:600, textDecoration:'none', ...f }}>Ver / Descargar</a>
-          <button onClick={() => renombrar(doc)} title="Renombrar" style={{ background:'#FAF7F0', border:'1px solid #e2e8f0', borderRadius:7, padding:'5px 10px', fontSize:11, color:'#475569', cursor:'pointer', fontWeight:600, ...f }}>✏️</button>
-          <button onClick={() => eliminar(doc)} style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:7, padding:'5px 10px', fontSize:11, color:'#dc2626', cursor:'pointer', fontWeight:600, ...f }}>✕</button>
+
+      {escritos.length > 0 && (
+        <div style={{ marginBottom: otros.length > 0 ? 14 : 4 }}>
+          {otros.length > 0 && <div style={{ fontSize:10.5, fontWeight:700, color:'#8A7D55', textTransform:'uppercase', letterSpacing:1, marginBottom:6, ...f }}>📝 Escritos ({escritos.length})</div>}
+          {escritos.map(fila)}
         </div>
-      ))}
+      )}
+      {(otros.length > 0 || escritos.length === 0) && (
+        <div>
+          {escritos.length > 0 && <div style={{ fontSize:10.5, fontWeight:700, color:'#8A7D55', textTransform:'uppercase', letterSpacing:1, marginBottom:6, ...f }}>📎 Documentos ({otros.length})</div>}
+          {otros.length === 0 && escritos.length === 0
+            ? <div style={{ fontSize:12.5, color:'#A6A397', textAlign:'center', padding:'10px 0', ...f }}>Sin documentos guardados aún.</div>
+            : otros.map(fila)}
+        </div>
+      )}
 
       {/* ✅ NUEVO: archivos que están en OneDrive pero se subieron directo
           ahí (no desde acá) — se pueden agregar a esta lista con un clic,
           sin volver a subir el archivo. */}
       {getMSToken() && archivosOneDrive.length > 0 && (
-        <div style={{ marginTop:16, paddingTop:16, borderTop:'1px dashed #e2e8f0' }}>
-          <div style={{ fontSize:12, fontWeight:700, color:'#64748b', marginBottom:8, ...f }}>📁 En OneDrive, sin agregar acá ({archivosOneDrive.length})</div>
+        <div style={{ marginTop:14, paddingTop:14, borderTop:'1px dashed #DDD7C6' }}>
+          <div style={{ fontSize:10.5, fontWeight:700, color:'#8A7D55', textTransform:'uppercase', letterSpacing:1, marginBottom:6, ...f }}>📁 En OneDrive, sin agregar acá ({archivosOneDrive.length})</div>
           {archivosOneDrive.map(item => (
-            <div key={item.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 16px', background:'#f8fafc', border:'1px dashed #cbd5e1', borderRadius:10, marginBottom:8 }}>
-              <div style={{ width:32, height:32, background:'#fff', border:'1px solid #e2e8f0', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, flexShrink:0 }}>{getFileIcon(item.name)}</div>
-              <div style={{ flex:1, minWidth:0, fontSize:13, fontWeight:600, color:'#475569', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', ...f }}>{item.name}</div>
+            <div key={item.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', background:'#FAF7F0', border:'1px dashed #DDD7C6', borderRadius:9, marginBottom:6 }}>
+              <div style={{ width:28, height:28, background:'#fff', border:'1px solid #E2DDCD', borderRadius:7, display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, flexShrink:0 }}>{getFileIcon(item.name)}</div>
+              <div style={{ flex:1, minWidth:0, fontSize:12, fontWeight:600, color:'#6F7B6F', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', ...f }}>{item.name}</div>
               <button onClick={() => agregarDesdeOneDrive(item)} disabled={agregandoId === item.id}
-                style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:7, padding:'5px 12px', fontSize:11, color:'#2563eb', cursor:'pointer', fontWeight:600, ...f }}>
-                {agregandoId === item.id ? 'Agregando...' : '＋ Agregar a la lista'}
+                style={{ background:'#fff', border:'1px solid #DDD7C6', borderRadius:6, padding:'4px 10px', fontSize:10.5, color:'#1E3A2F', cursor:'pointer', fontWeight:600, ...f }}>
+                {agregandoId === item.id ? 'Agregando...' : '＋ Agregar'}
               </button>
             </div>
           ))}
         </div>
       )}
-      {cargandoOneDrive && <div style={{ fontSize:11, color:'#94a3b8', textAlign:'center', marginTop:10, ...f }}>Revisando OneDrive...</div>}
+      {cargandoOneDrive && <div style={{ fontSize:10.5, color:'#A6A397', textAlign:'center', marginTop:8, ...f }}>Revisando OneDrive...</div>}
     </div>
   )
 }
