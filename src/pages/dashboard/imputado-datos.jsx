@@ -2,7 +2,7 @@
 // personales, delitos y medidas cautelares.
 import { useState } from 'react'
 import { f } from './primitives'
-import { SearchableSelect, DelitoCard, Field } from './primitives'
+import { SearchableSelect, DelitoCard, Field, BadgeEditor } from './primitives'
 import { DELITOS_CATALOGO, CENTROS_PENALES, calcularEdadActual, fechaDDMM, hoyISO } from './utils'
 import { CautelaresPanel, TIPOS_ABONO_DIRECTO, CAUTELAR_NOCTURNO, diasEntreFechasCaut } from './cautelares'
 
@@ -21,8 +21,18 @@ export function ImputadoDatosCard({ imp, numero, causaId, ruc, cautelares, esTit
     return sum
   },0)
 
+  // ✅ NUEVO: cuando una causa tiene varios imputados, Joaquín puede renunciar
+  // (u otro motivo de término) respecto de UNO y seguir representando a
+  // los demás — antes solo existía un estado/subestado a nivel de toda la
+  // causa, así que no había forma de reflejar eso sin terminar la causa
+  // completa. Se agrega el mismo selector de estado/subestado que ya se usa
+  // para la causa (BadgeEditor, mismos "renuncia"/"revocación"/etc.), pero
+  // guardado en el propio imputado — no afecta el estado de la causa ni de
+  // los demás imputados.
+  const estaTerminado = imp.estado === 'terminada'
+
   return (
-    <div style={{border:'1px solid #e2e8f0', borderRadius:14, background:'#fff', boxShadow:'0 1px 2px rgba(15,23,42,0.06)', overflow:'hidden'}}>
+    <div style={{border:'1px solid #e2e8f0', borderRadius:14, background: estaTerminado ? '#FAF7F0' : '#fff', boxShadow:'0 1px 2px rgba(15,23,42,0.06)', overflow:'hidden', opacity: estaTerminado ? 0.75 : 1}}>
       <div
         onClick={()=>setExpanded(v=>!v)}
         style={{cursor:'pointer', padding:'14px 16px'}}>
@@ -31,10 +41,14 @@ export function ImputadoDatosCard({ imp, numero, causaId, ruc, cautelares, esTit
             {numero && (
               <span style={{width:22,height:22,borderRadius:'50%',background:'linear-gradient(135deg,#2563eb,#1d4ed8)',color:'#fff',fontSize:11,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,...f}}>{numero}</span>
             )}
-            <span style={{fontSize:14,fontWeight:700,color:'#2F5D48',...f}}>{imp.nombre||'Sin nombre'}</span>
+            <span style={{fontSize:14,fontWeight:700,color:'#2F5D48',textDecoration: estaTerminado ? 'line-through' : 'none',...f}}>{imp.nombre||'Sin nombre'}</span>
             {imp.regimen && (
               <span style={{fontSize:10,fontWeight:700,padding:'3px 9px',borderRadius:10,background:imp.regimen==='RPA'?'#faf5ff':'#eff6ff',color:imp.regimen==='RPA'?'#5b21b6':'#2F5D48',border:`1px solid ${imp.regimen==='RPA'?'#ddd6fe':'#bfdbfe'}`,...f}}>{imp.regimen}</span>
             )}
+            <div onClick={e=>e.stopPropagation()}>
+              <BadgeEditor estado={imp.estado||'vigente'} subestado={imp.subestado} isMobile={isMobile}
+                onChangeEstado={e=>onUpdateCampo('estado',e)} onChangeSubestado={s=>onUpdateCampo('subestado',s||null)}/>
+            </div>
           </div>
           <span style={{fontSize:12,color:'#94a3b8'}}>{expanded ? '▲' : '▼'}</span>
         </div>
