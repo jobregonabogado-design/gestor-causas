@@ -82,7 +82,7 @@ export default function Login() {
     border: '1px solid ' + (error ? C.danger : focused === name ? C.gold : C.fieldBorder),
     borderRadius: 2,
     outline: 'none',
-    boxShadow: focused === name ? '0 0 0 3px rgba(168,146,95,.16)' : 'none',
+    boxShadow: focused === name ? '0 0 0 3px rgba(168,146,95,.16)' : '0 1px 2px rgba(30,58,47,.05)',
   })
 
   return (
@@ -111,14 +111,10 @@ export default function Login() {
               <span style={{ fontSize: isMobile ? 40 : 76, fontWeight: 500 }}>Causas</span>
               <span style={{ fontSize: isMobile ? 40 : 76, fontStyle: 'italic', color: C.goldSoft, paddingTop: 4 }}>Penales</span>
             </h1>
-            {!isMobile && (
-              <>
-                <div style={{ width: 56, height: 1, background: C.gold }} />
-                <p style={{ margin: 0, fontFamily: SERIF, fontStyle: 'italic', fontSize: 21, lineHeight: 1.45, color: 'rgba(250,247,240,.9)' }}>
-                  "El orden es la primera defensa."
-                </p>
-              </>
-            )}
+            <div style={{ width: isMobile ? 40 : 56, height: 1, background: C.gold }} />
+            <p style={{ margin: 0, fontFamily: SERIF, fontStyle: 'italic', fontSize: isMobile ? 15 : 21, lineHeight: 1.45, color: 'rgba(250,247,240,.9)' }}>
+              "El orden es la primera defensa."
+            </p>
           </div>
         </div>
 
@@ -134,6 +130,7 @@ export default function Login() {
       <div style={{ flex: isMobile ? '1 1 auto' : '1 1 54%', display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'center', padding: isMobile ? '36px 24px' : '64px 48px' }}>
         <div style={{ width: '100%', maxWidth: 392, display: 'flex', flexDirection: 'column', gap: 36 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+            <div style={{ fontSize: 10, letterSpacing: '.3em', textTransform: 'uppercase', color: C.goldInk }}>Acceso privado</div>
             <h2 style={{ margin: 0, fontFamily: SERIF, fontWeight: 500, fontSize: 36, lineHeight: 1.1 }}>Bienvenidos</h2>
           </div>
 
@@ -186,13 +183,19 @@ export default function Login() {
               type="submit"
               className="lg-btn"
               disabled={loading}
-              style={{ marginTop: 4, padding: 15, background: C.greenDeep, color: C.boneBright, border: 0, borderRadius: 2, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, fontFamily: SANS, fontSize: 12.5, fontWeight: 500, letterSpacing: '.18em', textTransform: 'uppercase' }}
+              style={{ marginTop: 4, padding: 15, background: C.greenDeep, color: C.boneBright, border: 0, borderRadius: 2, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, fontFamily: SANS, fontSize: 12.5, fontWeight: 500, letterSpacing: '.18em', textTransform: 'uppercase', boxShadow: '0 4px 14px rgba(30,58,47,.22)' }}
               onMouseEnter={e => { if (!loading) e.currentTarget.style.background = C.greenDeeper }}
               onMouseLeave={e => { e.currentTarget.style.background = C.greenDeep }}
             >
               {loading ? 'Ingresando…' : 'Ingresar'}
             </button>
           </form>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <span style={{ flex: 1, height: 1, background: C.rule }} />
+            <span style={{ width: 5, height: 5, borderRadius: '50%', background: C.gold, flexShrink: 0 }} />
+            <span style={{ flex: 1, height: 1, background: C.rule }} />
+          </div>
         </div>
       </div>
     </div>
