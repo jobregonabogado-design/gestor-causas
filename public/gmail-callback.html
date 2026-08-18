@@ -6,40 +6,57 @@
   <title>Conectando Gmail...</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; background:#F8F9FC; color:#1E293B; text-align:center; padding:24px; box-sizing:border-box; }
-    .card { max-width:340px; }
+    .card { max-width:420px; }
     .spinner { width:32px; height:32px; border:3px solid #E2E8F0; border-top-color:#1E293B; border-radius:50%; animation:girar 0.8s linear infinite; margin:0 auto 16px; }
     @keyframes girar { to { transform: rotate(360deg); } }
     #mensaje { font-size:15px; font-weight:600; line-height:1.5; }
     #mensaje.ok { color:#059669; }
     #mensaje.error { color:#dc2626; }
     a.btn { display:inline-block; margin-top:18px; background:#1E293B; color:#fff; text-decoration:none; padding:10px 26px; border-radius:10px; font-weight:600; font-size:14px; }
+    #detalle { margin-top:16px; font-size:11px; color:#94a3b8; text-align:left; background:#fff; border:1px solid #E2E8F0; border-radius:10px; padding:10px 12px; white-space:pre-wrap; word-break:break-all; font-family:monospace; }
   </style>
 </head>
 <body>
 <div class="card">
   <div id="spinner" class="spinner"></div>
   <div id="mensaje">Conectando con Gmail...</div>
+  <div id="detalle"></div>
   <div id="acciones"></div>
 </div>
 <script>
-  // ✅ FIX: antes esto solo pasaba el código de vuelta a la app de React
-  // (por localStorage primero, después por la URL) para que ELLA hiciera el
-  // canje — pero en el celular seguía fallando en silencio incluso después
-  // de arreglar eso, probablemente porque el Service Worker (que guarda una
-  // copia de los archivos de la app para que funcione sin señal) seguía
-  // sirviendo una versión vieja del código de React sin este arreglo. Esta
-  // página es un archivo estático aparte, así que Vercel siempre la sirve
-  // fresca — el canje se hace acá mismo, sin depender de la app ni del
-  // Service Worker en absoluto.
+  // ✅ Esta página NUNCA se cachea (ver vite.config.js) y NUNCA redirige
+  // sola — se queda quieta mostrando el detalle técnico hasta que Joaquín
+  // toque "Volver a la app", justo para poder ver/mandar una captura de lo
+  // que realmente pasa en el celular, después de que 3 arreglos distintos
+  // (localStorage, luego URL, luego sacarla del Service Worker) no
+  // resolvieron el problema — incluso probando en una ventana de incógnito,
+  // sin caché posible. Con este detalle a la vista se puede saber si el
+  // problema es que Google no mandó el código, o que el canje con el
+  // servidor falló y por qué.
   var SUPABASE_FUNCTION_URL = 'https://qttwthpgzzjzidimlkkh.supabase.co/functions/v1/gmail-token'
   var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF0dHd0aHBnenpqemlkaW1sa2toIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0MjUzMzMsImV4cCI6MjA5NjAwMTMzM30.aQpwrBMataDLOeIAWEy_o-L8GfVHi8AhH71i7RZN1ys'
 
-  function mostrar(texto, clase, volverA) {
+  function mostrar(texto, clase, volverA, detalle) {
     document.getElementById('spinner').style.display = 'none'
     var m = document.getElementById('mensaje')
     m.textContent = texto
     if (clase) m.className = clase
+    if (detalle) document.getElementById('detalle').textContent = detalle
     document.getElementById('acciones').innerHTML = '<a class="btn" href="' + volverA + '">Volver a la app</a>'
+  }
+
+  function guardarTokens(data) {
+    // Safari en modo privado a veces bloquea localStorage — sin este
+    // try/catch, un error acá se perdía en silencio y la página se quedaba
+    // "colgada" sin mostrar ni éxito ni error.
+    try {
+      localStorage.setItem('gmail_access_token', data.access_token)
+      if (data.refresh_token) localStorage.setItem('gmail_refresh_token', data.refresh_token)
+      return true
+    } catch (e) {
+      mostrar('❌ Google sí autorizó, pero el teléfono no dejó guardar la conexión (localStorage bloqueado).', 'error', '/', 'Error al guardar: ' + (e && e.message))
+      return false
+    }
   }
 
   function canjear(code) {
@@ -48,21 +65,24 @@
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY },
       body: JSON.stringify({ code: code }),
     })
-      .then(function (res) { return res.json() })
-      .then(function (data) {
-        if (data.access_token) {
-          localStorage.setItem('gmail_access_token', data.access_token)
-          if (data.refresh_token) localStorage.setItem('gmail_refresh_token', data.refresh_token)
-          mostrar('✅ Gmail conectado.', 'ok', '/?gmail_connected=1')
-          // La escritura de arriba ya quedó guardada antes de este punto —
-          // acá no hay ninguna carrera, así que sí se puede redirigir sola.
-          setTimeout(function () { window.location.href = '/?gmail_connected=1' }, 1200)
+      .then(function (res) {
+        return res.text().then(function (texto) {
+          var data
+          try { data = JSON.parse(texto) } catch (e) { data = null }
+          return { status: res.status, ok: res.ok, texto: texto, data: data }
+        })
+      })
+      .then(function (r) {
+        if (r.data && r.data.access_token) {
+          if (guardarTokens(r.data)) {
+            mostrar('✅ Gmail conectado.', 'ok', '/?gmail_connected=1')
+          }
         } else {
-          mostrar('❌ No se pudo conectar Gmail. Vuelve a intentarlo desde el Calendario.', 'error', '/')
+          mostrar('❌ No se pudo conectar Gmail. Vuelve a intentarlo desde el Calendario.', 'error', '/', 'HTTP ' + r.status + '\n' + r.texto)
         }
       })
-      .catch(function () {
-        mostrar('❌ No se pudo conectar Gmail (sin conexión o error del servidor). Vuelve a intentarlo.', 'error', '/')
+      .catch(function (err) {
+        mostrar('❌ No se pudo conectar Gmail (error de red). Vuelve a intentarlo.', 'error', '/', 'Error: ' + (err && err.message))
       })
   }
 
@@ -70,15 +90,19 @@
   var legacyToken = hashParams.get('access_token')
   var search = new URLSearchParams(window.location.search)
   var code = search.get('code')
+  var errorGoogle = search.get('error')
 
   if (legacyToken) {
-    localStorage.setItem('gmail_access_token', legacyToken)
-    mostrar('✅ Gmail conectado.', 'ok', '/?gmail_connected=1')
-    setTimeout(function () { window.location.href = '/?gmail_connected=1' }, 1200)
+    if (guardarTokens({ access_token: legacyToken })) {
+      mostrar('✅ Gmail conectado.', 'ok', '/?gmail_connected=1')
+    }
+  } else if (errorGoogle) {
+    mostrar('❌ Google no autorizó la conexión.', 'error', '/', 'Google devolvió: ' + errorGoogle + (search.get('error_description') ? ('\n' + search.get('error_description')) : ''))
   } else if (code) {
+    document.getElementById('detalle').textContent = 'Código recibido de Google (' + code.length + ' caracteres) — canjeando con el servidor...'
     canjear(code)
   } else {
-    mostrar('❌ No se pudo conectar Gmail — Google no devolvió el permiso. Vuelve a intentarlo.', 'error', '/')
+    mostrar('❌ Google no devolvió ningún código ni error reconocible.', 'error', '/', 'URL completa: ' + window.location.href)
   }
 </script>
 </body>
