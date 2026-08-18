@@ -29,7 +29,6 @@ const CSS = `
   .lg-btn { transition: background .16s; }
   .lg-eye { transition: color .15s ease; }
   .lg-eye:hover { color: ${C.green} !important; }
-  .lg-forgot:hover { color: ${C.green} !important; }
 `
 
 export default function Login() {
@@ -39,7 +38,6 @@ export default function Login() {
   const [focused, setFocused] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [recordar, setRecordar] = useState(false)
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' && window.innerWidth < 900)
 
   useEffect(() => {
@@ -159,12 +157,7 @@ export default function Login() {
             </label>
 
             <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: 11, letterSpacing: '.16em', textTransform: 'uppercase', color: C.text2 }}>
-                Contraseña
-                <a href="mailto:soporte@obregonyasociados.cl?subject=Olvid%C3%A9%20mi%20contrase%C3%B1a" className="lg-forgot" style={{ fontSize: 10.5, letterSpacing: '.08em', textTransform: 'none', color: C.goldInk, textDecoration: 'none', borderBottom: '1px solid rgba(138,125,85,.35)' }}>
-                  ¿La olvidaste?
-                </a>
-              </span>
+              <span style={{ fontSize: 11, letterSpacing: '.16em', textTransform: 'uppercase', color: C.text2 }}>Contraseña</span>
               <span style={{ position: 'relative', display: 'flex' }}>
                 <input
                   className="lg-input"
@@ -191,11 +184,6 @@ export default function Login() {
             </label>
 
             {error && <div style={{ fontSize: 12.5, color: C.danger }}>{error}</div>}
-
-            <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: C.text3, cursor: 'pointer' }}>
-              <input type="checkbox" checked={recordar} onChange={e => setRecordar(e.target.checked)} style={{ width: 15, height: 15, accentColor: C.green, margin: 0 }} />
-              Mantener la sesión abierta en este equipo
-            </label>
 
             <button
               type="submit"

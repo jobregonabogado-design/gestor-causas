@@ -10,6 +10,7 @@ import { diasHabilesDesde } from './pages/dashboard/diligencias'
 import { diasEntreFechasCaut } from './pages/dashboard/cautelares'
 import { hoyISO } from './pages/dashboard/utils'
 import SolicitudVisitaSantiagoI from './components/SolicitudVisitaSantiagoI'
+import JoaShield from './components/JoaShield'
 import Notas from './pages/Notas'
 import { useEstadoConexion } from './lib/offline'
 import { generarYRespaldar } from './lib/backup'
@@ -736,10 +737,10 @@ export default function App() {
 
       <nav className="app-nav" style={{ background:'rgba(255,255,255,0.92)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)', borderBottom:'1px solid #E2E8F0', padding:'0 32px', height:60, display:'flex', alignItems:'center', justifyContent:'space-between', position:'sticky', top:0, zIndex:100, boxShadow:'0 1px 2px rgba(15,23,42,0.03)' }}>
         <div style={{ display:'flex', alignItems:'center', gap:10, order:1 }}>
-          <div style={{ width:36, height:36, background:'#1E293B', borderRadius:11, display:'flex', alignItems:'center', justifyContent:'center', fontSize:17, boxShadow:'0 6px 16px rgba(30,41,59,0.2)', flexShrink:0 }}>⚖</div>
+          <JoaShield height={36} compact />
           <div>
-            <div style={{ fontFamily:"'Manrope','Inter',sans-serif", fontSize:15, fontWeight:800, color:'#1E293B', letterSpacing:'-0.5px' }}>LexOffice</div>
-            <div className="app-logo-sub" style={{ fontSize:9, color:'#94a3b8', letterSpacing:2, textTransform:'uppercase', fontWeight:500, marginTop:-1 }}>Gestión Penal</div>
+            <div style={{ fontFamily:"'EB Garamond',serif", fontSize:16, fontWeight:600, color:'#1E3A2F', letterSpacing:'-0.3px' }}>Obregón y Asociados</div>
+            <div className="app-logo-sub" style={{ fontSize:9, color:'#8A7D55', letterSpacing:2, textTransform:'uppercase', fontWeight:500, marginTop:0 }}>Gestión Penal</div>
           </div>
         </div>
         <div className="app-navlinks" style={{ display:'flex', gap:4, background:'#F8F9FC', padding:'4px', borderRadius:12, border:'1px solid #E2E8F0', order:2 }}>
