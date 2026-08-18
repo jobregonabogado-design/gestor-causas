@@ -109,7 +109,7 @@ export default function Login() {
             <h1 style={{ margin: 0, display: 'flex', flexDirection: 'column', fontFamily: SERIF, fontWeight: 400, lineHeight: 1, letterSpacing: '-.005em', color: C.bone }}>
               {!isMobile && <span style={{ fontSize: 15, letterSpacing: '.32em', textTransform: 'uppercase', color: C.gold, paddingBottom: 16 }}>Gestor de</span>}
               <span style={{ fontSize: isMobile ? 40 : 76, fontWeight: 500 }}>Causas</span>
-              <span style={{ fontSize: isMobile ? 40 : 76, fontStyle: 'italic', color: C.goldSoft, paddingTop: 4 }}>penales</span>
+              <span style={{ fontSize: isMobile ? 40 : 76, fontStyle: 'italic', color: C.goldSoft, paddingTop: 4 }}>Penales</span>
             </h1>
             {!isMobile && (
               <>
@@ -134,8 +134,7 @@ export default function Login() {
       <div style={{ flex: isMobile ? '1 1 auto' : '1 1 54%', display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'center', padding: isMobile ? '36px 24px' : '64px 48px' }}>
         <div style={{ width: '100%', maxWidth: 392, display: 'flex', flexDirection: 'column', gap: 36 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-            <div style={{ fontSize: 10.5, letterSpacing: '.24em', textTransform: 'uppercase', color: C.goldInk }}>Ingreso al sistema</div>
-            <h2 style={{ margin: 0, fontFamily: SERIF, fontWeight: 500, fontSize: 36, lineHeight: 1.1 }}>Bienvenido de vuelta</h2>
+            <h2 style={{ margin: 0, fontFamily: SERIF, fontWeight: 500, fontSize: 36, lineHeight: 1.1 }}>Bienvenidos</h2>
           </div>
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
@@ -147,7 +146,6 @@ export default function Login() {
                 type="text"
                 value={usuario}
                 onChange={e => setUsuario(e.target.value)}
-                placeholder="jobregon"
                 autoComplete="username"
                 required
                 onFocus={() => setFocused('usuario')}
@@ -164,7 +162,6 @@ export default function Login() {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  placeholder="••••••••"
                   autoComplete="current-password"
                   required
                   onFocus={() => setFocused('clave')}
@@ -196,20 +193,6 @@ export default function Login() {
               {loading ? 'Ingresando…' : 'Ingresar'}
             </button>
           </form>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <span style={{ flex: 1, height: 1, background: C.rule }} />
-            <span style={{ fontSize: 10, letterSpacing: '.2em', textTransform: 'uppercase', color: C.mute }}>Soporte</span>
-            <span style={{ flex: 1, height: 1, background: C.rule }} />
-          </div>
-
-          <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.6, color: C.text2 }}>
-            Problemas para entrar: escribí a{' '}
-            <a href="mailto:soporte@obregonyasociados.cl" style={{ color: C.green, borderBottom: '1px solid rgba(30,58,47,.3)', textDecoration: 'none' }}>
-              soporte@obregonyasociados.cl
-            </a>{' '}
-            o al interno 214.
-          </p>
         </div>
       </div>
     </div>
