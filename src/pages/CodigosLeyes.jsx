@@ -19,15 +19,25 @@ function leerCache() {
   }
 }
 
-// Colores pastel generados dinámicamente (no una lista fija) — así, sin
-// importar cuántos códigos/leyes haya, cada tarjeta recibe un tono distinto
-// y nunca se repiten entre sí.
-function colorDeLey(idx, total) {
-  const hue = Math.round((360 / Math.max(total, 1)) * idx)
+// ✅ FIX: antes repartía un arcoíris completo (360° de matiz) entre todas
+// las tarjetas — se veía muy colorido, sin nada que ver con la identidad
+// del estudio. Ahora cicla solo entre las 3 familias tonales de la marca
+// JOA (verde, dorado, piedra neutra), variando apenas la luminosidad
+// dentro de cada familia para que no todas las tarjetas de un mismo color
+// queden idénticas — pedido de Joaquín: "algo más ad hoc a lo creado".
+const FAMILIAS_COLOR = [
+  { hue: 154, sat: 26 }, // verde JOA
+  { hue: 40,  sat: 34 }, // dorado JOA
+  { hue: 30,  sat: 12 }, // piedra neutra
+]
+function colorDeLey(idx) {
+  const fam = FAMILIAS_COLOR[idx % FAMILIAS_COLOR.length]
+  const paso = Math.floor(idx / FAMILIAS_COLOR.length) % 3
+  const bgL = 96 - paso * 2
   return {
-    bg: `hsl(${hue}, 70%, 96%)`,
-    border: `hsl(${hue}, 55%, 85%)`,
-    text: `hsl(${hue}, 55%, 30%)`,
+    bg: `hsl(${fam.hue}, ${fam.sat}%, ${bgL}%)`,
+    border: `hsl(${fam.hue}, ${fam.sat + 14}%, ${bgL - 14}%)`,
+    text: `hsl(${fam.hue}, ${fam.sat + 14}%, 26%)`,
   }
 }
 
@@ -104,7 +114,7 @@ export default function CodigosLeyes() {
         ) : (
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(230px, 1fr))', gap:16 }}>
             {lista.map((c, idx) => {
-              const col = colorDeLey(idx, lista.length)
+              const col = colorDeLey(idx)
               return (
                 <div key={c.id} style={{ position:'relative' }}>
                   <a
