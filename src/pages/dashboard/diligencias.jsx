@@ -297,6 +297,7 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
 
   const agregar = async () => {
     if (!form.folio.trim()) { alert('El folio es obligatorio — es tu número de seguimiento ante la Fiscalía. Exígelo siempre al hacer la solicitud.'); return }
+    if (!form.tipo) { alert('Selecciona el tipo de diligencia — no se pudo determinar automáticamente.'); return }
     if (!form.fecha_solicitud) return
     setGuardando(true)
     const { data, error } = await supabase.from('diligencias_fiscalia').insert({
@@ -350,6 +351,7 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
 
   const guardarEdicionDatos = async (id) => {
     if (!formEdit.folio.trim()) { alert('El folio no puede quedar vacío.'); return }
+    if (!formEdit.tipo) { alert('Selecciona el tipo de diligencia.'); return }
     if (!formEdit.fecha_solicitud) return
     if (!motivoEditDatos.trim()) { alert('Ingresa el motivo de la corrección — queda registrado para tener trazabilidad.'); return }
     const anterior = diligencias.find(d => d.id === id)
@@ -471,11 +473,23 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
       // elige el tipo correcto a mano si ninguno de los oficiales calza.
       const detalleCompleto = [datos.detalleServicio, datos.observacion].filter(Boolean).join(' — ')
       const rucNoCoincide = datos.ruc && normalizarRuc(datos.ruc) !== normalizarRuc(ruc)
-      const tipoDetectado = datos.tipoDetectado || TIPOS_DILIGENCIA[0]
+      // ✅ FIX: antes, si no se lograba adivinar el tipo con confianza, se
+      // caía en "TIPOS_DILIGENCIA[0]" (el primero de la lista) y se GUARDABA
+      // SOLA igual, como si de verdad se hubiera detectado — pasó de verdad
+      // con una foto de "Activar/Anular acreditación de representación" que
+      // el OCR no logró leer bien y quedó guardada como "Solicitud de
+      // diligencias de investigación" sin que Joaquín se diera cuenta (el
+      // aviso decía "✓ guardado automáticamente"). Ahora, si no hay tipo
+      // detectado con confianza, se deja vacío — eso hace que NO tome la
+      // rama de guardado automático de abajo (que ahora también exige tipo)
+      // y en vez de eso pida revisión manual, mostrando el detalle real que
+      // sí se leyó (Detalle Servicio/Observación) para que Joaquín elija el
+      // tipo correcto a mano.
+      const tipoDetectado = datos.tipoDetectado || ''
       const fechaDetectada = datos.fechaSolicitud || hoyISO()
       const folioDetectado = datos.folio || ''
 
-      if (folioDetectado && !rucNoCoincide) {
+      if (folioDetectado && !rucNoCoincide && tipoDetectado) {
         // ── Caso seguro: se guarda sola ──────────────────────────────────
         setGuardando(true)
         const { data, error } = await supabase.from('diligencias_fiscalia').insert({
@@ -529,6 +543,8 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
         alert(esImagen
           ? 'No se pudo detectar el folio automáticamente en la imagen (el OCR de screenshots es menos preciso que leer un PDF) — complétalo a mano antes de guardar.'
           : 'No se pudo detectar el folio automáticamente — complétalo a mano antes de guardar.')
+      } else if (!tipoDetectado) {
+        alert(`No se pudo determinar el tipo de diligencia automáticamente.${detalleCompleto ? ' Se detectó este detalle: "' + detalleCompleto + '"' : ''} Selecciónalo tú antes de guardar.`)
       }
       setAnalizandoPdf(false)
       setShowForm(true)
@@ -604,6 +620,7 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
                           diligencia"), se agrega igual como opción — así nunca se cambia
                           solo por abrir a editar sin querer, aunque ya no se pueda elegir
                           de nuevo para diligencias nuevas. */}
+                      {!formEdit.tipo && <option value="">-- Selecciona el tipo --</option>}
                       {!TIPOS_DILIGENCIA.includes(formEdit.tipo) && formEdit.tipo && <option value={formEdit.tipo}>{formEdit.tipo} (tipo anterior, ya no oficial)</option>}
                       {TIPOS_DILIGENCIA.map(t=><option key={t}>{t}</option>)}
                     </select>
@@ -739,6 +756,7 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
             <div style={{ gridColumn:'1/-1' }}>
               <div style={{ fontSize:10, color:'#64748b', textTransform:'uppercase', letterSpacing:1.2, marginBottom:5, fontWeight:600, ...f }}>Tipo de diligencia</div>
               <select style={inp} value={form.tipo} onChange={e=>setForm(p=>({...p,tipo:e.target.value}))}>
+                {!form.tipo && <option value="">-- Selecciona el tipo --</option>}
                 {TIPOS_DILIGENCIA.map(t=><option key={t}>{t}</option>)}
               </select>
             </div>

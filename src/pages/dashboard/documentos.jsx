@@ -1,7 +1,7 @@
 // Panel de Fallos de Referencia y Documentos Guardados dentro de una causa.
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
-import { parsearComprobanteFiscalia, extraerTextoPdf, TIPOS_DILIGENCIA, marcarAcreditacionHabilitada } from './diligencias'
+import { parsearComprobanteFiscalia, extraerTextoPdf, marcarAcreditacionHabilitada } from './diligencias'
 import { f } from './primitives'
 import { BotonImprimirDocumentos } from './resumen'
 import { sanitizarNombreArchivo, hoyISO } from './utils'
@@ -122,18 +122,24 @@ function esComprobanteFiscalia(texto) {
 // usa el mismo tipo detectado por parsearComprobanteFiscalia (por palabras
 // clave contra los tipos oficiales de Mi Fiscalía en Línea). Si no hay
 // ninguno confiable, se antepone igual el "Detalle Servicio" real al
-// detalle para que el motivo de la petición nunca quede oculto, y se usa el
-// primer tipo oficial como valor por defecto (Joaquín lo corrige a mano).
+// detalle para que el motivo de la petición nunca quede oculto.
+// ✅ FIX: antes, sin tipo confiable, se usaba igual "TIPOS_DILIGENCIA[0]"
+// (el primero de la lista) como si se hubiera detectado de verdad — mismo
+// bug que en diligencias.jsx: una diligencia de "Activar/Anular
+// acreditación de representación" que no se logró leer bien quedó guardada
+// como "Solicitud de diligencias de investigación" sin ningún aviso. Ahora
+// se guarda con tipo vacío (nulo) y se avisa en el mensaje de arriba, para
+// que Joaquín entre a "Diligencias Fiscalía" y lo complete a mano.
 async function guardarComprobanteComoDiligencia(file, texto, { causaId, ruc, email, registrarActividad, onAccion }) {
   const datos = parsearComprobanteFiscalia(texto)
-  const tipo = datos.tipoDetectado || TIPOS_DILIGENCIA[0]
+  const tipo = datos.tipoDetectado || null
   const detalleCompleto = [datos.detalleServicio, datos.observacion].filter(Boolean).join(' — ')
   const { data, error } = await supabase.from('diligencias_fiscalia').insert({
     causa_id: causaId, tipo, fecha_solicitud: datos.fechaSolicitud || hoyISO(),
     folio: datos.folio || 'SIN FOLIO DETECTADO', observacion: detalleCompleto || null, estado:'pendiente', registrado_por: email
   }).select().single()
   if (error || !data) throw (error || new Error('No se pudo crear el registro de la diligencia'))
-  await marcarAcreditacionHabilitada(causaId, tipo)
+  if (tipo) await marcarAcreditacionHabilitada(causaId, tipo)
   try {
     const path = `diligencias/${data.id}/comprobante_${Date.now()}_${sanitizarNombreArchivo(file.name)}`
     const { error: upErr } = await supabase.storage.from('documentos').upload(path, file)
@@ -274,7 +280,7 @@ export function DocumentosGuardados({ causaId, ruc, email, registrarActividad, o
           const texto = await extraerTextoPdf(file)
           if (esComprobanteFiscalia(texto)) {
             const resultado = await guardarComprobanteComoDiligencia(file, texto, { causaId, ruc, email, registrarActividad, onAccion })
-            alert(`📨 Este archivo es un comprobante de Fiscalía (folio ${resultado.folio || 'no detectado, revísalo'}) — se guardó en la sección "Diligencias Fiscalía", no aquí, para que quede junto con el resto del seguimiento de esa causa.`)
+            alert(`📨 Este archivo es un comprobante de Fiscalía (folio ${resultado.folio || 'no detectado, revísalo'}) — se guardó en la sección "Diligencias Fiscalía", no aquí, para que quede junto con el resto del seguimiento de esa causa.${resultado.tipo ? '' : '\n\n⚠ No se pudo determinar el tipo de diligencia automáticamente — entra a "Diligencias Fiscalía" y complétalo a mano.'}`)
             setSubiendo(false)
             return
           }

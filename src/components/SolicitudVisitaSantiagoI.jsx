@@ -6,6 +6,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { isGmailConnected, loginGmail, enviarCorreo } from '../lib/gmail'
+import { fechaDDMM } from '../pages/dashboard/utils'
 
 const f = { fontFamily: "'Manrope','Inter',sans-serif" }
 const CORREO_GENDARMERIA = 'agendaabogados.stgo1@gendarmeria.cl'
@@ -44,6 +45,13 @@ ${abogado.run}`
 
 export default function SolicitudVisitaSantiagoI({ session, registrarActividad }) {
   const [internos, setInternos] = useState([])
+  // ✅ NUEVO: personas que Joaquín va a ver pero que todavía no tiene
+  // registradas en Gestor de Causas (ej. lo llaman para una causa nueva y
+  // no sabe todavía si la va a tomar) — se agregan a mano solo para este
+  // correo, no crean ni tocan ninguna causa.
+  const [manuales, setManuales] = useState([])
+  const [nombreManual, setNombreManual] = useState('')
+  const [rutManual, setRutManual] = useState('')
   const [seleccionados, setSeleccionados] = useState([])
   const [fecha, setFecha] = useState(hoyMasUnDia())
   const [bloque, setBloque] = useState('AM')
@@ -72,16 +80,45 @@ export default function SolicitudVisitaSantiagoI({ session, registrarActividad }
 
   const toggle = (id) => setSeleccionados(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
 
+  const agregarManual = () => {
+    if (!nombreManual.trim()) return
+    const id = 'manual_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)
+    setManuales(prev => [...prev, { id, nombre: nombreManual.trim(), rut: rutManual.trim(), manual: true }])
+    setSeleccionados(prev => [...prev, id])
+    setNombreManual('')
+    setRutManual('')
+  }
+  const quitarManual = (id) => {
+    setManuales(prev => prev.filter(m => m.id !== id))
+    setSeleccionados(prev => prev.filter(x => x !== id))
+  }
+
+  const listaCompleta = [...internos, ...manuales]
+
   const enviar = async () => {
     setEnviando(true)
     setResultado(null)
     try {
-      const elegidos = internos.filter(i => seleccionados.includes(i.id))
+      const elegidos = listaCompleta.filter(i => seleccionados.includes(i.id))
       const { to, subject, body } = construirCorreo({ fecha, bloque, internos: elegidos, abogado })
       await enviarCorreo({ to, subject, body })
       if (registrarActividad) registrarActividad('accion', `Envió solicitud de visita a Santiago I para el ${fechaLarga(fecha)} (${bloque}): ${elegidos.map(i => i.nombre).join(', ')}`)
+      // ✅ NUEVO: a cada persona que YA estaba registrada (imputado real, no
+      // agregada a mano) se le anota esta visita en su ficha — mismo
+      // historial que usa "Registrar visita" dentro de la causa — para que
+      // "días sin visita" del Centro de Alertas quede al día solo, sin que
+      // Joaquín tenga que ir a registrarla de nuevo a mano.
+      for (const p of elegidos) {
+        if (p.manual) continue
+        const linea = `[${fechaDDMM(fecha)}] Visita registrada (solicitud a Santiago I)`
+        const nuevoHistorial = p.visitas_historial ? p.visitas_historial + '\n' + linea : linea
+        const nuevaUltima = (!p.ultima_visita || fecha > p.ultima_visita) ? fecha : p.ultima_visita
+        await supabase.from('imputados').update({ visitas_historial: nuevoHistorial, ultima_visita: nuevaUltima }).eq('id', p.id)
+      }
       setResultado({ ok: true, mensaje: `Correo enviado a ${to}.` })
       setSeleccionados([])
+      setManuales([])
+      if (elegidos.some(p => !p.manual)) cargarInternos()
     } catch (err) {
       // Si la sesión de Gmail guardada es de antes de agregar el permiso de
       // enviar, el token existe pero no alcanza — se pide reconectar en vez
@@ -95,8 +132,6 @@ export default function SolicitudVisitaSantiagoI({ session, registrarActividad }
       setEnviando(false)
     }
   }
-
-  if (internos.length === 0) return null
 
   return (
     <div style={{ marginBottom: 24 }}>
@@ -118,13 +153,32 @@ export default function SolicitudVisitaSantiagoI({ session, registrarActividad }
             ))}
           </div>
 
-          {internos.map(i => (
-            <label key={i.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', cursor: 'pointer' }}>
-              <input type="checkbox" checked={seleccionados.includes(i.id)} onChange={() => toggle(i.id)} />
-              <span style={{ fontSize: 13, color: '#1E293B', ...f }}>{i.nombre || 'Sin nombre'}</span>
-              <span style={{ fontSize: 11, color: '#94a3b8', ...f }}>{i.rut || 'sin RUT'}</span>
-            </label>
+          {listaCompleta.map(i => (
+            <div key={i.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', flex: 1, minWidth: 0 }}>
+                <input type="checkbox" checked={seleccionados.includes(i.id)} onChange={() => toggle(i.id)} />
+                <span style={{ fontSize: 13, color: '#1E293B', ...f }}>{i.nombre || 'Sin nombre'}</span>
+                <span style={{ fontSize: 11, color: '#94a3b8', ...f }}>{i.rut || 'sin RUT'}</span>
+                {i.manual && <span style={{ fontSize: 9, fontWeight: 700, color: '#92400e', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 5, padding: '1px 6px', ...f }}>no registrado</span>}
+              </label>
+              {i.manual && (
+                <button onClick={() => quitarManual(i.id)} title="Quitar" style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 13, padding: '2px 4px' }}>✕</button>
+              )}
+            </div>
           ))}
+
+          {/* ✅ NUEVO: agregar a mano a alguien que aún no está en Gestor de
+              Causas (ej. lo llamaron por una causa nueva que todavía no
+              agrega porque no sabe si la va a tomar) — solo para este
+              correo, no crea nada en el sistema. */}
+          <div style={{ display: 'flex', gap: 6, marginTop: 10, paddingTop: 10, borderTop: '1px solid #e2e8f0', flexWrap: 'wrap' }}>
+            <input placeholder="Nombre" value={nombreManual} onChange={e => setNombreManual(e.target.value)}
+              style={{ flex: '1 1 140px', padding: '6px 10px', border: '1.5px solid #e2e8f0', borderRadius: 7, fontSize: 12, ...f }} />
+            <input placeholder="RUT (opcional)" value={rutManual} onChange={e => setRutManual(e.target.value)}
+              style={{ flex: '1 1 100px', padding: '6px 10px', border: '1.5px solid #e2e8f0', borderRadius: 7, fontSize: 12, ...f }} />
+            <button type="button" onClick={agregarManual} disabled={!nombreManual.trim()}
+              style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 7, padding: '6px 12px', fontSize: 12, color: '#1E293B', cursor: nombreManual.trim() ? 'pointer' : 'default', opacity: nombreManual.trim() ? 1 : 0.5, fontWeight: 600, ...f }}>+ Agregar</button>
+          </div>
 
           <button onClick={enviar} disabled={enviando || seleccionados.length === 0}
             style={{ marginTop: 10, background: '#1E293B', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 12, fontWeight: 600, cursor: seleccionados.length === 0 ? 'default' : 'pointer', opacity: seleccionados.length === 0 ? 0.5 : 1, ...f }}>
