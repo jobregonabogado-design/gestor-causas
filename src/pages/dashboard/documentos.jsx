@@ -5,7 +5,7 @@ import { parsearComprobanteFiscalia, extraerTextoPdf, marcarAcreditacionHabilita
 import { f } from './primitives'
 import { BotonImprimirDocumentos } from './resumen'
 import { sanitizarNombreArchivo, hoyISO } from './utils'
-import { getMSToken, uploadFile, getFolderFiles, getFileIcon } from '../../lib/onedrive'
+import { getMSToken, uploadFile, getFolderFiles, getFileIcon, renameFileInOneDrive } from '../../lib/onedrive'
 import { estaOnline, leerCausaDeCache, guardarCausaEnCache } from '../../lib/offline'
 
 export function FallosReferencia({ causaId, ruc, email, onAccion }) {
@@ -355,10 +355,17 @@ export function DocumentosGuardados({ causaId, ruc, email, registrarActividad, o
   const renombrar = async (doc) => {
     const nuevo = window.prompt('Nuevo nombre para este documento:', doc.nombre)
     if (!nuevo || !nuevo.trim() || nuevo.trim() === doc.nombre) return
-    const { error } = await supabase.from('documentos_causa').update({ nombre: nuevo.trim() }).eq('id', doc.id)
+    const nombreViejo = doc.nombre
+    const nombreNuevo = nuevo.trim()
+    const { error } = await supabase.from('documentos_causa').update({ nombre: nombreNuevo }).eq('id', doc.id)
     if (error) { alert('No se pudo renombrar: ' + error.message); return }
-    setDocs(prev => prev.map(d => d.id === doc.id ? { ...d, nombre: nuevo.trim() } : d))
+    setDocs(prev => prev.map(d => d.id === doc.id ? { ...d, nombre: nombreNuevo } : d))
     if (onAccion) onAccion()
+    // ✅ NUEVO: si ya estaba subido a OneDrive con el nombre viejo, se
+    // renombra allá también — si no, la próxima sincronización subía una
+    // copia nueva con el nombre nuevo y dejaba la vieja huérfana (el mismo
+    // documento duplicado dos veces).
+    if (getMSToken()) renameFileInOneDrive(ruc, nombreViejo, nombreNuevo).catch(() => {})
   }
 
   const eliminar = async (doc) => {

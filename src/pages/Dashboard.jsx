@@ -129,6 +129,12 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
   const [view,setView]=useState('list')
   const [selectedCausa,setSelectedCausa]=useState(null)
   const [causaSinConexion,setCausaSinConexion]=useState(false) // true = se está mostrando la última versión guardada en el teléfono, sin señal
+  // ✅ NUEVO: la sincronización automática con OneDrive (documentos +
+  // resumen, al abrir una causa) corría en segundo plano y si fallaba solo
+  // quedaba un aviso en la consola del navegador — Joaquín nunca se
+  // enteraba. Ahora, si falla (o si la sesión de OneDrive venció a mitad
+  // de camino), queda un aviso visible y dismisseable en la causa.
+  const [avisoSyncOneDrive,setAvisoSyncOneDrive]=useState(null)
   const [activeTab,setActiveTab]=useState('datos')
   const [editField,setEditField]=useState(null)
   const [editValue,setEditValue]=useState('')
@@ -257,11 +263,17 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
       // tenga que apretar nada: cada vez que abre una causa (con OneDrive
       // conectado), se sincronizan solos los documentos (en las dos
       // direcciones) y se regenera el resumen de la causa, reemplazando el
-      // anterior. Corre en segundo plano, sin bloquear ni avisar nada salvo
-      // que algo falle en la consola — no debe interrumpir el trabajo normal.
+      // anterior. Corre en segundo plano, no bloquea la carga de la causa —
+      // pero si falla, ahora SÍ queda un aviso visible (antes solo quedaba
+      // en la consola del navegador, donde Joaquín nunca lo veía).
+      setAvisoSyncOneDrive(null)
       if (getMSToken()) {
-        sincronizarDocumentosCausa(c.id, c.ruc, session?.user?.email).catch(err => console.warn('No se pudo sincronizar documentos con OneDrive:', err.message))
-        generarYSubirResumenSilencioso(c, { imputados: imp||[], audiencias: a||[], aumentos: au||[], cautelares: caut||[] }).catch(err => console.warn('No se pudo regenerar el resumen en OneDrive:', err.message))
+        sincronizarDocumentosCausa(c.id, c.ruc, session?.user?.email)
+          .then(res => { if (res?.sesionVencida) setAvisoSyncOneDrive('La sesión de OneDrive venció a mitad de la sincronización — reconéctala y vuelve a entrar a esta causa para que quede al día.') })
+          .catch(err => { console.warn('No se pudo sincronizar documentos con OneDrive:', err.message); setAvisoSyncOneDrive('No se pudieron sincronizar los documentos con OneDrive: ' + err.message) })
+        generarYSubirResumenSilencioso(c, { imputados: imp||[], audiencias: a||[], aumentos: au||[], cautelares: caut||[] })
+          .then(res => { if (res && !res.ok) setAvisoSyncOneDrive('No se pudo regenerar el resumen en OneDrive: ' + (res.error || 'error desconocido')) })
+          .catch(err => { console.warn('No se pudo regenerar el resumen en OneDrive:', err.message); setAvisoSyncOneDrive('No se pudo regenerar el resumen en OneDrive: ' + err.message) })
       }
     } catch {
       // El fetch falló (típico de quedarse sin señal justo en ese momento) —
@@ -827,6 +839,12 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
           {causaSinConexion&&(
             <div className="no-imprimir" style={{background:'#fffbeb',border:'1px solid #fde68a',borderRadius:12,padding:'10px 16px',marginBottom:16,fontSize:12,color:'#92400e',fontWeight:600,...f}}>
               📴 Sin conexión — mostrando la última versión guardada en este teléfono. Los cambios que hagas se mandarán solos apenas vuelva la señal.
+            </div>
+          )}
+          {avisoSyncOneDrive&&(
+            <div className="no-imprimir" style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:10,background:'#FBEAEA',border:'1px solid #E9C6C2',borderRadius:12,padding:'10px 16px',marginBottom:16,fontSize:12,color:'#8C2F26',fontWeight:600,...f}}>
+              <span>⚠ {avisoSyncOneDrive}</span>
+              <button onClick={()=>setAvisoSyncOneDrive(null)} style={{background:'none',border:'none',color:'inherit',cursor:'pointer',fontWeight:700,fontSize:13,flexShrink:0}}>✕</button>
             </div>
           )}
           <div style={{background:'#fff',borderRadius:20,boxShadow:'0 1px 3px rgba(15,23,42,0.06)'}}>

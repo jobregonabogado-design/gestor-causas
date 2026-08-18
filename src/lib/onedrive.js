@@ -127,6 +127,23 @@ export async function getOrCreateRucFolder(ruc) {
   }
 }
 
+// ✅ NUEVO: cuando se renombra un documento en la app, si esa misma copia
+// ya se había subido a OneDrive con el nombre VIEJO, hay que renombrarla
+// allá también — si no, la próxima sincronización automática no reconoce
+// el archivo (compara por nombre) y sube una copia NUEVA con el nombre
+// nuevo, dejando la vieja huérfana: mismo documento duplicado dos veces
+// en OneDrive. Es "mejor esfuerzo": si el archivo viejo no existe todavía
+// allá (nunca se sincronizó), esto simplemente falla en silencio — la
+// sincronización normal lo va a subir bien, ya con el nombre correcto.
+export async function renameFileInOneDrive(ruc, nombreViejo, nombreNuevo) {
+  if (!nombreViejo || !nombreNuevo || nombreViejo === nombreNuevo) return
+  const path = `/${FOLDER_NAME}/${ruc}/${nombreViejo}`
+  await graphFetch(`/me/drive/root:${path}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ name: nombreNuevo }),
+  })
+}
+
 export async function getFolderFiles(ruc) {
   try {
     const data = await graphFetch(`/me/drive/root:/${FOLDER_NAME}/${ruc}:/children?$orderby=name`)
