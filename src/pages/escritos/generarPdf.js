@@ -36,13 +36,35 @@ export function cargarJsPdf() {
 // en el encabezado de un escrito ("S.J. DE GARANTÍA DE SANTIAGO (3°)"). Esto
 // también corrige el mismo problema que ya tenía Patrocinio y Poder, que
 // hoy usa el código corto tal cual.
-const CIUDAD_MAP = { STGO: 'SANTIAGO' }
+// ✅ FIX: los nombres de tribunal que usa el resto de la app (para buscar,
+// filtrar, guardar en la base de datos) van SIN tildes ni "ñ" (ej. "JG
+// CANETE") — a propósito, para no tener problemas de coincidencia por
+// acentos. Pero un escrito judicial es un documento formal que va a un
+// tribunal o a la Fiscalía: tiene que decir "CAÑETE", no "CANETE". Antes
+// solo se corregía "STGO"→"SANTIAGO"; el resto de las ciudades con tilde o
+// "ñ" salían mal escritas en el PDF sin que nada avisara. Se agrega acá,
+// SOLO para el texto de los escritos (no toca el nombre guardado en la
+// causa ni las búsquedas/filtros del resto de la app), el nombre completo
+// y bien escrito de cada ciudad del catálogo de tribunales.
+const CIUDAD_MAP = {
+  STGO: 'SANTIAGO', CANETE: 'CAÑETE', CHAITEN: 'CHAITÉN', CHANARAL: 'CHAÑARAL',
+  CHILLAN: 'CHILLÁN', COMBARBALA: 'COMBARBALÁ', CONCEPCION: 'CONCEPCIÓN',
+  CONSTITUCION: 'CONSTITUCIÓN', COPIAPO: 'COPIAPÓ', CURACAUTIN: 'CURACAUTÍN',
+  CURACAVI: 'CURACAVÍ', CURICO: 'CURICÓ', HUALAIHUE: 'HUALAIHUÉ',
+  'LA UNION': 'LA UNIÓN', LICANTEN: 'LICANTÉN', 'LOS ANGELES': 'LOS ÁNGELES',
+  'MARIA ELENA': 'MARÍA ELENA', MAULLIN: 'MAULLÍN', MULCHEN: 'MULCHÉN',
+  PITRUFQUEN: 'PITRUFQUÉN', PUCON: 'PUCÓN', 'PUERTO AYSEN': 'PUERTO AYSÉN',
+  PUREN: 'PURÉN', QUELLON: 'QUELLÓN', QUILPUE: 'QUILPUÉ', 'RIO BUENO': 'RÍO BUENO',
+  'RIO NEGRO': 'RÍO NEGRO', 'SANTA BARBARA': 'SANTA BÁRBARA', TOLTEN: 'TOLTÉN',
+  TOME: 'TOMÉ', TRAIGUEN: 'TRAIGUÉN', VALPARAISO: 'VALPARAÍSO', VICUNA: 'VICUÑA',
+  'VINA DEL MAR': 'VIÑA DEL MAR',
+}
 function extraerCiudad(codigo) {
   const m = (codigo || '').trim().match(/^(\d+)?\s*(JG|TOP)\s+(.+)$/i)
   if (!m) return null
   const [, numero, tipo, ciudadRaw] = m
-  const ciudad = ciudadRaw.trim().toUpperCase().split(' ').map(w => CIUDAD_MAP[w] || w).join(' ')
-  return { ciudad, numero, tipo: tipo.toUpperCase() }
+  const ciudad = ciudadRaw.trim().toUpperCase()
+  return { ciudad: CIUDAD_MAP[ciudad] || ciudad, numero, tipo: tipo.toUpperCase() }
 }
 export function tribunalCompleto(codigo) {
   if (!codigo) return '[TRIBUNAL]'
