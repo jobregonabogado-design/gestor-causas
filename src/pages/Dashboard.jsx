@@ -32,15 +32,15 @@ const CSS = `
   .stat-card { transition:all 0.3s cubic-bezier(0.4,0,0.2,1); cursor:pointer; }
   .stat-card:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(15,23,42,0.10) !important; }
   .tab-btn { transition:color 0.2s ease, border-color 0.2s ease; border:none; background:none; cursor:pointer; font-family:'Manrope','Inter',sans-serif; text-transform:uppercase; letter-spacing:0.3px; }
-  .tab-btn:hover { color:#1E293B !important; }
+  .tab-btn:hover { color:#1E3A2F !important; }
   .fld { transition:border-color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease; }
   .fld:hover { border-color:#93c5fd !important; background:#fafcff !important; box-shadow:0 0 0 3px rgba(37,99,235,0.05) !important; }
   .sort-col { cursor:pointer; user-select:none; transition:color 0.2s ease; }
-  .sort-col:hover { color:#1E293B !important; }
+  .sort-col:hover { color:#1E3A2F !important; }
   .btn-primary { font-family:'Manrope','Inter',sans-serif; background:#1E3A2F; color:#fff; border:none; border-radius:10px; padding:9px 20px; font-size:13px; font-weight:600; cursor:pointer; transition:background 0.25s ease, box-shadow 0.25s ease; box-shadow:0 2px 8px rgba(30,58,47,0.2); text-transform:uppercase; letter-spacing:0.3px; }
   .btn-primary:hover { background:#16301F; box-shadow:0 4px 16px rgba(30,58,47,0.3); }
   .btn-secondary { font-family:'Manrope','Inter',sans-serif; background:#fff; color:#374151; border:1.5px solid #e5e7eb; border-radius:10px; padding:8px 18px; font-size:13px; font-weight:500; cursor:pointer; transition:border-color 0.25s ease, color 0.25s ease, background 0.25s ease; text-transform:uppercase; letter-spacing:0.3px; }
-  .btn-secondary:hover { border-color:#93c5fd; color:#1E293B; background:#f8faff; }
+  .btn-secondary:hover { border-color:#93c5fd; color:#1E3A2F; background:#f8faff; }
   .detail-enter { animation:detailIn 0.3s cubic-bezier(0.4,0,0.2,1) forwards; }
   @keyframes detailIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
   input,select,textarea { font-family:'Manrope','Inter',sans-serif !important; transition:border-color 0.25s ease, box-shadow 0.25s ease; text-transform:uppercase; }
@@ -785,7 +785,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
       subestado,
       label: estadoConfig[subestado]?.label || subestado.toUpperCase(),
       color: estadoConfig[subestado]?.color || '#64748b',
-      bg: estadoConfig[subestado]?.bg || '#F8F9FC',
+      bg: estadoConfig[subestado]?.bg || '#FAF7F0',
       border: estadoConfig[subestado]?.border || '#e2e8f0',
       value,
       pct: total>0 ? Math.round((value/total)*100) : 0,
@@ -812,12 +812,12 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
     contra: { n: nContra, pct: totalFavorContra>0 ? Math.round((nContra/totalFavorContra)*100) : 0 },
   }
   const COLORS=['#5B7CFA','#F0A868','#5BAE8C','#E0748C','#8B7FD1','#4FADC2','#D4A94E','#7FA6D6','#C77D5E','#8FA85E']
-  const inp={width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}
+  const inp={width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E3A2F',background:'#fff',...f}
 
   if(view==='detail'&&selectedCausa){
     const c=causas.find(x=>x.id===selectedCausa.id)||selectedCausa
     return(
-      <div style={{background:'#F8F9FC',minHeight:'100vh',...f}} className="detail-enter">
+      <div style={{background:'#FAF7F0',minHeight:'100vh',...f}} className="detail-enter">
         <style>{CSS}</style>
         <div style={{maxWidth:1060,margin:'0 auto',padding:'24px 28px'}}>
           <div className="no-imprimir" style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20,flexWrap:'wrap',gap:10}}>
@@ -833,7 +833,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
           <div style={{padding:'28px 28px 20px',borderRadius:'20px 20px 0 0'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:12}}>
               <div>
-                <div style={{fontSize:22,fontWeight:800,color:'#1E293B',marginBottom:6,letterSpacing:'-0.5px',...f}}>RUC <span style={{color:'#1E293B'}}>{c.ruc}</span></div>
+                <div style={{fontSize:22,fontWeight:800,color:'#1E3A2F',marginBottom:6,letterSpacing:'-0.5px',...f}}>RUC <span style={{color:'#1E3A2F'}}>{c.ruc}</span></div>
                 <div style={{fontSize:13,color:'#94a3b8',display:'flex',gap:16,flexWrap:'wrap',alignItems:'center',...f}}>
                   <span>RIT <span style={{color:'#475569',fontWeight:500}}>{c.rit||'—'}</span></span>
                   <span style={{color:'#e2e8f0'}}>|</span>
@@ -848,7 +848,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                     <span key={i.id} style={{
                       fontSize:10,fontWeight:700,padding:'3px 10px',borderRadius:20,border:'none',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',
                       background:i.regimen==='RPA'?'#faf5ff':'#eff6ff',
-                      color:i.regimen==='RPA'?'#5b21b6':'#1E293B',...f
+                      color:i.regimen==='RPA'?'#5b21b6':'#1E3A2F',...f
                     }}>{i.regimen}</span>
                   ))}
                 </div>
@@ -874,7 +874,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
               return (
                 <div style={{background:'#fff',padding:'10px 16px'}}>
                   <select value={activeTab} onChange={e=>setActiveTab(e.target.value)}
-                    style={{width:'100%',padding:'10px 12px',border:'1.5px solid #e2e8f0',borderRadius:10,fontSize:13,fontWeight:600,color:'#1E293B',background:'#F8F9FC',...f}}>
+                    style={{width:'100%',padding:'10px 12px',border:'1.5px solid #e2e8f0',borderRadius:10,fontSize:13,fontWeight:600,color:'#1E3A2F',background:'#FAF7F0',...f}}>
                     {tabsList.map(([k,l])=>(<option key={k} value={k}>{l}</option>))}
                   </select>
                 </div>
@@ -883,7 +883,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
             return (
               <div style={{background:'#fff',display:'flex',overflowX:'auto',padding:'0 20px'}}>
                 {tabsList.map(([k,l])=>(
-                  <button key={k} className="tab-btn" onClick={()=>setActiveTab(k)} style={{padding:'13px 16px',fontSize:13,fontWeight:activeTab===k?600:400,color:activeTab===k?'#1E293B':'#94a3b8',borderBottom:`2px solid ${activeTab===k?'#1E293B':'transparent'}`,whiteSpace:'nowrap',marginBottom:0}}>{l}</button>
+                  <button key={k} className="tab-btn" onClick={()=>setActiveTab(k)} style={{padding:'13px 16px',fontSize:13,fontWeight:activeTab===k?600:400,color:activeTab===k?'#1E3A2F':'#94a3b8',borderBottom:`2px solid ${activeTab===k?'#1E3A2F':'transparent'}`,whiteSpace:'nowrap',marginBottom:0}}>{l}</button>
                 ))}
               </div>
             )
@@ -903,7 +903,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                       imputados con " / ") que ya se actualiza solo apenas cambias el
                       nombre en la pestaña Imputado — acá solo se muestra, no se edita. */}
                   <div title="Se edita desde la pestaña Imputado — acá solo se muestra"
-                    style={{padding:'11px 14px',border:'none',borderRadius:14,fontSize:13,color:c.imputado?'#1E293B':'#94a3b8',minHeight:38,display:'flex',alignItems:'center',background:'#F8F9FC',...f}}>
+                    style={{padding:'11px 14px',border:'none',borderRadius:14,fontSize:13,color:c.imputado?'#1E3A2F':'#94a3b8',minHeight:38,display:'flex',alignItems:'center',background:'#FAF7F0',...f}}>
                     <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1}}>{c.imputado?c.imputado.replace(/\|/g,' / '):'Sin imputado registrado'}</span>
                   </div>
                   {editField==='nuevo_imputado' && (
@@ -961,7 +961,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                     debajo de Imputado y antes de Tribunal, como pidió Joaquín. */}
                 <div style={{gridColumn:'1/-1',marginBottom:2}}>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6,gap:10,flexWrap:'wrap'}}>
-                    <div style={{display:'flex',alignItems:'center',gap:8,padding:'8px 14px',border:'none',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',borderRadius:20,fontSize:12,color: getCorteApelaciones(c.tribunal) ? '#1E293B' : '#94a3b8',background:'#fff',fontWeight:600,minWidth:0,maxWidth:'100%',...f}}>
+                    <div style={{display:'flex',alignItems:'center',gap:8,padding:'8px 14px',border:'none',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',borderRadius:20,fontSize:12,color: getCorteApelaciones(c.tribunal) ? '#1E3A2F' : '#94a3b8',background:'#fff',fontWeight:600,minWidth:0,maxWidth:'100%',...f}}>
                       <span style={{flexShrink:0}}>⚖</span>
                       <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',minWidth:0}}>{getCorteApelaciones(c.tribunal) || 'Selecciona un tribunal'}</span>
                     </div>
@@ -992,11 +992,11 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                               <input type={tipo} autoFocus value={editValue} onChange={e=>setEditValue(e.target.value)}
                                 onKeyDown={e=>{if(e.key==='Enter')e.target.blur();if(e.key==='Escape')setEditField(null)}}
                                 onBlur={async()=>{const campo=fieldKey.split('_').slice(0,-1).join('_');await supabase.from('apelaciones_corte').update({[campo]:editValue||null}).eq('id',apel.id);setApelaciones(prev=>prev.map(x=>x.id===apel.id?{...x,[campo]:editValue||null}:x));setEditField(null)}}
-                                style={{width:tipo==='date'?130:110,padding:'4px 8px',border:'1.5px solid #c4b5fd',borderRadius:7,fontSize:12,color:'#1E293B',background:'#fff',...f}}/>
+                                style={{width:tipo==='date'?130:110,padding:'4px 8px',border:'1.5px solid #c4b5fd',borderRadius:7,fontSize:12,color:'#1E3A2F',background:'#fff',...f}}/>
                             </span>
                           ) : (
                             <span onClick={()=>{setEditField(fieldKey);setEditValue(valor||'')}}
-                              style={{cursor:'pointer',color:valor?'#1E293B':'#a78bfa',fontWeight:valor?600:500,...f}}
+                              style={{cursor:'pointer',color:valor?'#1E3A2F':'#a78bfa',fontWeight:valor?600:500,...f}}
                               title="Clic para editar">{valor?(tipo==='date'?fechaDDMM(valor):valor):placeholder}</span>
                           )
                         )
@@ -1023,7 +1023,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                 {/* ── Datos de la causa: Tribunal, RIT, Fiscal y las fechas — agrupados en un
                      solo panel (en vez de casillas sueltas), para que se lea de un vistazo y
                      quede fijo arriba, sin importar cuánto crezcan las tarjetas de imputado. ── */}
-                <details className="seccion-plegable" open={!isMobile} style={{gridColumn:'1/-1',border:'1px solid #e2e8f0',borderRadius:16,padding:'18px 20px',background:'#F8F9FC'}}>
+                <details className="seccion-plegable" open={!isMobile} style={{gridColumn:'1/-1',border:'1px solid #e2e8f0',borderRadius:16,padding:'18px 20px',background:'#FAF7F0'}}>
                   <summary style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.3,fontWeight:700,marginBottom:14,display:'flex',justifyContent:'space-between',alignItems:'center',...f}}>
                     Datos de la causa
                     <span className="seccion-chevron" style={{fontSize:12}}>▾</span>
@@ -1089,7 +1089,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                               porque si escribes la fecha a mano eso guardaría valores a medio
                               escribir. Antes dependía solo del botón ✓ y el guardado a veces
                               se perdía si no se tocaba aparte. */}
-                          <input type="date" style={{width:'100%',padding:'7px 9px',border:'none',borderRadius:8,fontSize:11,color:'#1E293B',background:'#fff',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}}
+                          <input type="date" style={{width:'100%',padding:'7px 9px',border:'none',borderRadius:8,fontSize:11,color:'#1E3A2F',background:'#fff',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}}
                             value={editValue} onChange={e=>setEditValue(e.target.value)}
                             onBlur={()=>{if(editValue)updateField('fecha_hechos',editValue)}}
                             onKeyDown={e=>{if(e.key==='Enter')updateField('fecha_hechos',editValue);if(e.key==='Escape')setEditField(null)}} autoFocus/>
@@ -1129,7 +1129,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                      ve igual que siempre (campos sueltos); con 2+, cada uno tiene su propia
                      tarjeta colapsable con toda su información agrupada, numerada. ── */}
                 {imputados.length <= 1 ? (
-                  <details className="seccion-plegable" open={!isMobile} style={{gridColumn:'1/-1',border:'1px solid #e2e8f0',borderRadius:16,padding:'18px 20px',background:'#F8F9FC',marginTop:2}}>
+                  <details className="seccion-plegable" open={!isMobile} style={{gridColumn:'1/-1',border:'1px solid #e2e8f0',borderRadius:16,padding:'18px 20px',background:'#FAF7F0',marginTop:2}}>
                     <summary style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.3,fontWeight:700,marginBottom:14,display:'flex',justifyContent:'space-between',alignItems:'center',...f}}>
                       Custodia, Cautelares, Delitos y Notificación
                       <span className="seccion-chevron" style={{fontSize:12}}>▾</span>
@@ -1149,7 +1149,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                         <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Fecha de detención</div>
                         {editField==='fecha_detencion'?(
                           <div style={{display:'flex',gap:6}}>
-                            <input type="date" style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}}
+                            <input type="date" style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E3A2F',background:'#fff',...f}}
                               value={editValue} onChange={e=>setEditValue(e.target.value)}
                               onBlur={()=>{if(editValue)actualizarCampoImputado(imputados[0].id,'fecha_detencion',editValue)}}
                               onKeyDown={e=>{if(e.key==='Enter'){actualizarCampoImputado(imputados[0].id,'fecha_detencion',editValue);setEditField(null)}if(e.key==='Escape')setEditField(null)}} autoFocus/>
@@ -1158,7 +1158,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                           </div>
                         ):(
                           <div className="fld" onClick={()=>{setEditField('fecha_detencion');setEditValue(imputados[0].fecha_detencion||'')}}
-                            style={{padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:imputados[0].fecha_detencion?'#1E293B':'#94a3b8',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
+                            style={{padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:imputados[0].fecha_detencion?'#1E3A2F':'#94a3b8',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
                             <span>{imputados[0].fecha_detencion || 'Clic para agregar...'}</span>
                             <span style={{fontSize:11,color:'#94a3b8'}}>✏</span>
                           </div>
@@ -1220,7 +1220,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                           <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Fecha de delegación</div>
                           {editField==='delegacion_fecha'?(
                             <div style={{display:'flex',gap:6}}>
-                              <input type="date" style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}}
+                              <input type="date" style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E3A2F',background:'#fff',...f}}
                                 value={editValue} onChange={e=>setEditValue(e.target.value)}
                                 onBlur={()=>{if(editValue){imputados.length===0?updateField('delegacion_fecha',editValue):actualizarCampoImputado(imputados[0].id,'delegacion_fecha',editValue)}}}
                                 onKeyDown={e=>{if(e.key==='Enter'){imputados.length===0?updateField('delegacion_fecha',editValue):actualizarCampoImputado(imputados[0].id,'delegacion_fecha',editValue);setEditField(null)}if(e.key==='Escape')setEditField(null)}} autoFocus/>
@@ -1229,7 +1229,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                             </div>
                           ):(
                             <div className="fld" onClick={()=>{setEditField('delegacion_fecha');setEditValue((imputados.length===0?c.delegacion_fecha:imputados[0].delegacion_fecha)||'')}}
-                              style={{padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:(imputados.length===0?c.delegacion_fecha:imputados[0].delegacion_fecha)?'#1E293B':'#94a3b8',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
+                              style={{padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:(imputados.length===0?c.delegacion_fecha:imputados[0].delegacion_fecha)?'#1E3A2F':'#94a3b8',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
                               <span>{(imputados.length===0?c.delegacion_fecha:imputados[0].delegacion_fecha) || 'Clic para agregar...'}</span>
                               <span style={{fontSize:11,color:'#94a3b8'}}>✏</span>
                             </div>
@@ -1241,7 +1241,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                     <div style={{gridColumn:'1/-1',marginTop:4}}>
                       <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Correo de notificación</div>
                       <select
-                        style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:(imputados.length===0?c.correo_notificacion:imputados[0].correo_notificacion)?'#1E293B':'#94a3b8',background:'#fff',cursor:'pointer',...f}}
+                        style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:(imputados.length===0?c.correo_notificacion:imputados[0].correo_notificacion)?'#1E3A2F':'#94a3b8',background:'#fff',cursor:'pointer',...f}}
                         value={(imputados.length===0?c.correo_notificacion:imputados[0].correo_notificacion)||''}
                         onChange={e=>imputados.length===0?updateField('correo_notificacion', e.target.value):actualizarCampoImputado(imputados[0].id,'correo_notificacion', e.target.value)}>
                         <option value="">Seleccionar correo...</option>
@@ -1511,7 +1511,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                 ))}
                 {audiencias.length===0&&<p style={{color:'#94a3b8',fontSize:13,marginBottom:14,...f}}>Sin audiencias registradas.</p>}
                 {showAudForm&&(
-                  <div style={{background:'#F8F9FC',border:'1.5px solid #e2e8f0',borderRadius:12,padding:16,marginBottom:14}}>
+                  <div style={{background:'#FAF7F0',border:'1.5px solid #e2e8f0',borderRadius:12,padding:16,marginBottom:14}}>
                     <div className="grid2-mobile" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:12}}>
                       {[{key:'fecha',label:'Fecha',type:'date'},{key:'hora',label:'Hora',type:'time'},{key:'tipo',label:'Tipo',ph:'Formalización, APJO, JO...'},{key:'tribunal',label:'Tribunal',ph:'Ej: 4 JG STGO'},{key:'sala',label:'Sala',ph:'Ej: 903'},{key:'notas',label:'Observaciones',ph:'Notas'}].map(field=>(
                         <div key={field.key}><div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>{field.label}</div><input type={field.type||'text'} style={inp} placeholder={field.ph} value={nuevaAud[field.key]} onChange={e=>setNuevaAud(p=>({...p,[field.key]:e.target.value}))}/></div>
@@ -1533,7 +1533,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
             {activeTab==='top'&&(
               <div>
                 <p style={{fontSize:13,color:'#94a3b8',marginBottom:20,lineHeight:1.7,...f}}>Cuando la causa pasa a Juicio Oral se asigna un nuevo RIT y Tribunal bajo el mismo RUC <span style={{fontFamily:'monospace',color:'#475569'}}>{c.ruc}</span>.</p>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',background:c.tiene_top?'#faf5ff':'#F8F9FC',border:`1.5px solid ${c.tiene_top?'#ddd6fe':'#e2e8f0'}`,borderRadius:12,padding:'16px 20px',marginBottom:16}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',background:c.tiene_top?'#faf5ff':'#FAF7F0',border:`1.5px solid ${c.tiene_top?'#ddd6fe':'#e2e8f0'}`,borderRadius:12,padding:'16px 20px',marginBottom:16}}>
                   <div>
                     <div style={{fontSize:14,fontWeight:600,color:c.tiene_top?'#7c3aed':'#64748b',...f}}>{c.tiene_top?'⚖️ En Juicio Oral':'⚖️ Sin Juicio Oral asignado'}</div>
                     {c.tiene_top&&<div style={{fontSize:12,color:'#a78bfa',marginTop:3,...f}}>{c.tribunal_top||'—'} · RIT {c.rit_top||'—'}</div>}
@@ -1570,7 +1570,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
   const SortIcon=({col})=>sortCol!==col?<span style={{color:'#e2e8f0',marginLeft:5,fontSize:10}}>⇅</span>:sortDir==='asc'?<span style={{color:'#2563eb',marginLeft:5}}>↑</span>:<span style={{color:'#2563eb',marginLeft:5}}>↓</span>
 
   return(
-    <div style={{background:'#F8F9FC',minHeight:'100vh',...f}}>
+    <div style={{background:'#FAF7F0',minHeight:'100vh',...f}}>
       <style>{CSS}</style>
       <div style={{maxWidth:1380,margin:'0 auto',padding:'28px'}}>
         <div style={{marginBottom:24}}/>
@@ -1593,7 +1593,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                 <div style={{width:6,height:6,borderRadius:'50%',background:enfasis?'rgba(255,255,255,0.55)':st.dot}}/>
                 <div style={{fontSize:11,fontWeight:600,letterSpacing:0.5,color:enfasis?'rgba(255,255,255,0.55)':'#94a3b8',...f}}>{st.label}</div>
               </div>
-              <div style={{fontSize:38,fontWeight:800,color:enfasis?'#fff':'#1E293B',lineHeight:1,letterSpacing:'-1.5px',...f}}>{st.num}</div>
+              <div style={{fontSize:38,fontWeight:800,color:enfasis?'#fff':'#1E3A2F',lineHeight:1,letterSpacing:'-1.5px',...f}}>{st.num}</div>
             </div>)
           })}
         </div>
@@ -1654,9 +1654,9 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
           <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:16,padding:28,marginBottom:24}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:10,marginBottom:8}}>
               <div>
-                <div style={{fontSize:17,fontWeight:800,color:'#1E293B',...f}}>Estadísticas del portfolio</div>
+                <div style={{fontSize:17,fontWeight:800,color:'#1E3A2F',...f}}>Estadísticas del portfolio</div>
                 <div style={{fontSize:12,color:'#94a3b8',marginTop:4,...f}}>
-                  {hayFiltrosActivos ? <>Mostrando <strong style={{color:'#1E293B'}}>{filtered.length}</strong> causa{filtered.length!==1?'s':''} con los filtros activos</> : <>Mostrando las {filtered.length} causas del portfolio (sin filtros)</>}
+                  {hayFiltrosActivos ? <>Mostrando <strong style={{color:'#1E3A2F'}}>{filtered.length}</strong> causa{filtered.length!==1?'s':''} con los filtros activos</> : <>Mostrando las {filtered.length} causas del portfolio (sin filtros)</>}
                 </div>
               </div>
               <div style={{display:'flex',gap:8}}>
@@ -1677,7 +1677,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                     <YAxis type="category" dataKey="name" tick={{fontSize:9,fill:'#64748b'}} width={isMobile?76:140} axisLine={false} tickLine={false}/>
                     <Tooltip contentStyle={{background:'#fff',border:'none',boxShadow:'0 4px 16px rgba(15,23,42,0.10)',borderRadius:10,fontSize:12}} formatter={(v,n,entry)=>[v+' causas',entry.payload.nombreCompleto]}/>
                     <Bar dataKey="value" radius={[0,6,6,0]} cursor="pointer" onClick={(data)=>setFilterDelito(prev=>prev===data.nombreCompleto?'':data.nombreCompleto)}>
-                      {chartDelitos.map((d,i)=><Cell key={i} fill={COLORS[i%COLORS.length]} stroke={filterDelito===d.nombreCompleto?'#1E293B':'none'} strokeWidth={filterDelito===d.nombreCompleto?2:0}/>)}
+                      {chartDelitos.map((d,i)=><Cell key={i} fill={COLORS[i%COLORS.length]} stroke={filterDelito===d.nombreCompleto?'#1E3A2F':'none'} strokeWidth={filterDelito===d.nombreCompleto?2:0}/>)}
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
@@ -1694,7 +1694,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                     <YAxis type="category" dataKey="name" tick={{fontSize:9,fill:'#64748b'}} width={isMobile?68:110} axisLine={false} tickLine={false}/>
                     <Tooltip contentStyle={{background:'#fff',border:'none',boxShadow:'0 4px 16px rgba(15,23,42,0.10)',borderRadius:10,fontSize:12}}/>
                     <Bar dataKey="value" radius={[0,6,6,0]} cursor="pointer" onClick={(data)=>setFilterTribunal(prev=>prev===data.name?'':data.name)}>
-                      {chartTribunales.map((d,i)=><Cell key={i} fill={COLORS[i%COLORS.length]} stroke={filterTribunal===d.name?'#1E293B':'none'} strokeWidth={filterTribunal===d.name?2:0}/>)}
+                      {chartTribunales.map((d,i)=><Cell key={i} fill={COLORS[i%COLORS.length]} stroke={filterTribunal===d.name?'#1E3A2F':'none'} strokeWidth={filterTribunal===d.name?2:0}/>)}
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
@@ -1742,7 +1742,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                           <div style={{fontSize:11,color:'#991b1b',fontWeight:600,marginTop:4,...f}}>En contra ({resumenFavorContra.contra.n})</div>
                         </div>
                       </div>
-                      <div style={{display:'flex',background:'#F8F9FC',borderRadius:8,height:10,overflow:'hidden',marginTop:10,border:'1px solid #e2e8f0'}}>
+                      <div style={{display:'flex',background:'#FAF7F0',borderRadius:8,height:10,overflow:'hidden',marginTop:10,border:'1px solid #e2e8f0'}}>
                         <div style={{width:`${resumenFavorContra.favor.pct}%`,background:'#a7f3d0'}}/>
                         <div style={{width:`${resumenFavorContra.contra.pct}%`,background:'#fca5a5'}}/>
                       </div>
@@ -1753,10 +1753,10 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                   {chartResultados.map(r=>(
                     <div key={r.subestado} style={{display:'flex',alignItems:'center',gap:12,marginBottom:8}}>
                       <div style={{width:150,fontSize:12,fontWeight:600,color:r.color,flexShrink:0,...f}}>{r.label}</div>
-                      <div style={{flex:1,background:'#F8F9FC',borderRadius:6,height:22,position:'relative',overflow:'hidden',border:`1px solid ${r.border}`}}>
+                      <div style={{flex:1,background:'#FAF7F0',borderRadius:6,height:22,position:'relative',overflow:'hidden',border:`1px solid ${r.border}`}}>
                         <div style={{width:`${r.pct}%`,height:'100%',background:r.bg,borderRight:`2px solid ${r.color}`,transition:'width 0.3s'}}/>
                       </div>
-                      <div style={{width:70,fontSize:12,fontWeight:700,color:'#1E293B',textAlign:'right',flexShrink:0,...f}}>{r.value} · {r.pct}%</div>
+                      <div style={{width:70,fontSize:12,fontWeight:700,color:'#1E3A2F',textAlign:'right',flexShrink:0,...f}}>{r.value} · {r.pct}%</div>
                     </div>
                   ))}
                 </>
@@ -1770,7 +1770,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
           <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
           <div style={{width:320,position:'relative'}}>
             <span style={{position:'absolute',left:14,top:'50%',transform:'translateY(-50%)',color:'#94a3b8',fontSize:14}}>🔍</span>
-            <input style={{width:'100%',padding:'11px 14px',paddingLeft:38,border:'none',borderRadius:14,fontSize:13,color:'#1E293B',background:'#fff',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}} placeholder="Buscar por RUC, RIT, imputado, delito..." value={search} onChange={e=>setSearch(e.target.value)}/>
+            <input style={{width:'100%',padding:'11px 14px',paddingLeft:38,border:'none',borderRadius:14,fontSize:13,color:'#1E3A2F',background:'#fff',boxShadow:'0 1px 2px rgba(15,23,42,0.06)',...f}} placeholder="Buscar por RUC, RIT, imputado, delito..." value={search} onChange={e=>setSearch(e.target.value)}/>
           </div>
           <button className="btn-secondary" onClick={()=>setShowFiltros(!showFiltros)} style={{border:'none',borderRadius:14,boxShadow:'0 1px 2px rgba(15,23,42,0.06)',color:showFiltros||hayFiltrosActivos?'#2563eb':'#374151',whiteSpace:'nowrap',display:'flex',alignItems:'center',gap:6}}>
             ⚙ Filtros{hayFiltrosActivos&&<span style={{background:'#2563eb',color:'#fff',borderRadius:100,fontSize:10,fontWeight:700,padding:'1px 7px'}}>●</span>}
@@ -1782,12 +1782,12 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
         {/* Panel de filtros — oculto por defecto, se despliega solo al apretar "Filtros" */}
         {showFiltros && (
           <div style={{display:'flex',gap:8,marginBottom:24,flexWrap:'wrap',alignItems:'center',background:'#fff',borderRadius:16,padding:14,boxShadow:'0 1px 3px rgba(15,23,42,0.06)'}}>
-            <select style={{width:'auto',minWidth:150,padding:'8px 12px',border:'none',borderRadius:12,fontSize:12,color:'#1E293B',background:'#F8F9FC',...f}} value={filterTribunal} onChange={e=>setFilterTribunal(e.target.value)}><option value="">Todos los tribunales</option>{tribunales.map(t=><option key={t} value={t}>{t}</option>)}</select>
-            <select style={{width:'auto',minWidth:130,padding:'8px 12px',border:'none',borderRadius:12,fontSize:12,color:'#1E293B',background:'#F8F9FC',...f}} value={filterEstado} onChange={e=>setFilterEstado(e.target.value)}><option value="">Todos los estados</option>{Object.entries(estadoConfig).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}</select>
+            <select style={{width:'auto',minWidth:150,padding:'8px 12px',border:'none',borderRadius:12,fontSize:12,color:'#1E3A2F',background:'#FAF7F0',...f}} value={filterTribunal} onChange={e=>setFilterTribunal(e.target.value)}><option value="">Todos los tribunales</option>{tribunales.map(t=><option key={t} value={t}>{t}</option>)}</select>
+            <select style={{width:'auto',minWidth:130,padding:'8px 12px',border:'none',borderRadius:12,fontSize:12,color:'#1E3A2F',background:'#FAF7F0',...f}} value={filterEstado} onChange={e=>setFilterEstado(e.target.value)}><option value="">Todos los estados</option>{Object.entries(estadoConfig).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}</select>
             <div style={{width:180}}>
               <SearchableSelect value={filterDelito} onChange={v=>setFilterDelito(v)} options={DELITOS_CATALOGO} placeholder="Todos los delitos" isDelito={true}/>
             </div>
-            <select style={{width:'auto',minWidth:130,padding:'8px 12px',border:'none',borderRadius:12,fontSize:12,color:'#1E293B',background:'#F8F9FC',...f}} value={filterRegimen} onChange={e=>setFilterRegimen(e.target.value)}>
+            <select style={{width:'auto',minWidth:130,padding:'8px 12px',border:'none',borderRadius:12,fontSize:12,color:'#1E3A2F',background:'#FAF7F0',...f}} value={filterRegimen} onChange={e=>setFilterRegimen(e.target.value)}>
               <option value="">RPA / Adulto</option>
               <option value="ADULTO">Solo Adulto</option>
               <option value="RPA">Solo RPA</option>
@@ -1812,7 +1812,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
               <div key={c.id} className="row-hover causa-row" onClick={()=>openCausa(c)} style={{borderRadius:14}}>
                 {/* Fila ancha (PC/tablet) — misma info y orden de siempre */}
                 <div className="causa-col-desktop" style={{display:'grid',gridTemplateColumns:'140px 110px 140px minmax(180px,320px) 1fr',columnGap:24}}>
-                  <div style={{padding:'14px 20px',fontSize:12,fontWeight:700,color:'#1E293B',...f,display:'flex',alignItems:'center',gap:6}}>
+                  <div style={{padding:'14px 20px',fontSize:12,fontWeight:700,color:'#1E3A2F',...f,display:'flex',alignItems:'center',gap:6}}>
                     {c.ruc}
                     {/* 📴 Causa creada sin señal, todavía no subida de verdad — ver
                         src/lib/offline.js. Se saca sola apenas se sincronice. */}
@@ -1825,21 +1825,21 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                     </div>
                   </div>
                   <div style={{padding:'14px 20px',fontSize:12,color:'#475569',fontWeight:500,...f}}>{c.tribunal}</div>
-                  <div style={{padding:'14px 20px',textAlign:'center',...f}}><div style={{maxWidth:'100%',margin:'0 auto',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:13,color:'#1E293B',fontWeight:500}}>{(c.imputado||'').replace(/\|/g,' / ')}</div></div>
+                  <div style={{padding:'14px 20px',textAlign:'center',...f}}><div style={{maxWidth:'100%',margin:'0 auto',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:13,color:'#1E3A2F',fontWeight:500}}>{(c.imputado||'').replace(/\|/g,' / ')}</div></div>
                   <div style={{padding:'14px 20px',textAlign:'center',...f}}><div style={{maxWidth:280,margin:'0 auto',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:12,color:'#64748b'}}>{(c.delito||'').replace(/\|/g,', ')||'—'}</div></div>
                 </div>
                 {/* Tarjeta condensada — solo en celular: RUC + estado, luego RIT/Tribunal, luego imputado.
                     Con borde propio para que se vea como una tarjeta enmarcada, no solo una fila. */}
-                <div className="causa-row-mobile" style={{padding:'12px 14px',margin:'6px 8px',background:c.estado==='vigente'?'#fafffd':'#F8F9FC',border:`2px solid ${c.estado==='vigente'?'#86efac':'#cbd5e1'}`,borderRadius:12}}>
+                <div className="causa-row-mobile" style={{padding:'12px 14px',margin:'6px 8px',background:c.estado==='vigente'?'#fafffd':'#FAF7F0',border:`2px solid ${c.estado==='vigente'?'#86efac':'#cbd5e1'}`,borderRadius:12}}>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8}}>
-                    <span style={{fontSize:13,fontWeight:700,color:'#0f172a',display:'flex',alignItems:'center',gap:6,...f}}>
+                    <span style={{fontSize:13,fontWeight:700,color:'#1E3A2F',display:'flex',alignItems:'center',gap:6,...f}}>
                       {c.ruc}
                       {c._pendienteSync && <span title="Creada sin conexión — se sube sola apenas vuelva la señal" style={{fontSize:9,fontWeight:700,padding:'2px 6px',borderRadius:20,background:'#fffbeb',color:'#92400e',...f}}>🕓</span>}
                     </span>
                     <SemaforoTag updated_at={c.updated_at} estado={c.estado} />
                   </div>
                   <div style={{fontSize:12,fontWeight:600,color:'#475569',marginTop:4,...f}}>{c.rit||'—'} · {c.tribunal||'—'}</div>
-                  <div style={{fontSize:13,fontWeight:600,color:'#1E293B',marginTop:3,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',...f}}>{(c.imputado||'').replace(/\|/g,' / ')}</div>
+                  <div style={{fontSize:13,fontWeight:600,color:'#1E3A2F',marginTop:3,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',...f}}>{(c.imputado||'').replace(/\|/g,' / ')}</div>
                 </div>
               </div>
             ))}
@@ -1860,7 +1860,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
             initial={{opacity:0,y:24,scale:0.98}} animate={{opacity:1,y:0,scale:1}} exit={{opacity:0,y:12,scale:0.98}}
             transition={{duration:0.25,ease:[0.16,1,0.3,1]}}
             style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:16,padding:32,width:540,maxWidth:'90vw',boxShadow:'0 24px 80px rgba(15,23,42,0.22)',maxHeight:'90vh',overflowY:'auto'}}>
-            <div style={{fontSize:20,fontWeight:800,color:'#1E293B',marginBottom:24,...f}}>Nueva Causa</div>
+            <div style={{fontSize:20,fontWeight:800,color:'#1E3A2F',marginBottom:24,...f}}>Nueva Causa</div>
             <div className="grid2-mobile" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
               {/* RUC y RIT */}
               {[{key:'ruc',label:'RUC *',ph:'Ej: 2600123456-7',full:true},{key:'rit',label:'RIT',ph:'Ej: 1234-2026'}].map(field=>(
@@ -1888,7 +1888,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                 <div key={idx} className="grid2-mobile" style={{gridColumn:'1/-1', display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, ...(idx>0 ? {borderTop:'1px dashed #e2e8f0', paddingTop:16, marginTop:2} : {})}}>
                   {nuevaCausa.imputados.length > 1 && (
                     <div style={{gridColumn:'1/-1', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                      <div style={{fontSize:12, fontWeight:700, color:'#1E293B', ...f}}>Imputado {idx+1}</div>
+                      <div style={{fontSize:12, fontWeight:700, color:'#1E3A2F', ...f}}>Imputado {idx+1}</div>
                       {idx > 0 && (
                         <button type="button" className="btn-secondary" style={{fontSize:11, padding:'4px 10px'}} onClick={()=>quitarImputadoNuevaCausa(idx)}>✕ Quitar</button>
                       )}
@@ -1921,7 +1921,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                         onChange={e=>actualizarImputadoNuevaCausa(idx,'fecha_nac',e.target.value)}/>
                       {imp.fecha_nac && (() => {
                         const edad = calcularEdadActual(imp.fecha_nac)
-                        return edad !== null ? <span style={{flexShrink:0,fontSize:11,color:'#1E293B',fontWeight:600,background:'#eff6ff',padding:'4px 9px',borderRadius:10,...f}}>{edad} AÑOS HOY</span> : null
+                        return edad !== null ? <span style={{flexShrink:0,fontSize:11,color:'#1E3A2F',fontWeight:600,background:'#eff6ff',padding:'4px 9px',borderRadius:10,...f}}>{edad} AÑOS HOY</span> : null
                       })()}
                     </div>
                   </div>
@@ -1955,7 +1955,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                   <div style={{gridColumn:'1/-1'}}>
                     <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:700,...f}}>Cautelares</div>
                     {imp.cautelares.map((ct, cIdx) => (
-                      <div key={cIdx} style={{marginBottom:8,padding:'10px 12px',background:'#F8F9FC',border:'1px solid #e2e8f0',borderRadius:10,display:'flex',gap:8,alignItems:'flex-end',flexWrap:'wrap'}}>
+                      <div key={cIdx} style={{marginBottom:8,padding:'10px 12px',background:'#FAF7F0',border:'1px solid #e2e8f0',borderRadius:10,display:'flex',gap:8,alignItems:'flex-end',flexWrap:'wrap'}}>
                         <div style={{flex:'1 1 200px',minWidth:180}}>
                           <div style={{fontSize:9,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1,marginBottom:4,fontWeight:600,...f}}>Tipo</div>
                           <select style={inp} value={ct.tipo} onChange={e=>actualizarCautelarNuevaCausa(idx,cIdx,'tipo',e.target.value)}>
@@ -1977,7 +1977,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                         {(TIPOS_ABONO_DIRECTO.includes(ct.tipo) || ct.tipo === CAUTELAR_SENAME) && ct.fecha_inicio && (
                           <div style={{display:'flex',alignItems:'center',gap:6,paddingBottom:9}}>
                             <span style={{fontSize:14}}>🔒</span>
-                            <span style={{fontSize:12,fontWeight:700,color:'#1E293B',...f}}>{diasEntreFechasCaut(ct.fecha_inicio, hoyISO())}d{ct.tipo === CAUTELAR_SENAME ? ' (SENAME)' : ''}</span>
+                            <span style={{fontSize:12,fontWeight:700,color:'#1E3A2F',...f}}>{diasEntreFechasCaut(ct.fecha_inicio, hoyISO())}d{ct.tipo === CAUTELAR_SENAME ? ' (SENAME)' : ''}</span>
                           </div>
                         )}
                         <button type="button" className="btn-secondary" style={{fontSize:11,padding:'8px 10px'}} onClick={()=>quitarCautelarNuevaCausa(idx,cIdx)}>✕</button>

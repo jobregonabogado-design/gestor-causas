@@ -128,9 +128,9 @@ export default function Contabilidad() {
   if (loading) return <div style={{ textAlign:'center', padding:80, color:'#94a3b8', fontSize:14, ...f }}>Cargando...</div>
 
   return (
-    <div style={{ background:'#F8F9FC', minHeight:'calc(100vh - 60px)', ...f }}>
+    <div style={{ background:'#FAF7F0', minHeight:'calc(100vh - 60px)', ...f }}>
       <div style={{ maxWidth:1100, margin:'0 auto', padding:'28px' }}>
-        <div style={{ fontSize:20, fontWeight:800, color:'#1E293B', letterSpacing:'-0.4px', marginBottom:4 }}>Contabilidad</div>
+        <div style={{ fontSize:20, fontWeight:800, color:'#1E3A2F', letterSpacing:'-0.4px', marginBottom:4 }}>Contabilidad</div>
         <div style={{ fontSize:12, color:'#94a3b8', marginBottom:20 }}>Visible solo para el titular · información agregada de todas las causas</div>
 
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(170px, 1fr))', gap:16, marginBottom:20 }}>
@@ -153,14 +153,14 @@ export default function Contabilidad() {
           {[['cobrar','Cuentas por Cobrar'],['abonos','Abonos'],['ingresos','Ingresos Percibidos']].map(([k,l]) => (
             <button key={k} onClick={()=>setTab(k)}
               style={{ fontFamily:"'Manrope','Inter',sans-serif", fontSize:13, fontWeight: tab===k?600:500, padding:'8px 18px', borderRadius:10, border:'none', cursor:'pointer',
-                background: tab===k?'#1E293B':'transparent', color: tab===k?'#fff':'#64748b' }}>{l}</button>
+                background: tab===k?'#1E3A2F':'transparent', color: tab===k?'#fff':'#64748b' }}>{l}</button>
           ))}
         </div>
 
         {tab === 'cobrar' && (
           <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:16, padding:20 }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
-              <div style={{ fontSize:13, fontWeight:700, color:'#1E293B' }}>Dinero por cobrar (saldos pendientes)</div>
+              <div style={{ fontSize:13, fontWeight:700, color:'#1E3A2F' }}>Dinero por cobrar (saldos pendientes)</div>
               <div style={{ fontSize:20, fontWeight:800, color:'#dc2626' }}>{fmt(totalPorCobrar)}</div>
             </div>
             {cuentasPorCobrar.length === 0 ? (
@@ -168,9 +168,9 @@ export default function Contabilidad() {
             ) : cuentasPorCobrar.map(r => {
               const { nombre, soloRuc } = nombreOSoloRuc(r.causa)
               return (
-                <div key={r.causa.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 14px', background:'#F8F9FC', border:'1px solid #e2e8f0', borderRadius:10, marginBottom:8 }}>
+                <div key={r.causa.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 14px', background:'#FAF7F0', border:'1px solid #e2e8f0', borderRadius:10, marginBottom:8 }}>
                   <div>
-                    <div style={{ fontSize:13, fontWeight:700, color:'#1E293B' }}>RUC {r.causa.ruc}{!soloRuc && <span style={{fontWeight:400,color:'#64748b'}}> · {nombre}</span>}</div>
+                    <div style={{ fontSize:13, fontWeight:700, color:'#1E3A2F' }}>RUC {r.causa.ruc}{!soloRuc && <span style={{fontWeight:400,color:'#64748b'}}> · {nombre}</span>}</div>
                     <div style={{ fontSize:11, color:'#94a3b8', marginTop:2 }}>Pactado {fmt(r.montoTotal)} · Abonado {fmt(r.totalAbonado)}</div>
                   </div>
                   <div style={{ fontSize:15, fontWeight:800, color:'#dc2626' }}>{fmt(r.saldo)}</div>
@@ -195,15 +195,15 @@ export default function Contabilidad() {
                 {exportando ? 'Generando...' : '⬇ Exportar a Excel'}
               </button>
             </div>
-            <div style={{ fontSize:13, fontWeight:700, color:'#1E293B', marginBottom:12 }}>Total {MESES[mesFiltro]} {anioFiltro}: <span style={{color:'#059669'}}>{fmt(totalAbonosDelMes)}</span></div>
+            <div style={{ fontSize:13, fontWeight:700, color:'#1E3A2F', marginBottom:12 }}>Total {MESES[mesFiltro]} {anioFiltro}: <span style={{color:'#059669'}}>{fmt(totalAbonosDelMes)}</span></div>
             {abonosDelMes.length === 0 ? (
               <p style={{ color:'#94a3b8', fontSize:13 }}>Sin abonos registrados en este mes.</p>
             ) : abonosDelMes.map(a => {
               const { nombre, soloRuc } = nombreOSoloRuc(a.causa)
               return (
-                <div key={a.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 14px', background:'#F8F9FC', border:'1px solid #e2e8f0', borderRadius:10, marginBottom:8 }}>
+                <div key={a.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 14px', background:'#FAF7F0', border:'1px solid #e2e8f0', borderRadius:10, marginBottom:8 }}>
                   <div>
-                    <div style={{ fontSize:13, fontWeight:700, color:'#1E293B' }}>RUC {a.causa?.ruc || '—'}{!soloRuc && <span style={{fontWeight:400,color:'#64748b'}}> · {nombre}</span>}</div>
+                    <div style={{ fontSize:13, fontWeight:700, color:'#1E3A2F' }}>RUC {a.causa?.ruc || '—'}{!soloRuc && <span style={{fontWeight:400,color:'#64748b'}}> · {nombre}</span>}</div>
                     <div style={{ fontSize:11, color:'#94a3b8', marginTop:2 }}>{a.fecha} · {a.forma_pago}{a.cuenta_transferencia ? ' · '+a.cuenta_transferencia : ''}</div>
                   </div>
                   <div style={{ fontSize:14, fontWeight:800, color:'#059669' }}>{fmt(a.monto)}</div>
@@ -219,7 +219,7 @@ export default function Contabilidad() {
               <select value={anioFiltro} onChange={e=>setAnioFiltro(Number(e.target.value))} style={{ padding:'8px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, fontFamily:"'Manrope','Inter',sans-serif" }}>
                 {[hoy.getFullYear(), hoy.getFullYear()-1, hoy.getFullYear()-2].map(a => <option key={a} value={a}>{a}</option>)}
               </select>
-              <div style={{ fontSize:20, fontWeight:800, color:'#1E293B' }}>Total {anioFiltro}: {fmt(totalAnual)}</div>
+              <div style={{ fontSize:20, fontWeight:800, color:'#1E3A2F' }}>Total {anioFiltro}: {fmt(totalAnual)}</div>
             </div>
             <div style={{ fontSize:11, color:'#94a3b8', marginBottom:14 }}>Ingresos efectivamente percibidos por mes (base para Boletas de Honorarios y F22 — confirma tasas y tratamiento con tu contador).</div>
 
@@ -230,7 +230,7 @@ export default function Contabilidad() {
                     <CartesianGrid vertical={false} stroke="#f1f5f9" />
                     <XAxis dataKey="mes" tick={{ fontSize:11, fill:'#94a3b8' }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fontSize:10, fill:'#94a3b8' }} axisLine={false} tickLine={false} width={0} />
-                    <Tooltip cursor={{ fill:'#F8F9FC' }} contentStyle={{ background:'#fff', border:'none', boxShadow:'0 4px 16px rgba(15,23,42,0.10)', borderRadius:10, fontSize:12 }} formatter={(v) => [fmt(v), 'Ingresos']} />
+                    <Tooltip cursor={{ fill:'#FAF7F0' }} contentStyle={{ background:'#fff', border:'none', boxShadow:'0 4px 16px rgba(15,23,42,0.10)', borderRadius:10, fontSize:12 }} formatter={(v) => [fmt(v), 'Ingresos']} />
                     <Bar dataKey="monto" radius={[6,6,0,0]} fill="#2563eb" />
                   </BarChart>
                 </ResponsiveContainer>
@@ -240,7 +240,7 @@ export default function Contabilidad() {
             {MESES.map((m,i) => (
               <div key={m} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 14px', borderBottom:'1px solid #f1f5f9' }}>
                 <div style={{ fontSize:13, color:'#475569' }}>{m}</div>
-                <div style={{ fontSize:13, fontWeight:700, color: ingresosPorMes[i]>0?'#1E293B':'#cbd5e1' }}>{fmt(ingresosPorMes[i])}</div>
+                <div style={{ fontSize:13, fontWeight:700, color: ingresosPorMes[i]>0?'#1E3A2F':'#cbd5e1' }}>{fmt(ingresosPorMes[i])}</div>
               </div>
             ))}
           </div>

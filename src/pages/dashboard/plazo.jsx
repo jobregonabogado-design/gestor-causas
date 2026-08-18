@@ -17,7 +17,7 @@ export function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudie
   const [eliminandoId, setEliminandoId] = useState(null)
   const [motivoEliminar, setMotivoEliminar] = useState('')
   const f = { fontFamily:"'Manrope','Inter',sans-serif" }
-  const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:'#1E293B', background:'#fff', ...f }
+  const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:'#1E3A2F', background:'#fff', ...f }
   const TIPO_PROXIMA = 'Aumento próxima audiencia'
   const TIPOS_AUDIENCIA_PLAZO = ['Formalización','Control de detención + Formalización','Ampliación de plazo',TIPO_PROXIMA,'Reapertura de investigación']
 
@@ -135,7 +135,7 @@ export function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudie
         const requiereAviso = (subestadoCausa === 'apjo' || subestadoCausa === 'dnp') && !fechaCierreInvestigacion
         return (
           <div style={{
-            background: requiereAviso ? '#fff7ed' : '#F8F9FC',
+            background: requiereAviso ? '#fff7ed' : '#FAF7F0',
             border: `1.5px solid ${requiereAviso ? '#fed7aa' : '#e2e8f0'}`,
             borderRadius:12, padding:'14px 16px', marginBottom:20,
           }}>
@@ -154,7 +154,7 @@ export function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudie
               {!editandoCierre && (
                 <div style={{display:'flex',alignItems:'center',gap:10}}>
                   {fechaCierreInvestigacion && (
-                    <span style={{fontSize:13,fontWeight:700,color:'#1E293B',...f}}>{fechaDDMM(fechaCierreInvestigacion)}</span>
+                    <span style={{fontSize:13,fontWeight:700,color:'#1E3A2F',...f}}>{fechaDDMM(fechaCierreInvestigacion)}</span>
                   )}
                   <button className="btn-secondary" style={{fontSize:11,padding:'6px 12px'}}
                     onClick={()=>{setEditandoCierre(true);setFechaCierreTemp(fechaCierreInvestigacion||'')}}>
@@ -192,7 +192,7 @@ export function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudie
 
         // ─── Fila ELIMINADA: tachada, con el motivo visible (transparencia, no se oculta) ───
         if (a.eliminado) return (
-          <div key={a.id} style={{display:'flex',gap:12,alignItems:'flex-start',padding:'12px 16px',background:'#F8F9FC',border:'1px solid #e2e8f0',borderRadius:10,marginBottom:8,opacity:0.75}}>
+          <div key={a.id} style={{display:'flex',gap:12,alignItems:'flex-start',padding:'12px 16px',background:'#FAF7F0',border:'1px solid #e2e8f0',borderRadius:10,marginBottom:8,opacity:0.75}}>
             <div style={{width:30,height:30,background:'#94a3b8',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:14,flexShrink:0}}>✕</div>
             <div style={{flex:1}}>
               <div style={{fontSize:13,fontWeight:600,color:'#94a3b8',textDecoration:'line-through',...f}}>{a.tipo_audiencia||'Audiencia'} · {fechaDDMM(a.fecha_audiencia)} · +{a.dias_plazo}d</div>
@@ -252,10 +252,10 @@ export function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudie
         // En celular la fila se apila vertical (número/tipo, fecha, plazo, botones)
         // en vez de ir todo horizontal, porque no cabía y se salía del cuadro.
         return isMobile ? (
-          <div key={a.id} style={{padding:'14px 16px',background:'#F8F9FC',border:'1px solid #e2e8f0',borderRadius:10,marginBottom:8}}>
+          <div key={a.id} style={{padding:'14px 16px',background:'#FAF7F0',border:'1px solid #e2e8f0',borderRadius:10,marginBottom:8}}>
             <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>
-              <div style={{width:26,height:26,background:'#1E293B',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:11,fontWeight:700,flexShrink:0}}>{posEnActivos+1}</div>
-              <div style={{fontSize:13,fontWeight:600,color:'#1E293B',...f}}>{a.tipo_audiencia||'Audiencia'}</div>
+              <div style={{width:26,height:26,background:'#1E3A2F',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:11,fontWeight:700,flexShrink:0}}>{posEnActivos+1}</div>
+              <div style={{fontSize:13,fontWeight:600,color:'#1E3A2F',...f}}>{a.tipo_audiencia||'Audiencia'}</div>
             </div>
             <div style={{fontSize:12,color:'#94a3b8',marginBottom:2,...f}}>📅 {fechaDDMM(a.fecha_audiencia)}{a.fecha_proxima_audiencia?` → próxima: ${fechaDDMM(a.fecha_proxima_audiencia)}`:''}</div>
             {a.observacion&&<div style={{fontSize:12,color:'#64748b',marginBottom:2,...f}}>{a.observacion}</div>}
@@ -277,10 +277,10 @@ export function PlazoCalculador({ causaId, plazoActual, aumentos, onGuardarAudie
             </div>
           </div>
         ) : (
-          <div key={a.id} style={{display:'flex',gap:12,alignItems:'center',padding:'14px 16px',background:'#F8F9FC',border:'1px solid #e2e8f0',borderRadius:10,marginBottom:8}}>
-            <div style={{width:30,height:30,background:'#1E293B',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:12,fontWeight:700,flexShrink:0}}>{posEnActivos+1}</div>
+          <div key={a.id} style={{display:'flex',gap:12,alignItems:'center',padding:'14px 16px',background:'#FAF7F0',border:'1px solid #e2e8f0',borderRadius:10,marginBottom:8}}>
+            <div style={{width:30,height:30,background:'#1E3A2F',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:12,fontWeight:700,flexShrink:0}}>{posEnActivos+1}</div>
             <div style={{flex:1}}>
-              <div style={{fontSize:13,fontWeight:600,color:'#1E293B',...f}}>{a.tipo_audiencia||'Audiencia'}</div>
+              <div style={{fontSize:13,fontWeight:600,color:'#1E3A2F',...f}}>{a.tipo_audiencia||'Audiencia'}</div>
               <div style={{fontSize:12,color:'#94a3b8',marginTop:2,...f}}>📅 {fechaDDMM(a.fecha_audiencia)}{a.fecha_proxima_audiencia?` → próxima audiencia: ${fechaDDMM(a.fecha_proxima_audiencia)}`:''}</div>
               {a.observacion&&<div style={{fontSize:12,color:'#64748b',marginTop:2,...f}}>{a.observacion}</div>}
               {a.historial && (

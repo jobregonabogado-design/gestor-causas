@@ -627,7 +627,7 @@ export default function GmailIntegracion({ onImportComplete }) {
   if (!conectado) return (
     <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:16, padding:32, textAlign:'center' }}>
       <div style={{ fontSize:40, marginBottom:12 }}>📧</div>
-      <div style={{ fontSize:17, fontWeight:700, color:'#0f172a', marginBottom:8, ...f }}>Conectar Gmail</div>
+      <div style={{ fontSize:17, fontWeight:700, color:'#1E3A2F', marginBottom:8, ...f }}>Conectar Gmail</div>
       <div style={{ fontSize:13, color:'#94a3b8', marginBottom:24, maxWidth:400, margin:'0 auto 24px', lineHeight:1.7, ...f }}>
         Conecta tu correo para importar automáticamente las audiencias notificadas por el PJUD y la Fiscalía.
       </div>
@@ -649,7 +649,7 @@ export default function GmailIntegracion({ onImportComplete }) {
       {/* HEADER */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:24 }}>
         <div>
-          <div style={{ fontSize:16, fontWeight:700, color:'#0f172a', ...f }}>📧 Gmail conectado</div>
+          <div style={{ fontSize:16, fontWeight:700, color:'#1E3A2F', ...f }}>📧 Gmail conectado</div>
           <div style={{ fontSize:12, color:'#94a3b8', marginTop:3, ...f }}>Importación automática desde PJUD y Fiscalía</div>
         </div>
         <div style={{ display:'flex', gap:8 }}>
@@ -707,11 +707,11 @@ export default function GmailIntegracion({ onImportComplete }) {
               <div key={i} style={{ background:'#fff', border:'1px solid #fca5a5', borderRadius:10, padding:'12px 16px', display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12, flexWrap:'wrap' }}>
                 <div style={{ flex:1, minWidth:220 }}>
                   <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:4, flexWrap:'wrap' }}>
-                    <span style={{ fontSize:12, fontWeight:600, color:'#0f172a', ...f }}>{item.tipoDiligencia}</span>
+                    <span style={{ fontSize:12, fontWeight:600, color:'#1E3A2F', ...f }}>{item.tipoDiligencia}</span>
                     <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:20, textTransform:'uppercase', background:'#fef2f2', color:'#991b1b', border:'1px solid #fecaca', ...f }}>Cita el {fechaDDMM(item.fechaCitacion)}</span>
                   </div>
                   <div style={{ fontSize:12, color:'#64748b', ...f }}>
-                    RUC <span style={{ fontFamily:'monospace', fontWeight:600, color:'#0f172a' }}>{item.ruc}</span>
+                    RUC <span style={{ fontFamily:'monospace', fontWeight:600, color:'#1E3A2F' }}>{item.ruc}</span>
                     {item.imputado && <span style={{ marginLeft:8 }}>· {item.imputado.split('|')[0]}</span>}
                     <span style={{ marginLeft:8 }}>· Folio <span style={{ fontFamily:'monospace' }}>{item.folio}</span></span>
                   </div>
@@ -768,7 +768,7 @@ export default function GmailIntegracion({ onImportComplete }) {
               <div key={i} style={{ background:'#fff', border:'1px solid #bfdbfe', borderRadius:10, padding:'12px 16px', display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12, flexWrap:'wrap' }}>
                 <div style={{ flex:1, minWidth:220 }}>
                   <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:4, flexWrap:'wrap' }}>
-                    <span style={{ fontSize:12, fontWeight:600, color:'#0f172a', ...f }}>{item.tipoDiligencia}</span>
+                    <span style={{ fontSize:12, fontWeight:600, color:'#1E3A2F', ...f }}>{item.tipoDiligencia}</span>
                     <span style={{
                       fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:20, textTransform:'uppercase', ...f,
                       background: ESTADOS_DILIGENCIA[item.estado]?.bg, color: ESTADOS_DILIGENCIA[item.estado]?.color,
@@ -776,7 +776,7 @@ export default function GmailIntegracion({ onImportComplete }) {
                     }}>{ESTADOS_DILIGENCIA[item.estado]?.label || item.estado}</span>
                   </div>
                   <div style={{ fontSize:12, color:'#64748b', ...f }}>
-                    RUC <span style={{ fontFamily:'monospace', fontWeight:600, color:'#0f172a' }}>{item.ruc}</span>
+                    RUC <span style={{ fontFamily:'monospace', fontWeight:600, color:'#1E3A2F' }}>{item.ruc}</span>
                     {item.imputado && <span style={{ marginLeft:8 }}>· {item.imputado.split('|')[0]}</span>}
                     <span style={{ marginLeft:8 }}>· Folio <span style={{ fontFamily:'monospace' }}>{item.folio}</span></span>
                   </div>
@@ -819,10 +819,10 @@ export default function GmailIntegracion({ onImportComplete }) {
                 <div style={{ flex:1 }}>
                   <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:4, flexWrap:'wrap' }}>
                     <span style={{ fontSize:10, fontWeight:700, background: item.origen==='PJUD'?'#eff6ff':'#faf5ff', color: item.origen==='PJUD'?'#2563eb':'#7c3aed', border:`1px solid ${item.origen==='PJUD'?'#bfdbfe':'#ddd6fe'}`, padding:'2px 8px', borderRadius:20, textTransform:'uppercase', ...f }}>{item.origen}</span>
-                    <span style={{ fontSize:12, fontWeight:600, color:'#0f172a', ...f }}>{item.tipo}</span>
+                    <span style={{ fontSize:12, fontWeight:600, color:'#1E3A2F', ...f }}>{item.tipo}</span>
                   </div>
                   <div style={{ fontSize:12, color:'#64748b', ...f }}>
-                    RUC <span style={{ fontFamily:'monospace', fontWeight:600, color:'#0f172a' }}>{item.ruc}</span>
+                    RUC <span style={{ fontFamily:'monospace', fontWeight:600, color:'#1E3A2F' }}>{item.ruc}</span>
                     {item.imputado && <span style={{ marginLeft:8 }}>· {item.imputado.split('|')[0]}</span>}
                   </div>
                   <div style={{ fontSize:12, color:'#059669', fontWeight:500, marginTop:4, ...f }}>
@@ -898,10 +898,10 @@ export default function GmailIntegracion({ onImportComplete }) {
               <div key={i} style={{ background:'#fff', border:'1px solid #fdba74', borderRadius:10, padding:'12px 16px' }}>
                 <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:4, flexWrap:'wrap' }}>
                   <span style={{ fontSize:10, fontWeight:700, background: item.origen==='PJUD'?'#eff6ff':'#faf5ff', color: item.origen==='PJUD'?'#2563eb':'#7c3aed', border:`1px solid ${item.origen==='PJUD'?'#bfdbfe':'#ddd6fe'}`, padding:'2px 8px', borderRadius:20, textTransform:'uppercase', ...f }}>{item.origen}</span>
-                  <span style={{ fontSize:12, fontWeight:600, color:'#0f172a', ...f }}>{item.tipo}</span>
+                  <span style={{ fontSize:12, fontWeight:600, color:'#1E3A2F', ...f }}>{item.tipo}</span>
                 </div>
                 <div style={{ fontSize:12, color:'#64748b', ...f }}>
-                  RUC <span style={{ fontFamily:'monospace', fontWeight:600, color:'#0f172a' }}>{item.ruc}</span>
+                  RUC <span style={{ fontFamily:'monospace', fontWeight:600, color:'#1E3A2F' }}>{item.ruc}</span>
                   {item.imputado && <span style={{ marginLeft:8 }}>· {item.imputado.split('|')[0]}</span>}
                   <span style={{ marginLeft:8 }}>· Vigente: 📅 {fechaDDMM(item.fecha)}{item.hora ? ` · 🕐 ${item.hora}` : ''}</span>
                 </div>
@@ -930,7 +930,7 @@ export default function GmailIntegracion({ onImportComplete }) {
           <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
             {errores.map((e, i) => (
               <div key={i} style={{ background:'#fff', border:'1px solid #fecaca', borderRadius:8, padding:'10px 14px' }}>
-                <div style={{ fontSize:12, fontWeight:600, color:'#0f172a', marginBottom:2, ...f }}>{e.asunto}</div>
+                <div style={{ fontSize:12, fontWeight:600, color:'#1E3A2F', marginBottom:2, ...f }}>{e.asunto}</div>
                 <div style={{ fontSize:11, color:'#dc2626', ...f }}>⚠ {e.motivo}</div>
                 {e.ruc && <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>RUC: {e.ruc}</div>}
               </div>
@@ -952,7 +952,7 @@ export default function GmailIntegracion({ onImportComplete }) {
             {sinCausa.map((n, i) => (
               <div key={i} style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:8, padding:'10px 14px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                 <div>
-                  <div style={{ fontSize:12, fontWeight:600, color:'#0f172a', ...f }}>{n.asunto}</div>
+                  <div style={{ fontSize:12, fontWeight:600, color:'#1E3A2F', ...f }}>{n.asunto}</div>
                   {n.ruc && <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>RUC: <span style={{ fontFamily:'monospace' }}>{n.ruc}</span> — no existe o está terminada</div>}
                 </div>
               </div>

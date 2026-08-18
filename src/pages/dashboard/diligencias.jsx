@@ -284,7 +284,7 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
   const comprobanteInputRef = useRef(null)
   const respuestaInputRef = useRef(null)
   const f = { fontFamily:"'Manrope','Inter',sans-serif" }
-  const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:'#1E293B', background:'#fff', ...f }
+  const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:'#1E3A2F', background:'#fff', ...f }
 
   useEffect(() => { cargar() }, [causaId])
 
@@ -564,7 +564,7 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
       <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:8 }} className="no-imprimir">
         <BotonImprimirLista ruc={ruc} titulo="Diligencias de Fiscalía" items={diligencias} renderItem={(d)=> (
           <div style={{fontSize:12,color:'#475569'}}>
-            <strong style={{color:'#1E293B'}}>{d.tipo}</strong> — solicitada el {fechaDDMM(d.fecha_solicitud)}{d.folio ? ` · Folio ${d.folio}` : ''}
+            <strong style={{color:'#1E3A2F'}}>{d.tipo}</strong> — solicitada el {fechaDDMM(d.fecha_solicitud)}{d.folio ? ` · Folio ${d.folio}` : ''}
             {d.estado === 'pendiente' ? ' · Pendiente de respuesta' : ` · Respondida el ${fechaDDMM(d.fecha_respuesta) || '—'}${d.estado === 'con_citacion' && d.fecha_citacion ? ` · Cita el ${fechaDDMM(d.fecha_citacion)}` : ''}`}
           </div>
         )}/>
@@ -586,10 +586,10 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
         const diasHabiles = d.estado === 'pendiente' ? diasHabilesDesde(d.fecha_solicitud) : 0
         const avisoSeguimiento = d.estado === 'pendiente' && d.tipo !== TIPO_ACREDITACION && diasHabiles >= 5
         return (
-          <div key={d.id} style={{ background:'#F8F9FC', border:'1px solid #e2e8f0', borderRadius:12, padding:'14px 16px', marginBottom:10 }}>
+          <div key={d.id} style={{ background:'#FAF7F0', border:'1px solid #e2e8f0', borderRadius:12, padding:'14px 16px', marginBottom:10 }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:8 }}>
               <div>
-                <div style={{ fontSize:13, fontWeight:700, color:'#1E293B', ...f }}>{d.tipo}</div>
+                <div style={{ fontSize:13, fontWeight:700, color:'#1E3A2F', ...f }}>{d.tipo}</div>
                 <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>Solicitada el {fechaDDMM(d.fecha_solicitud)} · Folio <strong style={{color:'#475569'}}>{d.folio}</strong></div>
               </div>
               <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:4 }}>
@@ -742,7 +742,7 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
         onChange={e=>{ const file=e.target.files[0]; const id=e.target.dataset.diligenciaId; if(file&&id) confirmarRucYSubir(file,'respuesta',id); e.target.value='' }}/>
 
       {showForm ? (
-        <div style={{ background:'#F8F9FC', border:'1.5px solid #e2e8f0', borderRadius:12, padding:16, marginTop:8 }}>
+        <div style={{ background:'#FAF7F0', border:'1.5px solid #e2e8f0', borderRadius:12, padding:16, marginTop:8 }}>
           {comprobantePendiente && (
             <div style={{ fontSize:12, color:'#065f46', background:'#ecfdf5', border:'1px solid #a7f3d0', borderRadius:8, padding:'8px 10px', marginBottom:10, ...f }}>
               📎 Se detectó y se adjuntará automáticamente: <strong>{comprobantePendiente.name}</strong>
@@ -794,7 +794,7 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
           onDragLeave={()=>setDragPdf(false)}
           onDrop={e=>{e.preventDefault();setDragPdf(false);const file=e.dataTransfer.files[0];if(file)procesarPdfComprobante(file)}}
           onClick={()=>nuevaDiligenciaFileRef.current.click()}
-          style={{ border:`2px dashed ${dragPdf?'#2563eb':'#e2e8f0'}`, borderRadius:12, padding:'22px 16px', textAlign:'center', background:dragPdf?'#eff6ff':'#F8F9FC', cursor:'pointer', marginTop:8, transition:'all 0.2s' }}>
+          style={{ border:`2px dashed ${dragPdf?'#2563eb':'#e2e8f0'}`, borderRadius:12, padding:'22px 16px', textAlign:'center', background:dragPdf?'#eff6ff':'#FAF7F0', cursor:'pointer', marginTop:8, transition:'all 0.2s' }}>
           <input ref={nuevaDiligenciaFileRef} type="file" accept=".pdf,image/*" style={{ display:'none' }}
             onChange={e=>{ const file=e.target.files[0]; if(file) procesarPdfComprobante(file); e.target.value='' }}/>
           <div style={{ fontSize:24, marginBottom:6 }}>{analizandoPdf ? '⏳' : '📄'}</div>

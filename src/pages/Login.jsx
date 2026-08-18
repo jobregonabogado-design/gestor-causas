@@ -16,7 +16,7 @@ const USUARIOS = {
 const C = {
   green: '#1E3A2F', greenDeep: '#16301F', greenDeeper: '#0E2416',
   gold: '#A8925F', goldSoft: '#CBB886', goldInk: '#8A7D55',
-  bone: '#F4F1E8', boneBright: '#FBF9F2',
+  bone: '#FAF7F0', boneBright: '#FDFCF8',
   field: '#FFFDF7', fieldBorder: '#DDD7C6', rule: '#E2DDCD',
   text2: '#6F7B6F', text3: '#5C6A5C', mute: '#A6A397', danger: '#8C2F26',
 }

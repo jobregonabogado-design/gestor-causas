@@ -31,17 +31,17 @@ export function ImputadoDatosCard({ imp, numero, causaId, ruc, cautelares, esTit
             {numero && (
               <span style={{width:22,height:22,borderRadius:'50%',background:'linear-gradient(135deg,#2563eb,#1d4ed8)',color:'#fff',fontSize:11,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,...f}}>{numero}</span>
             )}
-            <span style={{fontSize:14,fontWeight:700,color:'#1E293B',...f}}>{imp.nombre||'Sin nombre'}</span>
+            <span style={{fontSize:14,fontWeight:700,color:'#1E3A2F',...f}}>{imp.nombre||'Sin nombre'}</span>
             {imp.regimen && (
-              <span style={{fontSize:10,fontWeight:700,padding:'3px 9px',borderRadius:10,background:imp.regimen==='RPA'?'#faf5ff':'#eff6ff',color:imp.regimen==='RPA'?'#5b21b6':'#1E293B',border:`1px solid ${imp.regimen==='RPA'?'#ddd6fe':'#bfdbfe'}`,...f}}>{imp.regimen}</span>
+              <span style={{fontSize:10,fontWeight:700,padding:'3px 9px',borderRadius:10,background:imp.regimen==='RPA'?'#faf5ff':'#eff6ff',color:imp.regimen==='RPA'?'#5b21b6':'#1E3A2F',border:`1px solid ${imp.regimen==='RPA'?'#ddd6fe':'#bfdbfe'}`,...f}}>{imp.regimen}</span>
             )}
           </div>
           <span style={{fontSize:12,color:'#94a3b8'}}>{expanded ? '▲' : '▼'}</span>
         </div>
         <div style={{fontSize:12,color:'#64748b',marginTop:4,...f}}>
-          <strong style={{color:'#1E293B'}}>{numDelitos}</strong> delito{numDelitos!==1?'s':''}
+          <strong style={{color:'#1E3A2F'}}>{numDelitos}</strong> delito{numDelitos!==1?'s':''}
           <span style={{color:'#cbd5e1',margin:'0 8px'}}>·</span>
-          <strong style={{color:'#1E293B'}}>{totalAbonoImp}</strong> días de abono
+          <strong style={{color:'#1E3A2F'}}>{totalAbonoImp}</strong> días de abono
           <span style={{color:'#cbd5e1',margin:'0 8px'}}>·</span>
           {imp.lugar_detencion || <span style={{color:'#94a3b8'}}>Sin centro penal</span>}
         </div>
@@ -54,7 +54,7 @@ export function ImputadoDatosCard({ imp, numero, causaId, ruc, cautelares, esTit
             <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Fecha de nacimiento</div>
             {editField==='fecha_nacimiento'?(
               <div style={{display:'flex',gap:6}}>
-                <input type="date" style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}}
+                <input type="date" style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E3A2F',background:'#fff',...f}}
                   value={editValue} onChange={e=>setEditValue(e.target.value)}
                   onBlur={()=>{if(editValue)onUpdateCampo('fecha_nacimiento',editValue)}}
                   onKeyDown={e=>{if(e.key==='Enter'){onUpdateCampo('fecha_nacimiento',editValue);setEditField(null)}if(e.key==='Escape')setEditField(null)}} autoFocus/>
@@ -63,12 +63,12 @@ export function ImputadoDatosCard({ imp, numero, causaId, ruc, cautelares, esTit
               </div>
             ):(
               <div className="fld" onClick={()=>{setEditField('fecha_nacimiento');setEditValue(imp.fecha_nacimiento||'')}}
-                style={{padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:imp.fecha_nacimiento?'#1E293B':'#94a3b8',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
+                style={{padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:imp.fecha_nacimiento?'#1E3A2F':'#94a3b8',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
                 <span>
                   {fechaDDMM(imp.fecha_nacimiento) || 'Clic para agregar...'}
                   {imp.fecha_nacimiento && (() => {
                     const edad = calcularEdadActual(imp.fecha_nacimiento)
-                    return edad !== null ? <span style={{marginLeft:8,fontSize:11,color:'#1E293B',fontWeight:600,background:'#eff6ff',padding:'1px 7px',borderRadius:10}}>{edad} AÑOS HOY</span> : null
+                    return edad !== null ? <span style={{marginLeft:8,fontSize:11,color:'#1E3A2F',fontWeight:600,background:'#eff6ff',padding:'1px 7px',borderRadius:10}}>{edad} AÑOS HOY</span> : null
                   })()}
                 </span>
                 <span style={{fontSize:11,color:'#94a3b8'}}>✏</span>
@@ -91,7 +91,7 @@ export function ImputadoDatosCard({ imp, numero, causaId, ruc, cautelares, esTit
               <div style={{fontSize:10,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Fecha de detención</div>
               {editField==='fecha_detencion'?(
                 <div style={{display:'flex',gap:6}}>
-                  <input type="date" style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}}
+                  <input type="date" style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E3A2F',background:'#fff',...f}}
                     value={editValue} onChange={e=>setEditValue(e.target.value)}
                     onBlur={()=>{if(editValue)onUpdateCampo('fecha_detencion',editValue)}}
                     onKeyDown={e=>{if(e.key==='Enter'){onUpdateCampo('fecha_detencion',editValue);setEditField(null)}if(e.key==='Escape')setEditField(null)}} autoFocus/>
@@ -100,7 +100,7 @@ export function ImputadoDatosCard({ imp, numero, causaId, ruc, cautelares, esTit
                 </div>
               ):(
                 <div className="fld" onClick={()=>{setEditField('fecha_detencion');setEditValue(imp.fecha_detencion||'')}}
-                  style={{padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:imp.fecha_detencion?'#1E293B':'#94a3b8',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
+                  style={{padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:imp.fecha_detencion?'#1E3A2F':'#94a3b8',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
                   <span>{fechaDDMM(imp.fecha_detencion) || 'Clic para agregar...'}</span>
                   <span style={{fontSize:11,color:'#94a3b8'}}>✏</span>
                 </div>
@@ -139,7 +139,7 @@ export function ImputadoDatosCard({ imp, numero, causaId, ruc, cautelares, esTit
                 <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Fecha de delegación</div>
                 {editField==='delegacion_fecha'?(
                   <div style={{display:'flex',gap:6}}>
-                    <input type="date" style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E293B',background:'#fff',...f}}
+                    <input type="date" style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:'#1E3A2F',background:'#fff',...f}}
                       value={editValue} onChange={e=>setEditValue(e.target.value)}
                       onBlur={()=>{if(editValue)onUpdateCampo('delegacion_fecha',editValue)}}
                       onKeyDown={e=>{if(e.key==='Enter'){onUpdateCampo('delegacion_fecha',editValue);setEditField(null)}if(e.key==='Escape')setEditField(null)}} autoFocus/>
@@ -148,7 +148,7 @@ export function ImputadoDatosCard({ imp, numero, causaId, ruc, cautelares, esTit
                   </div>
                 ):(
                   <div className="fld" onClick={()=>{setEditField('delegacion_fecha');setEditValue(imp.delegacion_fecha||'')}}
-                    style={{padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:imp.delegacion_fecha?'#1E293B':'#94a3b8',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
+                    style={{padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:imp.delegacion_fecha?'#1E3A2F':'#94a3b8',minHeight:38,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
                     <span>{fechaDDMM(imp.delegacion_fecha) || 'Clic para agregar...'}</span>
                     <span style={{fontSize:11,color:'#94a3b8'}}>✏</span>
                   </div>
@@ -161,7 +161,7 @@ export function ImputadoDatosCard({ imp, numero, causaId, ruc, cautelares, esTit
           <div>
             <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.5,marginBottom:6,fontWeight:600,...f}}>Correo de notificación</div>
             <select
-              style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:imp.correo_notificacion?'#1E293B':'#94a3b8',background:'#fff',cursor:'pointer',...f}}
+              style={{width:'100%',padding:'9px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:imp.correo_notificacion?'#1E3A2F':'#94a3b8',background:'#fff',cursor:'pointer',...f}}
               value={imp.correo_notificacion||''}
               onChange={e=>onUpdateCampo('correo_notificacion', e.target.value)}>
               <option value="">Seleccionar correo...</option>

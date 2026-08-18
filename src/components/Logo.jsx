@@ -26,7 +26,7 @@ const FUENTE = "'Cormorant Garamond', Georgia, serif"
 //  - 'icon' (cuadrado con fondo navy, JOA + línea, sin texto — para favicon/ícono app)
 //  - 'bare' (igual que 'icon' pero sin fondo, para poner sobre otro color)
 //  - 'full' (JOA + línea + "OBREGÓN Y ASOCIADOS" abajo — para login, encabezados, la futura web)
-export function LogoJOA({ size = 64, variant = 'icon', gold = '#d4af37', navy = '#1a1a2e', width }) {
+export function LogoJOA({ size = 64, variant = 'icon', gold = '#d4af37', navy = '#1E3A2F', width }) {
   useFuenteLogo()
 
   if (variant === 'full') {

@@ -16,13 +16,13 @@ export const estadoConfig = {
   juicio_oral:       { label:'JUICIO ORAL',             color:'#9f1239', bg:'#fff1f2', border:'#fecdd3' },
   cumpliendo_condena:{ label:'CUMPLIENDO CONDENA',      color:'#991b1b', bg:'#fef2f2', border:'#fecaca' },
   // Subestados TERMINADA
-  renuncia:          { label:'RENUNCIA PATROCINIO Y PODER',    color:'#475569', bg:'#F8F9FC', border:'#e2e8f0' },
-  revocacion:        { label:'REVOCACIÓN PATROCINIO Y PODER',  color:'#475569', bg:'#F8F9FC', border:'#e2e8f0' },
+  renuncia:          { label:'RENUNCIA PATROCINIO Y PODER',    color:'#475569', bg:'#FAF7F0', border:'#e2e8f0' },
+  revocacion:        { label:'REVOCACIÓN PATROCINIO Y PODER',  color:'#475569', bg:'#FAF7F0', border:'#e2e8f0' },
   revocacion_pena_sustitutiva: { label:'REVOCACIÓN PENA SUSTITUTIVA', color:'#991b1b', bg:'#fef2f2', border:'#fecaca' },
   condena_preso:     { label:'CONDENA — PRESO',         color:'#991b1b', bg:'#fef2f2', border:'#fecaca' },
   condena_libertad:  { label:'CONDENA — LIBERTAD',      color:'#92400e', bg:'#fff7ed', border:'#fed7aa' },
   absuelto:          { label:'ABSUELTO',                color:'#065f46', bg:'#ecfdf5', border:'#a7f3d0' },
-  dnp:               { label:'DNP',                      color:'#475569', bg:'#F8F9FC', border:'#e2e8f0' },
+  dnp:               { label:'DNP',                      color:'#475569', bg:'#FAF7F0', border:'#e2e8f0' },
   scp:               { label:'SALIDA ALTERNATIVA SCP',  color:'#065f46', bg:'#ecfdf5', border:'#a7f3d0' },
   salida_ar:         { label:'SALIDA ALTERNATIVA AR',   color:'#065f46', bg:'#ecfdf5', border:'#a7f3d0' },
   // Subestados compartidos — pueden darse tanto en causas Vigentes como Terminadas
@@ -32,7 +32,7 @@ export const estadoConfig = {
   // Joaquín, queda disponible en ambos estados igual que orden_detencion.
   sobreseimiento:    { label:'SOBRESEIMIENTO',          color:'#065f46', bg:'#ecfdf5', border:'#a7f3d0' },
   // Estados principales
-  terminada:         { label:'TERMINADA',               color:'#475569', bg:'#F8F9FC', border:'#e2e8f0' },
+  terminada:         { label:'TERMINADA',               color:'#475569', bg:'#FAF7F0', border:'#e2e8f0' },
   vigente:           { label:'VIGENTE',                 color:'#065f46', bg:'#ecfdf5', border:'#a7f3d0' },
 }
 
@@ -49,7 +49,7 @@ export const SUBESTADOS_TERMINADA = ['renuncia','revocacion','revocacion_pena_su
 
 export function getBadgeConfig(estado, subestado) {
   if (subestado && estadoConfig[subestado]) return estadoConfig[subestado]
-  return estadoConfig[estado] || { label:estado||'—', color:'#64748b', bg:'#F8F9FC', border:'#e2e8f0' }
+  return estadoConfig[estado] || { label:estado||'—', color:'#64748b', bg:'#FAF7F0', border:'#e2e8f0' }
 }
 
 // ✅ FIX: había TRES lugares distintos clasificando/coloreando el tipo de
@@ -88,7 +88,7 @@ const COLORES_AUDIENCIA = {
   'ENTREVISTA':          { bg:'#fefce8', border:'#fef08a', dot:'#854d0e', text:'#854d0e' },
   'CAUTELA/APELACION':   { bg:'#fdf4ff', border:'#e9d5ff', dot:'#701a75', text:'#701a75' },
 }
-const COLOR_AUDIENCIA_DEFECTO = { bg:'#F8F9FC', border:'#e2e8f0', dot:'#475569', text:'#334155' }
+const COLOR_AUDIENCIA_DEFECTO = { bg:'#FAF7F0', border:'#e2e8f0', dot:'#475569', text:'#334155' }
 
 export function colorAudiencia(tipo) {
   return COLORES_AUDIENCIA[categoriaAudiencia(tipo)] || COLOR_AUDIENCIA_DEFECTO

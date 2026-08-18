@@ -20,7 +20,7 @@ export function AudienciaCard({ a, onUpdate, onUpdateResultado }) {
   const [resultadoLocal, setResultadoLocal] = useState(a.resultado||'')
   const [guardandoResultado, setGuardandoResultado] = useState(false)
   const f = { fontFamily:"'Manrope','Inter',sans-serif" }
-  const inp = { width:'100%', padding:'7px 10px', border:'1.5px solid #e2e8f0', borderRadius:7, fontSize:12, color:'#1E293B', background:'#fff', ...f }
+  const inp = { width:'100%', padding:'7px 10px', border:'1.5px solid #e2e8f0', borderRadius:7, fontSize:12, color:'#1E3A2F', background:'#fff', ...f }
 
   const guardarResultado = async () => {
     setGuardandoResultado(true)
@@ -71,11 +71,11 @@ export function AudienciaCard({ a, onUpdate, onUpdateResultado }) {
   )
 
   return (
-    <div style={{background:'#F8F9FC',border:'1px solid #e2e8f0',borderRadius:12,padding:'14px 16px',marginBottom:8}}>
+    <div style={{background:'#FAF7F0',border:'1px solid #e2e8f0',borderRadius:12,padding:'14px 16px',marginBottom:8}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:6}}>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
           <div style={{width:6,height:6,borderRadius:'50%',background:color,flexShrink:0}}/>
-          <span style={{fontSize:13,fontWeight:600,color:'#1E293B',...f}}>{a.tipo||'Audiencia'}</span>
+          <span style={{fontSize:13,fontWeight:600,color:'#1E3A2F',...f}}>{a.tipo||'Audiencia'}</span>
         </div>
         <div style={{display:'flex',gap:6,alignItems:'center'}}>
           <span style={{fontSize:11,color:'#94a3b8',fontWeight:500,...f}}>{fechaDDMM(a.fecha)}{a.hora?' · '+a.hora:''}</span>
@@ -159,7 +159,7 @@ export function ImputadoCard({ imp, idx, totalImputados, cautelares, ordenesDete
     setGuardandoVisita(false)
   }
   const f = { fontFamily:"'Manrope','Inter',sans-serif" }
-  const inp = { width:'100%', padding:'8px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:'#1E293B', background:'#fff', ...f }
+  const inp = { width:'100%', padding:'8px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:'#1E3A2F', background:'#fff', ...f }
   // ✅ Mismo cálculo de abono que usa la pestaña Datos (Cautelares), para
   // descontarlo de la condena sin duplicar el criterio.
   const totalAbono = calcularTotalAbono(cautelares)
@@ -276,7 +276,7 @@ export function ImputadoCard({ imp, idx, totalImputados, cautelares, ordenesDete
                 isDelito={false}
               />
             </div>
-            <button style={{background:'#1E293B',color:'#fff',border:'none',borderRadius:7,padding:'7px 12px',fontSize:12,cursor:'pointer',...f}} onClick={()=>{onUpdate(field,editValue);setEditField(null)}}>✓</button>
+            <button style={{background:'#1E3A2F',color:'#fff',border:'none',borderRadius:7,padding:'7px 12px',fontSize:12,cursor:'pointer',...f}} onClick={()=>{onUpdate(field,editValue);setEditField(null)}}>✓</button>
             <button style={{background:'#fff',border:'1.5px solid #e2e8f0',borderRadius:7,padding:'7px 10px',fontSize:12,cursor:'pointer',...f}} onClick={()=>setEditField(null)}>✗</button>
           </div>
         ) : (
@@ -288,13 +288,13 @@ export function ImputadoCard({ imp, idx, totalImputados, cautelares, ordenesDete
             onKeyDown={e=>{if(e.key==='Enter'){const v=field==='rut'?formatearRut(editValue):editValue;onUpdate(field,v);setEditField(null);if(field==='rut')buscarPorRut(v)}if(e.key==='Escape')setEditField(null)}}
             onBlur={()=>{ if(field==='rut' && editValue) buscarPorRut(editValue) }}
             autoFocus/>
-          <button style={{background:'#1E293B',color:'#fff',border:'none',borderRadius:7,padding:'7px 12px',fontSize:12,cursor:'pointer',...f}} onClick={()=>{const v=field==='rut'?formatearRut(editValue):editValue;onUpdate(field,v);setEditField(null);if(field==='rut')buscarPorRut(v)}}>✓</button>
+          <button style={{background:'#1E3A2F',color:'#fff',border:'none',borderRadius:7,padding:'7px 12px',fontSize:12,cursor:'pointer',...f}} onClick={()=>{const v=field==='rut'?formatearRut(editValue):editValue;onUpdate(field,v);setEditField(null);if(field==='rut')buscarPorRut(v)}}>✓</button>
           <button style={{background:'#fff',border:'1.5px solid #e2e8f0',borderRadius:7,padding:'7px 10px',fontSize:12,cursor:'pointer',...f}} onClick={()=>setEditField(null)}>✗</button>
         </div>
         )
       ):(
         <div onClick={()=>{setEditField(field);setEditValue(imp[field]||'')}}
-          style={{padding:'8px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:imp[field]?'#1E293B':'#94a3b8',minHeight:36,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
+          style={{padding:'8px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:imp[field]?'#1E3A2F':'#94a3b8',minHeight:36,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
           <span>{(field==='fecha_detencion'?fechaDDMM(imp[field]):imp[field])||'Clic para agregar...'}</span>
           <span style={{fontSize:11,color:'#94a3b8'}}>✏</span>
         </div>
@@ -303,7 +303,7 @@ export function ImputadoCard({ imp, idx, totalImputados, cautelares, ordenesDete
   )
 
   return (
-    <div style={{background:'#F8F9FC',border:'1.5px solid #e2e8f0',borderRadius:14,padding:'18px 20px',marginBottom:14}}>
+    <div style={{background:'#FAF7F0',border:'1.5px solid #e2e8f0',borderRadius:14,padding:'18px 20px',marginBottom:14}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
         <div style={{display:'flex',alignItems:'center',gap:8,minWidth:0}}>
           {/* El numerito solo sirve para distinguir coimputados — con 1 solo
@@ -311,7 +311,7 @@ export function ImputadoCard({ imp, idx, totalImputados, cautelares, ordenesDete
           {totalImputados > 1 && (
             <div style={{width:20,height:20,background:'linear-gradient(135deg,#2563eb,#1d4ed8)',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:11,fontWeight:700,flexShrink:0,...f}}>{idx+1}</div>
           )}
-          <div style={{fontSize:14,fontWeight:700,color:'#1E293B',minWidth:0,...f}}>{imp.nombre||'Sin nombre'}</div>
+          <div style={{fontSize:14,fontWeight:700,color:'#1E3A2F',minWidth:0,...f}}>{imp.nombre||'Sin nombre'}</div>
         </div>
         <button onClick={onDelete} style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:7,padding:'5px 12px',fontSize:11,color:'#dc2626',cursor:'pointer',fontWeight:600,...f}}>✕ Eliminar</button>
       </div>
@@ -331,17 +331,17 @@ export function ImputadoCard({ imp, idx, totalImputados, cautelares, ordenesDete
               <input type="date" style={inp} value={editValue} onChange={e=>setEditValue(e.target.value)}
                 onBlur={()=>{if(editValue)onUpdate('fecha_nacimiento',editValue)}}
                 onKeyDown={e=>{if(e.key==='Enter'){onUpdate('fecha_nacimiento',editValue);setEditField(null)}if(e.key==='Escape')setEditField(null)}} autoFocus/>
-              <button style={{background:'#1E293B',color:'#fff',border:'none',borderRadius:7,padding:'7px 12px',fontSize:12,cursor:'pointer',...f}} onClick={()=>{onUpdate('fecha_nacimiento',editValue);setEditField(null)}}>✓</button>
+              <button style={{background:'#1E3A2F',color:'#fff',border:'none',borderRadius:7,padding:'7px 12px',fontSize:12,cursor:'pointer',...f}} onClick={()=>{onUpdate('fecha_nacimiento',editValue);setEditField(null)}}>✓</button>
               <button style={{background:'#fff',border:'1.5px solid #e2e8f0',borderRadius:7,padding:'7px 10px',fontSize:12,cursor:'pointer',...f}} onClick={()=>setEditField(null)}>✗</button>
             </div>
           ):(
             <div onClick={()=>{setEditField('fecha_nacimiento');setEditValue(imp.fecha_nacimiento||'')}}
-              style={{padding:'8px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:imp.fecha_nacimiento?'#1E293B':'#94a3b8',minHeight:36,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
+              style={{padding:'8px 12px',border:'1.5px solid #e2e8f0',borderRadius:8,fontSize:13,color:imp.fecha_nacimiento?'#1E3A2F':'#94a3b8',minHeight:36,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',background:'#fff',...f}}>
               <span>
                 {fechaDDMM(imp.fecha_nacimiento) || 'Clic para agregar...'}
                 {imp.fecha_nacimiento && (() => {
                   const edad = calcularEdadActual(imp.fecha_nacimiento)
-                  return edad !== null ? <span style={{marginLeft:8,fontSize:11,color:'#1E293B',fontWeight:600,background:'#eff6ff',padding:'1px 7px',borderRadius:10}}>
+                  return edad !== null ? <span style={{marginLeft:8,fontSize:11,color:'#1E3A2F',fontWeight:600,background:'#eff6ff',padding:'1px 7px',borderRadius:10}}>
                     {edad} AÑOS HOY
                   </span> : null
                 })()}
@@ -389,7 +389,7 @@ export function ImputadoCard({ imp, idx, totalImputados, cautelares, ordenesDete
             padding:'5px 14px',borderRadius:20,fontWeight:700,fontSize:12,
             background: imp.regimen==='RPA' ? '#faf5ff' : '#eff6ff',
             border: `1.5px solid ${imp.regimen==='RPA' ? '#ddd6fe' : '#bfdbfe'}`,
-            color: imp.regimen==='RPA' ? '#5b21b6' : '#1E293B',
+            color: imp.regimen==='RPA' ? '#5b21b6' : '#1E3A2F',
             ...f
           }}>
             {imp.regimen==='RPA' ? 'RPA — LEY PENAL ADOLESCENTE' : 'ADULTO — CÓDIGO PROCESAL PENAL'}
@@ -429,7 +429,7 @@ export function ImputadoCard({ imp, idx, totalImputados, cautelares, ordenesDete
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
               <div style={{fontSize:12,fontWeight:600,...f}}>
                 {imp.ultima_visita ? (
-                  <span style={{color: diasSinVisita>30?'#dc2626':'#1E293B'}}>👤 Última visita: hace {diasSinVisita} día{diasSinVisita!==1?'s':''} ({fechaDDMM(imp.ultima_visita)})</span>
+                  <span style={{color: diasSinVisita>30?'#dc2626':'#1E3A2F'}}>👤 Última visita: hace {diasSinVisita} día{diasSinVisita!==1?'s':''} ({fechaDDMM(imp.ultima_visita)})</span>
                 ) : (
                   <span style={{color:'#dc2626'}}>👤 Sin visitas registradas</span>
                 )}
@@ -477,9 +477,9 @@ export function ImputadoCard({ imp, idx, totalImputados, cautelares, ordenesDete
           término se calcula sola, aparte, siempre en días corridos. Una vez
           cargada, corregirla pide motivo (igual que Cautelares); vaciarla del
           todo es solo para el titular. */}
-      <div style={{marginTop:14,background:'#F8F9FC',border:'1.5px solid #e2e8f0',borderRadius:10,padding:14}}>
+      <div style={{marginTop:14,background:'#FAF7F0',border:'1.5px solid #e2e8f0',borderRadius:10,padding:14}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
-          <div style={{fontSize:13,fontWeight:600,color:'#1E293B',...f}}>⚖️ Condena</div>
+          <div style={{fontSize:13,fontWeight:600,color:'#1E3A2F',...f}}>⚖️ Condena</div>
           {condenaCompleta && !editandoCondena && (
             <div style={{display:'flex',gap:10}}>
               <button onClick={iniciarEdicionCondena} style={{fontSize:11,color:'#2563eb',background:'transparent',border:'none',cursor:'pointer',fontWeight:600,...f}}>✏ Editar</button>
@@ -526,20 +526,20 @@ export function ImputadoCard({ imp, idx, totalImputados, cautelares, ordenesDete
           <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
             <div style={{padding:'10px 14px',background:'#fff',borderRadius:8,border:'1px solid #e2e8f0'}}>
               <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1,fontWeight:700,...f}}>{imp.condena_tipo==='sustitutiva' ? 'Pena sustitutiva desde' : 'Condena efectiva desde'}</div>
-              <div style={{fontSize:14,fontWeight:700,color:'#1E293B',...f}}>{fechaDDMM(imp.condena_fecha_inicio)} · {formatearTiempoCondena(imp.condena_anos, imp.condena_meses, imp.condena_dias)}</div>
+              <div style={{fontSize:14,fontWeight:700,color:'#1E3A2F',...f}}>{fechaDDMM(imp.condena_fecha_inicio)} · {formatearTiempoCondena(imp.condena_anos, imp.condena_meses, imp.condena_dias)}</div>
             </div>
             <div style={{padding:'10px 14px',background:'#fff',borderRadius:8,border:'1px solid #e2e8f0',display:'flex',alignItems:'center',gap:10}}>
               <span style={{fontSize:18}}>🔒</span>
               <div>
                 <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1,fontWeight:700,...f}}>Abono (Cautelares)</div>
-                <div style={{fontSize:16,fontWeight:800,color:'#1E293B',...f}}>{totalAbono} días</div>
+                <div style={{fontSize:16,fontWeight:800,color:'#1E3A2F',...f}}>{totalAbono} días</div>
               </div>
             </div>
             <div style={{padding:'10px 14px',background:'#fff',borderRadius:8,border:'1px solid #e2e8f0',display:'flex',alignItems:'center',gap:10}}>
               <span style={{fontSize:18}}>📅</span>
               <div>
                 <div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1,fontWeight:700,...f}}>Fecha de término de condena</div>
-                <div style={{fontSize:16,fontWeight:800,color:'#1E293B',...f}}>{calcularFechaTerminoCondena(imp.condena_fecha_inicio, imp.condena_anos, imp.condena_meses, imp.condena_dias, totalAbono)}</div>
+                <div style={{fontSize:16,fontWeight:800,color:'#1E3A2F',...f}}>{calcularFechaTerminoCondena(imp.condena_fecha_inicio, imp.condena_anos, imp.condena_meses, imp.condena_dias, totalAbono)}</div>
                 <div style={{fontSize:10,color:'#94a3b8',marginTop:2,...f}}>Días corridos, ya descontado el abono</div>
               </div>
             </div>

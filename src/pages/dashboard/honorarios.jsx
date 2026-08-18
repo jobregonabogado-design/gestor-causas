@@ -18,7 +18,7 @@ export function HonorariosTab({ causaId, ruc, imputado, email, registrarActivida
   const [editandoId, setEditandoId] = useState(null)
   const [editForm, setEditForm] = useState({ monto:'', fecha:'', forma_pago:'', cuenta_transferencia:'', observacion:'', imputado_nombre:'' })
   const [motivoEdit, setMotivoEdit] = useState('')
-  const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #E2E8F0', borderRadius:8, fontSize:13, color:'#1E293B', background:'#fff', ...f }
+  const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #E2E8F0', borderRadius:8, fontSize:13, color:'#1E3A2F', background:'#fff', ...f }
   const usaTransferencia = nuevoAbono.forma_pago === 'Transferencia' || nuevoAbono.forma_pago === 'Transferencia + Efectivo'
 
   // ✅ NUEVO: cuando la causa tiene 2+ imputados, el monto total pactado
@@ -141,7 +141,7 @@ export function HonorariosTab({ causaId, ruc, imputado, email, registrarActivida
           <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1, marginBottom:6, fontWeight:600, ...f }}>Total abonado</div>
           <div style={{ fontSize:22, fontWeight:800, color:'#059669', ...f }}>{fmt(totalAbonado)}</div>
         </div>
-        <div style={{ background: saldoPendiente>0?'#fffafa':'#F8F9FC', border:`2px solid ${saldoPendiente>0?'#fca5a5':'#cbd5e1'}`, borderRadius:12, padding:'14px 16px' }}>
+        <div style={{ background: saldoPendiente>0?'#fffafa':'#FAF7F0', border:`2px solid ${saldoPendiente>0?'#fca5a5':'#cbd5e1'}`, borderRadius:12, padding:'14px 16px' }}>
           <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1, marginBottom:6, fontWeight:600, ...f }}>Saldo pendiente</div>
           <div style={{ fontSize:22, fontWeight:800, color: saldoPendiente>0?'#dc2626':'#64748b', ...f }}>{fmt(saldoPendiente)}</div>
         </div>
@@ -151,12 +151,12 @@ export function HonorariosTab({ causaId, ruc, imputado, email, registrarActivida
           tiene 2 o más imputados. El pactado y el saldo pendiente arriba
           siguen siendo un solo número para toda la causa. */}
       {tieneVarios && (
-        <div style={{ background:'#F8F9FC', border:'1px solid #e2e8f0', borderRadius:12, padding:'12px 16px', marginBottom:20 }}>
+        <div style={{ background:'#FAF7F0', border:'1px solid #e2e8f0', borderRadius:12, padding:'12px 16px', marginBottom:20 }}>
           <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1, marginBottom:8, fontWeight:600, ...f }}>Abonado por imputado</div>
           <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
             {abonadoPorImputado.map(({ nombre, total }) => (
               <div key={nombre} style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                <span style={{ fontSize:12, color:'#1E293B', fontWeight:600, ...f }}>{nombre}</span>
+                <span style={{ fontSize:12, color:'#1E3A2F', fontWeight:600, ...f }}>{nombre}</span>
                 <span style={{ fontSize:13, color: total>0?'#059669':'#94a3b8', fontWeight:700, ...f }}>{fmt(total)}</span>
               </div>
             ))}
@@ -173,7 +173,7 @@ export function HonorariosTab({ causaId, ruc, imputado, email, registrarActivida
       <div style={{ fontSize:10, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, marginBottom:10, fontWeight:600, ...f }}>Historial de abonos</div>
       {abonos.length === 0 && <p style={{ color:'#94a3b8', fontSize:13, marginBottom:14, ...f }}>Sin abonos registrados.</p>}
       {abonos.map(a => editandoId === a.id ? (
-        <div key={a.id} style={{ background:'#F8F9FC', border:'1px solid #e2e8f0', borderRadius:10, padding:12, marginBottom:8 }}>
+        <div key={a.id} style={{ background:'#FAF7F0', border:'1px solid #e2e8f0', borderRadius:10, padding:12, marginBottom:8 }}>
           <div className="grid2-mobile" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:8 }}>
             <div><div style={{fontSize:9,color:'#64748b',textTransform:'uppercase',letterSpacing:1,marginBottom:3,fontWeight:600,...f}}>Monto</div><input type="number" style={{...inp,padding:'7px 9px',fontSize:12}} value={editForm.monto} onChange={e=>setEditForm(p=>({...p,monto:e.target.value}))}/></div>
             <div><div style={{fontSize:9,color:'#64748b',textTransform:'uppercase',letterSpacing:1,marginBottom:3,fontWeight:600,...f}}>Fecha</div><input type="date" style={{...inp,padding:'7px 9px',fontSize:12}} value={editForm.fecha} onChange={e=>setEditForm(p=>({...p,fecha:e.target.value}))}/></div>
@@ -209,10 +209,10 @@ export function HonorariosTab({ causaId, ruc, imputado, email, registrarActivida
           </div>
         </div>
       ) : (
-        <div key={a.id} style={{ display:'flex', gap:12, alignItems:'center', padding:'12px 16px', background:'#F8F9FC', border:'1px solid #e2e8f0', borderRadius:10, marginBottom:8, flexWrap:'wrap' }}>
+        <div key={a.id} style={{ display:'flex', gap:12, alignItems:'center', padding:'12px 16px', background:'#FAF7F0', border:'1px solid #e2e8f0', borderRadius:10, marginBottom:8, flexWrap:'wrap' }}>
           <div style={{ width:36, height:36, background:'#ecfdf5', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', color:'#059669', fontSize:15, fontWeight:700, flexShrink:0 }}>$</div>
           <div style={{ flex:'1 1 200px', minWidth:0 }}>
-            <div style={{ fontSize:13, fontWeight:700, color:'#1E293B', ...f }}>{fmt(a.monto)} <span style={{fontWeight:400,color:'#94a3b8',fontSize:12}}>· {a.forma_pago}{a.cuenta_transferencia?' · '+a.cuenta_transferencia:''}</span>
+            <div style={{ fontSize:13, fontWeight:700, color:'#1E3A2F', ...f }}>{fmt(a.monto)} <span style={{fontWeight:400,color:'#94a3b8',fontSize:12}}>· {a.forma_pago}{a.cuenta_transferencia?' · '+a.cuenta_transferencia:''}</span>
               {tieneVarios && a.imputado_nombre && <span style={{marginLeft:8,fontSize:10,fontWeight:700,color:'#5b21b6',background:'#faf5ff',border:'1px solid #ddd6fe',borderRadius:20,padding:'2px 8px',...f}}>{a.imputado_nombre}</span>}
             </div>
             <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>{fechaDDMM(a.fecha)}{a.observacion?' · '+a.observacion:''} · registrado por {a.registrado_por}</div>
@@ -230,7 +230,7 @@ export function HonorariosTab({ causaId, ruc, imputado, email, registrarActivida
       ))}
 
       {showForm ? (
-        <div style={{ background:'#F8F9FC', border:'1.5px solid #e2e8f0', borderRadius:12, padding:16, marginTop:8 }}>
+        <div style={{ background:'#FAF7F0', border:'1.5px solid #e2e8f0', borderRadius:12, padding:16, marginTop:8 }}>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
             <div><div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4,fontWeight:600,...f}}>Monto</div><input type="number" style={inp} placeholder="Ej: 300000" value={nuevoAbono.monto} onChange={e=>setNuevoAbono(p=>({...p,monto:e.target.value}))}/></div>
             <div><div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1.2,marginBottom:4,fontWeight:600,...f}}>Fecha</div><input type="date" style={inp} value={nuevoAbono.fecha} onChange={e=>setNuevoAbono(p=>({...p,fecha:e.target.value}))}/></div>

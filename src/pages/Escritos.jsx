@@ -11,11 +11,11 @@ const CSS = `
   .btn-primary:hover { background:#16301F; box-shadow:0 4px 16px rgba(30,58,47,0.3); }
   .btn-primary:disabled { opacity:0.5; cursor:default; }
   .btn-secondary { font-family:'Manrope','Inter',sans-serif; background:#fff; color:#374151; border:1.5px solid #e5e7eb; border-radius:10px; padding:8px 18px; font-size:13px; font-weight:500; cursor:pointer; transition:border-color 0.25s ease, color 0.25s ease, background 0.25s ease; text-transform:uppercase; letter-spacing:0.3px; }
-  .btn-secondary:hover { border-color:#93c5fd; color:#1E293B; background:#F8F9FC; }
+  .btn-secondary:hover { border-color:#93c5fd; color:#1E3A2F; background:#FAF7F0; }
   .plantilla-card { transition:all 0.25s cubic-bezier(0.4,0,0.2,1); cursor:pointer; position:relative; }
   .plantilla-card:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(15,23,42,0.1) !important; border-color:#93c5fd !important; }
   .causa-row { transition:background 0.2s ease; cursor:pointer; }
-  .causa-row:hover { background:#F8F9FC !important; }
+  .causa-row:hover { background:#FAF7F0 !important; }
   input,select,textarea { font-family:'Manrope','Inter',sans-serif !important; }
   input:focus,select:focus,textarea:focus { outline:none; border-color:#93c5fd !important; box-shadow:0 0 0 3px rgba(37,99,235,0.08); }
 `
@@ -186,10 +186,10 @@ function textoLimpio({ preSumaLineas, sumaLineas, destinatario, cuerpo }) {
 }
 
 function PerfilAbogado({ abogado, setAbogado, onGuardar, guardando }) {
-  const inp = { width: '100%', padding: '9px 12px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 13, color: '#1E293B', background: '#fff', ...f }
+  const inp = { width: '100%', padding: '9px 12px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 13, color: '#1E3A2F', background: '#fff', ...f }
   return (
     <div style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 14, padding: 20, marginBottom: 20 }}>
-      <div style={{ fontSize: 13, fontWeight: 700, color: '#1E293B', marginBottom: 4, ...f }}>Datos del abogado patrocinante</div>
+      <div style={{ fontSize: 13, fontWeight: 700, color: '#1E3A2F', marginBottom: 4, ...f }}>Datos del abogado patrocinante</div>
       <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 14, ...f }}>Se usan para rellenar automáticamente los escritos. Se guardan para la próxima vez.</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr 1.3fr 1.3fr', gap: 10 }}>
         <div>
@@ -222,10 +222,10 @@ function PerfilAbogado({ abogado, setAbogado, onGuardar, guardando }) {
 // elegir uno autocompleta RUT/correo/domicilio; "+ Nuevo" pide los datos a
 // mano y los deja guardados para la próxima vez.
 function SelectorDelegado({ delegados, delegadoSel, setDelegadoSel, nuevo, setNuevo }) {
-  const inp = { width: '100%', padding: '8px 10px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 12, color: '#1E293B', background: '#fff', ...f }
+  const inp = { width: '100%', padding: '8px 10px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 12, color: '#1E3A2F', background: '#fff', ...f }
   return (
-    <div style={{ background: '#F8F9FC', border: '1px solid #E2E8F0', borderRadius: 12, padding: 16, marginBottom: 20 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: '#1E293B', marginBottom: 10, ...f }}>Abogado a quien se delega el poder</div>
+    <div style={{ background: '#FAF7F0', border: '1px solid #E2E8F0', borderRadius: 12, padding: 16, marginBottom: 20 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: '#1E3A2F', marginBottom: 10, ...f }}>Abogado a quien se delega el poder</div>
       <select style={inp} value={delegadoSel ? delegadoSel.id : (nuevo ? '__nuevo__' : '')}
         onChange={e => {
           if (e.target.value === '__nuevo__') { setDelegadoSel(null); setNuevo(true); return }
@@ -482,7 +482,7 @@ export default function Escritos({ session, registrarActividad }) {
     }
   }
 
-  const inp = { width: '100%', padding: '9px 12px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 13, color: '#1E293B', background: '#fff', ...f }
+  const inp = { width: '100%', padding: '9px 12px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 13, color: '#1E3A2F', background: '#fff', ...f }
 
   // Numeración de pasos — cambia según si la causa tiene Juicio Oral (paso
   // extra para elegir el tribunal) y/o varios imputados (paso extra para
@@ -495,11 +495,11 @@ export default function Escritos({ session, registrarActividad }) {
   const pasoEscritos = _paso++
 
   return (
-    <div style={{ background: '#F8F9FC', minHeight: '100vh', ...f }}>
+    <div style={{ background: '#FAF7F0', minHeight: '100vh', ...f }}>
       <style>{CSS}</style>
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '28px' }}>
         <div style={{ marginBottom: 24 }}>
-          <h1 style={{ fontSize: 26, fontWeight: 800, color: '#1E293B', margin: 0, letterSpacing: '-0.5px' }}>Escritos</h1>
+          <h1 style={{ fontSize: 26, fontWeight: 800, color: '#1E3A2F', margin: 0, letterSpacing: '-0.5px' }}>Escritos</h1>
           <p style={{ fontSize: 14, color: '#64748b', marginTop: 4 }}>Genera escritos judiciales rellenados automáticamente con los datos de la causa. Puedes marcar varios para combinarlos en uno solo (En lo principal / Otrosí).</p>
         </div>
 
@@ -507,11 +507,11 @@ export default function Escritos({ session, registrarActividad }) {
 
         {/* Paso 1: elegir causa */}
         <div style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 14, padding: 20, marginBottom: 20 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#1E293B', marginBottom: 12, ...f }}>{pasoCausa}. Elige la causa</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#1E3A2F', marginBottom: 12, ...f }}>{pasoCausa}. Elige la causa</div>
           {causaSel ? (
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#F8F9FC', border: '1px solid #E2E8F0', borderRadius: 10, padding: '12px 16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#FAF7F0', border: '1px solid #E2E8F0', borderRadius: 10, padding: '12px 16px' }}>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#1E293B', ...f }}>RUC {causaSel.ruc} · RIT {causaSel.rit || '—'}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#1E3A2F', ...f }}>RUC {causaSel.ruc} · RIT {causaSel.rit || '—'}</div>
                 <div style={{ fontSize: 12, color: '#64748b', marginTop: 2, ...f }}>{causaSel.tribunal} · {causaSel.imputado}</div>
               </div>
               <button className="btn-secondary" style={{ fontSize: 12 }} onClick={() => { setCausaSel(null); setImputados([]); setImpsSel([]); setCapitulosSel([]); setEscrito(null); setResultado(null); setDestinoJudicial(null) }}>Cambiar</button>
@@ -524,7 +524,7 @@ export default function Escritos({ session, registrarActividad }) {
                 <div style={{ marginTop: 10, border: '1px solid #E2E8F0', borderRadius: 10, overflow: 'hidden' }}>
                   {causas.map(c => (
                     <div key={c.id} className="causa-row" onClick={() => seleccionarCausa(c)} style={{ padding: '10px 14px', borderBottom: '1px solid #F1F5F9' }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: '#1E293B', ...f }}>RUC {c.ruc} · RIT {c.rit || '—'}</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#1E3A2F', ...f }}>RUC {c.ruc} · RIT {c.rit || '—'}</div>
                       <div style={{ fontSize: 12, color: '#64748b', marginTop: 1, ...f }}>{c.tribunal} · {c.imputado}</div>
                     </div>
                   ))}
@@ -541,13 +541,13 @@ export default function Escritos({ session, registrarActividad }) {
             en el tribunal que no corresponde no sirve. */}
         {causaSel?.tiene_top && (
           <div style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 14, padding: 20, marginBottom: 20 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#1E293B', marginBottom: 12, ...f }}>{pasoDestino}. Esta causa tiene Juicio Oral — ¿a qué tribunal va este escrito?</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#1E3A2F', marginBottom: 12, ...f }}>{pasoDestino}. Esta causa tiene Juicio Oral — ¿a qué tribunal va este escrito?</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button onClick={() => setDestinoJudicial('garantia')} style={{ padding: '10px 16px', borderRadius: 10, fontSize: 12, fontWeight: 600, textAlign: 'left', border: `1.5px solid ${destinoJudicial === 'garantia' ? '#1E293B' : '#E2E8F0'}`, background: destinoJudicial === 'garantia' ? '#F8F9FC' : '#fff', color: '#1E293B', cursor: 'pointer', ...f }}>
+              <button onClick={() => setDestinoJudicial('garantia')} style={{ padding: '10px 16px', borderRadius: 10, fontSize: 12, fontWeight: 600, textAlign: 'left', border: `1.5px solid ${destinoJudicial === 'garantia' ? '#1E3A2F' : '#E2E8F0'}`, background: destinoJudicial === 'garantia' ? '#FAF7F0' : '#fff', color: '#1E3A2F', cursor: 'pointer', ...f }}>
                 {destinoJudicial === 'garantia' ? '✓ ' : ''}Juzgado de Garantía<br/>
                 <span style={{ fontWeight: 400, color: '#64748b', fontSize: 11 }}>{causaSel.tribunal} · RIT {causaSel.rit}</span>
               </button>
-              <button onClick={() => setDestinoJudicial('top')} style={{ padding: '10px 16px', borderRadius: 10, fontSize: 12, fontWeight: 600, textAlign: 'left', border: `1.5px solid ${destinoJudicial === 'top' ? '#1E293B' : '#E2E8F0'}`, background: destinoJudicial === 'top' ? '#F8F9FC' : '#fff', color: '#1E293B', cursor: 'pointer', ...f }}>
+              <button onClick={() => setDestinoJudicial('top')} style={{ padding: '10px 16px', borderRadius: 10, fontSize: 12, fontWeight: 600, textAlign: 'left', border: `1.5px solid ${destinoJudicial === 'top' ? '#1E3A2F' : '#E2E8F0'}`, background: destinoJudicial === 'top' ? '#FAF7F0' : '#fff', color: '#1E3A2F', cursor: 'pointer', ...f }}>
                 {destinoJudicial === 'top' ? '✓ ' : ''}Tribunal Oral en lo Penal<br/>
                 <span style={{ fontWeight: 400, color: '#64748b', fontSize: 11 }}>{causaSel.tribunal_top} · RIT {causaSel.rit_top}</span>
               </button>
@@ -560,12 +560,12 @@ export default function Escritos({ session, registrarActividad }) {
             (ej. una Delegación de Poder para dos imputados). */}
         {causaSel && imputados.length > 1 && (
           <div style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 14, padding: 20, marginBottom: 20 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#1E293B', marginBottom: 12, ...f }}>{pasoImputados}. Esta causa tiene varios imputados — ¿respecto de quién es el escrito?</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#1E3A2F', marginBottom: 12, ...f }}>{pasoImputados}. Esta causa tiene varios imputados — ¿respecto de quién es el escrito?</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {imputados.map(imp => {
                 const marcado = impsSel.some(i => i.id === imp.id)
                 return (
-                  <button key={imp.id} onClick={() => toggleImputado(imp)} style={{ padding: '8px 16px', borderRadius: 20, fontSize: 12, fontWeight: 600, border: `1.5px solid ${marcado ? '#1E293B' : '#E2E8F0'}`, background: marcado ? '#1E293B' : '#fff', color: marcado ? '#fff' : '#64748b', cursor: 'pointer', ...f }}>
+                  <button key={imp.id} onClick={() => toggleImputado(imp)} style={{ padding: '8px 16px', borderRadius: 20, fontSize: 12, fontWeight: 600, border: `1.5px solid ${marcado ? '#1E3A2F' : '#E2E8F0'}`, background: marcado ? '#1E3A2F' : '#fff', color: marcado ? '#fff' : '#64748b', cursor: 'pointer', ...f }}>
                     {marcado ? '✓ ' : ''}{imp.nombre || 'Sin nombre'}
                   </button>
                 )
@@ -580,19 +580,19 @@ export default function Escritos({ session, registrarActividad }) {
         {/* Paso 3: elegir escrito(s) — selección múltiple */}
         {causaSel && (imputados.length <= 1 || impsSel.length > 0) && (
           <div style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 14, padding: 20, marginBottom: 20 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#1E293B', marginBottom: 12, ...f }}>{pasoEscritos}. Elige el o los escritos</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#1E3A2F', marginBottom: 12, ...f }}>{pasoEscritos}. Elige el o los escritos</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
               {plantillas.map(p => {
                 const posicion = capitulosSel.findIndex(c => c.id === p.id)
                 const marcada = posicion !== -1
                 return (
                   <div key={p.id} className="plantilla-card" onClick={() => toggleCapitulo(p)}
-                    style={{ border: `1.5px solid ${marcada ? '#1E293B' : '#E2E8F0'}`, borderRadius: 12, padding: 16, background: marcada ? '#F8F9FC' : '#fff' }}>
+                    style={{ border: `1.5px solid ${marcada ? '#1E3A2F' : '#E2E8F0'}`, borderRadius: 12, padding: 16, background: marcada ? '#FAF7F0' : '#fff' }}>
                     {marcada && (
-                      <div style={{ position: 'absolute', top: 10, right: 10, width: 22, height: 22, borderRadius: '50%', background: '#1E293B', color: '#fff', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', ...f }}>{posicion + 1}</div>
+                      <div style={{ position: 'absolute', top: 10, right: 10, width: 22, height: 22, borderRadius: '50%', background: '#1E3A2F', color: '#fff', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', ...f }}>{posicion + 1}</div>
                     )}
                     <div style={{ fontSize: 20, marginBottom: 8 }}>📄</div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#1E293B', marginBottom: 4, ...f }}>{p.nombre}</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#1E3A2F', marginBottom: 4, ...f }}>{p.nombre}</div>
                     <div style={{ fontSize: 11, color: '#94a3b8', ...f }}>{p.categoria === 'patrocinio_poder' ? 'No se combina con otros' : 'Puedes combinarlo con otros'}</div>
                   </div>
                 )
@@ -615,7 +615,7 @@ export default function Escritos({ session, registrarActividad }) {
         {escrito && (
           <div style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 14, padding: 20 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#1E293B', ...f }}>Revisa y edita antes de descargar</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#1E3A2F', ...f }}>Revisa y edita antes de descargar</div>
               <span style={{ fontSize: 11, color: '#94a3b8', ...f }}>Así queda en el PDF: título a la izquierda, tribunal centrado, cuerpo justificado</span>
             </div>
 
@@ -631,7 +631,7 @@ export default function Escritos({ session, registrarActividad }) {
                     es un campo editable, sin ninguna marca de por medio. */}
                 {escrito.preSumaLineas.map((linea, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                    {linea.rotulo && <span style={{ fontSize: 12, fontWeight: 700, color: '#1E293B', flexShrink: 0, fontFamily: "'Times New Roman',serif" }}>{linea.rotulo}:</span>}
+                    {linea.rotulo && <span style={{ fontSize: 12, fontWeight: 700, color: '#1E3A2F', flexShrink: 0, fontFamily: "'Times New Roman',serif" }}>{linea.rotulo}:</span>}
                     <input value={linea.valor} onChange={e => setEscrito(prev => ({ ...prev, preSumaLineas: prev.preSumaLineas.map((l, j) => j === i ? { ...l, valor: e.target.value } : l) }))}
                       style={{ flex: 1, border: 'none', outline: 'none', fontSize: 12, color: '#475569', padding: '2px 0', fontFamily: "'Times New Roman',serif" }} />
                   </div>
@@ -646,15 +646,15 @@ export default function Escritos({ session, registrarActividad }) {
             <div style={{ border: '1.5px solid #E2E8F0', borderRadius: 10, padding: '16px 20px', marginBottom: 2 }}>
               {escrito.sumaLineas.map((linea, i) => (
                 <input key={i} value={linea} onChange={e => setEscrito(prev => ({ ...prev, sumaLineas: prev.sumaLineas.map((l, j) => j === i ? e.target.value : l) }))}
-                  style={{ width: '100%', border: 'none', outline: 'none', fontSize: 13, fontWeight: 700, color: '#1E293B', marginBottom: 4, padding: '2px 0', fontFamily: "'Times New Roman',serif" }} />
+                  style={{ width: '100%', border: 'none', outline: 'none', fontSize: 13, fontWeight: 700, color: '#1E3A2F', marginBottom: 4, padding: '2px 0', fontFamily: "'Times New Roman',serif" }} />
               ))}
               <input value={escrito.destinatario} onChange={e => setEscrito(prev => ({ ...prev, destinatario: e.target.value }))}
-                style={{ width: '100%', border: 'none', outline: 'none', fontSize: 13, fontWeight: 700, color: '#1E293B', textAlign: 'center', marginTop: 10, padding: '2px 0', fontFamily: "'Times New Roman',serif" }} />
+                style={{ width: '100%', border: 'none', outline: 'none', fontSize: 13, fontWeight: 700, color: '#1E3A2F', textAlign: 'center', marginTop: 10, padding: '2px 0', fontFamily: "'Times New Roman',serif" }} />
             </div>
             <div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 12, ...f }}>Puedes editar el título y el tribunal directo ahí arriba.</div>
 
             <textarea value={escrito.cuerpo} onChange={e => setEscrito(prev => ({ ...prev, cuerpo: e.target.value }))}
-              style={{ width: '100%', minHeight: 380, padding: 20, border: '1.5px solid #E2E8F0', borderRadius: 10, fontSize: 13, lineHeight: 1.7, color: '#1E293B', fontFamily: "'Times New Roman',serif", textAlign: 'justify', resize: 'vertical' }} />
+              style={{ width: '100%', minHeight: 380, padding: 20, border: '1.5px solid #E2E8F0', borderRadius: 10, fontSize: 13, lineHeight: 1.7, color: '#1E3A2F', fontFamily: "'Times New Roman',serif", textAlign: 'justify', resize: 'vertical' }} />
             <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 6, ...f }}>**texto** = negrita en el PDF</div>
             <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
               <button className="btn-primary" onClick={handleDescargarYGuardar} disabled={generando}>{generando ? 'Generando...' : '📄 Descargar PDF'}</button>

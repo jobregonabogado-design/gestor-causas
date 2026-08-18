@@ -38,7 +38,7 @@ export function SearchableSelect({ value, onChange, options, placeholder, isDeli
         onClick={() => { setOpen(!open); setQuery('') }}
         style={{
           padding: '9px 12px', border: '1.5px solid #e2e8f0', borderRadius: 8,
-          fontSize: 13, color: value ? '#1E293B' : '#94a3b8', background: '#fff',
+          fontSize: 13, color: value ? '#1E3A2F' : '#94a3b8', background: '#fff',
           cursor: 'pointer', display: 'flex', justifyContent: 'space-between',
           alignItems: 'center', minHeight: 38, fontFamily: "'Manrope','Inter',sans-serif",
           transition: 'border-color 0.2s ease',
@@ -75,7 +75,7 @@ export function SearchableSelect({ value, onChange, options, placeholder, isDeli
             {value && (
               <div
                 onClick={() => { onChange(''); setOpen(false); setQuery('') }}
-                style={{ padding: '8px 12px', fontSize: 12, color: '#94a3b8', cursor: 'pointer', borderBottom: '1px solid #F8F9FC', fontFamily: "'Manrope','Inter',sans-serif" }}
+                style={{ padding: '8px 12px', fontSize: 12, color: '#94a3b8', cursor: 'pointer', borderBottom: '1px solid #FAF7F0', fontFamily: "'Manrope','Inter',sans-serif" }}
               >
                 — Limpiar selección
               </div>
@@ -95,9 +95,9 @@ export function SearchableSelect({ value, onChange, options, placeholder, isDeli
                   style={{
                     padding: '9px 12px', fontSize: 12, cursor: 'pointer',
                     background: isSelected ? '#eff6ff' : 'transparent',
-                    color: isSelected ? '#1E293B' : '#374151',
+                    color: isSelected ? '#1E3A2F' : '#374151',
                     fontWeight: isSelected ? 600 : 400,
-                    borderBottom: '1px solid #F8F9FC',
+                    borderBottom: '1px solid #FAF7F0',
                     fontFamily: "'Manrope','Inter',sans-serif",
                     display: 'flex', gap: 8, alignItems: 'flex-start',
                   }}
@@ -136,7 +136,7 @@ const GRADO_COLOR = {
 // los casos); Cómplice y Encubridor en otros tonos, distintos a los del
 // grado de desarrollo para no confundirlos de un vistazo.
 const PARTICIPACION_COLOR = {
-  AUTOR:      { color:'#475569', bg:'#F8F9FC', border:'#e2e8f0' },
+  AUTOR:      { color:'#475569', bg:'#FAF7F0', border:'#e2e8f0' },
   COMPLICE:   { color:'#1e40af', bg:'#eff6ff', border:'#bfdbfe' },
   ENCUBRIDOR: { color:'#0f766e', bg:'#f0fdfa', border:'#99f6e4' },
 }
@@ -212,7 +212,7 @@ export function DelitosChips({ value, onChange, options }) {
         <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginBottom:10 }}>
           {lista.map((d, i) => (
             <div key={i} title={d.nombre} style={{ display:'flex', alignItems:'center', gap:7, background:'#fff', border:'1px solid #e2e8f0', borderRadius:8, padding:'5px 9px', maxWidth:'100%', minWidth:0 }}>
-              <span style={{ fontSize:11, color:'#1E293B', fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:220, ...f }}>{d.nombre}</span>
+              <span style={{ fontSize:11, color:'#1E3A2F', fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:220, ...f }}>{d.nombre}</span>
               <EtiquetaDelitoTag valor={d.grado} opciones={GRADOS_DELITO} colores={GRADO_COLOR} onChange={(g) => cambiarGrado(i, g)} />
               <EtiquetaDelitoTag valor={d.participacion} opciones={GRADOS_PARTICIPACION} colores={PARTICIPACION_COLOR} onChange={(p) => cambiarParticipacion(i, p)} />
               <button onClick={() => quitar(i)} style={{ background:'transparent', border:'none', cursor:'pointer', color:'#94a3b8', fontSize:12, padding:0, flexShrink:0 }}>✕</button>
@@ -244,7 +244,7 @@ export function DelitoCard({ nombreImputado, value, onChange, options }) {
   return (
     <div style={{flex:'1 1 360px', maxWidth:460, minWidth:260}}>
       {nombreImputado && (
-        <div style={{fontSize:11,fontWeight:700,color:'#1E293B',marginBottom:6,...f}}>👤 {nombreImputado}</div>
+        <div style={{fontSize:11,fontWeight:700,color:'#1E3A2F',marginBottom:6,...f}}>👤 {nombreImputado}</div>
       )}
       <div
         className="fld"
@@ -252,13 +252,13 @@ export function DelitoCard({ nombreImputado, value, onChange, options }) {
         style={{
           cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center',
           padding:'9px 12px', borderRadius: expanded ? '12px 12px 0 0' : 12, fontSize:13,
-          color:'#1E293B', minHeight:34, background:'#fff', boxShadow:'0 1px 2px rgba(15,23,42,0.06)', ...f,
+          color:'#1E3A2F', minHeight:34, background:'#fff', boxShadow:'0 1px 2px rgba(15,23,42,0.06)', ...f,
         }}>
         <span>{lista.length===0 ? 'Sin delitos' : `${lista.length} delito${lista.length!==1?'s':''}`}</span>
         <span style={{fontSize:11,color:'#94a3b8'}}>{expanded ? '▲' : '▼'}</span>
       </div>
       {expanded && (
-        <div style={{background:'#F8F9FC',borderRadius:'0 0 12px 12px',padding:'12px',boxShadow:'0 1px 2px rgba(15,23,42,0.06)'}}>
+        <div style={{background:'#FAF7F0',borderRadius:'0 0 12px 12px',padding:'12px',boxShadow:'0 1px 2px rgba(15,23,42,0.06)'}}>
           <DelitosChips value={value} onChange={onChange} options={options} />
         </div>
       )}
@@ -319,7 +319,7 @@ export function Badge({ estado, subestado }) {
   const sub = subestado && estadoConfig[subestado]
   return (
     <div style={{ display:'inline-flex', flexDirection:'column', gap:3, alignItems:'flex-start' }}>
-      <span style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'3px 10px', borderRadius:20, fontSize:10, fontWeight:700, letterSpacing:0.5, textTransform:'uppercase', color: estado==='terminada'?'#475569':'#065f46', background: estado==='terminada'?'#F8F9FC':'#ecfdf5', border: `1px solid ${estado==='terminada'?'#e2e8f0':'#a7f3d0'}`, ...f }}>
+      <span style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'3px 10px', borderRadius:20, fontSize:10, fontWeight:700, letterSpacing:0.5, textTransform:'uppercase', color: estado==='terminada'?'#475569':'#065f46', background: estado==='terminada'?'#FAF7F0':'#ecfdf5', border: `1px solid ${estado==='terminada'?'#e2e8f0':'#a7f3d0'}`, ...f }}>
         <span style={{ width:5, height:5, borderRadius:'50%', background: estado==='terminada'?'#475569':'#065f46', flexShrink:0 }}/>{estado==='terminada'?'TERMINADA':'VIGENTE'}
       </span>
       {sub && (
@@ -344,7 +344,7 @@ export function BadgeEditor({ estado, subestado, isMobile, onChangeEstado, onCha
   const subestados = estado === 'vigente' ? SUBESTADOS_VIGENTE : SUBESTADOS_TERMINADA
   const c = subestado && estadoConfig[subestado]
   const eColor = estado === 'terminada' ? '#475569' : '#065f46'
-  const eBg = estado === 'terminada' ? '#F8F9FC' : '#ecfdf5'
+  const eBg = estado === 'terminada' ? '#FAF7F0' : '#ecfdf5'
   const eBorder = estado === 'terminada' ? '#e2e8f0' : '#a7f3d0'
 
   return (
@@ -372,12 +372,12 @@ export function BadgeEditor({ estado, subestado, isMobile, onChangeEstado, onCha
           <div style={{ padding:'8px 12px', fontSize:9, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, fontWeight:700, borderBottom:'1px solid #f1f5f9', ...f }}>Estado principal</div>
           {['vigente','terminada'].map(e => (
             <div key={e} onClick={()=>{ onChangeEstado(e) }}
-              style={{ padding:'9px 14px', fontSize:12, fontWeight: estado===e?700:400, color: estado===e?'#1E293B':'#374151', background: estado===e?'#eff6ff':'transparent', cursor:'pointer', display:'flex', alignItems:'center', gap:8, ...f }}
+              style={{ padding:'9px 14px', fontSize:12, fontWeight: estado===e?700:400, color: estado===e?'#1E3A2F':'#374151', background: estado===e?'#eff6ff':'transparent', cursor:'pointer', display:'flex', alignItems:'center', gap:8, ...f }}
               onMouseEnter={ev=>{ if(estado!==e) ev.currentTarget.style.background='#f8faff' }}
               onMouseLeave={ev=>{ if(estado!==e) ev.currentTarget.style.background='transparent' }}>
               <span style={{ width:7, height:7, borderRadius:'50%', background: e==='vigente'?'#065f46':'#475569', flexShrink:0 }}/>
               {e==='vigente'?'VIGENTE':'TERMINADA'}
-              {estado===e && <span style={{ marginLeft:'auto', color:'#1E293B' }}>✓</span>}
+              {estado===e && <span style={{ marginLeft:'auto', color:'#1E3A2F' }}>✓</span>}
             </div>
           ))}
           {/* Subestados */}
@@ -408,7 +408,7 @@ export function BadgeEditor({ estado, subestado, isMobile, onChangeEstado, onCha
 }
 
 export function Field({ label, value, editable, editField, setEditField, editValue, setEditValue, onSave, full, fieldKey }) {
-  const inp = { width:'100%', padding:'11px 14px', border:'none', borderRadius:14, fontSize:13, color:'#1E293B', background:'#fff', boxShadow:'0 1px 2px rgba(15,23,42,0.06)', ...f }
+  const inp = { width:'100%', padding:'11px 14px', border:'none', borderRadius:14, fontSize:13, color:'#1E3A2F', background:'#fff', boxShadow:'0 1px 2px rgba(15,23,42,0.06)', ...f }
   // ✅ FIX: "Tribunal TOP" (pestaña Juicio Oral) usa fieldKey="tribunal_top",
   // que nunca calzaba con esta comparación exacta — se mostraba como texto
   // libre en vez de la lista desplegable de tribunales, a diferencia del
@@ -441,7 +441,7 @@ export function Field({ label, value, editable, editField, setEditField, editVal
         </div>
       ) : (
         <div className={editable?'fld':''} onClick={()=>{if(editable){setEditField(label);setEditValue(value||'')}}} title={value||''}
-          style={{ padding:'11px 14px', border:'none', borderRadius:14, fontSize:13, color:value?'#1E293B':'#94a3b8', minHeight:38, display:'flex', alignItems:'center', justifyContent:'space-between', cursor:editable?'pointer':'default', background:'#fff', boxShadow:'0 1px 2px rgba(15,23,42,0.06)', maxWidth:'100%', minWidth:0, ...f }}>
+          style={{ padding:'11px 14px', border:'none', borderRadius:14, fontSize:13, color:value?'#1E3A2F':'#94a3b8', minHeight:38, display:'flex', alignItems:'center', justifyContent:'space-between', cursor:editable?'pointer':'default', background:'#fff', boxShadow:'0 1px 2px rgba(15,23,42,0.06)', maxWidth:'100%', minWidth:0, ...f }}>
           <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:'1 1 0%',minWidth:0}}>{value||(editable?'Clic para agregar...':'—')}</span>
           {editable && <span style={{fontSize:11,color:'#94a3b8',flexShrink:0,marginLeft:8}}>✏</span>}
         </div>
