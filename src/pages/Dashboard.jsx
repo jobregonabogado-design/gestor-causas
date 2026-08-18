@@ -15,12 +15,13 @@ import { DiligenciasFiscalia, parsearComprobanteFiscalia } from './dashboard/dil
 import { FallosReferencia, DocumentosGuardados } from './dashboard/documentos'
 import { HonorariosTab } from './dashboard/honorarios'
 import { TeoriaDelCaso } from './dashboard/teoria'
-import { BotonResumenImprimible } from './dashboard/resumen'
+import { BotonResumenImprimible, generarYSubirResumenSilencioso } from './dashboard/resumen'
 import { PlazoCalculador } from './dashboard/plazo'
 import { calcularRegimenAlMomento, calcularVencimiento, parseFechaCL, diasRestantes, calcularSubestado, calcularEdadActual, TRIBUNAL_RPA, normRut, normalizarBusqueda, formatearRut, fechaDDMM, parsearDelito, hoyISO } from './dashboard/utils'
 import { ImputadoDatosCard } from './dashboard/imputado-datos'
 import { CautelaresPanel, TIPOS_ABONO_DIRECTO, TIPOS_DETENCION_PENAL, CAUTELAR_NOCTURNO, CAUTELAR_SENAME, TIPOS_CAUTELARES_TODAS, diasEntreFechasCaut } from './dashboard/cautelares'
 import { getMSToken, getOrCreateRucFolder } from '../lib/onedrive'
+import { sincronizarDocumentosCausa } from '../lib/onedriveSync'
 import { estaOnline, guardarCausaEnCache, leerCausaDeCache, actualizarConCola, encolarCausaNueva, leerCausasPendientesOptimistas, sincronizarCausasPendientes } from '../lib/offline'
 
 const CSS = `
@@ -245,6 +246,16 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
       ])
       setAudiencias(a||[]);setAumentos(au||[]);setImputados(imp||[]);setApelaciones(apel||[]);setCautelares(caut||[]);setOrdenesDetencion(ords||[])
       guardarCausaEnCache(c.id, { causa:c, audiencias:a||[], aumentos:au||[], imputados:imp||[], apelaciones:apel||[], cautelares:caut||[], ordenesDetencion:ords||[] })
+      // 💾 Respaldo automático en OneDrive — a pedido de Joaquín, sin que
+      // tenga que apretar nada: cada vez que abre una causa (con OneDrive
+      // conectado), se sincronizan solos los documentos (en las dos
+      // direcciones) y se regenera el resumen de la causa, reemplazando el
+      // anterior. Corre en segundo plano, sin bloquear ni avisar nada salvo
+      // que algo falle en la consola — no debe interrumpir el trabajo normal.
+      if (getMSToken()) {
+        sincronizarDocumentosCausa(c.id, c.ruc, session?.user?.email).catch(err => console.warn('No se pudo sincronizar documentos con OneDrive:', err.message))
+        generarYSubirResumenSilencioso(c, { imputados: imp||[], audiencias: a||[], aumentos: au||[], cautelares: caut||[] }).catch(err => console.warn('No se pudo regenerar el resumen en OneDrive:', err.message))
+      }
     } catch {
       // El fetch falló (típico de quedarse sin señal justo en ese momento) —
       // se cae a la última versión guardada en el teléfono, si existe.

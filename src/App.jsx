@@ -13,6 +13,7 @@ import SolicitudVisitaSantiagoI from './components/SolicitudVisitaSantiagoI'
 import Notas from './pages/Notas'
 import { useEstadoConexion } from './lib/offline'
 import { generarYRespaldar } from './lib/backup'
+import { sincronizarTodasLasCausas } from './pages/dashboard/resumen'
 
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
@@ -419,6 +420,32 @@ export default function App() {
       setGenerandoRespaldo(false); setProgresoRespaldo('')
     }
   }
+  // 💾 "Sincronizar todo con OneDrive" — recorre TODAS las causas y deja al
+  // día documentos + resumen de cada una, sin depender de haberlas abierto
+  // antes. Tarda varios minutos (una por una) — se avisa el progreso.
+  const [sincronizandoTodo, setSincronizandoTodo] = useState(false)
+  const [progresoSincTodo, setProgresoSincTodo] = useState('')
+  const [mensajeSincTodo, setMensajeSincTodo] = useState(null)
+  const handleSincronizarTodo = async () => {
+    if (!window.confirm('Esto va a recorrer TODAS las causas (documentos + resumen) y puede tardar varios minutos. ¿Empezar ahora?')) return
+    setSincronizandoTodo(true); setMensajeSincTodo(null)
+    try {
+      const { hechas, total, fallidas } = await sincronizarTodasLasCausas({
+        email: session?.user?.email,
+        onProgress: ({ actual, total }) => setProgresoSincTodo(`${actual}/${total}...`),
+      })
+      setMensajeSincTodo({
+        ok: fallidas.length === 0,
+        texto: fallidas.length === 0
+          ? `✅ Listo — ${hechas} de ${total} causas sincronizadas con OneDrive.`
+          : `⚠️ ${hechas - fallidas.length} de ${total} causas sincronizadas. ${fallidas.length} fallaron (ej. ${fallidas[0].ruc}: ${fallidas[0].error}).`
+      })
+    } catch (err) {
+      setMensajeSincTodo({ ok: false, texto: `❌ No se pudo sincronizar: ${err.message}` })
+    } finally {
+      setSincronizandoTodo(false); setProgresoSincTodo('')
+    }
+  }
   // 🔔 Estado del Centro de Alertas (advertencias + tareas del equipo)
   const [showAlerta, setShowAlerta] = useState(false)
   const [tareas, setTareas] = useState([])
@@ -650,6 +677,14 @@ export default function App() {
           </div>
         </div>
       )}
+      {mensajeSincTodo && (
+        <div style={{ position:'fixed', bottom:24, right:24, zIndex:2000, background:'#fff', border: mensajeSincTodo.ok ? '1.5px solid #bbf7d0' : '1.5px solid #fecaca', borderRadius:14, padding:'14px 18px', minWidth:300, maxWidth:420, boxShadow:'0 16px 40px rgba(15,23,42,0.14)', fontFamily:"'Manrope','Inter',sans-serif" }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12 }}>
+            <div style={{ fontSize:13, fontWeight:600, color:'#1E293B', lineHeight:1.5 }}>{mensajeSincTodo.texto}</div>
+            <button onClick={() => setMensajeSincTodo(null)} style={{ background:'transparent', border:'none', cursor:'pointer', color:'#94a3b8', fontSize:16, padding:2, flexShrink:0 }}>✕</button>
+          </div>
+        </div>
+      )}
       {gmailMensaje && (
         <div style={{ position:'fixed', bottom:24, right:24, zIndex:2000, background:'#fff', border: gmailMensaje.ok ? '1.5px solid #bbf7d0' : '1.5px solid #fecaca', borderRadius:14, padding:'14px 18px', minWidth:300, maxWidth:420, boxShadow:'0 16px 40px rgba(15,23,42,0.14)', fontFamily:"'Manrope','Inter',sans-serif" }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12 }}>
@@ -749,6 +784,15 @@ export default function App() {
                     // datos misma, para no depender solo de ella.
                     <button onClick={() => { setShowUserMenu(false); handleGenerarRespaldo() }} disabled={generandoRespaldo} style={{ width:'100%', textAlign:'left', background:'none', border:'none', borderTop:'1px solid #F1F5F9', padding:'12px 16px', fontSize:13, cursor: generandoRespaldo ? 'default' : 'pointer', color:'#374151', fontFamily:"'Manrope','Inter',sans-serif", textTransform:'uppercase', letterSpacing:0.3, opacity: generandoRespaldo ? 0.6 : 1 }}>
                       💾 {generandoRespaldo ? (progresoRespaldo || 'Generando...') : 'Generar respaldo'}
+                    </button>
+                  )}
+                  {esTitular && (
+                    // 📤 Recorre TODAS las causas y deja al día en OneDrive los
+                    // documentos y el resumen de cada una — para no depender de
+                    // haberlas abierto antes (ver openCausa en Dashboard.jsx,
+                    // que hace lo mismo pero solo con la causa que se abre).
+                    <button onClick={() => { setShowUserMenu(false); handleSincronizarTodo() }} disabled={sincronizandoTodo} style={{ width:'100%', textAlign:'left', background:'none', border:'none', borderTop:'1px solid #F1F5F9', padding:'12px 16px', fontSize:13, cursor: sincronizandoTodo ? 'default' : 'pointer', color:'#374151', fontFamily:"'Manrope','Inter',sans-serif", textTransform:'uppercase', letterSpacing:0.3, opacity: sincronizandoTodo ? 0.6 : 1 }}>
+                      📤 {sincronizandoTodo ? (progresoSincTodo || 'Sincronizando...') : 'Sincronizar todo con OneDrive'}
                     </button>
                   )}
                   <button onClick={handleSignOut} style={{ width:'100%', textAlign:'left', background:'none', border:'none', borderTop:'1px solid #F1F5F9', padding:'12px 16px', fontSize:13, cursor:'pointer', color:'#dc2626', fontWeight:600, fontFamily:"'Manrope','Inter',sans-serif", textTransform:'uppercase', letterSpacing:0.3 }}>

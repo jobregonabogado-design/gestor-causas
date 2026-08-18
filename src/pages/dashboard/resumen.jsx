@@ -5,11 +5,13 @@
 // ninguna librería nueva.
 import { useState, useEffect, useRef, Fragment } from 'react'
 import { createPortal } from 'react-dom'
+import { createRoot } from 'react-dom/client'
 import { supabase } from '../../lib/supabase'
 import { f } from './primitives'
 import { calcularVencimiento, calcularSubestado, calcularEdadActual, calcularFechaTerminoCondena, estadoConfig, fechaDDMM } from './utils'
 import { calcularTotalAbono, diasEntreFechasCaut } from './cautelares'
 import { getMSToken, uploadFile } from '../../lib/onedrive'
+import { sincronizarDocumentosCausa } from '../../lib/onedriveSync'
 
 // ✅ NUEVO: convierte el resumen ya renderizado en un PDF (foto del
 // contenido, vía html2canvas + jsPDF cargados desde CDN, mismo patrón que
@@ -32,6 +34,27 @@ function cargarPdfImgLibs() {
     cargarScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'),
   ])
   return _pdfImgLibsCargando
+}
+
+// Junta los datos "extra" del resumen (los que no vienen ya cargados en el
+// detalle de la causa) — mismo query que antes vivía adentro de abrir(),
+// factorizado para poder reutilizarlo también desde la generación
+// silenciosa (ver generarYSubirResumenSilencioso más abajo).
+async function cargarDatosExtra(causaId) {
+  const [{ data: notaTeoria }, { data: fallos }, { data: documentos }, { data: diligencias }, { data: apelaciones }, { data: ordenes }] = await Promise.all([
+    supabase.from('notas').select('*').eq('causa_id', causaId).eq('tipo', 'teoria_caso').order('created_at', { ascending: false }).limit(1).maybeSingle(),
+    supabase.from('fallos_referencia').select('*').eq('causa_id', causaId).order('created_at', { ascending: false }),
+    supabase.from('documentos_causa').select('*').eq('causa_id', causaId).order('created_at', { ascending: false }),
+    supabase.from('diligencias_fiscalia').select('*').eq('causa_id', causaId).order('fecha_solicitud', { ascending: false }),
+    supabase.from('apelaciones_corte').select('*').eq('causa_id', causaId).order('fecha_audiencia_corte', { ascending: false }),
+    supabase.from('ordenes_detencion').select('*').eq('causa_id', causaId).order('fecha_orden', { ascending: false }),
+  ])
+  let teoria = {}
+  if (notaTeoria) {
+    try { teoria = JSON.parse(notaTeoria.contenido).contenido || {} }
+    catch { teoria = { hechos: notaTeoria.contenido || '' } }
+  }
+  return { teoria, fallos: fallos || [], documentos: documentos || [], diligencias: diligencias || [], apelaciones: apelaciones || [], ordenes: ordenes || [] }
 }
 
 export function BotonResumenImprimible({ causa, imputados, audiencias, aumentos, cautelares, esTitular }) {
@@ -76,20 +99,8 @@ export function BotonResumenImprimible({ causa, imputados, audiencias, aumentos,
     setCargando(true)
     // ✅ NUEVO: se suman Apelaciones a la Corte y Órdenes de Detención — antes
     // no aparecían para nada en el resumen aunque existieran registradas.
-    const [{ data: notaTeoria }, { data: fallos }, { data: documentos }, { data: diligencias }, { data: apelaciones }, { data: ordenes }] = await Promise.all([
-      supabase.from('notas').select('*').eq('causa_id', causa.id).eq('tipo', 'teoria_caso').order('created_at', { ascending: false }).limit(1).maybeSingle(),
-      supabase.from('fallos_referencia').select('*').eq('causa_id', causa.id).order('created_at', { ascending: false }),
-      supabase.from('documentos_causa').select('*').eq('causa_id', causa.id).order('created_at', { ascending: false }),
-      supabase.from('diligencias_fiscalia').select('*').eq('causa_id', causa.id).order('fecha_solicitud', { ascending: false }),
-      supabase.from('apelaciones_corte').select('*').eq('causa_id', causa.id).order('fecha_audiencia_corte', { ascending: false }),
-      supabase.from('ordenes_detencion').select('*').eq('causa_id', causa.id).order('fecha_orden', { ascending: false }),
-    ])
-    let teoria = {}
-    if (notaTeoria) {
-      try { teoria = JSON.parse(notaTeoria.contenido).contenido || {} }
-      catch { teoria = { hechos: notaTeoria.contenido || '' } }
-    }
-    setDatos({ teoria, fallos: fallos || [], documentos: documentos || [], diligencias: diligencias || [], apelaciones: apelaciones || [], ordenes: ordenes || [] })
+    const datosExtra = await cargarDatosExtra(causa.id)
+    setDatos(datosExtra)
     setCargando(false)
     setMostrar(true)
   }
@@ -101,15 +112,6 @@ export function BotonResumenImprimible({ causa, imputados, audiencias, aumentos,
       </button>
     )
   }
-
-  const activos = (aumentos || []).filter(a => !a.eliminado)
-  const diasTotal = activos.reduce((s, a) => s + (parseInt(a.dias_plazo) || 0), 0)
-  // ✅ El vencimiento vigente es el de la audiencia MÁS RECIENTE (por fecha),
-  // calculado desde su propia fecha — no se encadena desde el origen. Mismo
-  // criterio que plazo.jsx. "diasTotal" queda solo como dato informativo.
-  const ultimaOrdenada = [...activos].sort((a, b) => a.fecha_audiencia.localeCompare(b.fecha_audiencia)).at(-1)
-  const vencimientoTotal = ultimaOrdenada ? calcularVencimiento(ultimaOrdenada.fecha_audiencia, ultimaOrdenada.dias_plazo) : null
-  const subestadoCalc = calcularSubestado(vencimientoTotal)
 
   // ✅ Portal a document.body: el botón que abre este resumen vive dentro de
   // un contenedor "no-imprimir" (el encabezado de la causa) — si el modal se
@@ -135,232 +137,332 @@ export function BotonResumenImprimible({ causa, imputados, audiencias, aumentos,
               <button onClick={() => setMostrar(false)} className="btn-secondary" style={{ fontSize: 12, border: '1.5px solid #e5e7eb' }}>✕ Cerrar</button>
             </div>
           </div>
-
-          {/* ── Encabezado ── */}
-          <div style={{ borderBottom: '2px solid #1E293B', paddingBottom: 14, marginBottom: 20 }}>
-            <div style={{ fontSize: 20, fontWeight: 800, color: '#1E293B' }}>RUC {causa.ruc}</div>
-            <div style={{ fontSize: 13, color: '#475569', marginTop: 4 }}>
-              RIT {causa.rit || '—'} · {causa.tribunal || '—'}
-              {causa.tiene_top && causa.tribunal_top ? ` · Juicio Oral: ${causa.tribunal_top}${causa.rit_top ? ' RIT ' + causa.rit_top : ''}` : ''}
-            </div>
-            <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
-              {(estadoConfig[causa.subestado]?.label) || (causa.estado === 'terminada' ? 'Terminada' : 'Vigente')} · Fiscal: {causa.fiscal || '—'}
-            </div>
-          </div>
-
-          {/* ── Datos / Imputados ── */}
-          <Seccion titulo="Datos de la causa">
-            <Fila label="Delito(s)" valor={(causa.delito || '').replace(/\|/g, ', ') || '—'} />
-            <Fila label="Plazo" valor={causa.plazo || '—'} />
-            <Fila label="Fecha de los hechos" valor={fechaDDMM(causa.fecha_hechos) || '—'} />
-            {(imputados && imputados.length > 0 ? imputados : [null]).map((imp, i) => (
-              <div key={i} style={{ marginTop: 12, paddingTop: 12, borderTop: i > 0 ? '1px dashed #e2e8f0' : 'none' }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#1E293B' }}>{imp ? (imp.nombre || 'Imputado sin nombre') : (causa.imputado || 'Imputado sin nombre')}</div>
-                {imp && (
-                  <div style={{ fontSize: 12, color: '#64748b', marginTop: 3, lineHeight: 1.7 }}>
-                    RUT: {imp.rut || '—'} · {imp.regimen || 'Régimen no calculado'}
-                    {imp.fecha_nacimiento ? ` · ${calcularEdadActual(imp.fecha_nacimiento)} años` : ''}
-                    {imp.nacionalidad ? ` · ${imp.nacionalidad}` : ''}
-                    <br />
-                    Situación: {imp.esta_detenido ? `Privado de libertad${imp.lugar_detencion ? ' en ' + imp.lugar_detencion : ''}` : 'En libertad'}
-                    <br />
-                    Domicilio: {imp.domicilio || '—'}
-                    {imp.correo_notificacion ? ` · Correo de notificación: ${imp.correo_notificacion}` : ''}
-                  </div>
-                )}
-              </div>
-            ))}
-          </Seccion>
-
-          {/* ── Condena — solo si algún imputado tiene fecha de inicio registrada ── */}
-          {(imputados || []).some(imp => imp.condena_fecha_inicio) && (
-            <Seccion titulo="Condena">
-              {(imputados || []).filter(imp => imp.condena_fecha_inicio).map((imp, i) => {
-                const propiasCaut = (cautelares || []).filter(ct => ct.imputado_id === imp.id)
-                const abonoDias = calcularTotalAbono(propiasCaut)
-                const fechaTermino = calcularFechaTerminoCondena(imp.condena_fecha_inicio, imp.condena_anos, imp.condena_meses, imp.condena_dias, abonoDias)
-                return (
-                  <div key={i} style={{ marginTop: i > 0 ? 12 : 0, paddingTop: i > 0 ? 12 : 0, borderTop: i > 0 ? '1px dashed #e2e8f0' : 'none' }}>
-                    {imputados.length > 1 && <div style={{ fontSize: 12, fontWeight: 700, color: '#1E293B', marginBottom: 4 }}>{imp.nombre}</div>}
-                    <div style={{ fontSize: 12, color: '#475569' }}>
-                      {imp.condena_tipo === 'sustitutiva' ? 'Pena sustitutiva' : 'Condena efectiva'} — {imp.condena_anos || 0}a {imp.condena_meses || 0}m {imp.condena_dias || 0}d
-                      <br />
-                      Inicio: {fechaDDMM(imp.condena_fecha_inicio)} · Término estimado: <strong>{fechaTermino || '—'}</strong>{abonoDias > 0 ? ` (con ${abonoDias} días de abono descontados)` : ''}
-                    </div>
-                  </div>
-                )
-              })}
-            </Seccion>
-          )}
-
-          {/* ── Cautelares y abono — por imputado si hay más de uno ── */}
-          <Seccion titulo="Cautelares y abono">
-            {(!cautelares || cautelares.length === 0) ? <Vacio texto="Sin medidas cautelares registradas." /> : (
-              (imputados && imputados.length > 0 ? imputados : [null]).map((imp, i) => {
-                const propias = imp ? cautelares.filter(ct => ct.imputado_id === imp.id) : cautelares
-                if (propias.length === 0) return null
-                const totalAbono = calcularTotalAbono(propias)
-                return (
-                  <div key={i} style={{ marginTop: i > 0 ? 12 : 0, paddingTop: i > 0 ? 12 : 0, borderTop: i > 0 ? '1px dashed #e2e8f0' : 'none' }}>
-                    {imp && <div style={{ fontSize: 12, fontWeight: 700, color: '#1E293B', marginBottom: 4 }}>{imp.nombre}</div>}
-                    <div style={{ fontSize: 12, color: '#475569', marginBottom: 6 }}>Abono total (1×1): <strong>{totalAbono} días</strong></div>
-                    {propias.map((ct, j) => (
-                      <div key={j} style={{ fontSize: 12, color: '#475569', padding: '2px 0' }}>
-                        {ct.tipo} — desde {fechaDDMM(ct.fecha_inicio)}{ct.fecha_termino ? ` hasta ${fechaDDMM(ct.fecha_termino)}` : ' (vigente)'}
-                        {!ct.fecha_termino ? '' : ` · ${diasEntreFechasCaut(ct.fecha_inicio, ct.fecha_termino)} días`}
-                      </div>
-                    ))}
-                  </div>
-                )
-              })
-            )}
-          </Seccion>
-
-          {/* ── Audiencias ── */}
-          <Seccion titulo={`Audiencias registradas (${(audiencias || []).length})`}>
-            {(!audiencias || audiencias.length === 0) ? <Vacio texto="Sin audiencias registradas." /> : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                <thead>
-                  <tr style={{ borderBottom: '1.5px solid #e2e8f0' }}>
-                    {['Fecha', 'Hora', 'Tipo', 'Tribunal'].map(h => <th key={h} style={{ textAlign: 'left', padding: '6px 8px', color: '#64748b', fontWeight: 700 }}>{h}</th>)}
-                  </tr>
-                </thead>
-                <tbody>
-                  {[...audiencias].sort((a, b) => (a.fecha || '').localeCompare(b.fecha || '')).map((a, i) => (
-                    <Fragment key={i}>
-                      <tr style={{ borderBottom: a.resultado ? 'none' : '1px solid #f1f5f9' }}>
-                        <td style={{ padding: '6px 8px' }}>{fechaDDMM(a.fecha)}</td>
-                        <td style={{ padding: '6px 8px' }}>{a.hora || '—'}</td>
-                        <td style={{ padding: '6px 8px' }}>{a.tipo || '—'}</td>
-                        <td style={{ padding: '6px 8px' }}>{a.tribunal || '—'}{a.sala ? ' · Sala ' + a.sala : ''}</td>
-                      </tr>
-                      {/* ✅ El resultado se pone en su propia fila ANCHA (colspan) en
-                          vez de una columna angosta más — así se lee completo aunque
-                          sea un texto largo, en vez de cortarse en la tabla. */}
-                      {a.resultado && (
-                        <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
-                          <td colSpan={4} style={{ padding: '0 8px 8px', fontSize: 11.5, color: '#475569', whiteSpace: 'pre-wrap' }}>
-                            <strong style={{ color: '#1E293B' }}>Resultado:</strong> {a.resultado}
-                          </td>
-                        </tr>
-                      )}
-                    </Fragment>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </Seccion>
-
-          {/* ── Plazo ── */}
-          <Seccion titulo="Plazo">
-            {activos.length === 0 ? <Vacio texto="Sin audiencias de plazo registradas." /> : (
-              <>
-                <div style={{ fontSize: 12, color: '#475569', marginBottom: 8 }}>
-                  {activos.length} audiencia{activos.length !== 1 ? 's' : ''} vigente{activos.length !== 1 ? 's' : ''} · {diasTotal} días corridos totales · Vencimiento: <strong>{vencimientoTotal || '—'}</strong> ({estadoConfig[subestadoCalc]?.label || subestadoCalc || '—'})
-                </div>
-                {activos.map((a, i) => (
-                  <div key={i} style={{ fontSize: 12, color: '#475569', padding: '4px 0' }}>
-                    {fechaDDMM(a.fecha_audiencia)} · {a.tipo_audiencia || 'Audiencia'} · +{a.dias_plazo}d{a.observacion ? ' · ' + a.observacion : ''}
-                  </div>
-                ))}
-              </>
-            )}
-          </Seccion>
-
-          {/* ── Teoría del Caso — ✅ actualizado a la estructura nueva (ver
-              teoria.jsx): solo "Hechos del caso" y "Teoría de la Defensa"
-              existen como secciones de la pestaña; "Prueba" ahora vive
-              DENTRO de Teoría de la Defensa (misma clave "prueba" en la
-              base de datos) y "Observaciones" ya no existe. Siempre se
-              muestran los títulos aunque estén vacíos, igual que
-              Documentos/Fallos siempre muestran su cantidad. ── */}
-          <Seccion titulo="Teoría del Caso">
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Hechos del caso</div>
-              {datos.teoria.hechos
-                ? <div style={{ fontSize: 13, color: '#1E293B', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{datos.teoria.hechos}</div>
-                : <Vacio texto="Sin contenido registrado." />}
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Teoría de la Defensa</div>
-              {datos.teoria.teoria_defensa
-                ? <div style={{ fontSize: 13, color: '#1E293B', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{datos.teoria.teoria_defensa}</div>
-                : <Vacio texto="Sin contenido registrado." />}
-            </div>
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Prueba</div>
-              {datos.teoria.prueba
-                ? <div style={{ fontSize: 13, color: '#1E293B', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{datos.teoria.prueba}</div>
-                : <Vacio texto="Sin contenido registrado." />}
-            </div>
-          </Seccion>
-
-          {/* ── Apelaciones a la Corte ── */}
-          <Seccion titulo={`Apelaciones a la Corte (${datos.apelaciones.length})`}>
-            {datos.apelaciones.length === 0 ? <Vacio texto="Sin apelaciones registradas." /> : (
-              datos.apelaciones.map((a, i) => (
-                <div key={i} style={{ fontSize: 12, color: '#475569', padding: '4px 0' }}>
-                  Rol Corte <strong style={{ color: '#1E293B' }}>{a.rol_corte || '—'}</strong>{a.sala_corte ? ` · Sala ${a.sala_corte}` : ''}{a.fecha_audiencia_corte ? ` · Audiencia el ${fechaDDMM(a.fecha_audiencia_corte)}` : ''}
-                </div>
-              ))
-            )}
-          </Seccion>
-
-          {/* ── Órdenes de Detención — se marca claramente si sigue vigente o
-              ya fue levantada, y a qué imputado corresponde si hay más de uno. ── */}
-          <Seccion titulo={`Órdenes de Detención (${datos.ordenes.length})`}>
-            {datos.ordenes.length === 0 ? <Vacio texto="Sin órdenes de detención registradas." /> : (
-              datos.ordenes.map((o, i) => {
-                const impNombre = (imputados || []).find(imp => imp.id === o.imputado_id)?.nombre
-                return (
-                  <div key={i} style={{ fontSize: 12, color: '#475569', padding: '4px 0' }}>
-                    {imputados && imputados.length > 1 && impNombre ? <strong style={{ color: '#1E293B' }}>{impNombre} — </strong> : null}
-                    Dictada el {fechaDDMM(o.fecha_orden)}{o.motivo ? ` · Motivo: ${o.motivo}` : ''}
-                    {' · '}
-                    {o.fecha_levantamiento
-                      ? <span>Levantada el {fechaDDMM(o.fecha_levantamiento)}</span>
-                      : <strong style={{ color: '#dc2626' }}>VIGENTE</strong>}
-                  </div>
-                )
-              })
-            )}
-          </Seccion>
-
-          {/* ── Diligencias de Fiscalía ── */}
-          <Seccion titulo={`Diligencias de Fiscalía (${datos.diligencias.length})`}>
-            {datos.diligencias.length === 0 ? <Vacio texto="Sin diligencias solicitadas." /> : (
-              datos.diligencias.map((d, i) => (
-                <div key={i} style={{ fontSize: 12, color: '#475569', padding: '4px 0' }}>
-                  <strong style={{ color: '#1E293B' }}>{d.tipo}</strong> — solicitada el {fechaDDMM(d.fecha_solicitud)}{d.folio ? ` · Folio ${d.folio}` : ''}
-                  {d.estado === 'pendiente'
-                    ? ' · Pendiente de respuesta'
-                    : ` · Respondida el ${fechaDDMM(d.fecha_respuesta) || '—'}${d.estado === 'con_citacion' && d.fecha_citacion ? ` · Cita el ${fechaDDMM(d.fecha_citacion)}` : ''}`}
-                </div>
-              ))
-            )}
-          </Seccion>
-
-          {/* ── Documentos y Fallos — solo nombre y cantidad, sin abrir contenido ── */}
-          <Seccion titulo={`Documentos (${datos.documentos.length})`}>
-            {datos.documentos.length === 0 ? <Vacio texto="Sin documentos subidos." /> : (
-              datos.documentos.map((d, i) => <div key={i} style={{ fontSize: 12, color: '#475569', padding: '2px 0' }}>📄 {d.nombre}</div>)
-            )}
-          </Seccion>
-          <Seccion titulo={`Fallos de referencia (${datos.fallos.length})`} ultima>
-            {datos.fallos.length === 0 ? <Vacio texto="Sin fallos de referencia guardados." /> : (
-              datos.fallos.map((d, i) => <div key={i} style={{ fontSize: 12, color: '#475569', padding: '2px 0' }}>📄 {d.nombre}</div>)
-            )}
-          </Seccion>
-
-          <div style={{ marginTop: 24, paddingTop: 12, borderTop: '1px solid #e2e8f0', fontSize: 10, color: '#94a3b8' }}>
-            Generado el {new Date().toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' })} · Gestor de Causas Penales
-          </div>
+          <ResumenContenido causa={causa} imputados={imputados} audiencias={audiencias} aumentos={aumentos} cautelares={cautelares} datos={datos} />
         </div>
       </div>,
       document.body
       )}
     </>
   )
+}
+
+// ✅ NUEVO: el contenido imprimible en sí, separado del botón/modal que lo
+// muestra — así se puede reutilizar para generarlo en segundo plano (ver
+// generarYSubirResumenSilencioso) sin tener que abrir la vista previa.
+function ResumenContenido({ causa, imputados, audiencias, aumentos, cautelares, datos }) {
+  const activos = (aumentos || []).filter(a => !a.eliminado)
+  const diasTotal = activos.reduce((s, a) => s + (parseInt(a.dias_plazo) || 0), 0)
+  // ✅ El vencimiento vigente es el de la audiencia MÁS RECIENTE (por fecha),
+  // calculado desde su propia fecha — no se encadena desde el origen. Mismo
+  // criterio que plazo.jsx. "diasTotal" queda solo como dato informativo.
+  const ultimaOrdenada = [...activos].sort((a, b) => a.fecha_audiencia.localeCompare(b.fecha_audiencia)).at(-1)
+  const vencimientoTotal = ultimaOrdenada ? calcularVencimiento(ultimaOrdenada.fecha_audiencia, ultimaOrdenada.dias_plazo) : null
+  const subestadoCalc = calcularSubestado(vencimientoTotal)
+
+  return (
+    <>
+      {/* ── Encabezado ── */}
+      <div style={{ borderBottom: '2px solid #1E293B', paddingBottom: 14, marginBottom: 20 }}>
+        <div style={{ fontSize: 20, fontWeight: 800, color: '#1E293B' }}>RUC {causa.ruc}</div>
+        <div style={{ fontSize: 13, color: '#475569', marginTop: 4 }}>
+          RIT {causa.rit || '—'} · {causa.tribunal || '—'}
+          {causa.tiene_top && causa.tribunal_top ? ` · Juicio Oral: ${causa.tribunal_top}${causa.rit_top ? ' RIT ' + causa.rit_top : ''}` : ''}
+        </div>
+        <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
+          {(estadoConfig[causa.subestado]?.label) || (causa.estado === 'terminada' ? 'Terminada' : 'Vigente')} · Fiscal: {causa.fiscal || '—'}
+        </div>
+      </div>
+
+      {/* ── Datos / Imputados ── */}
+      <Seccion titulo="Datos de la causa">
+        <Fila label="Delito(s)" valor={(causa.delito || '').replace(/\|/g, ', ') || '—'} />
+        <Fila label="Plazo" valor={causa.plazo || '—'} />
+        <Fila label="Fecha de los hechos" valor={fechaDDMM(causa.fecha_hechos) || '—'} />
+        {(imputados && imputados.length > 0 ? imputados : [null]).map((imp, i) => (
+          <div key={i} style={{ marginTop: 12, paddingTop: 12, borderTop: i > 0 ? '1px dashed #e2e8f0' : 'none' }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#1E293B' }}>{imp ? (imp.nombre || 'Imputado sin nombre') : (causa.imputado || 'Imputado sin nombre')}</div>
+            {imp && (
+              <div style={{ fontSize: 12, color: '#64748b', marginTop: 3, lineHeight: 1.7 }}>
+                RUT: {imp.rut || '—'} · {imp.regimen || 'Régimen no calculado'}
+                {imp.fecha_nacimiento ? ` · ${calcularEdadActual(imp.fecha_nacimiento)} años` : ''}
+                {imp.nacionalidad ? ` · ${imp.nacionalidad}` : ''}
+                <br />
+                Situación: {imp.esta_detenido ? `Privado de libertad${imp.lugar_detencion ? ' en ' + imp.lugar_detencion : ''}` : 'En libertad'}
+                <br />
+                Domicilio: {imp.domicilio || '—'}
+                {imp.correo_notificacion ? ` · Correo de notificación: ${imp.correo_notificacion}` : ''}
+              </div>
+            )}
+          </div>
+        ))}
+      </Seccion>
+
+      {/* ── Condena — solo si algún imputado tiene fecha de inicio registrada ── */}
+      {(imputados || []).some(imp => imp.condena_fecha_inicio) && (
+        <Seccion titulo="Condena">
+          {(imputados || []).filter(imp => imp.condena_fecha_inicio).map((imp, i) => {
+            const propiasCaut = (cautelares || []).filter(ct => ct.imputado_id === imp.id)
+            const abonoDias = calcularTotalAbono(propiasCaut)
+            const fechaTermino = calcularFechaTerminoCondena(imp.condena_fecha_inicio, imp.condena_anos, imp.condena_meses, imp.condena_dias, abonoDias)
+            return (
+              <div key={i} style={{ marginTop: i > 0 ? 12 : 0, paddingTop: i > 0 ? 12 : 0, borderTop: i > 0 ? '1px dashed #e2e8f0' : 'none' }}>
+                {imputados.length > 1 && <div style={{ fontSize: 12, fontWeight: 700, color: '#1E293B', marginBottom: 4 }}>{imp.nombre}</div>}
+                <div style={{ fontSize: 12, color: '#475569' }}>
+                  {imp.condena_tipo === 'sustitutiva' ? 'Pena sustitutiva' : 'Condena efectiva'} — {imp.condena_anos || 0}a {imp.condena_meses || 0}m {imp.condena_dias || 0}d
+                  <br />
+                  Inicio: {fechaDDMM(imp.condena_fecha_inicio)} · Término estimado: <strong>{fechaTermino || '—'}</strong>{abonoDias > 0 ? ` (con ${abonoDias} días de abono descontados)` : ''}
+                </div>
+              </div>
+            )
+          })}
+        </Seccion>
+      )}
+
+      {/* ── Cautelares y abono — por imputado si hay más de uno ── */}
+      <Seccion titulo="Cautelares y abono">
+        {(!cautelares || cautelares.length === 0) ? <Vacio texto="Sin medidas cautelares registradas." /> : (
+          (imputados && imputados.length > 0 ? imputados : [null]).map((imp, i) => {
+            const propias = imp ? cautelares.filter(ct => ct.imputado_id === imp.id) : cautelares
+            if (propias.length === 0) return null
+            const totalAbono = calcularTotalAbono(propias)
+            return (
+              <div key={i} style={{ marginTop: i > 0 ? 12 : 0, paddingTop: i > 0 ? 12 : 0, borderTop: i > 0 ? '1px dashed #e2e8f0' : 'none' }}>
+                {imp && <div style={{ fontSize: 12, fontWeight: 700, color: '#1E293B', marginBottom: 4 }}>{imp.nombre}</div>}
+                <div style={{ fontSize: 12, color: '#475569', marginBottom: 6 }}>Abono total (1×1): <strong>{totalAbono} días</strong></div>
+                {propias.map((ct, j) => (
+                  <div key={j} style={{ fontSize: 12, color: '#475569', padding: '2px 0' }}>
+                    {ct.tipo} — desde {fechaDDMM(ct.fecha_inicio)}{ct.fecha_termino ? ` hasta ${fechaDDMM(ct.fecha_termino)}` : ' (vigente)'}
+                    {!ct.fecha_termino ? '' : ` · ${diasEntreFechasCaut(ct.fecha_inicio, ct.fecha_termino)} días`}
+                  </div>
+                ))}
+              </div>
+            )
+          })
+        )}
+      </Seccion>
+
+      {/* ── Audiencias ── */}
+      <Seccion titulo={`Audiencias registradas (${(audiencias || []).length})`}>
+        {(!audiencias || audiencias.length === 0) ? <Vacio texto="Sin audiencias registradas." /> : (
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <thead>
+              <tr style={{ borderBottom: '1.5px solid #e2e8f0' }}>
+                {['Fecha', 'Hora', 'Tipo', 'Tribunal'].map(h => <th key={h} style={{ textAlign: 'left', padding: '6px 8px', color: '#64748b', fontWeight: 700 }}>{h}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {[...audiencias].sort((a, b) => (a.fecha || '').localeCompare(b.fecha || '')).map((a, i) => (
+                <Fragment key={i}>
+                  <tr style={{ borderBottom: a.resultado ? 'none' : '1px solid #f1f5f9' }}>
+                    <td style={{ padding: '6px 8px' }}>{fechaDDMM(a.fecha)}</td>
+                    <td style={{ padding: '6px 8px' }}>{a.hora || '—'}</td>
+                    <td style={{ padding: '6px 8px' }}>{a.tipo || '—'}</td>
+                    <td style={{ padding: '6px 8px' }}>{a.tribunal || '—'}{a.sala ? ' · Sala ' + a.sala : ''}</td>
+                  </tr>
+                  {/* ✅ El resultado se pone en su propia fila ANCHA (colspan) en
+                      vez de una columna angosta más — así se lee completo aunque
+                      sea un texto largo, en vez de cortarse en la tabla. */}
+                  {a.resultado && (
+                    <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td colSpan={4} style={{ padding: '0 8px 8px', fontSize: 11.5, color: '#475569', whiteSpace: 'pre-wrap' }}>
+                        <strong style={{ color: '#1E293B' }}>Resultado:</strong> {a.resultado}
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </Seccion>
+
+      {/* ── Plazo ── */}
+      <Seccion titulo="Plazo">
+        {activos.length === 0 ? <Vacio texto="Sin audiencias de plazo registradas." /> : (
+          <>
+            <div style={{ fontSize: 12, color: '#475569', marginBottom: 8 }}>
+              {activos.length} audiencia{activos.length !== 1 ? 's' : ''} vigente{activos.length !== 1 ? 's' : ''} · {diasTotal} días corridos totales · Vencimiento: <strong>{vencimientoTotal || '—'}</strong> ({estadoConfig[subestadoCalc]?.label || subestadoCalc || '—'})
+            </div>
+            {activos.map((a, i) => (
+              <div key={i} style={{ fontSize: 12, color: '#475569', padding: '4px 0' }}>
+                {fechaDDMM(a.fecha_audiencia)} · {a.tipo_audiencia || 'Audiencia'} · +{a.dias_plazo}d{a.observacion ? ' · ' + a.observacion : ''}
+              </div>
+            ))}
+          </>
+        )}
+      </Seccion>
+
+      {/* ── Teoría del Caso — ✅ actualizado a la estructura nueva (ver
+          teoria.jsx): solo "Hechos del caso" y "Teoría de la Defensa"
+          existen como secciones de la pestaña; "Prueba" ahora vive
+          DENTRO de Teoría de la Defensa (misma clave "prueba" en la
+          base de datos) y "Observaciones" ya no existe. Siempre se
+          muestran los títulos aunque estén vacíos, igual que
+          Documentos/Fallos siempre muestran su cantidad. ── */}
+      <Seccion titulo="Teoría del Caso">
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Hechos del caso</div>
+          {datos.teoria.hechos
+            ? <div style={{ fontSize: 13, color: '#1E293B', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{datos.teoria.hechos}</div>
+            : <Vacio texto="Sin contenido registrado." />}
+        </div>
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Teoría de la Defensa</div>
+          {datos.teoria.teoria_defensa
+            ? <div style={{ fontSize: 13, color: '#1E293B', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{datos.teoria.teoria_defensa}</div>
+            : <Vacio texto="Sin contenido registrado." />}
+        </div>
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Prueba</div>
+          {datos.teoria.prueba
+            ? <div style={{ fontSize: 13, color: '#1E293B', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{datos.teoria.prueba}</div>
+            : <Vacio texto="Sin contenido registrado." />}
+        </div>
+      </Seccion>
+
+      {/* ── Apelaciones a la Corte ── */}
+      <Seccion titulo={`Apelaciones a la Corte (${datos.apelaciones.length})`}>
+        {datos.apelaciones.length === 0 ? <Vacio texto="Sin apelaciones registradas." /> : (
+          datos.apelaciones.map((a, i) => (
+            <div key={i} style={{ fontSize: 12, color: '#475569', padding: '4px 0' }}>
+              Rol Corte <strong style={{ color: '#1E293B' }}>{a.rol_corte || '—'}</strong>{a.sala_corte ? ` · Sala ${a.sala_corte}` : ''}{a.fecha_audiencia_corte ? ` · Audiencia el ${fechaDDMM(a.fecha_audiencia_corte)}` : ''}
+            </div>
+          ))
+        )}
+      </Seccion>
+
+      {/* ── Órdenes de Detención — se marca claramente si sigue vigente o
+          ya fue levantada, y a qué imputado corresponde si hay más de uno. ── */}
+      <Seccion titulo={`Órdenes de Detención (${datos.ordenes.length})`}>
+        {datos.ordenes.length === 0 ? <Vacio texto="Sin órdenes de detención registradas." /> : (
+          datos.ordenes.map((o, i) => {
+            const impNombre = (imputados || []).find(imp => imp.id === o.imputado_id)?.nombre
+            return (
+              <div key={i} style={{ fontSize: 12, color: '#475569', padding: '4px 0' }}>
+                {imputados && imputados.length > 1 && impNombre ? <strong style={{ color: '#1E293B' }}>{impNombre} — </strong> : null}
+                Dictada el {fechaDDMM(o.fecha_orden)}{o.motivo ? ` · Motivo: ${o.motivo}` : ''}
+                {' · '}
+                {o.fecha_levantamiento
+                  ? <span>Levantada el {fechaDDMM(o.fecha_levantamiento)}</span>
+                  : <strong style={{ color: '#dc2626' }}>VIGENTE</strong>}
+              </div>
+            )
+          })
+        )}
+      </Seccion>
+
+      {/* ── Diligencias de Fiscalía ── */}
+      <Seccion titulo={`Diligencias de Fiscalía (${datos.diligencias.length})`}>
+        {datos.diligencias.length === 0 ? <Vacio texto="Sin diligencias solicitadas." /> : (
+          datos.diligencias.map((d, i) => (
+            <div key={i} style={{ fontSize: 12, color: '#475569', padding: '4px 0' }}>
+              <strong style={{ color: '#1E293B' }}>{d.tipo}</strong> — solicitada el {fechaDDMM(d.fecha_solicitud)}{d.folio ? ` · Folio ${d.folio}` : ''}
+              {d.estado === 'pendiente'
+                ? ' · Pendiente de respuesta'
+                : ` · Respondida el ${fechaDDMM(d.fecha_respuesta) || '—'}${d.estado === 'con_citacion' && d.fecha_citacion ? ` · Cita el ${fechaDDMM(d.fecha_citacion)}` : ''}`}
+            </div>
+          ))
+        )}
+      </Seccion>
+
+      {/* ── Documentos y Fallos — solo nombre y cantidad, sin abrir contenido ── */}
+      <Seccion titulo={`Documentos (${datos.documentos.length})`}>
+        {datos.documentos.length === 0 ? <Vacio texto="Sin documentos subidos." /> : (
+          datos.documentos.map((d, i) => <div key={i} style={{ fontSize: 12, color: '#475569', padding: '2px 0' }}>📄 {d.nombre}</div>)
+        )}
+      </Seccion>
+      <Seccion titulo={`Fallos de referencia (${datos.fallos.length})`} ultima>
+        {datos.fallos.length === 0 ? <Vacio texto="Sin fallos de referencia guardados." /> : (
+          datos.fallos.map((d, i) => <div key={i} style={{ fontSize: 12, color: '#475569', padding: '2px 0' }}>📄 {d.nombre}</div>)
+        )}
+      </Seccion>
+
+      <div style={{ marginTop: 24, paddingTop: 12, borderTop: '1px solid #e2e8f0', fontSize: 10, color: '#94a3b8' }}>
+        Generado el {new Date().toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' })} · Gestor de Causas Penales
+      </div>
+    </>
+  )
+}
+
+// ✅ NUEVO: genera y sube el resumen SIN mostrar nada en pantalla — para el
+// respaldo automático (ver openCausa en Dashboard.jsx y el "Sincronizar
+// todo" de Contabilidad.jsx). Arma el contenido en un contenedor invisible
+// (fuera de la pantalla, no display:none — html2canvas necesita que esté
+// realmente dibujado para poder "fotografiarlo"), lo saca de la nube con
+// html2canvas+jsPDF, lo sube, y limpia todo — nadie ve nada de esto pasar.
+export async function generarYSubirResumenSilencioso(causa, { imputados, audiencias, aumentos, cautelares }) {
+  if (!getMSToken()) return { ok: false, error: 'OneDrive no conectado' }
+  const datos = await cargarDatosExtra(causa.id)
+
+  const contenedor = document.createElement('div')
+  contenedor.style.position = 'fixed'
+  contenedor.style.left = '-9999px'
+  contenedor.style.top = '0'
+  contenedor.style.width = '856px' // 760 (maxWidth del resumen) + 48px de padding a cada lado
+  document.body.appendChild(contenedor)
+  const root = createRoot(contenedor)
+
+  try {
+    await new Promise(resolve => {
+      root.render(
+        <div className="resumen-imprimible" style={{ background: '#fff', maxWidth: 760, margin: '0 auto', padding: '40px 48px', ...f }}>
+          <ResumenContenido causa={causa} imputados={imputados} audiencias={audiencias} aumentos={aumentos} cautelares={cautelares} datos={datos} />
+        </div>
+      )
+      // Dos frames para asegurar que React ya terminó de pintar el contenido
+      // antes de tomar la "foto" — un solo rAF a veces alcanza a correr
+      // antes de que el navegador aplique el layout final.
+      requestAnimationFrame(() => requestAnimationFrame(resolve))
+    })
+    await cargarPdfImgLibs()
+    const canvas = await window.html2canvas(contenedor, { scale: 2, backgroundColor: '#ffffff' })
+    const { jsPDF } = window.jspdf
+    const pdf = new jsPDF({ unit: 'px', format: [canvas.width, canvas.height] })
+    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, canvas.width, canvas.height)
+    const blob = pdf.output('blob')
+    const file = new File([blob], 'Resumen.pdf', { type: 'application/pdf' })
+    await uploadFile(causa.ruc, file)
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: err?.message || 'Error desconocido' }
+  } finally {
+    root.unmount()
+    document.body.removeChild(contenedor)
+  }
+}
+
+// ✅ NUEVO: "Sincronizar todo ahora" — a diferencia del respaldo automático
+// de arriba (que solo actualiza la causa que se abre), esto recorre TODAS
+// las causas una por una y hace lo mismo para cada una: documentos en las
+// dos direcciones + resumen al día. Pensado para correr de vez en cuando
+// (ej. antes de un viaje) y dejar todo al día de una sola vez, sin depender
+// de haber abierto cada causa antes. Tarda varios minutos por la cantidad —
+// `onProgress` avisa en cuál va para poder mostrarlo en pantalla.
+export async function sincronizarTodasLasCausas({ onProgress, email } = {}) {
+  if (!getMSToken()) throw new Error('OneDrive no está conectado')
+  const { data: causas, error } = await supabase.from('causas').select('*').order('ruc')
+  if (error) throw new Error('No se pudo leer la lista de causas: ' + error.message)
+
+  let hechas = 0
+  const fallidas = []
+  for (const causa of (causas || [])) {
+    onProgress?.({ actual: hechas + 1, total: causas.length, ruc: causa.ruc })
+    try {
+      const [{ data: audiencias }, { data: imputados }, { data: aumentos }, { data: cautelares }] = await Promise.all([
+        supabase.from('audiencias').select('*').or(`causa_id.eq.${causa.id},ruc.eq.${causa.ruc}`),
+        supabase.from('imputados').select('*').eq('causa_id', causa.id),
+        supabase.from('aumentos_plazo').select('*').eq('causa_id', causa.id),
+        supabase.from('cautelares_causa').select('*').eq('causa_id', causa.id),
+      ])
+      await sincronizarDocumentosCausa(causa.id, causa.ruc, email)
+      const resultado = await generarYSubirResumenSilencioso(causa, { imputados: imputados || [], audiencias: audiencias || [], aumentos: aumentos || [], cautelares: cautelares || [] })
+      if (!resultado.ok) fallidas.push({ ruc: causa.ruc, error: resultado.error })
+    } catch (err) {
+      fallidas.push({ ruc: causa.ruc, error: err?.message || 'Error desconocido' })
+    }
+    hechas++
+  }
+  return { hechas, total: (causas || []).length, fallidas }
 }
 
 function Seccion({ titulo, children, ultima }) {
