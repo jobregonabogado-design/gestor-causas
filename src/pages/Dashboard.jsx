@@ -21,7 +21,7 @@ import { calcularRegimenAlMomento, calcularVencimiento, parseFechaCL, diasRestan
 import { ImputadoDatosCard } from './dashboard/imputado-datos'
 import { CautelaresPanel, TIPOS_ABONO_DIRECTO, TIPOS_DETENCION_PENAL, CAUTELAR_NOCTURNO, CAUTELAR_SENAME, TIPOS_CAUTELARES_TODAS, diasEntreFechasCaut } from './dashboard/cautelares'
 import { getMSToken, getOrCreateRucFolder } from '../lib/onedrive'
-import { estaOnline, guardarCausaEnCache, leerCausaDeCache, actualizarConCola } from '../lib/offline'
+import { estaOnline, guardarCausaEnCache, leerCausaDeCache, actualizarConCola, encolarCausaNueva, leerCausasPendientesOptimistas, sincronizarCausasPendientes } from '../lib/offline'
 
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
@@ -152,6 +152,15 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
 
   useEffect(()=>{ loadCausas() },[])
 
+  // 📴 Causas nuevas creadas sin conexión (ver saveCausa más abajo) — se
+  // intenta crear de verdad apenas haya señal; cuando una se logra crear,
+  // se recarga la lista para reemplazarla por la real. El "mostrarlas ya"
+  // mientras siguen pendientes pasa dentro de loadCausas (ver abajo), no
+  // acá — si se hiciera en un effect aparte, la carrera entre este effect y
+  // el de loadCausas podía perderlas (loadCausas reemplaza el arreglo
+  // entero al terminar su propio fetch, sin importar el orden).
+  useEffect(() => { sincronizarCausasPendientes(() => loadCausas()) }, [])
+
   useEffect(() => {
     if (causaInicial) { openCausa(causaInicial); if (onCausaInicialUsada) onCausaInicialUsada() }
   }, [causaInicial])
@@ -171,6 +180,12 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
       })
       setCausas(causasActualizadas)
     }
+    // 📴 Causas nuevas creadas sin conexión que todavía no se lograron subir
+    // (ver saveCausa) — se agregan DESPUÉS de reemplazar la lista completa
+    // de arriba, para no perderlas; si el fetch de arriba falló por estar
+    // sin señal, igual quedan mostrándose solas.
+    const pendientes = leerCausasPendientesOptimistas()
+    if (pendientes.length > 0) setCausas(prev => [...pendientes, ...prev])
     // ✅ Régimen de todos los imputados, para poder filtrar la lista por RPA/Adulto/Mixta
     const { data: todosImputados } = await supabase.from('imputados').select('causa_id, regimen')
     if (todosImputados) {
@@ -197,6 +212,12 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
     // hoy al entrar a una "causa asociada" desde el imputado y terminó
     // modificando la cautelar de la causa que se estaba abandonando.
     setAudiencias([]);setAumentos([]);setImputados([]);setApelaciones([]);setCautelares([]);setOrdenesDetencion([])
+    // 📴 Causa creada sin señal que todavía no se subió de verdad (id
+    // temporal, ver saveCausa) — no existe fila real en Supabase todavía,
+    // así que ni vale la pena intentar la consulta (fallaría por el formato
+    // del id). Se muestra tal cual, vacía de audiencias/imputados, hasta
+    // que se sincronice sola y quede con su id real.
+    if (typeof c.id === 'string' && c.id.startsWith('temp_')) { setCausaSinConexion(true); return }
     // 📴 Sin señal: se muestra directo la última versión guardada en el
     // teléfono (si esta causa se abrió antes alguna vez) en vez de esperar
     // a que las consultas fallen.
@@ -548,21 +569,21 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
       imp.fecha_nac && nuevaCausa.fecha_hechos && calcularRegimenAlMomento(imp.fecha_nac, nuevaCausa.fecha_hechos) === 'RPA'
     )
     const causaData = { ruc:up(nuevaCausa.ruc), rit:up(nuevaCausa.rit), tribunal: hayImputadoRPA ? TRIBUNAL_RPA : up(nuevaCausa.tribunal), delito:up(delitoAgregado), imputado:up(nombresImputados), fiscal:up(nuevaCausa.fiscal), cautelar:'', centro_penal:'', plazo:up(plazoFinal), estado:nuevaCausa.estado, subestado:subestadoAuto, fecha_hechos: nuevaCausa.fecha_hechos || null }
-    const { data, error } = await supabase.from('causas').insert(causaData).select().single()
-    if (!error) {
-      // Crear un imputado por cada entrada del arreglo que tenga al menos nombre o
-      // RUT. Delito(s), Centro Penal y Cautelar son todos por imputado desde el
-      // formulario — cada coimputado puede enfrentar cargos distintos, estar en
-      // un recinto distinto y tener una medida cautelar distinta. El régimen
-      // (ADULTO/RPA) también se calcula por separado, según la fecha de
-      // nacimiento de cada uno.
-      for (const imp of nuevaCausa.imputados) {
-        if (!imp.rut && !imp.nombre) continue
+    // Crear un imputado por cada entrada del arreglo que tenga al menos nombre o
+    // RUT. Delito(s), Centro Penal y Cautelar son todos por imputado desde el
+    // formulario — cada coimputado puede enfrentar cargos distintos, estar en
+    // un recinto distinto y tener una medida cautelar distinta. El régimen
+    // (ADULTO/RPA) también se calcula por separado, según la fecha de
+    // nacimiento de cada uno. Se arma acá el "payload" completo de cada
+    // imputado (y su cautelar, si corresponde) para poder tanto insertarlo
+    // directo (con señal) como encolarlo tal cual (sin señal, ver abajo).
+    const imputadosPayload = nuevaCausa.imputados
+      .filter(imp => imp.rut || imp.nombre)
+      .map(imp => {
         const regAuto = (imp.fecha_nac && nuevaCausa.fecha_hechos)
           ? calcularRegimenAlMomento(imp.fecha_nac, nuevaCausa.fecha_hechos)
           : null
-        const { data: impData } = await supabase.from('imputados').insert({
-          causa_id: data.id,
+        const datos = {
           nombre: up(imp.nombre) || '',
           rut: formatearRut(imp.rut) || '',
           fecha_nacimiento: imp.fecha_nac || null,
@@ -574,21 +595,40 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
           // Detenido automáticamente si la cautelar elegida es Prisión Preventiva
           // o Internación Provisoria — igual criterio que sincronizarDetencionImputado.
           esta_detenido: TIPOS_DETENCION_PENAL.includes(imp.cautelar),
-        }).select().single()
+        }
         // Si este imputado tiene una cautelar con fecha (Prisión Preventiva,
         // Internación Provisoria, Arresto Total o Sujeción a SENAME), se
         // registra de una vez en su historial de cautelares — igual que se
         // hace desde el panel de una causa ya creada, para que el conteo de
         // días de abono empiece a correr desde hoy.
-        if (impData && imp.cautelar && imp.cautelar_fecha_inicio &&
-            (TIPOS_ABONO_DIRECTO.includes(imp.cautelar) || imp.cautelar === CAUTELAR_SENAME)) {
-          await supabase.from('cautelares_causa').insert({
-            causa_id: data.id,
-            imputado_id: impData.id,
-            tipo: imp.cautelar,
-            fecha_inicio: imp.cautelar_fecha_inicio,
-            fecha_termino: null,
-          })
+        const cautelar = (imp.cautelar && imp.cautelar_fecha_inicio &&
+            (TIPOS_ABONO_DIRECTO.includes(imp.cautelar) || imp.cautelar === CAUTELAR_SENAME))
+          ? { tipo: imp.cautelar, fecha_inicio: imp.cautelar_fecha_inicio, fecha_termino: null }
+          : null
+        return { datos, cautelar }
+      })
+
+    // 📴 Sin señal: se encola la causa completa (se crea de verdad sola
+    // apenas vuelva la conexión, ver src/lib/offline.js) y se muestra al
+    // tiro en la lista con un id temporal, para que Joaquín pueda seguir
+    // trabajando sin esperar.
+    if (!estaOnline()) {
+      const causaOptimista = encolarCausaNueva({ causaData, imputados: imputadosPayload })
+      setCausas(prev => [causaOptimista, ...prev])
+      setShowNuevaCausa(false)
+      setRutEncontrado({})
+      if (registrarActividad) registrarActividad('accion', `Nueva causa (sin conexión, pendiente de subir): RUC ${causaData.ruc}`)
+      setNuevaCausa({ruc:'',rit:'',tribunal:'',delito:'',imputados:[{nombre:'',rut:'',fecha_nac:'',domicilio:'',nacionalidad:'',delito:'',centro_penal:'',cautelar:'',cautelar_fecha_inicio:''}],fiscal:'',plazo:'',fecha_inicio:'',dias_plazo:'',fecha_hechos:'',estado:'vigente',subestado:''})
+      setSaving(false)
+      return
+    }
+
+    const { data, error } = await supabase.from('causas').insert(causaData).select().single()
+    if (!error) {
+      for (const { datos, cautelar } of imputadosPayload) {
+        const { data: impData } = await supabase.from('imputados').insert({ ...datos, causa_id: data.id }).select().single()
+        if (impData && cautelar) {
+          await supabase.from('cautelares_causa').insert({ ...cautelar, causa_id: data.id, imputado_id: impData.id })
         }
       }
       setCausas(prev => [data, ...prev])
@@ -1729,7 +1769,12 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
               <div key={c.id} className="row-hover causa-row" onClick={()=>openCausa(c)} style={{borderRadius:14}}>
                 {/* Fila ancha (PC/tablet) — misma info y orden de siempre */}
                 <div className="causa-col-desktop" style={{display:'grid',gridTemplateColumns:'140px 110px 140px minmax(180px,320px) 1fr',columnGap:24}}>
-                  <div style={{padding:'14px 20px',fontSize:12,fontWeight:700,color:'#1E293B',...f}}>{c.ruc}</div>
+                  <div style={{padding:'14px 20px',fontSize:12,fontWeight:700,color:'#1E293B',...f,display:'flex',alignItems:'center',gap:6}}>
+                    {c.ruc}
+                    {/* 📴 Causa creada sin señal, todavía no subida de verdad — ver
+                        src/lib/offline.js. Se saca sola apenas se sincronice. */}
+                    {c._pendienteSync && <span title="Creada sin conexión — se sube sola apenas vuelva la señal" style={{fontSize:9,fontWeight:700,padding:'2px 6px',borderRadius:20,background:'#fffbeb',color:'#92400e',...f}}>🕓 pendiente</span>}
+                  </div>
                   <div style={{padding:'14px 20px',fontSize:12,color:'#94a3b8',fontWeight:500,...f}}>
                     <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
                       <SemaforoTag updated_at={c.updated_at} estado={c.estado} />
@@ -1744,7 +1789,10 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
                     Con borde propio para que se vea como una tarjeta enmarcada, no solo una fila. */}
                 <div className="causa-row-mobile" style={{padding:'12px 14px',margin:'6px 8px',background:c.estado==='vigente'?'#fafffd':'#F8F9FC',border:`2px solid ${c.estado==='vigente'?'#86efac':'#cbd5e1'}`,borderRadius:12}}>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8}}>
-                    <span style={{fontSize:13,fontWeight:700,color:'#0f172a',...f}}>{c.ruc}</span>
+                    <span style={{fontSize:13,fontWeight:700,color:'#0f172a',display:'flex',alignItems:'center',gap:6,...f}}>
+                      {c.ruc}
+                      {c._pendienteSync && <span title="Creada sin conexión — se sube sola apenas vuelva la señal" style={{fontSize:9,fontWeight:700,padding:'2px 6px',borderRadius:20,background:'#fffbeb',color:'#92400e',...f}}>🕓</span>}
+                    </span>
                     <SemaforoTag updated_at={c.updated_at} estado={c.estado} />
                   </div>
                   <div style={{fontSize:12,fontWeight:600,color:'#475569',marginTop:4,...f}}>{c.rit||'—'} · {c.tribunal||'—'}</div>

@@ -16,7 +16,7 @@ export default defineConfig({
     // para controlar bien qué tan "vieja" puede quedar la información.
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg'],
+      includeAssets: ['favicon.svg', 'icon-192.png', 'icon-512.png'],
       manifest: {
         name: 'LexOffice — Gestión Penal',
         short_name: 'LexOffice',
@@ -25,7 +25,16 @@ export default defineConfig({
         background_color: '#F8F9FC',
         display: 'standalone',
         start_url: '/',
-        icons: [],
+        // ✅ NUEVO: mismo monograma "JOA" que ya usaba el favicon — sin
+        // íconos reales, Chrome/Edge en el Mac no dejan instalar la app
+        // como programa de escritorio (o la instalan con un ícono
+        // genérico). "purpose: any maskable" cubre tanto los sistemas que
+        // recortan el ícono en un círculo (Android/algunos launchers) como
+        // los que lo muestran tal cual (Mac/Windows).
+        icons: [
+          { src: 'icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
+          { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+        ],
       },
       workbox: {
         // No intenta cachear las llamadas a la API de Supabase — esas se

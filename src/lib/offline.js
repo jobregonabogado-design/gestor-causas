@@ -66,7 +66,87 @@ export function encolarEscritura({ tabla, id, campos }) {
 }
 
 export function contarPendientes() {
-  return leerCola().length
+  return leerCola().length + contarCausasPendientes()
+}
+
+// ─── Causas nuevas creadas sin conexión ───────────────────────────────────
+// A diferencia de un simple UPDATE (audiencias), crear una causa implica
+// varias filas relacionadas (causa → imputados → cautelares) y Joaquín
+// necesita VER la causa en la lista al tiro, aunque siga sin señal — por
+// eso se maneja aparte de la cola genérica de arriba.
+const CLAVE_CAUSAS_PENDIENTES = 'lexoffice_causas_pendientes'
+
+function leerCausasPendientes() {
+  try {
+    const raw = localStorage.getItem(CLAVE_CAUSAS_PENDIENTES)
+    return raw ? JSON.parse(raw) : []
+  } catch { return [] }
+}
+function guardarCausasPendientes(lista) {
+  try { localStorage.setItem(CLAVE_CAUSAS_PENDIENTES, JSON.stringify(lista)) } catch { /* ignorar */ }
+}
+
+export function contarCausasPendientes() {
+  return leerCausasPendientes().length
+}
+
+// Encola una causa nueva completa para crearla de verdad apenas vuelva la
+// señal, y devuelve un objeto "optimista" (con un id temporal, prefijo
+// "temp_") listo para mostrar en la lista de causas mientras tanto — así
+// Joaquín la ve y puede seguir trabajando con ella sin esperar a
+// sincronizar. `imputados` es un arreglo de {datos, cautelar} — cautelar
+// puede ser null si ese imputado no tiene una medida con fecha que registrar.
+export function encolarCausaNueva({ causaData, imputados }) {
+  const tempId = 'temp_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)
+  const pendientes = leerCausasPendientes()
+  pendientes.push({ tempId, causaData, imputados, creadoEn: Date.now() })
+  guardarCausasPendientes(pendientes)
+  notificarCambioCola()
+  return { id: tempId, ...causaData, _pendienteSync: true }
+}
+
+// Causas ya encoladas de una sesión anterior (ej. se cerró la app antes de
+// que volviera la señal) — para que Dashboard.jsx las siga mostrando en la
+// lista al abrir de nuevo, no solo mientras estaba la pestaña abierta.
+export function leerCausasPendientesOptimistas() {
+  return leerCausasPendientes().map(p => ({ id: p.tempId, ...p.causaData, _pendienteSync: true }))
+}
+
+let sincronizandoCausas = false
+// Crea de verdad, en orden, cada causa encolada (causa → imputados →
+// cautelares) — si una falla, se detiene ahí (no se pierde el orden) y
+// reintenta la próxima vez. `onCausaSincronizada(tempId, causaReal)` se
+// llama por cada una que se logra crear, para que Dashboard.jsx reemplace
+// la versión "pendiente" por la real (con su id verdadero) en pantalla.
+export async function sincronizarCausasPendientes(onCausaSincronizada) {
+  if (sincronizandoCausas || !estaOnline()) return
+  sincronizandoCausas = true
+  try {
+    let pendientes = leerCausasPendientes()
+    while (pendientes.length > 0) {
+      const item = pendientes[0]
+      let causaReal
+      try {
+        const { data, error } = await supabase.from('causas').insert(item.causaData).select().single()
+        if (error) break
+        causaReal = data
+        for (const imp of item.imputados) {
+          const { data: impData } = await supabase.from('imputados').insert({ ...imp.datos, causa_id: causaReal.id }).select().single()
+          if (impData && imp.cautelar) {
+            await supabase.from('cautelares_causa').insert({ ...imp.cautelar, causa_id: causaReal.id, imputado_id: impData.id })
+          }
+        }
+      } catch {
+        break
+      }
+      pendientes = pendientes.slice(1)
+      guardarCausasPendientes(pendientes)
+      notificarCambioCola()
+      if (onCausaSincronizada) onCausaSincronizada(item.tempId, causaReal)
+    }
+  } finally {
+    sincronizandoCausas = false
+  }
 }
 
 let sincronizando = false
@@ -125,11 +205,17 @@ export function useEstadoConexion() {
 
   useEffect(() => {
     listeners.add(actualizarPendientes)
-    const onOnline = () => { setOnline(true); sincronizarCola() }
+    // Sin callback acá — Dashboard.jsx sincroniza las causas pendientes por
+    // su cuenta (con su propio callback, para reemplazar el id temporal por
+    // el real en su lista) al montar; esto es solo un respaldo para que las
+    // causas encoladas se manden a Supabase igual aunque Dashboard no esté
+    // abierto en ese momento.
+    const onOnline = () => { setOnline(true); sincronizarCola(); sincronizarCausasPendientes() }
     const onOffline = () => setOnline(false)
     window.addEventListener('online', onOnline)
     window.addEventListener('offline', onOffline)
     sincronizarCola() // por si quedó algo pendiente de una sesión anterior
+    sincronizarCausasPendientes()
     return () => {
       listeners.delete(actualizarPendientes)
       window.removeEventListener('online', onOnline)
