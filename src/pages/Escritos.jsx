@@ -446,9 +446,40 @@ export default function Escritos({ session, registrarActividad }) {
     }
   }
 
+  // ✅ FIX: "navigator.clipboard.writeText" a veces falla en silencio en
+  // iPhone/iPad (sobre todo con la app instalada como PWA, agregada a la
+  // pantalla de inicio) — el navegador puede negar el permiso o simplemente
+  // no completar la escritura real, sin lanzar ningún error visible, y como
+  // acá no había try/catch, si fallaba no pasaba NADA (ni el aviso de
+  // "copiado" ni ningún error): el botón parecía no hacer nada y al pegar
+  // en otro lado no aparecía el texto. Ahora, si el método moderno falla,
+  // se intenta con el método clásico (textarea oculto + execCommand), que
+  // es más confiable en esos casos — y si de plano ninguno funciona, se
+  // avisa explícitamente en vez de quedar en silencio.
   const handleCopiar = async () => {
-    await navigator.clipboard.writeText(textoLimpio(escrito))
-    alert('Texto copiado al portapapeles.')
+    const texto = textoLimpio(escrito)
+    try {
+      if (!navigator.clipboard) throw new Error('Clipboard API no disponible')
+      await navigator.clipboard.writeText(texto)
+      alert('Texto copiado al portapapeles.')
+      return
+    } catch { /* sigue con el método de respaldo abajo */ }
+    try {
+      const textarea = document.createElement('textarea')
+      textarea.value = texto
+      textarea.style.position = 'fixed'
+      textarea.style.left = '-9999px'
+      textarea.style.top = '0'
+      document.body.appendChild(textarea)
+      textarea.focus()
+      textarea.select()
+      const ok = document.execCommand('copy')
+      document.body.removeChild(textarea)
+      if (!ok) throw new Error('execCommand copy falló')
+      alert('Texto copiado al portapapeles.')
+    } catch {
+      alert('No se pudo copiar automáticamente (el navegador lo bloqueó). Mantén presionado sobre el texto del cuerpo más abajo y usa "Seleccionar todo" → "Copiar" a mano.')
+    }
   }
 
   const inp = { width: '100%', padding: '9px 12px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 13, color: '#1E293B', background: '#fff', ...f }
