@@ -30,7 +30,19 @@ export default defineConfig({
       workbox: {
         // No intenta cachear las llamadas a la API de Supabase — esas se
         // manejan con la caché propia en src/lib/offline.js.
-        navigateFallbackDenylist: [/^\/rest\//, /^\/auth\//],
+        // ✅ FIX (encontrado con Joaquín probando desde el celular varias
+        // veces): gmail-callback.html y ms-callback.html quedaban CACHEADOS
+        // por el Service Worker (precacheAndRoute los incluye igual que
+        // cualquier otro .html) — así que un celular con un Service Worker
+        // viejo activo seguía sirviendo la versión VIEJA de esa página para
+        // siempre, sin importar cuántas correcciones nuevas se desplegaran
+        // ahí. skipWaiting/clientsClaim (más abajo) ayudan a que el Service
+        // Worker se actualice más rápido, pero mientras tanto seguía
+        // fallando en el celular. Estas dos páginas son la vuelta desde el
+        // login de Google/Microsoft — TIENEN que cargar siempre la versión
+        // real desde el servidor, nunca una copia guardada.
+        navigateFallbackDenylist: [/^\/rest\//, /^\/auth\//, /^\/gmail-callback\.html$/, /^\/ms-callback\.html$/],
+        globIgnores: ['gmail-callback.html', 'ms-callback.html'],
         // ✅ FIX: sin esto, un Service Worker nuevo (con una corrección recién
         // desplegada) queda "esperando" y la pestaña sigue usando el viejo
         // hasta que se cierren TODAS las pestañas del sitio — cerrar sesión
