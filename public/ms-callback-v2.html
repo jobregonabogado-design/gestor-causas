@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Conectando OneDrive...</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; background:#F8F9FC; color:#1E293B; text-align:center; padding:24px; box-sizing:border-box; }
+    .card { max-width:420px; }
+    .spinner { width:32px; height:32px; border:3px solid #E2E8F0; border-top-color:#1E293B; border-radius:50%; animation:girar 0.8s linear infinite; margin:0 auto 16px; }
+    @keyframes girar { to { transform: rotate(360deg); } }
+    #mensaje { font-size:15px; font-weight:600; line-height:1.5; }
+    #mensaje.ok { color:#059669; }
+    #mensaje.error { color:#dc2626; }
+    a.btn { display:inline-block; margin-top:18px; background:#1E293B; color:#fff; text-decoration:none; padding:10px 26px; border-radius:10px; font-weight:600; font-size:14px; }
+    #detalle { margin-top:16px; font-size:11px; color:#94a3b8; text-align:left; background:#fff; border:1px solid #E2E8F0; border-radius:10px; padding:10px 12px; white-space:pre-wrap; word-break:break-all; font-family:monospace; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <div id="spinner" class="spinner"></div>
+  <div id="mensaje">Conectando con OneDrive...</div>
+  <div id="detalle"></div>
+  <div id="acciones"></div>
+</div>
+<script>
+  // ✅ Esta página NUNCA se cachea (ver vite.config.js, mismo criterio que
+  // gmail-callback.html) y NUNCA redirige sola — se queda quieta mostrando
+  // el detalle técnico hasta que se toque "Volver a la app". El canje del
+  // código se hace ACÁ MISMO, directo contra Microsoft, sin pasar por
+  // ningún servidor propio — la app quedó registrada en Azure como
+  // "Aplicación de página única" (SPA), que permite esto con PKCE sin
+  // necesitar un client_secret.
+  // El Client ID de OAuth no es un secreto — está pensado para ser público
+  // (ya se ve tal cual en la URL al conectar) — por eso puede ir directo
+  // acá, igual que la anon key de Supabase en gmail-callback.html.
+  var CLIENT_ID = 'e3eb3446-2cb5-4581-939e-d68e2c6078e5'
+  var TOKEN_ENDPOINT = 'https://login.microsoftonline.com/common/oauth2/v2.0/token'
+  var REDIRECT_URI = window.location.origin + '/ms-callback-v2.html'
+
+  function mostrar(texto, clase, volverA, detalle) {
+    document.getElementById('spinner').style.display = 'none'
+    var m = document.getElementById('mensaje')
+    m.textContent = texto
+    if (clase) m.className = clase
+    if (detalle) document.getElementById('detalle').textContent = detalle
+    document.getElementById('acciones').innerHTML = '<a class="btn" href="' + volverA + '">Volver a la app</a>'
+  }
+
+  function guardarTokens(data) {
+    try {
+      localStorage.setItem('ms_token', data.access_token)
+      if (data.refresh_token) localStorage.setItem('ms_refresh_token', data.refresh_token)
+      return true
+    } catch (e) {
+      mostrar('❌ Microsoft sí autorizó, pero el navegador no dejó guardar la conexión.', 'error', '/', 'Error al guardar: ' + (e && e.message))
+      return false
+    }
+  }
+
+  function canjear(code, codeVerifier) {
+    fetch(TOKEN_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: CLIENT_ID,
+        grant_type: 'authorization_code',
+        code: code,
+        redirect_uri: REDIRECT_URI,
+        code_verifier: codeVerifier,
+      }),
+    })
+      .then(function (res) {
+        return res.text().then(function (texto) {
+          var data
+          try { data = JSON.parse(texto) } catch (e) { data = null }
+          return { status: res.status, texto: texto, data: data }
+        })
+      })
+      .then(function (r) {
+        if (r.data && r.data.access_token) {
+          if (guardarTokens(r.data)) {
+            mostrar('✅ OneDrive conectado.', 'ok', '/')
+          }
+        } else {
+          mostrar('❌ No se pudo conectar OneDrive. Vuelve a intentarlo.', 'error', '/', 'HTTP ' + r.status + '\n' + r.texto)
+        }
+      })
+      .catch(function (err) {
+        mostrar('❌ No se pudo conectar OneDrive (error de red). Vuelve a intentarlo.', 'error', '/', 'Error: ' + (err && err.message))
+      })
+  }
+
+  var search = new URLSearchParams(window.location.search)
+  var code = search.get('code')
+  var errorMS = search.get('error')
+  var codeVerifier = sessionStorage.getItem('ms_code_verifier')
+  sessionStorage.removeItem('ms_code_verifier')
+
+  if (errorMS) {
+    mostrar('❌ Microsoft no autorizó la conexión.', 'error', '/', 'Microsoft devolvió: ' + errorMS + (search.get('error_description') ? ('\n' + search.get('error_description')) : ''))
+  } else if (!code) {
+    mostrar('❌ Microsoft no devolvió ningún código ni error reconocible.', 'error', '/', 'URL completa: ' + window.location.href)
+  } else if (!codeVerifier) {
+    // Pasa si esta página se abre en una pestaña/sesión distinta a la que
+    // inició la conexión (el code_verifier solo vive en esa pestaña).
+    mostrar('❌ Se perdió la clave de seguridad de esta conexión. Vuelve a intentarlo desde la misma pestaña.', 'error', '/')
+  } else {
+    document.getElementById('detalle').textContent = 'Código recibido de Microsoft (' + code.length + ' caracteres) — canjeando...'
+    canjear(code, codeVerifier)
+  }
+</script>
+</body>
+</html>

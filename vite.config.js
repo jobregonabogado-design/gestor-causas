@@ -61,8 +61,10 @@ export default defineConfig({
         // en vez de "Conectando Gmail..." con la URL correcta en la barra.
         // Esto explica por qué fallaba SIEMPRE (celular, PC, incógnito, otro
         // navegador) — no era caché ni el celular, era este "$" de más.
-        navigateFallbackDenylist: [/^\/rest\//, /^\/auth\//, /^\/gmail-callback\.html/, /^\/ms-callback\.html/],
-        globIgnores: ['gmail-callback.html', 'ms-callback.html'],
+        // ✅ ms-callback-v2.html es la página nueva del canje de OneDrive con
+        // PKCE (ver src/lib/onedrive.js) — misma exclusión que las otras dos.
+        navigateFallbackDenylist: [/^\/rest\//, /^\/auth\//, /^\/gmail-callback\.html/, /^\/ms-callback\.html/, /^\/ms-callback-v2\.html/],
+        globIgnores: ['gmail-callback.html', 'ms-callback.html', 'ms-callback-v2.html'],
         // ✅ FIX: sin esto, un Service Worker nuevo (con una corrección recién
         // desplegada) queda "esperando" y la pestaña sigue usando el viejo
         // hasta que se cierren TODAS las pestañas del sitio — cerrar sesión
