@@ -480,9 +480,19 @@ export default function App() {
     }
     document.addEventListener('visibilitychange', cerrarMenusAlVolver)
     window.addEventListener('pageshow', cerrarMenusAlVolver)
+    // ✅ FIX: "visibilitychange"/"pageshow" no siempre alcanzan a disparar en
+    // Chrome de escritorio cuando la pestaña estuvo descartada por Chrome
+    // para ahorrar memoria (o el navegador entero se cerró y volvió a abrir
+    // con "restaurar pestañas") — pasó de verdad: el menú quedó pegado con
+    // la app abierta en Calendario después de "cerrar sesión y volver". El
+    // evento "focus" de la ventana es más básico y confiable como respaldo:
+    // se dispara cada vez que se vuelve a esta pestaña/ventana, sin importar
+    // el motivo exacto por el que había quedado en segundo plano.
+    window.addEventListener('focus', cerrarMenusAlVolver)
     return () => {
       document.removeEventListener('visibilitychange', cerrarMenusAlVolver)
       window.removeEventListener('pageshow', cerrarMenusAlVolver)
+      window.removeEventListener('focus', cerrarMenusAlVolver)
     }
   }, [])
 
