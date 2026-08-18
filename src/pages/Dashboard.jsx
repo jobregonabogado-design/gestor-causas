@@ -37,8 +37,8 @@ const CSS = `
   .fld:hover { border-color:#93c5fd !important; background:#fafcff !important; box-shadow:0 0 0 3px rgba(37,99,235,0.05) !important; }
   .sort-col { cursor:pointer; user-select:none; transition:color 0.2s ease; }
   .sort-col:hover { color:#1E293B !important; }
-  .btn-primary { font-family:'Manrope','Inter',sans-serif; background:#1E293B; color:#fff; border:none; border-radius:10px; padding:9px 20px; font-size:13px; font-weight:600; cursor:pointer; transition:background 0.25s ease, box-shadow 0.25s ease; box-shadow:0 2px 8px rgba(30,58,95,0.2); text-transform:uppercase; letter-spacing:0.3px; }
-  .btn-primary:hover { background:#1e40af; box-shadow:0 4px 16px rgba(30,58,95,0.3); }
+  .btn-primary { font-family:'Manrope','Inter',sans-serif; background:#1E3A2F; color:#fff; border:none; border-radius:10px; padding:9px 20px; font-size:13px; font-weight:600; cursor:pointer; transition:background 0.25s ease, box-shadow 0.25s ease; box-shadow:0 2px 8px rgba(30,58,47,0.2); text-transform:uppercase; letter-spacing:0.3px; }
+  .btn-primary:hover { background:#16301F; box-shadow:0 4px 16px rgba(30,58,47,0.3); }
   .btn-secondary { font-family:'Manrope','Inter',sans-serif; background:#fff; color:#374151; border:1.5px solid #e5e7eb; border-radius:10px; padding:8px 18px; font-size:13px; font-weight:500; cursor:pointer; transition:border-color 0.25s ease, color 0.25s ease, background 0.25s ease; text-transform:uppercase; letter-spacing:0.3px; }
   .btn-secondary:hover { border-color:#93c5fd; color:#1E293B; background:#f8faff; }
   .detail-enter { animation:detailIn 0.3s cubic-bezier(0.4,0,0.2,1) forwards; }
@@ -1588,7 +1588,7 @@ export default function Dashboard({ session, userRol, registrarActividad, causaI
               if(st.key===''){setFilterEstado('');setGrupoAbierto('')}
               else if(grupoAbierto===st.key){setFilterEstado('');setGrupoAbierto('')}
               else{setFilterEstado(st.key);setGrupoAbierto(st.key)}
-            }} style={{flex:1,textAlign:'center',background:enfasis?'#1E293B':'#fff',border:'none',borderRadius:20,padding:'28px 22px',boxShadow:enfasis?'0 8px 24px rgba(15,23,42,0.16)':'0 1px 3px rgba(15,23,42,0.06)',transition:'all 0.2s'}}>
+            }} style={{flex:1,textAlign:'center',background:enfasis?'#1E3A2F':'#fff',border:'none',borderRadius:20,padding:'28px 22px',boxShadow:enfasis?'0 8px 24px rgba(30,58,47,0.16)':'0 1px 3px rgba(15,23,42,0.06)',transition:'all 0.2s'}}>
               <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:7,marginBottom:12}}>
                 <div style={{width:6,height:6,borderRadius:'50%',background:enfasis?'rgba(255,255,255,0.55)':st.dot}}/>
                 <div style={{fontSize:11,fontWeight:600,letterSpacing:0.5,color:enfasis?'rgba(255,255,255,0.55)':'#94a3b8',...f}}>{st.label}</div>

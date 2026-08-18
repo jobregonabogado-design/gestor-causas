@@ -24,7 +24,7 @@ const css = `
   ::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-track { background: #F8F9FC; } ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
   .nav-link { font-family:'Manrope','Inter',sans-serif; font-size:13px; font-weight:500; padding:8px 18px; border-radius:10px; border:none; cursor:pointer; transition:all 0.25s cubic-bezier(0.4,0,0.2,1); background:transparent; color:#64748b; text-transform:uppercase; letter-spacing:0.3px; }
   .nav-link:hover { background:#F1F5F9; color:#1E293B; }
-  .nav-link.active { background:#1E293B; color:#fff; font-weight:600; box-shadow:0 8px 20px rgba(30,41,59,0.22); }
+  .nav-link.active { background:#1E3A2F; color:#fff; font-weight:600; box-shadow:0 8px 20px rgba(30,58,47,0.22); }
   .page-in { animation:pageIn 0.35s cubic-bezier(0.4,0,0.2,1) forwards; }
   @keyframes pageIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
   .salir-btn { background:transparent; border:1.5px solid #E2E8F0; color:#64748b; border-radius:10px; padding:6px 16px; font-size:12px; font-family:'Manrope','Inter',sans-serif; cursor:pointer; transition:all 0.25s; font-weight:500; }
@@ -764,7 +764,7 @@ export default function App() {
           </button>
           <div style={{ position:'relative' }}>
             <div onClick={() => setShowUserMenu(v => !v)} style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', padding:'4px 8px', borderRadius:10, background: showUserMenu ? '#F8F9FC' : 'transparent', transition:'background 0.15s' }}>
-              <div style={{ width:29, height:29, borderRadius:'50%', background: esTitular ? '#1E293B' : '#7c3aed', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:11, fontWeight:700, flexShrink:0 }}>{session.user.email?.[0]?.toUpperCase()}</div>
+              <div style={{ width:29, height:29, borderRadius:'50%', background: esTitular ? '#1E3A2F' : '#7c3aed', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:11, fontWeight:700, flexShrink:0 }}>{session.user.email?.[0]?.toUpperCase()}</div>
               <span className='nav-nombre' style={{ fontSize:12, color:'#64748b', fontFamily:"'Manrope','Inter',sans-serif" }}>{userRol?.nombre || session.user.email}</span>
               <span style={{ fontSize:10, color:'#94a3b8', transform: showUserMenu?'rotate(180deg)':'none', transition:'transform 0.15s' }}>▾</span>
             </div>
@@ -777,7 +777,7 @@ export default function App() {
                   ? { position:'fixed', top:56, right:12, left:12, background:'#fff', border:'1px solid #E2E8F0', borderRadius:12, boxShadow:'0 12px 32px rgba(15,23,42,0.14)', zIndex:151, overflow:'hidden', fontFamily:"'Manrope','Inter',sans-serif" }
                   : { position:'absolute', top:'calc(100% + 8px)', right:0, background:'#fff', border:'1px solid #E2E8F0', borderRadius:12, boxShadow:'0 12px 32px rgba(15,23,42,0.14)', minWidth:200, zIndex:151, overflow:'hidden', fontFamily:"'Manrope','Inter',sans-serif" }}>
                   <div style={{ padding:'12px 16px', borderBottom:'1px solid #F1F5F9' }}>
-                    <span style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:0.5, padding:'4px 12px', borderRadius:20, background: esTitular ? '#1E293B' : '#F1F5F9', color: esTitular ? '#fff' : '#64748b', border: esTitular ? 'none' : '1px solid #E2E8F0' }}>
+                    <span style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:0.5, padding:'4px 12px', borderRadius:20, background: esTitular ? '#1E3A2F' : '#F1F5F9', color: esTitular ? '#fff' : '#64748b', border: esTitular ? 'none' : '1px solid #E2E8F0' }}>
                       {esTitular ? '⚖ Titular' : '👤 Asistente'}
                     </span>
                   </div>

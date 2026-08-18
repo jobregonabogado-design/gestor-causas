@@ -7,8 +7,8 @@ import { sanitizarNombreArchivo, fechaDDMM } from './dashboard/utils'
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
   @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap');
-  .btn-primary { font-family:'Manrope','Inter',sans-serif; background:#1E293B; color:#fff; border:none; border-radius:10px; padding:9px 20px; font-size:13px; font-weight:600; cursor:pointer; transition:background 0.25s ease, box-shadow 0.25s ease; box-shadow:0 2px 8px rgba(30,41,59,0.2); text-transform:uppercase; letter-spacing:0.3px; }
-  .btn-primary:hover { background:#0f172a; box-shadow:0 4px 16px rgba(30,41,59,0.3); }
+  .btn-primary { font-family:'Manrope','Inter',sans-serif; background:#1E3A2F; color:#fff; border:none; border-radius:10px; padding:9px 20px; font-size:13px; font-weight:600; cursor:pointer; transition:background 0.25s ease, box-shadow 0.25s ease; box-shadow:0 2px 8px rgba(30,58,47,0.2); text-transform:uppercase; letter-spacing:0.3px; }
+  .btn-primary:hover { background:#16301F; box-shadow:0 4px 16px rgba(30,58,47,0.3); }
   .btn-primary:disabled { opacity:0.5; cursor:default; }
   .btn-secondary { font-family:'Manrope','Inter',sans-serif; background:#fff; color:#374151; border:1.5px solid #e5e7eb; border-radius:10px; padding:8px 18px; font-size:13px; font-weight:500; cursor:pointer; transition:border-color 0.25s ease, color 0.25s ease, background 0.25s ease; text-transform:uppercase; letter-spacing:0.3px; }
   .btn-secondary:hover { border-color:#93c5fd; color:#1E293B; background:#F8F9FC; }
