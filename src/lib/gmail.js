@@ -288,6 +288,20 @@ async function parsearCorreo(msg, rucsVigentes) {
   }
   const cuerpo = `${cuerpoEmail}\n${textoPdf}`
 
+  // ✅ FIX: la fecha en que se INGRESÓ la solicitud (boilerplate típico de
+  // mi.Fiscalía/SIAU: "...solicitud/es ingresada/s con fecha DD/MM/YYYY...")
+  // no es una fecha de audiencia — pero como suele caer dentro de la
+  // ventana de "reciente" (la respuesta llega pocos días después), CUALQUIERA
+  // de los 3 parsers de fecha de abajo (extraerAudienciaPJUD,
+  // extraerAudienciaFiscalia, extraerRespuestaFiscalia) podía tomarla por
+  // error como si fuera la cita real, cada uno por su lado. Se tapa acá UNA
+  // sola vez, antes de que la vea ningún parser, en vez de parchar cada
+  // función por separado — pasó de verdad con Kevin Mora Bustamante: dos
+  // correos distintos de esta misma causa quedaron agendados con la fecha
+  // de ingreso (12-08-2026) por dos parsers diferentes, ninguno de los dos
+  // con una cita real.
+  const cuerpoParaFechas = cuerpo.replace(/ingresad[oa](?:\/?s)?\s+con\s+fecha\s+\d{2}[\/\-.]\d{2}[\/\-.]\d{4}/gi, 'ingresada')
+
   // ✅ FIX: antes el RUC/RIT solo se buscaba en el asunto con un formato exacto
   // ("RUC: XXXXXX-X, RIT: XXXX-XXXX"). Si el tribunal escribía el asunto distinto
   // (otro orden, "RUC N°", sin coma, etc.) el correo se perdía por completo, sin
@@ -311,9 +325,9 @@ async function parsearCorreo(msg, rucsVigentes) {
   // puede enganchar por error una fecha de otro tipo dentro de un PDF de
   // Fiscalía. Si no encuentra nada así, recién ahí se prueba con el parser
   // específico de Fiscalía, mucho más adecuado para ese formato.
-  let audiencia = extraerAudienciaPJUD(cuerpo, asunto, esFiscalia)
+  let audiencia = extraerAudienciaPJUD(cuerpoParaFechas, asunto, esFiscalia)
   if (!audiencia?.fecha && esFiscalia) {
-    audiencia = extraerAudienciaFiscalia(cuerpo, asunto)
+    audiencia = extraerAudienciaFiscalia(cuerpoParaFechas, asunto)
   }
 
   // ✅ NUEVO: además de detectar una CITACIÓN nueva (arriba), se intenta
@@ -328,7 +342,7 @@ async function parsearCorreo(msg, rucsVigentes) {
   // funcionarios/fiscales a título personal que no son respuestas formales
   // de una solicitud, generando falsos positivos.
   const esSiau = /siau@minpublico/i.test(de)
-  const respuestaFiscalia = esSiau ? extraerRespuestaFiscalia(cuerpo, asunto) : null
+  const respuestaFiscalia = esSiau ? extraerRespuestaFiscalia(cuerpoParaFechas, asunto) : null
 
   return {
     id: msg.id, // ✅ id del mensaje de Gmail — se usa para poder "recordar"
