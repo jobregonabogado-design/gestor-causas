@@ -174,9 +174,24 @@ export function DocumentosGuardados({ causaId, ruc, email, registrarActividad, o
   // OneDrive abierta (no se puede hacer desde el servidor).
   const [migrando, setMigrando] = useState(false)
   const [migracion, setMigracion] = useState(null) // { hecho, total, fallidos:[] }
+  // ✅ FIX: para separar "Escritos" de "Documentos" antes se adivinaba por
+  // el nombre del archivo (" - RIT ....pdf"), pero los escritos generados
+  // ANTES del cambio a RIT quedaron con fecha en el nombre (" - 2026-08-17
+  // .pdf") y no calzaban con ese patrón — se colaban en "Documentos". Ahora
+  // se usa la tabla real que registra cada escrito generado
+  // (escritos_generados): un documento es "Escrito" si su nombre EMPIEZA
+  // con el mismo "tipo_escrito" con el que se generó — el prefijo del
+  // nombre del archivo siempre es ese mismo texto, sin importar qué se le
+  // haya puesto después (fecha o RIT).
+  const [tiposEscrito, setTiposEscrito] = useState([])
 
-  useEffect(() => { cargarDocs() }, [causaId])
+  useEffect(() => { cargarDocs(); cargarTiposEscrito() }, [causaId])
   useEffect(() => { if (getMSToken()) cargarArchivosOneDrive() }, [causaId, docs.length])
+
+  const cargarTiposEscrito = async () => {
+    const { data } = await supabase.from('escritos_generados').select('tipo_escrito').eq('causa_id', causaId)
+    setTiposEscrito([...new Set((data || []).map(d => d.tipo_escrito).filter(Boolean))])
+  }
 
   const cargarArchivosOneDrive = async () => {
     setCargandoOneDrive(true)
@@ -362,12 +377,12 @@ export function DocumentosGuardados({ causaId, ruc, email, registrarActividad, o
     Array.from(e.dataTransfer.files).forEach(f => subirArchivo(f))
   }
 
-  // ✅ NUEVO: separa los PDF generados desde "Escritos" (siempre se guardan
-  // acá con el nombre "{tipo de escrito} - RIT {rit}.pdf", ver
-  // Escritos.jsx) del resto de documentos subidos a mano — Joaquín pidió
-  // que quedaran en su propia sección para no mezclarlos con todo lo demás.
-  const escritos = docs.filter(d => / - RIT .+\.pdf$/i.test(d.nombre))
-  const otros = docs.filter(d => !/ - RIT .+\.pdf$/i.test(d.nombre))
+  // Separa los PDF generados desde "Escritos" del resto de documentos
+  // subidos a mano — Joaquín pidió que quedaran en su propia sección para
+  // no mezclarlos con todo lo demás (ver cargarTiposEscrito arriba).
+  const esEscrito = (nombre) => tiposEscrito.some(tipo => nombre.startsWith(tipo + ' - '))
+  const escritos = docs.filter(d => esEscrito(d.nombre))
+  const otros = docs.filter(d => !esEscrito(d.nombre))
 
   const fila = (doc) => (
     <div key={doc.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', background:'#fff', border:'1px solid #E2DDCD', borderRadius:9, marginBottom:6 }}>
