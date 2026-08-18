@@ -442,10 +442,24 @@ function extraerRespuestaFiscalia(cuerpo, asunto) {
       }
       return null
     }
-    const idxAgendamiento = textoCompleto.search(/agendamiento|aprueba|entrevista|se\s+cita|citaci[oó]n/i)
-    const bloqueCita = idxAgendamiento >= 0 ? textoCompleto.substring(idxAgendamiento, idxAgendamiento + 400) : ''
+    // ✅ FIX: la fecha en que se INGRESÓ la solicitud (siempre aparece en el
+    // saludo inicial: "...solicitud/es ingresada/s con fecha DD/MM/YYYY...")
+    // no es una fecha de cita — es metadato de cuándo se envió la solicitud.
+    // Como la respuesta suele llegar pocos días después, esa fecha cae
+    // dentro de la ventana de "reciente" (últimos 7 días) y se colaba como
+    // si fuera la audiencia real, incluso en respuestas que en realidad NO
+    // fijan ninguna fecha (solo aprueban en principio y piden ingresar una
+    // NUEVA solicitud — pasó de verdad con Kevin Mora Bustamante: la
+    // respuesta solo decía "se ofrece abreviado... favor ingresar nuevo
+    // SIAU para solicitar toma de declaración", sin ninguna fecha real, y
+    // quedó agendada la fecha de ingreso de la solicitud). Se tapa esa
+    // fecha específica ANTES de buscar — la validación de "reciente" sola
+    // no alcanza, porque la fecha de ingreso también lo es.
+    const textoParaFechas = textoCompleto.replace(/ingresad[oa](?:\/?s)?\s+con\s+fecha\s+\d{2}[\/\-.]\d{2}[\/\-.]\d{4}/gi, 'ingresada')
+    const idxAgendamiento = textoParaFechas.search(/agendamiento|aprueba|entrevista|se\s+cita|citaci[oó]n/i)
+    const bloqueCita = idxAgendamiento >= 0 ? textoParaFechas.substring(idxAgendamiento, idxAgendamiento + 400) : ''
     const fechaEnBloque = bloqueCita && (buscarFechaProsa(bloqueCita) || buscarFechaNumerica(bloqueCita))
-    fechaCitacion = fechaEnBloque || buscarFechaProsa(textoCompleto) || buscarFechaNumerica(textoCompleto)
+    fechaCitacion = fechaEnBloque || buscarFechaProsa(textoParaFechas) || buscarFechaNumerica(textoParaFechas)
     fechaCitacionEsFuerte = !!fechaEnBloque
     if (fechaCitacion) estado = 'con_citacion'
     // ✅ NUEVO: "SE CITA A FISCALIA... EL DIA 21-08-2026" en la respuesta a
