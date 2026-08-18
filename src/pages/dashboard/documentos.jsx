@@ -6,6 +6,7 @@ import { f } from './primitives'
 import { BotonImprimirDocumentos } from './resumen'
 import { sanitizarNombreArchivo, hoyISO } from './utils'
 import { getMSToken, uploadFile, getFolderFiles, getFileIcon } from '../../lib/onedrive'
+import { estaOnline, leerCausaDeCache, guardarCausaEnCache } from '../../lib/offline'
 
 export function FallosReferencia({ causaId, ruc, email, onAccion }) {
   const [fallos, setFallos] = useState([])
@@ -242,9 +243,23 @@ export function DocumentosGuardados({ causaId, ruc, email, registrarActividad, o
     }
   }
 
+  // 📴 Igual criterio que openCausa en Dashboard.jsx: si no hay señal, se
+  // muestra directo lo último guardado; si la consulta falla por red aunque
+  // estaOnline() dijera que sí había señal, se cae al mismo respaldo.
   const cargarDocs = async () => {
-    const { data } = await supabase.from('documentos_causa').select('*').eq('causa_id', causaId).order('created_at', { ascending: false })
-    setDocs(data || [])
+    if (!estaOnline()) {
+      setDocs(leerCausaDeCache(causaId)?.documentos || [])
+      return
+    }
+    try {
+      const { data } = await supabase.from('documentos_causa').select('*').eq('causa_id', causaId).order('created_at', { ascending: false })
+      setDocs(data || [])
+      // Se guarda para poder verlos después sin señal — mezclado con lo que
+      // ya hubiera en caché para esta causa (audiencias, etc.), sin pisarlo.
+      guardarCausaEnCache(causaId, { ...(leerCausaDeCache(causaId) || {}), documentos: data || [] })
+    } catch {
+      setDocs(leerCausaDeCache(causaId)?.documentos || [])
+    }
   }
 
   const subirArchivo = async (file) => {
