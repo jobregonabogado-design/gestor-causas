@@ -18,7 +18,7 @@ export function HonorariosTab({ causaId, ruc, imputado, email, registrarActivida
   const [editandoId, setEditandoId] = useState(null)
   const [editForm, setEditForm] = useState({ monto:'', fecha:'', forma_pago:'', cuenta_transferencia:'', observacion:'', imputado_nombre:'' })
   const [motivoEdit, setMotivoEdit] = useState('')
-  const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #E2E8F0', borderRadius:8, fontSize:13, color:'#1E3A2F', background:'#fff', ...f }
+  const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #E2E8F0', borderRadius:8, fontSize:13, color:'#2F5D48', background:'#fff', ...f }
   const usaTransferencia = nuevoAbono.forma_pago === 'Transferencia' || nuevoAbono.forma_pago === 'Transferencia + Efectivo'
 
   // ✅ NUEVO: cuando la causa tiene 2+ imputados, el monto total pactado
@@ -156,7 +156,7 @@ export function HonorariosTab({ causaId, ruc, imputado, email, registrarActivida
           <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
             {abonadoPorImputado.map(({ nombre, total }) => (
               <div key={nombre} style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                <span style={{ fontSize:12, color:'#1E3A2F', fontWeight:600, ...f }}>{nombre}</span>
+                <span style={{ fontSize:12, color:'#2F5D48', fontWeight:600, ...f }}>{nombre}</span>
                 <span style={{ fontSize:13, color: total>0?'#059669':'#94a3b8', fontWeight:700, ...f }}>{fmt(total)}</span>
               </div>
             ))}
@@ -212,7 +212,7 @@ export function HonorariosTab({ causaId, ruc, imputado, email, registrarActivida
         <div key={a.id} style={{ display:'flex', gap:12, alignItems:'center', padding:'12px 16px', background:'#FAF7F0', border:'1px solid #e2e8f0', borderRadius:10, marginBottom:8, flexWrap:'wrap' }}>
           <div style={{ width:36, height:36, background:'#ecfdf5', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', color:'#059669', fontSize:15, fontWeight:700, flexShrink:0 }}>$</div>
           <div style={{ flex:'1 1 200px', minWidth:0 }}>
-            <div style={{ fontSize:13, fontWeight:700, color:'#1E3A2F', ...f }}>{fmt(a.monto)} <span style={{fontWeight:400,color:'#94a3b8',fontSize:12}}>· {a.forma_pago}{a.cuenta_transferencia?' · '+a.cuenta_transferencia:''}</span>
+            <div style={{ fontSize:13, fontWeight:700, color:'#2F5D48', ...f }}>{fmt(a.monto)} <span style={{fontWeight:400,color:'#94a3b8',fontSize:12}}>· {a.forma_pago}{a.cuenta_transferencia?' · '+a.cuenta_transferencia:''}</span>
               {tieneVarios && a.imputado_nombre && <span style={{marginLeft:8,fontSize:10,fontWeight:700,color:'#5b21b6',background:'#faf5ff',border:'1px solid #ddd6fe',borderRadius:20,padding:'2px 8px',...f}}>{a.imputado_nombre}</span>}
             </div>
             <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>{fechaDDMM(a.fecha)}{a.observacion?' · '+a.observacion:''} · registrado por {a.registrado_por}</div>

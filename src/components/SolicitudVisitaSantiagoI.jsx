@@ -149,7 +149,7 @@ export default function SolicitudVisitaSantiagoI({ session, registrarActividad }
               style={{ padding: '6px 10px', border: '1.5px solid #e2e8f0', borderRadius: 7, fontSize: 12, ...f }} />
             {['AM', 'PM'].map(b => (
               <button key={b} onClick={() => setBloque(b)}
-                style={{ padding: '6px 14px', borderRadius: 7, fontSize: 12, fontWeight: 700, border: `1.5px solid ${bloque === b ? '#1E3A2F' : '#e2e8f0'}`, background: bloque === b ? '#1E3A2F' : '#fff', color: bloque === b ? '#fff' : '#64748b', cursor: 'pointer', ...f }}>{b}</button>
+                style={{ padding: '6px 14px', borderRadius: 7, fontSize: 12, fontWeight: 700, border: `1.5px solid ${bloque === b ? '#2F5D48' : '#e2e8f0'}`, background: bloque === b ? '#2F5D48' : '#fff', color: bloque === b ? '#fff' : '#64748b', cursor: 'pointer', ...f }}>{b}</button>
             ))}
           </div>
 
@@ -157,7 +157,7 @@ export default function SolicitudVisitaSantiagoI({ session, registrarActividad }
             <div key={i.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', flex: 1, minWidth: 0 }}>
                 <input type="checkbox" checked={seleccionados.includes(i.id)} onChange={() => toggle(i.id)} />
-                <span style={{ fontSize: 13, color: '#1E3A2F', ...f }}>{i.nombre || 'Sin nombre'}</span>
+                <span style={{ fontSize: 13, color: '#2F5D48', ...f }}>{i.nombre || 'Sin nombre'}</span>
                 <span style={{ fontSize: 11, color: '#94a3b8', ...f }}>{i.rut || 'sin RUT'}</span>
                 {i.manual && <span style={{ fontSize: 9, fontWeight: 700, color: '#92400e', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 5, padding: '1px 6px', ...f }}>no registrado</span>}
               </label>
@@ -177,11 +177,11 @@ export default function SolicitudVisitaSantiagoI({ session, registrarActividad }
             <input placeholder="RUT (opcional)" value={rutManual} onChange={e => setRutManual(e.target.value)}
               style={{ flex: '1 1 100px', padding: '6px 10px', border: '1.5px solid #e2e8f0', borderRadius: 7, fontSize: 12, ...f }} />
             <button type="button" onClick={agregarManual} disabled={!nombreManual.trim()}
-              style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 7, padding: '6px 12px', fontSize: 12, color: '#1E3A2F', cursor: nombreManual.trim() ? 'pointer' : 'default', opacity: nombreManual.trim() ? 1 : 0.5, fontWeight: 600, ...f }}>+ Agregar</button>
+              style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 7, padding: '6px 12px', fontSize: 12, color: '#2F5D48', cursor: nombreManual.trim() ? 'pointer' : 'default', opacity: nombreManual.trim() ? 1 : 0.5, fontWeight: 600, ...f }}>+ Agregar</button>
           </div>
 
           <button onClick={enviar} disabled={enviando || seleccionados.length === 0}
-            style={{ marginTop: 10, background: '#1E3A2F', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 12, fontWeight: 600, cursor: seleccionados.length === 0 ? 'default' : 'pointer', opacity: seleccionados.length === 0 ? 0.5 : 1, ...f }}>
+            style={{ marginTop: 10, background: '#2F5D48', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 12, fontWeight: 600, cursor: seleccionados.length === 0 ? 'default' : 'pointer', opacity: seleccionados.length === 0 ? 0.5 : 1, ...f }}>
             {enviando ? 'Enviando...' : `📧 Enviar solicitud (${seleccionados.length})`}
           </button>
 

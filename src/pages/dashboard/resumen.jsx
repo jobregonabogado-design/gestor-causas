@@ -162,8 +162,8 @@ function ResumenContenido({ causa, imputados, audiencias, aumentos, cautelares, 
   return (
     <>
       {/* ── Encabezado ── */}
-      <div style={{ borderBottom: '2px solid #1E3A2F', paddingBottom: 14, marginBottom: 20 }}>
-        <div style={{ fontSize: 20, fontWeight: 800, color: '#1E3A2F' }}>RUC {causa.ruc}</div>
+      <div style={{ borderBottom: '2px solid #2F5D48', paddingBottom: 14, marginBottom: 20 }}>
+        <div style={{ fontSize: 20, fontWeight: 800, color: '#2F5D48' }}>RUC {causa.ruc}</div>
         <div style={{ fontSize: 13, color: '#475569', marginTop: 4 }}>
           RIT {causa.rit || '—'} · {causa.tribunal || '—'}
           {causa.tiene_top && causa.tribunal_top ? ` · Juicio Oral: ${causa.tribunal_top}${causa.rit_top ? ' RIT ' + causa.rit_top : ''}` : ''}
@@ -180,7 +180,7 @@ function ResumenContenido({ causa, imputados, audiencias, aumentos, cautelares, 
         <Fila label="Fecha de los hechos" valor={fechaDDMM(causa.fecha_hechos) || '—'} />
         {(imputados && imputados.length > 0 ? imputados : [null]).map((imp, i) => (
           <div key={i} style={{ marginTop: 12, paddingTop: 12, borderTop: i > 0 ? '1px dashed #e2e8f0' : 'none' }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#1E3A2F' }}>{imp ? (imp.nombre || 'Imputado sin nombre') : (causa.imputado || 'Imputado sin nombre')}</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#2F5D48' }}>{imp ? (imp.nombre || 'Imputado sin nombre') : (causa.imputado || 'Imputado sin nombre')}</div>
             {imp && (
               <div style={{ fontSize: 12, color: '#64748b', marginTop: 3, lineHeight: 1.7 }}>
                 RUT: {imp.rut || '—'} · {imp.regimen || 'Régimen no calculado'}
@@ -206,7 +206,7 @@ function ResumenContenido({ causa, imputados, audiencias, aumentos, cautelares, 
             const fechaTermino = calcularFechaTerminoCondena(imp.condena_fecha_inicio, imp.condena_anos, imp.condena_meses, imp.condena_dias, abonoDias)
             return (
               <div key={i} style={{ marginTop: i > 0 ? 12 : 0, paddingTop: i > 0 ? 12 : 0, borderTop: i > 0 ? '1px dashed #e2e8f0' : 'none' }}>
-                {imputados.length > 1 && <div style={{ fontSize: 12, fontWeight: 700, color: '#1E3A2F', marginBottom: 4 }}>{imp.nombre}</div>}
+                {imputados.length > 1 && <div style={{ fontSize: 12, fontWeight: 700, color: '#2F5D48', marginBottom: 4 }}>{imp.nombre}</div>}
                 <div style={{ fontSize: 12, color: '#475569' }}>
                   {imp.condena_tipo === 'sustitutiva' ? 'Pena sustitutiva' : 'Condena efectiva'} — {imp.condena_anos || 0}a {imp.condena_meses || 0}m {imp.condena_dias || 0}d
                   <br />
@@ -227,7 +227,7 @@ function ResumenContenido({ causa, imputados, audiencias, aumentos, cautelares, 
             const totalAbono = calcularTotalAbono(propias)
             return (
               <div key={i} style={{ marginTop: i > 0 ? 12 : 0, paddingTop: i > 0 ? 12 : 0, borderTop: i > 0 ? '1px dashed #e2e8f0' : 'none' }}>
-                {imp && <div style={{ fontSize: 12, fontWeight: 700, color: '#1E3A2F', marginBottom: 4 }}>{imp.nombre}</div>}
+                {imp && <div style={{ fontSize: 12, fontWeight: 700, color: '#2F5D48', marginBottom: 4 }}>{imp.nombre}</div>}
                 <div style={{ fontSize: 12, color: '#475569', marginBottom: 6 }}>Abono total (1×1): <strong>{totalAbono} días</strong></div>
                 {propias.map((ct, j) => (
                   <div key={j} style={{ fontSize: 12, color: '#475569', padding: '2px 0' }}>
@@ -265,7 +265,7 @@ function ResumenContenido({ causa, imputados, audiencias, aumentos, cautelares, 
                   {a.resultado && (
                     <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
                       <td colSpan={4} style={{ padding: '0 8px 8px', fontSize: 11.5, color: '#475569', whiteSpace: 'pre-wrap' }}>
-                        <strong style={{ color: '#1E3A2F' }}>Resultado:</strong> {a.resultado}
+                        <strong style={{ color: '#2F5D48' }}>Resultado:</strong> {a.resultado}
                       </td>
                     </tr>
                   )}
@@ -303,19 +303,19 @@ function ResumenContenido({ causa, imputados, audiencias, aumentos, cautelares, 
         <div style={{ marginBottom: 12 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Hechos del caso</div>
           {datos.teoria.hechos
-            ? <div style={{ fontSize: 13, color: '#1E3A2F', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{datos.teoria.hechos}</div>
+            ? <div style={{ fontSize: 13, color: '#2F5D48', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{datos.teoria.hechos}</div>
             : <Vacio texto="Sin contenido registrado." />}
         </div>
         <div style={{ marginBottom: 12 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Teoría de la Defensa</div>
           {datos.teoria.teoria_defensa
-            ? <div style={{ fontSize: 13, color: '#1E3A2F', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{datos.teoria.teoria_defensa}</div>
+            ? <div style={{ fontSize: 13, color: '#2F5D48', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{datos.teoria.teoria_defensa}</div>
             : <Vacio texto="Sin contenido registrado." />}
         </div>
         <div>
           <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Prueba</div>
           {datos.teoria.prueba
-            ? <div style={{ fontSize: 13, color: '#1E3A2F', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{datos.teoria.prueba}</div>
+            ? <div style={{ fontSize: 13, color: '#2F5D48', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{datos.teoria.prueba}</div>
             : <Vacio texto="Sin contenido registrado." />}
         </div>
       </Seccion>
@@ -325,7 +325,7 @@ function ResumenContenido({ causa, imputados, audiencias, aumentos, cautelares, 
         {datos.apelaciones.length === 0 ? <Vacio texto="Sin apelaciones registradas." /> : (
           datos.apelaciones.map((a, i) => (
             <div key={i} style={{ fontSize: 12, color: '#475569', padding: '4px 0' }}>
-              Rol Corte <strong style={{ color: '#1E3A2F' }}>{a.rol_corte || '—'}</strong>{a.sala_corte ? ` · Sala ${a.sala_corte}` : ''}{a.fecha_audiencia_corte ? ` · Audiencia el ${fechaDDMM(a.fecha_audiencia_corte)}` : ''}
+              Rol Corte <strong style={{ color: '#2F5D48' }}>{a.rol_corte || '—'}</strong>{a.sala_corte ? ` · Sala ${a.sala_corte}` : ''}{a.fecha_audiencia_corte ? ` · Audiencia el ${fechaDDMM(a.fecha_audiencia_corte)}` : ''}
             </div>
           ))
         )}
@@ -339,7 +339,7 @@ function ResumenContenido({ causa, imputados, audiencias, aumentos, cautelares, 
             const impNombre = (imputados || []).find(imp => imp.id === o.imputado_id)?.nombre
             return (
               <div key={i} style={{ fontSize: 12, color: '#475569', padding: '4px 0' }}>
-                {imputados && imputados.length > 1 && impNombre ? <strong style={{ color: '#1E3A2F' }}>{impNombre} — </strong> : null}
+                {imputados && imputados.length > 1 && impNombre ? <strong style={{ color: '#2F5D48' }}>{impNombre} — </strong> : null}
                 Dictada el {fechaDDMM(o.fecha_orden)}{o.motivo ? ` · Motivo: ${o.motivo}` : ''}
                 {' · '}
                 {o.fecha_levantamiento
@@ -356,7 +356,7 @@ function ResumenContenido({ causa, imputados, audiencias, aumentos, cautelares, 
         {datos.diligencias.length === 0 ? <Vacio texto="Sin diligencias solicitadas." /> : (
           datos.diligencias.map((d, i) => (
             <div key={i} style={{ fontSize: 12, color: '#475569', padding: '4px 0' }}>
-              <strong style={{ color: '#1E3A2F' }}>{d.tipo}</strong> — solicitada el {fechaDDMM(d.fecha_solicitud)}{d.folio ? ` · Folio ${d.folio}` : ''}
+              <strong style={{ color: '#2F5D48' }}>{d.tipo}</strong> — solicitada el {fechaDDMM(d.fecha_solicitud)}{d.folio ? ` · Folio ${d.folio}` : ''}
               {d.estado === 'pendiente'
                 ? ' · Pendiente de respuesta'
                 : ` · Respondida el ${fechaDDMM(d.fecha_respuesta) || '—'}${d.estado === 'con_citacion' && d.fecha_citacion ? ` · Cita el ${fechaDDMM(d.fecha_citacion)}` : ''}`}
@@ -474,7 +474,7 @@ function Seccion({ titulo, children, ultima }) {
   )
 }
 function Fila({ label, valor }) {
-  return <div style={{ fontSize: 13, color: '#1E3A2F', marginBottom: 4 }}><strong style={{ color: '#475569', fontWeight: 600 }}>{label}:</strong> {valor}</div>
+  return <div style={{ fontSize: 13, color: '#2F5D48', marginBottom: 4 }}><strong style={{ color: '#475569', fontWeight: 600 }}>{label}:</strong> {valor}</div>
 }
 function Vacio({ texto }) {
   return <div style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>{texto}</div>
@@ -508,8 +508,8 @@ export function BotonImprimirLista({ ruc, titulo, items, renderItem }) {
             <button onClick={() => setMostrar(false)} className="btn-secondary" style={{ fontSize: 12, border: '1.5px solid #e5e7eb' }}>✕ Cerrar</button>
           </div>
         </div>
-        <div style={{ borderBottom: '2px solid #1E3A2F', paddingBottom: 12, marginBottom: 16 }}>
-          <div style={{ fontSize: 18, fontWeight: 800, color: '#1E3A2F' }}>{titulo}</div>
+        <div style={{ borderBottom: '2px solid #2F5D48', paddingBottom: 12, marginBottom: 16 }}>
+          <div style={{ fontSize: 18, fontWeight: 800, color: '#2F5D48' }}>{titulo}</div>
           <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>RUC {ruc} · {items.length} en total</div>
         </div>
         {items.length === 0 ? <Vacio texto="Sin elementos para mostrar." /> : items.map((item, i) => (

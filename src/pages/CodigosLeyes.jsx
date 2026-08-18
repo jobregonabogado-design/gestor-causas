@@ -82,7 +82,7 @@ export default function CodigosLeyes() {
 
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20, flexWrap:'wrap', gap:10 }}>
           <div>
-            <div style={{ fontSize:20, fontWeight:800, color:'#1E3A2F', letterSpacing:'-0.4px' }}>Códigos y Leyes</div>
+            <div style={{ fontSize:20, fontWeight:800, color:'#2F5D48', letterSpacing:'-0.4px' }}>Códigos y Leyes</div>
             <div style={{ fontSize:12, color:'#94a3b8', marginTop:4 }}>
               {sinConexion ? (
                 <span style={{ color:'#92400e' }}>📡 Sin conexión — viendo la última versión guardada{guardadoEn ? ` (${new Date(guardadoEn).toLocaleDateString('es-CL')})` : ''}</span>
@@ -144,10 +144,10 @@ export default function CodigosLeyes() {
         <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.5)', display:'flex', alignItems:'center', justifyContent:'center', padding:20, zIndex:200 }} onClick={e=>e.target===e.currentTarget && setSeleccionId(null)}>
           <div style={{ background:'#fff', borderRadius:16, maxWidth:800, width:'100%', maxHeight:'85vh', overflowY:'auto', padding:24 }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
-              <div style={{ fontSize:16, fontWeight:800, color:'#1E3A2F' }}>{seleccionado.titulo}</div>
+              <div style={{ fontSize:16, fontWeight:800, color:'#2F5D48' }}>{seleccionado.titulo}</div>
               <button onClick={()=>setSeleccionId(null)} style={{ background:'#FAF7F0', border:'1px solid #e2e8f0', borderRadius:8, padding:'6px 12px', fontSize:12, cursor:'pointer' }}>✕ Cerrar</button>
             </div>
-            <div style={{ fontSize:14, lineHeight:1.8, color:'#1E3A2F', whiteSpace:'pre-wrap' }}>{seleccionado.contenido}</div>
+            <div style={{ fontSize:14, lineHeight:1.8, color:'#2F5D48', whiteSpace:'pre-wrap' }}>{seleccionado.contenido}</div>
           </div>
         </div>
       )}

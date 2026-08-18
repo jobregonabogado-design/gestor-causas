@@ -38,7 +38,7 @@ export function SearchableSelect({ value, onChange, options, placeholder, isDeli
         onClick={() => { setOpen(!open); setQuery('') }}
         style={{
           padding: '9px 12px', border: '1.5px solid #e2e8f0', borderRadius: 8,
-          fontSize: 13, color: value ? '#1E3A2F' : '#94a3b8', background: '#fff',
+          fontSize: 13, color: value ? '#2F5D48' : '#94a3b8', background: '#fff',
           cursor: 'pointer', display: 'flex', justifyContent: 'space-between',
           alignItems: 'center', minHeight: 38, fontFamily: "'Manrope','Inter',sans-serif",
           transition: 'border-color 0.2s ease',
@@ -95,7 +95,7 @@ export function SearchableSelect({ value, onChange, options, placeholder, isDeli
                   style={{
                     padding: '9px 12px', fontSize: 12, cursor: 'pointer',
                     background: isSelected ? '#eff6ff' : 'transparent',
-                    color: isSelected ? '#1E3A2F' : '#374151',
+                    color: isSelected ? '#2F5D48' : '#374151',
                     fontWeight: isSelected ? 600 : 400,
                     borderBottom: '1px solid #FAF7F0',
                     fontFamily: "'Manrope','Inter',sans-serif",
@@ -212,7 +212,7 @@ export function DelitosChips({ value, onChange, options }) {
         <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginBottom:10 }}>
           {lista.map((d, i) => (
             <div key={i} title={d.nombre} style={{ display:'flex', alignItems:'center', gap:7, background:'#fff', border:'1px solid #e2e8f0', borderRadius:8, padding:'5px 9px', maxWidth:'100%', minWidth:0 }}>
-              <span style={{ fontSize:11, color:'#1E3A2F', fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:220, ...f }}>{d.nombre}</span>
+              <span style={{ fontSize:11, color:'#2F5D48', fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:220, ...f }}>{d.nombre}</span>
               <EtiquetaDelitoTag valor={d.grado} opciones={GRADOS_DELITO} colores={GRADO_COLOR} onChange={(g) => cambiarGrado(i, g)} />
               <EtiquetaDelitoTag valor={d.participacion} opciones={GRADOS_PARTICIPACION} colores={PARTICIPACION_COLOR} onChange={(p) => cambiarParticipacion(i, p)} />
               <button onClick={() => quitar(i)} style={{ background:'transparent', border:'none', cursor:'pointer', color:'#94a3b8', fontSize:12, padding:0, flexShrink:0 }}>✕</button>
@@ -244,7 +244,7 @@ export function DelitoCard({ nombreImputado, value, onChange, options }) {
   return (
     <div style={{flex:'1 1 360px', maxWidth:460, minWidth:260}}>
       {nombreImputado && (
-        <div style={{fontSize:11,fontWeight:700,color:'#1E3A2F',marginBottom:6,...f}}>👤 {nombreImputado}</div>
+        <div style={{fontSize:11,fontWeight:700,color:'#2F5D48',marginBottom:6,...f}}>👤 {nombreImputado}</div>
       )}
       <div
         className="fld"
@@ -252,7 +252,7 @@ export function DelitoCard({ nombreImputado, value, onChange, options }) {
         style={{
           cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center',
           padding:'9px 12px', borderRadius: expanded ? '12px 12px 0 0' : 12, fontSize:13,
-          color:'#1E3A2F', minHeight:34, background:'#fff', boxShadow:'0 1px 2px rgba(15,23,42,0.06)', ...f,
+          color:'#2F5D48', minHeight:34, background:'#fff', boxShadow:'0 1px 2px rgba(15,23,42,0.06)', ...f,
         }}>
         <span>{lista.length===0 ? 'Sin delitos' : `${lista.length} delito${lista.length!==1?'s':''}`}</span>
         <span style={{fontSize:11,color:'#94a3b8'}}>{expanded ? '▲' : '▼'}</span>
@@ -372,12 +372,12 @@ export function BadgeEditor({ estado, subestado, isMobile, onChangeEstado, onCha
           <div style={{ padding:'8px 12px', fontSize:9, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.5, fontWeight:700, borderBottom:'1px solid #f1f5f9', ...f }}>Estado principal</div>
           {['vigente','terminada'].map(e => (
             <div key={e} onClick={()=>{ onChangeEstado(e) }}
-              style={{ padding:'9px 14px', fontSize:12, fontWeight: estado===e?700:400, color: estado===e?'#1E3A2F':'#374151', background: estado===e?'#eff6ff':'transparent', cursor:'pointer', display:'flex', alignItems:'center', gap:8, ...f }}
+              style={{ padding:'9px 14px', fontSize:12, fontWeight: estado===e?700:400, color: estado===e?'#2F5D48':'#374151', background: estado===e?'#eff6ff':'transparent', cursor:'pointer', display:'flex', alignItems:'center', gap:8, ...f }}
               onMouseEnter={ev=>{ if(estado!==e) ev.currentTarget.style.background='#f8faff' }}
               onMouseLeave={ev=>{ if(estado!==e) ev.currentTarget.style.background='transparent' }}>
               <span style={{ width:7, height:7, borderRadius:'50%', background: e==='vigente'?'#065f46':'#475569', flexShrink:0 }}/>
               {e==='vigente'?'VIGENTE':'TERMINADA'}
-              {estado===e && <span style={{ marginLeft:'auto', color:'#1E3A2F' }}>✓</span>}
+              {estado===e && <span style={{ marginLeft:'auto', color:'#2F5D48' }}>✓</span>}
             </div>
           ))}
           {/* Subestados */}
@@ -408,7 +408,7 @@ export function BadgeEditor({ estado, subestado, isMobile, onChangeEstado, onCha
 }
 
 export function Field({ label, value, editable, editField, setEditField, editValue, setEditValue, onSave, full, fieldKey }) {
-  const inp = { width:'100%', padding:'11px 14px', border:'none', borderRadius:14, fontSize:13, color:'#1E3A2F', background:'#fff', boxShadow:'0 1px 2px rgba(15,23,42,0.06)', ...f }
+  const inp = { width:'100%', padding:'11px 14px', border:'none', borderRadius:14, fontSize:13, color:'#2F5D48', background:'#fff', boxShadow:'0 1px 2px rgba(15,23,42,0.06)', ...f }
   // ✅ FIX: "Tribunal TOP" (pestaña Juicio Oral) usa fieldKey="tribunal_top",
   // que nunca calzaba con esta comparación exacta — se mostraba como texto
   // libre en vez de la lista desplegable de tribunales, a diferencia del
@@ -441,7 +441,7 @@ export function Field({ label, value, editable, editField, setEditField, editVal
         </div>
       ) : (
         <div className={editable?'fld':''} onClick={()=>{if(editable){setEditField(label);setEditValue(value||'')}}} title={value||''}
-          style={{ padding:'11px 14px', border:'none', borderRadius:14, fontSize:13, color:value?'#1E3A2F':'#94a3b8', minHeight:38, display:'flex', alignItems:'center', justifyContent:'space-between', cursor:editable?'pointer':'default', background:'#fff', boxShadow:'0 1px 2px rgba(15,23,42,0.06)', maxWidth:'100%', minWidth:0, ...f }}>
+          style={{ padding:'11px 14px', border:'none', borderRadius:14, fontSize:13, color:value?'#2F5D48':'#94a3b8', minHeight:38, display:'flex', alignItems:'center', justifyContent:'space-between', cursor:editable?'pointer':'default', background:'#fff', boxShadow:'0 1px 2px rgba(15,23,42,0.06)', maxWidth:'100%', minWidth:0, ...f }}>
           <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:'1 1 0%',minWidth:0}}>{value||(editable?'Clic para agregar...':'—')}</span>
           {editable && <span style={{fontSize:11,color:'#94a3b8',flexShrink:0,marginLeft:8}}>✏</span>}
         </div>

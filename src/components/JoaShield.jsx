@@ -5,9 +5,9 @@
 export default function JoaShield({
   height = 118,
   compact = false, // oculta "Est. 2017" y "Abogados" (para tamaños chicos)
-  bg = '#1E3A2F',
+  bg = '#2F5D48',
   gold = '#A8925F',
-  ink = '#F4F1E8',
+  ink = '#FAF7F0',
 }) {
   const k = height / 118 // escala proporcional al diseño original (104 x 118)
   const px = n => (n * k).toFixed(2) + 'px'

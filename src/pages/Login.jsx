@@ -14,7 +14,7 @@ const USUARIOS = {
 // (design_handoff_login_joa/README.md). Misma lógica de login de siempre,
 // solo cambió el diseño visual.
 const C = {
-  green: '#1E3A2F', greenDeep: '#16301F', greenDeeper: '#0E2416',
+  green: '#2F5D48', greenDeep: '#1E3A2F', greenDeeper: '#16301F',
   gold: '#A8925F', goldSoft: '#CBB886', goldInk: '#8A7D55',
   bone: '#FAF7F0', boneBright: '#FDFCF8',
   field: '#FFFDF7', fieldBorder: '#DDD7C6', rule: '#E2DDCD',
@@ -114,7 +114,7 @@ export default function Login() {
             {!isMobile && (
               <>
                 <div style={{ width: 56, height: 1, background: C.gold }} />
-                <p style={{ margin: 0, fontFamily: SERIF, fontStyle: 'italic', fontSize: 21, lineHeight: 1.45, color: 'rgba(244,241,232,.9)' }}>
+                <p style={{ margin: 0, fontFamily: SERIF, fontStyle: 'italic', fontSize: 21, lineHeight: 1.45, color: 'rgba(250,247,240,.9)' }}>
                   "El orden es la primera defensa."
                 </p>
               </>
@@ -123,7 +123,7 @@ export default function Login() {
         </div>
 
         {!isMobile && (
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 12, fontSize: 10.5, letterSpacing: '.2em', textTransform: 'uppercase', color: 'rgba(244,241,232,.4)' }}>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 12, fontSize: 10.5, letterSpacing: '.2em', textTransform: 'uppercase', color: 'rgba(250,247,240,.4)' }}>
             <span style={{ width: 5, height: 5, borderRadius: '50%', background: C.gold, flexShrink: 0 }} />
             Uso exclusivo del estudio · Obregón y Asociados
           </div>

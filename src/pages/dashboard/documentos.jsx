@@ -77,7 +77,7 @@ export function FallosReferencia({ causaId, ruc, email, onAccion }) {
         <div key={i} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', background:'#fff', border:'1px solid #e2e8f0', borderRadius:10, marginBottom:8 }}>
           <div style={{ width:36, height:36, background:'#fef2f2', border:'1px solid #fecaca', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, flexShrink:0 }}>📄</div>
           <div style={{ flex:1, minWidth:0 }}>
-            <div style={{ fontSize:13, fontWeight:600, color:'#1E3A2F', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', ...f }}>{fallo.nombre}</div>
+            <div style={{ fontSize:13, fontWeight:600, color:'#2F5D48', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', ...f }}>{fallo.nombre}</div>
             <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>Subido por {fallo.subido_por || 'usuario'} · {new Date(fallo.created_at).toLocaleDateString('es-CL')}</div>
           </div>
           <a href={fallo.url} target="_blank" rel="noreferrer" style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:7, padding:'5px 12px', fontSize:11, color:'#2563eb', cursor:'pointer', fontWeight:600, textDecoration:'none', ...f }}>Ver PDF</a>
@@ -366,7 +366,7 @@ export function DocumentosGuardados({ causaId, ruc, email, registrarActividad, o
     <div>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:10, marginBottom:4 }}>
         <div>
-          <div style={{ fontSize:13, fontWeight:700, color:'#1E3A2F', ...f }}>Documentos guardados en la app</div>
+          <div style={{ fontSize:13, fontWeight:700, color:'#2F5D48', ...f }}>Documentos guardados en la app</div>
           <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>{getMSToken() ? 'Sincronizado con OneDrive: lo que subas acá también se sube allá, y lo que agregues abajo desde OneDrive queda listado acá.' : 'Solo lo que subas acá explícitamente. Conecta OneDrive en "Teoría del Caso" para sincronizar.'}</div>
         </div>
         <div style={{ flexShrink:0, display:'flex', gap:8 }}>
@@ -412,7 +412,7 @@ export function DocumentosGuardados({ causaId, ruc, email, registrarActividad, o
         <div key={i} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', background:'#fff', border:'1px solid #e2e8f0', borderRadius:10, marginBottom:8 }}>
           <div style={{ width:36, height:36, background:'#FAF7F0', border:'1px solid #e2e8f0', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, flexShrink:0 }}>{iconoDocumento(doc.nombre)}</div>
           <div style={{ flex:1, minWidth:0 }}>
-            <div style={{ fontSize:13, fontWeight:600, color:'#1E3A2F', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', ...f }}>{doc.nombre}</div>
+            <div style={{ fontSize:13, fontWeight:600, color:'#2F5D48', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', ...f }}>{doc.nombre}</div>
             <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>Subido por {doc.subido_por || 'usuario'} · {new Date(doc.created_at).toLocaleDateString('es-CL')}</div>
           </div>
           <a href={doc.url} target="_blank" rel="noreferrer" style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:7, padding:'5px 12px', fontSize:11, color:'#2563eb', cursor:'pointer', fontWeight:600, textDecoration:'none', ...f }}>Ver / Descargar</a>

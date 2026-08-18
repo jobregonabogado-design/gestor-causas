@@ -284,7 +284,7 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
   const comprobanteInputRef = useRef(null)
   const respuestaInputRef = useRef(null)
   const f = { fontFamily:"'Manrope','Inter',sans-serif" }
-  const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:'#1E3A2F', background:'#fff', ...f }
+  const inp = { width:'100%', padding:'9px 12px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:13, color:'#2F5D48', background:'#fff', ...f }
 
   useEffect(() => { cargar() }, [causaId])
 
@@ -564,7 +564,7 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
       <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:8 }} className="no-imprimir">
         <BotonImprimirLista ruc={ruc} titulo="Diligencias de Fiscalía" items={diligencias} renderItem={(d)=> (
           <div style={{fontSize:12,color:'#475569'}}>
-            <strong style={{color:'#1E3A2F'}}>{d.tipo}</strong> — solicitada el {fechaDDMM(d.fecha_solicitud)}{d.folio ? ` · Folio ${d.folio}` : ''}
+            <strong style={{color:'#2F5D48'}}>{d.tipo}</strong> — solicitada el {fechaDDMM(d.fecha_solicitud)}{d.folio ? ` · Folio ${d.folio}` : ''}
             {d.estado === 'pendiente' ? ' · Pendiente de respuesta' : ` · Respondida el ${fechaDDMM(d.fecha_respuesta) || '—'}${d.estado === 'con_citacion' && d.fecha_citacion ? ` · Cita el ${fechaDDMM(d.fecha_citacion)}` : ''}`}
           </div>
         )}/>
@@ -589,7 +589,7 @@ export function DiligenciasFiscalia({ causaId, ruc, email, registrarActividad, o
           <div key={d.id} style={{ background:'#FAF7F0', border:'1px solid #e2e8f0', borderRadius:12, padding:'14px 16px', marginBottom:10 }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:8 }}>
               <div>
-                <div style={{ fontSize:13, fontWeight:700, color:'#1E3A2F', ...f }}>{d.tipo}</div>
+                <div style={{ fontSize:13, fontWeight:700, color:'#2F5D48', ...f }}>{d.tipo}</div>
                 <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, ...f }}>Solicitada el {fechaDDMM(d.fecha_solicitud)} · Folio <strong style={{color:'#475569'}}>{d.folio}</strong></div>
               </div>
               <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:4 }}>

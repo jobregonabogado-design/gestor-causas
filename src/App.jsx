@@ -20,15 +20,15 @@ const css = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
   @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Manrope','Inter', system-ui, sans-serif; background: #FAF7F0; color: #1E3A2F; -webkit-font-smoothing: antialiased; }
+  body { font-family: 'Manrope','Inter', system-ui, sans-serif; background: #FAF7F0; color: #2F5D48; -webkit-font-smoothing: antialiased; }
   ::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-track { background: #FAF7F0; } ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
   .nav-link { font-family:'Manrope','Inter',sans-serif; font-size:13px; font-weight:500; padding:8px 18px; border-radius:10px; border:none; cursor:pointer; transition:all 0.25s cubic-bezier(0.4,0,0.2,1); background:transparent; color:#64748b; text-transform:uppercase; letter-spacing:0.3px; }
-  .nav-link:hover { background:#F1F5F9; color:#1E3A2F; }
-  .nav-link.active { background:#1E3A2F; color:#fff; font-weight:600; box-shadow:0 8px 20px rgba(30,58,47,0.22); }
+  .nav-link:hover { background:#F1F5F9; color:#2F5D48; }
+  .nav-link.active { background:#2F5D48; color:#fff; font-weight:600; box-shadow:0 8px 20px rgba(30,58,47,0.22); }
   .page-in { animation:pageIn 0.35s cubic-bezier(0.4,0,0.2,1) forwards; }
   @keyframes pageIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
   .salir-btn { background:transparent; border:1.5px solid #E2E8F0; color:#64748b; border-radius:10px; padding:6px 16px; font-size:12px; font-family:'Manrope','Inter',sans-serif; cursor:pointer; transition:all 0.25s; font-weight:500; }
-  .salir-btn:hover { border-color:#1E3A2F; color:#1E3A2F; background:#FAF7F0; }
+  .salir-btn:hover { border-color:#2F5D48; color:#2F5D48; background:#FAF7F0; }
   @keyframes slideIn { from{transform:translateX(100%);opacity:0} to{transform:translateX(0);opacity:1} }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.7} }
   .alerta-btn { background:#fff; border:1.5px solid #E2E8F0; color:#64748b; border-radius:10px; padding:6px 14px; font-size:12px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:all 0.2s; font-family:'Manrope','Inter',sans-serif; text-transform:uppercase; letter-spacing:0.3px; }
@@ -135,7 +135,7 @@ function PanelActividad({ onClose, onVerCausa, soloEmail }) {
     <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', justifyContent:'flex-end' }}>
       <div style={{ position:'absolute', inset:0, background:'rgba(15,23,42,0.35)', backdropFilter:'blur(2px)' }} onClick={onClose}/>
       <div style={{ position:'relative', width:520, background:'#fff', height:'100vh', overflowY:'auto', boxShadow:'-16px 0 48px rgba(15,23,42,0.12)', animation:'slideIn 0.3s ease', fontFamily:"'Manrope','Inter',sans-serif" }}>
-        <div style={{ background:'#1E3A2F', padding:'24px 24px 20px', position:'sticky', top:0, zIndex:10 }}>
+        <div style={{ background:'#2F5D48', padding:'24px 24px 20px', position:'sticky', top:0, zIndex:10 }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
             <div>
               <div style={{ fontSize:18, fontWeight:800, color:'#fff', letterSpacing:'-0.5px' }}>{soloEmail ? '📋 Mi actividad' : '👁 Panel de Control'}</div>
@@ -145,7 +145,7 @@ function PanelActividad({ onClose, onVerCausa, soloEmail }) {
           </div>
           <div style={{ display:'flex', gap:6 }}>
             {['hoy','semana','mes'].map(opcion => (
-              <button key={opcion} onClick={() => setFiltro(opcion)} style={{ padding:'6px 16px', borderRadius:20, fontSize:11, fontWeight:600, border:'none', cursor:'pointer', textTransform:'uppercase', letterSpacing:0.5, background: filtro===opcion ? '#fff' : 'rgba(255,255,255,0.1)', color: filtro===opcion ? '#1E3A2F' : '#94a3b8', fontFamily:"'Manrope','Inter',sans-serif", transition:'all 0.2s' }}>
+              <button key={opcion} onClick={() => setFiltro(opcion)} style={{ padding:'6px 16px', borderRadius:20, fontSize:11, fontWeight:600, border:'none', cursor:'pointer', textTransform:'uppercase', letterSpacing:0.5, background: filtro===opcion ? '#fff' : 'rgba(255,255,255,0.1)', color: filtro===opcion ? '#2F5D48' : '#94a3b8', fontFamily:"'Manrope','Inter',sans-serif", transition:'all 0.2s' }}>
                 {opcion === 'hoy' ? 'Hoy' : opcion === 'semana' ? '7 días' : '30 días'}
               </button>
             ))}
@@ -157,7 +157,7 @@ function PanelActividad({ onClose, onVerCausa, soloEmail }) {
               <div style={{ fontSize:13, fontWeight:700, color:'#dc2626', marginBottom:12 }}>🚨 {solicitudes.length} solicitud{solicitudes.length>1?'es':''} de eliminación pendiente{solicitudes.length>1?'s':''}</div>
               {solicitudes.map(s => (
                 <div key={s.id} style={{ background:'#fff', border:'1px solid #E2E8F0', borderRadius:12, padding:'10px 14px', marginBottom:8 }}>
-                  <div style={{ fontSize:12, fontWeight:600, color:'#1E3A2F', marginBottom:4 }}>{s.descripcion}</div>
+                  <div style={{ fontSize:12, fontWeight:600, color:'#2F5D48', marginBottom:4 }}>{s.descripcion}</div>
                   <div style={{ fontSize:11, color:'#94a3b8', marginBottom:8 }}>Solicitado por: {s.solicitante_email} · {new Date(s.created_at).toLocaleString('es-CL')}</div>
                   <div style={{ display:'flex', gap:8 }}>
                     <button onClick={() => responderSolicitud(s.id, 'aprobada', s.tabla, s.registro_id)} style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:8, padding:'5px 14px', fontSize:11, color:'#dc2626', cursor:'pointer', fontWeight:600 }}>✓ Aprobar eliminación</button>
@@ -173,11 +173,11 @@ function PanelActividad({ onClose, onVerCausa, soloEmail }) {
               <div key={email} style={{ background:'#fff', border:'1.5px solid #E2E8F0', borderRadius:14, marginBottom:12, overflow:'hidden', boxShadow:'0 4px 16px rgba(15,23,42,0.04)' }}>
                 <div onClick={() => setUsuarioExpandido(prev => prev === email ? null : email)} style={{ padding:'14px 16px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'space-between', background: usuarioExpandido===email ? '#FAF7F0' : '#fff', transition:'background 0.2s' }}>
                   <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                    <div style={{ width:36, height:36, borderRadius:'50%', background:'#1E3A2F', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:14, fontWeight:700 }}>{email[0]?.toUpperCase()}</div>
-                    <div style={{ fontSize:13, fontWeight:700, color:'#1E3A2F' }}>{email}</div>
+                    <div style={{ width:36, height:36, borderRadius:'50%', background:'#2F5D48', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:14, fontWeight:700 }}>{email[0]?.toUpperCase()}</div>
+                    <div style={{ fontSize:13, fontWeight:700, color:'#2F5D48' }}>{email}</div>
                   </div>
                   <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                    <span style={{ fontSize:11, fontWeight:700, color:'#1E3A2F', background:'#F1F5F9', padding:'2px 10px', borderRadius:20 }}>📝 {cantidad} acción{cantidad>1?'es':''}</span>
+                    <span style={{ fontSize:11, fontWeight:700, color:'#2F5D48', background:'#F1F5F9', padding:'2px 10px', borderRadius:20 }}>📝 {cantidad} acción{cantidad>1?'es':''}</span>
                     <span style={{ fontSize:12, color:'#94a3b8' }}>{usuarioExpandido===email ? '▲' : '▼'}</span>
                   </div>
                 </div>
@@ -189,7 +189,7 @@ function PanelActividad({ onClose, onVerCausa, soloEmail }) {
                         <div key={a.id} style={{ display:'flex', gap:10, padding:'8px 0', borderBottom:'1px solid #F1F5F9', alignItems:'center' }}>
                           <span style={{ fontSize:13, flexShrink:0 }}>📝</span>
                           <div style={{ flex:1 }}>
-                            <div style={{ fontSize:12, fontWeight:500, color:'#1E3A2F' }}>{a.descripcion}</div>
+                            <div style={{ fontSize:12, fontWeight:500, color:'#2F5D48' }}>{a.descripcion}</div>
                             <div style={{ fontSize:11, color:'#94a3b8', marginTop:1 }}>{new Date(a.created_at).toLocaleString('es-CL')}</div>
                           </div>
                           {ruc && onVerCausa && (
@@ -214,7 +214,7 @@ function PanelActividad({ onClose, onVerCausa, soloEmail }) {
               <div key={a.id} style={{ display:'flex', gap:10, padding:'10px 12px', borderBottom:'1px solid #F1F5F9', alignItems:'center' }}>
                 <span style={{ fontSize:14, flexShrink:0 }}>📝</span>
                 <div style={{ flex:1 }}>
-                  <div style={{ fontSize:12, fontWeight:500, color:'#1E3A2F' }}>{a.descripcion}</div>
+                  <div style={{ fontSize:12, fontWeight:500, color:'#2F5D48' }}>{a.descripcion}</div>
                   <div style={{ fontSize:11, color:'#94a3b8', marginTop:2 }}>{soloEmail ? new Date(a.created_at).toLocaleString('es-CL') : `${a.email} · ${new Date(a.created_at).toLocaleString('es-CL')}`}</div>
                 </div>
                 {ruc && onVerCausa && (
@@ -242,7 +242,7 @@ function AlertaCard({ badge, color, bg, border, titulo, subtitulo, ruc, onVerCau
     <div style={{ display:'flex', gap:8, alignItems:'center', background:bg, border:`1px solid ${border}`, borderRadius:9, padding:'7px 10px', marginBottom:5 }}>
       <span style={{ fontSize:9, fontWeight:800, color, flexShrink:0, whiteSpace:'nowrap', ...f }}>{badge}</span>
       <div style={{ flex:1, minWidth:0 }}>
-        <div style={{ fontSize:12, fontWeight:600, color:'#1E3A2F', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', ...f }}>{titulo}</div>
+        <div style={{ fontSize:12, fontWeight:600, color:'#2F5D48', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', ...f }}>{titulo}</div>
         <div style={{ fontSize:10, color:'#94a3b8', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', ...f }}>{subtitulo}</div>
       </div>
       {ruc && onVerCausa && (
@@ -348,7 +348,7 @@ function TareaToast({ tarea, onClose }) {
           <span style={{ fontSize:22 }}>🔔</span>
           <div>
             <div style={{ fontSize:13, fontWeight:700, color:'#991b1b' }}>Nueva tarea encargada</div>
-            <div style={{ fontSize:12, color:'#1E3A2F', marginTop:2, fontWeight:500 }}>{tarea.texto}</div>
+            <div style={{ fontSize:12, color:'#2F5D48', marginTop:2, fontWeight:500 }}>{tarea.texto}</div>
             <div style={{ fontSize:11, color:'#94a3b8', marginTop:3 }}>Por {tarea.creado_por}</div>
           </div>
         </div>
@@ -658,7 +658,7 @@ export default function App() {
   if (loading) return (
     <div style={{ minHeight:'100vh', background:'#FAF7F0', display:'flex', alignItems:'center', justifyContent:'center' }}>
       <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:14 }}>
-        <div style={{ width:44, height:44, borderRadius:14, background:'#1E3A2F', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, boxShadow:'0 12px 32px rgba(30,41,59,0.18)' }}>⚖</div>
+        <div style={{ width:44, height:44, borderRadius:14, background:'#2F5D48', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, boxShadow:'0 12px 32px rgba(30,41,59,0.18)' }}>⚖</div>
         <div style={{ fontFamily:"'Manrope','Inter',sans-serif", color:'#94a3b8', fontSize:13, letterSpacing:1.5, textTransform:'uppercase', fontWeight:500 }}>Cargando...</div>
       </div>
     </div>
@@ -699,7 +699,7 @@ export default function App() {
       {mensajeRespaldo && (
         <div style={{ position:'fixed', bottom:24, right:24, zIndex:2000, background:'#fff', border: mensajeRespaldo.ok ? '1.5px solid #bbf7d0' : '1.5px solid #fecaca', borderRadius:14, padding:'14px 18px', minWidth:300, maxWidth:420, boxShadow:'0 16px 40px rgba(15,23,42,0.14)', fontFamily:"'Manrope','Inter',sans-serif" }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12 }}>
-            <div style={{ fontSize:13, fontWeight:600, color:'#1E3A2F', lineHeight:1.5 }}>{mensajeRespaldo.texto}</div>
+            <div style={{ fontSize:13, fontWeight:600, color:'#2F5D48', lineHeight:1.5 }}>{mensajeRespaldo.texto}</div>
             <button onClick={() => setMensajeRespaldo(null)} style={{ background:'transparent', border:'none', cursor:'pointer', color:'#94a3b8', fontSize:16, padding:2, flexShrink:0 }}>✕</button>
           </div>
         </div>
@@ -707,7 +707,7 @@ export default function App() {
       {mensajeSincTodo && (
         <div style={{ position:'fixed', bottom:24, right:24, zIndex:2000, background:'#fff', border: mensajeSincTodo.ok ? '1.5px solid #bbf7d0' : '1.5px solid #fecaca', borderRadius:14, padding:'14px 18px', minWidth:300, maxWidth:420, boxShadow:'0 16px 40px rgba(15,23,42,0.14)', fontFamily:"'Manrope','Inter',sans-serif" }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12 }}>
-            <div style={{ fontSize:13, fontWeight:600, color:'#1E3A2F', lineHeight:1.5 }}>{mensajeSincTodo.texto}</div>
+            <div style={{ fontSize:13, fontWeight:600, color:'#2F5D48', lineHeight:1.5 }}>{mensajeSincTodo.texto}</div>
             <button onClick={() => setMensajeSincTodo(null)} style={{ background:'transparent', border:'none', cursor:'pointer', color:'#94a3b8', fontSize:16, padding:2, flexShrink:0 }}>✕</button>
           </div>
         </div>
@@ -715,7 +715,7 @@ export default function App() {
       {gmailMensaje && (
         <div style={{ position:'fixed', bottom:24, right:24, zIndex:2000, background:'#fff', border: gmailMensaje.ok ? '1.5px solid #bbf7d0' : '1.5px solid #fecaca', borderRadius:14, padding:'14px 18px', minWidth:300, maxWidth:420, boxShadow:'0 16px 40px rgba(15,23,42,0.14)', fontFamily:"'Manrope','Inter',sans-serif" }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12 }}>
-            <div style={{ fontSize:13, fontWeight:600, color:'#1E3A2F', lineHeight:1.5 }}>{gmailMensaje.texto}</div>
+            <div style={{ fontSize:13, fontWeight:600, color:'#2F5D48', lineHeight:1.5 }}>{gmailMensaje.texto}</div>
             <button onClick={() => setGmailMensaje(null)} style={{ background:'transparent', border:'none', cursor:'pointer', color:'#94a3b8', fontSize:16, padding:2, flexShrink:0 }}>✕</button>
           </div>
         </div>
@@ -739,7 +739,7 @@ export default function App() {
         <div style={{ display:'flex', alignItems:'center', gap:10, order:1 }}>
           <JoaShield height={36} compact />
           <div>
-            <div style={{ fontFamily:"'EB Garamond',serif", fontSize:16, fontWeight:600, color:'#1E3A2F', letterSpacing:'-0.3px' }}>Obregón y Asociados</div>
+            <div style={{ fontFamily:"'EB Garamond',serif", fontSize:16, fontWeight:600, color:'#2F5D48', letterSpacing:'-0.3px' }}>Obregón y Asociados</div>
             <div className="app-logo-sub" style={{ fontSize:9, color:'#8A7D55', letterSpacing:2, textTransform:'uppercase', fontWeight:500, marginTop:0 }}>Gestión Penal</div>
           </div>
         </div>
@@ -764,7 +764,7 @@ export default function App() {
           </button>
           <div style={{ position:'relative' }}>
             <div onClick={() => setShowUserMenu(v => !v)} style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', padding:'4px 8px', borderRadius:10, background: showUserMenu ? '#FAF7F0' : 'transparent', transition:'background 0.15s' }}>
-              <div style={{ width:29, height:29, borderRadius:'50%', background: esTitular ? '#1E3A2F' : '#7c3aed', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:11, fontWeight:700, flexShrink:0 }}>{session.user.email?.[0]?.toUpperCase()}</div>
+              <div style={{ width:29, height:29, borderRadius:'50%', background: esTitular ? '#2F5D48' : '#7c3aed', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:11, fontWeight:700, flexShrink:0 }}>{session.user.email?.[0]?.toUpperCase()}</div>
               <span className='nav-nombre' style={{ fontSize:12, color:'#64748b', fontFamily:"'Manrope','Inter',sans-serif" }}>{userRol?.nombre || session.user.email}</span>
               <span style={{ fontSize:10, color:'#94a3b8', transform: showUserMenu?'rotate(180deg)':'none', transition:'transform 0.15s' }}>▾</span>
             </div>
@@ -777,7 +777,7 @@ export default function App() {
                   ? { position:'fixed', top:56, right:12, left:12, background:'#fff', border:'1px solid #E2E8F0', borderRadius:12, boxShadow:'0 12px 32px rgba(15,23,42,0.14)', zIndex:151, overflow:'hidden', fontFamily:"'Manrope','Inter',sans-serif" }
                   : { position:'absolute', top:'calc(100% + 8px)', right:0, background:'#fff', border:'1px solid #E2E8F0', borderRadius:12, boxShadow:'0 12px 32px rgba(15,23,42,0.14)', minWidth:200, zIndex:151, overflow:'hidden', fontFamily:"'Manrope','Inter',sans-serif" }}>
                   <div style={{ padding:'12px 16px', borderBottom:'1px solid #F1F5F9' }}>
-                    <span style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:0.5, padding:'4px 12px', borderRadius:20, background: esTitular ? '#1E3A2F' : '#F1F5F9', color: esTitular ? '#fff' : '#64748b', border: esTitular ? 'none' : '1px solid #E2E8F0' }}>
+                    <span style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:0.5, padding:'4px 12px', borderRadius:20, background: esTitular ? '#2F5D48' : '#F1F5F9', color: esTitular ? '#fff' : '#64748b', border: esTitular ? 'none' : '1px solid #E2E8F0' }}>
                       {esTitular ? '⚖ Titular' : '👤 Asistente'}
                     </span>
                   </div>
