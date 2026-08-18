@@ -19,26 +19,21 @@ function leerCache() {
   }
 }
 
-// ✅ FIX: antes repartía un arcoíris completo (360° de matiz) entre todas
-// las tarjetas — se veía muy colorido, sin nada que ver con la identidad
-// del estudio. Ahora cicla solo entre las 3 familias tonales de la marca
-// JOA (verde, dorado, piedra neutra), variando apenas la luminosidad
-// dentro de cada familia para que no todas las tarjetas de un mismo color
-// queden idénticas — pedido de Joaquín: "algo más ad hoc a lo creado".
+// ✅ FIX: la primera versión (arcoíris de 360°) se veía muy colorida y
+// desordenada. El segundo intento (3 familias pastel muy clarito) se fue
+// al otro extremo — Joaquín: "se ve horrible... no tan pastel y no tantos
+// colores, la idea es que sea a la vista más llamativo". Ahora son solo 3
+// colores, SATURADOS de verdad (no pastel), aplicados como una franja
+// izquierda gruesa + un fondo apenas teñido (7%) — el texto queda siempre
+// en tinta oscura fija para máximo contraste (Joaquín tiene baja visión),
+// y el color hace su trabajo en la franja, no diluido en toda la tarjeta.
 const FAMILIAS_COLOR = [
-  { hue: 154, sat: 26 }, // verde JOA
-  { hue: 40,  sat: 34 }, // dorado JOA
-  { hue: 30,  sat: 12 }, // piedra neutra
+  { accent: '#2F5D48', tint: 'rgba(47,93,72,0.07)' },   // verde JOA
+  { accent: '#A8925F', tint: 'rgba(168,146,95,0.10)' }, // dorado JOA
+  { accent: '#9C5B3C', tint: 'rgba(156,91,60,0.08)' },  // piedra / terracota
 ]
 function colorDeLey(idx) {
-  const fam = FAMILIAS_COLOR[idx % FAMILIAS_COLOR.length]
-  const paso = Math.floor(idx / FAMILIAS_COLOR.length) % 3
-  const bgL = 96 - paso * 2
-  return {
-    bg: `hsl(${fam.hue}, ${fam.sat}%, ${bgL}%)`,
-    border: `hsl(${fam.hue}, ${fam.sat + 14}%, ${bgL - 14}%)`,
-    text: `hsl(${fam.hue}, ${fam.sat + 14}%, 26%)`,
-  }
+  return FAMILIAS_COLOR[idx % FAMILIAS_COLOR.length]
 }
 
 export default function CodigosLeyes() {
@@ -123,7 +118,8 @@ export default function CodigosLeyes() {
                     rel="noreferrer"
                     style={{
                       display:'flex', alignItems:'center', gap:10, textDecoration:'none',
-                      background:col.bg, border:`1px solid ${col.border}`, borderRadius:16, padding:'20px 18px',
+                      background:col.tint, borderLeft:`6px solid ${col.accent}`, borderTop:'1px solid #E2DDCD', borderRight:'1px solid #E2DDCD', borderBottom:'1px solid #E2DDCD',
+                      borderRadius:'4px 12px 12px 4px', padding:'20px 18px',
                       minHeight:76, cursor: c.fuente_url ? 'pointer' : 'default',
                       transition:'transform 0.15s ease, box-shadow 0.15s ease',
                     }}
@@ -131,7 +127,7 @@ export default function CodigosLeyes() {
                     onMouseLeave={e=>{ e.currentTarget.style.transform='none'; e.currentTarget.style.boxShadow='none' }}
                     onClick={e=>{ if(!c.fuente_url) e.preventDefault() }}
                   >
-                    <div style={{ fontSize:14, fontWeight:700, color:col.text, lineHeight:1.35 }}>{c.titulo}</div>
+                    <div style={{ fontSize:14, fontWeight:700, color:'#26362E', lineHeight:1.35 }}>{c.titulo}</div>
                   </a>
                   {tieneTextoCargado(c) && (
                     <button onClick={()=>setSeleccionId(c.id)}
