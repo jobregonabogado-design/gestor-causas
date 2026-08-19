@@ -681,7 +681,20 @@ export default function App() {
   // Alertas — se sacaron de ese panel a su propia pestaña "Notas", así que
   // ese número ahora corresponde solo a lo que de verdad se ve al abrirlo.
   const alertaTotal = audienciasProximasVigentes.length + diligenciasSinRespuesta.length + visitasPendientes.length
-  const handleSignOut = async () => { await supabase.auth.signOut() }
+  // ✅ FIX: cerrar sesión no "mata" este componente — solo cambia qué se
+  // muestra (Login en vez del dashboard), pero sigue siendo la MISMA
+  // instancia de React con todo su estado en memoria. Sin este reseteo, al
+  // volver a entrar aparecía en la misma pestaña donde estaba antes de
+  // cerrar sesión (Escritos, Calendario, Contabilidad...) en vez de la
+  // pantalla principal de Causas. Se vuelve a 'causas' (que ya muestra
+  // "Vigentes" por defecto) para que al entrar de nuevo quede ahí, listo
+  // para seguir el pulso de las causas vigentes.
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    setPagina('causas')
+    setShowUserMenu(false)
+    setShowAlerta(false)
+  }
 
   // ✅ Handler: desde calendario → abrir causa en Dashboard
   const handleVerCausa = (causa) => {
